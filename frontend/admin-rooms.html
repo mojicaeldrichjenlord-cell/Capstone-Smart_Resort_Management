@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Room Management - SmartResort</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="navbar">
+    <div class="logo">SmartResort Admin</div>
+    <nav>
+      <a href="admin.html">Bookings</a>
+      <a href="admin-rooms.html">Rooms</a>
+      <a href="#" id="logoutBtn">Logout</a>
+    </nav>
+  </header>
+
+  <section class="page-header">
+    <h1>Room Management</h1>
+    <p>Add, edit, and delete resort rooms and cottages.</p>
+  </section>
+
+  <section class="admin-section">
+    <div class="room-form-box">
+      <h2 id="formTitle">Add New Room</h2>
+
+      <form id="roomForm">
+        <input type="hidden" id="roomId" />
+
+        <label for="roomName">Room Name</label>
+        <input type="text" id="roomName" placeholder="Enter room name" required />
+
+        <label for="roomDescription">Description</label>
+        <textarea id="roomDescription" placeholder="Enter room description"></textarea>
+
+        <label for="roomPrice">Price</label>
+        <input type="number" id="roomPrice" placeholder="Enter price" min="1" required />
+
+        <label for="roomCapacity">Capacity</label>
+        <input type="number" id="roomCapacity" placeholder="Enter capacity" min="1" required />
+
+        <label for="roomImage">Image URL</label>
+        <input type="text" id="roomImage" placeholder="Enter image URL or local image path" required />
+
+        <label for="roomStatus">Status</label>
+        <select id="roomStatus" required>
+          <option value="available">Available</option>
+          <option value="unavailable">Unavailable</option>
+        </select>
+
+        <div class="room-form-actions">
+          <button type="submit" class="btn-primary full-btn" id="saveRoomBtn">Save Room</button>
+          <button type="button" class="btn-secondary full-btn" id="cancelEditBtn" style="display: none;">Cancel Edit</button>
+        </div>
+      </form>
+
+      <p id="roomMessage" class="message"></p>
+    </div>
+
+    <div class="admin-grid" id="adminRoomsContainer"></div>
+  </section>
+
+  <script src="js/admin-rooms.js"></script>
+</body>
+</html>

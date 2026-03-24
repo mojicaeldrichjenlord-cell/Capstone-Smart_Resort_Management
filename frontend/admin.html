@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard - SmartResort</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="navbar">
+    <div class="logo">SmartResort Admin</div>
+    <nav>
+      <a href="admin.html">Bookings</a>
+      <a href="admin-rooms.html">Rooms</a>
+      <a href="#" id="adminLogoutBtn">Logout</a>
+    </nav>
+  </header>
+
+  <section class="page-header">
+    <h1>Admin Booking Dashboard</h1>
+    <p>Manage and update reservation requests.</p>
+  </section>
+
+  <section class="admin-section">
+    <div class="stats-grid" id="statsContainer">
+      <div class="stat-card">
+        <h3>Total Rooms</h3>
+        <p>0</p>
+      </div>
+      <div class="stat-card">
+        <h3>Total Bookings</h3>
+        <p>0</p>
+      </div>
+      <div class="stat-card">
+        <h3>Pending</h3>
+        <p>0</p>
+      </div>
+      <div class="stat-card">
+        <h3>Approved</h3>
+        <p>0</p>
+      </div>
+      <div class="stat-card">
+        <h3>Cancelled</h3>
+        <p>0</p>
+      </div>
+    </div>
+
+    <div id="bookingsContainer" class="admin-grid"></div>
+  </section>
+
+  <script src="js/admin.js"></script>
+</body>
+</html>

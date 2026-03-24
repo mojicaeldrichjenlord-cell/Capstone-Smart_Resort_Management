@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Book Room - SmartResort</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body class="auth-page">
+  <div class="auth-container">
+    <div class="auth-box">
+      <h1>Book Your Stay</h1>
+      <p>Complete your reservation details below.</p>
+
+      <form id="bookingForm">
+        <div class="booking-info-box">
+          <p><strong>Selected Room:</strong> <span id="roomName">-</span></p>
+          <p><strong>Price per Night:</strong> <span id="roomPrice">₱0</span></p>
+          <p><strong>Maximum Capacity:</strong> <span id="roomCapacity">0</span></p>
+        </div>
+
+        <label for="checkIn">Check-in Date</label>
+        <input type="date" id="checkIn" required />
+
+        <label for="checkOut">Check-out Date</label>
+        <input type="date" id="checkOut" required />
+
+        <label for="guests">Number of Guests</label>
+        <input
+          type="number"
+          id="guests"
+          placeholder="Enter number of guests"
+          min="1"
+          required
+        />
+
+        <div class="booking-summary">
+          <h3>Booking Summary</h3>
+          <p><strong>Total Nights:</strong> <span id="totalNights">0</span></p>
+          <p><strong>Estimated Total:</strong> <span id="estimatedTotal">₱0</span></p>
+        </div>
+
+        <button type="submit" class="btn-primary full-btn">Confirm Booking</button>
+      </form>
+
+      <p id="bookingMessage" class="message"></p>
+    </div>
+  </div>
+
+  <script src="js/booking.js"></script>
+</body>
+</html>

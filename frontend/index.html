@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Resort Booking System</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="navbar">
+    <div class="logo">SmartResort</div>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="rooms.html" id="roomsNav">Rooms</a>
+      <a href="login.html" id="loginNav">Login</a>
+      <a href="register.html" class="btn-nav" id="registerNav">Register</a>
+      <a href="my-bookings.html" id="myBookingsNav" style="display: none;">My Bookings</a>
+      <a href="admin.html" id="adminNav" style="display: none;">Admin</a>
+      <a href="#" id="logoutBtn" style="display: none;">Logout</a>
+    </nav>
+  </header>
+
+  <section class="hero">
+    <div class="hero-overlay">
+      <div class="hero-content">
+        <h1 id="heroTitle">Book Your Perfect Getaway</h1>
+        <p id="heroText">
+          A modern and easy resort booking experience for guests and admins.
+        </p>
+        <div class="hero-buttons">
+          <a href="register.html" class="btn-primary" id="getStartedBtn">Get Started</a>
+          <a href="login.html" class="btn-secondary" id="heroLoginBtn">Login</a>
+          <a href="rooms.html" class="btn-primary" id="bookNowBtn" style="display: none;">Book Now</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="features">
+    <h2>Why Choose Our System</h2>
+    <div class="card-grid">
+      <div class="card">
+        <h3>Easy Booking</h3>
+        <p>Guests can quickly reserve rooms and view resort services.</p>
+      </div>
+      <div class="card">
+        <h3>Modern Design</h3>
+        <p>Clean, eye-catching interface that can be customized later.</p>
+      </div>
+      <div class="card">
+        <h3>Admin Control</h3>
+        <p>Manage reservations, rooms, and guest data in one dashboard.</p>
+      </div>
+    </div>
+  </section>
+
+  <script src="js/index.js"></script>
+</body>
+</html>
