@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>My Bookings - SmartResort</title>
+  <title>Booking Receipt - SmartResort</title>
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
@@ -19,15 +19,22 @@
   </header>
 
   <section class="page-header">
-    <h1>My Bookings</h1>
-    <p>View your reservation history and booking status.</p>
+    <h1>Booking Receipt</h1>
+    <p>Your reservation details are shown below.</p>
   </section>
 
   <section class="admin-section">
-    <div id="myBookingsContainer" class="admin-grid"></div>
+    <div class="receipt-box" id="receiptBox">
+      <h2>Loading receipt...</h2>
+    </div>
+
+    <div class="receipt-actions">
+      <button class="btn-primary" onclick="window.print()">Print Receipt</button>
+      <a href="my-bookings.html" class="btn-secondary">Back to My Bookings</a>
+    </div>
   </section>
 
-  <script src="js/my-bookings.js"></script>
+  <script src="js/booking-receipt.js"></script>
   <script src="js/active-nav.js"></script>
 </body>
 </html>

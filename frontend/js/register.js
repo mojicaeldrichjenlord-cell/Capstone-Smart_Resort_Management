@@ -1,41 +1,67 @@
-const registerForm = document.getElementById("registerForm");
-const message = document.getElementById("message");
+const API_BASE = "http://127.0.0.1:5000/api";
 
-registerForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
+document.addEventListener("DOMContentLoaded", () => {
+  const registerForm = document.getElementById("registerForm");
 
-  const fullname = document.getElementById("fullname").value;
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
+  if (!registerForm) return;
 
-  try {
-    const response = await fetch("http://localhost:5000/api/auth/register", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ fullname, email, password }),
-    });
+  registerForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
 
-    const data = await response.json();
+    const fullname = document.getElementById("fullname").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const phone = document.getElementById("phone").value.trim();
+    const address = document.getElementById("address").value.trim();
+    const password = document.getElementById("password").value;
+    const confirmPassword = document.getElementById("confirmPassword").value;
 
-    if (response.ok) {
-      localStorage.setItem("registeredEmail", email);
+    if (!fullname || !email || !phone || !address || !password || !confirmPassword) {
+      showMessage("Please fill in all fields.", "error");
+      return;
+    }
 
-      message.style.color = "green";
-      message.textContent = "Registration successful! Redirecting to login...";
-      registerForm.reset();
+    if (password !== confirmPassword) {
+      showMessage("Passwords do not match.", "error");
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/auth/register`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          fullname,
+          email,
+          phone,
+          address,
+          password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Registration failed.");
+      }
+
+      showMessage(data.message || "Registration successful.", "success");
 
       setTimeout(() => {
         window.location.href = "login.html";
-      }, 1500);
-    } else {
-      message.style.color = "red";
-      message.textContent = data.message;
+      }, 1000);
+    } catch (error) {
+      console.error("register error:", error);
+      showMessage(error.message || "Registration failed.", "error");
     }
-  } catch (error) {
-    message.style.color = "red";
-    message.textContent = "Something went wrong. Please try again.";
-    console.error(error);
-  }
+  });
 });
+
+function showMessage(message, type = "success") {
+  if (typeof showToast === "function") {
+    showToast(message, type);
+  } else {
+    alert(message);
+  }
+}

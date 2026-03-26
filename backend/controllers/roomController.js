@@ -70,15 +70,46 @@ const updateRoom = (req, res) => {
 const deleteRoom = (req, res) => {
   const { id } = req.params;
 
-  const sql = "DELETE FROM rooms WHERE id = ?";
+  const checkBookingsSql = "SELECT COUNT(*) AS booking_count FROM bookings WHERE room_id = ?";
 
-  db.query(sql, [id], (err) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ message: "Failed to delete room." });
+  db.query(checkBookingsSql, [id], (checkErr, checkResult) => {
+    if (checkErr) {
+      console.error(checkErr);
+      return res.status(500).json({ message: "Failed to validate room bookings." });
     }
 
-    res.status(200).json({ message: "Room deleted successfully." });
+    const bookingCount = checkResult[0]?.booking_count || 0;
+
+    if (bookingCount > 0) {
+      const updateStatusSql = "UPDATE rooms SET status = 'unavailable' WHERE id = ?";
+
+      db.query(updateStatusSql, [id], (updateErr) => {
+        if (updateErr) {
+          console.error(updateErr);
+          return res.status(500).json({
+            message: "Room has bookings and could not be set to unavailable.",
+          });
+        }
+
+        return res.status(200).json({
+          message:
+            "Room has existing bookings, so it was not deleted. Status was set to unavailable instead.",
+        });
+      });
+
+      return;
+    }
+
+    const deleteSql = "DELETE FROM rooms WHERE id = ?";
+
+    db.query(deleteSql, [id], (deleteErr) => {
+      if (deleteErr) {
+        console.error(deleteErr);
+        return res.status(500).json({ message: "Failed to delete room." });
+      }
+
+      res.status(200).json({ message: "Room deleted successfully." });
+    });
   });
 };
 

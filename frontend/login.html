@@ -13,8 +13,15 @@
       <p>Login to continue your booking journey.</p>
 
       <form id="loginForm">
+        <label for="email">Email</label>
         <input type="email" id="email" placeholder="Email" required />
-        <input type="password" id="password" placeholder="Password" required />
+
+        <label for="password">Password</label>
+        <div class="password-group">
+          <input type="password" id="password" placeholder="Password" required />
+          <button type="button" class="toggle-password">Show</button>
+        </div>
+
         <button type="submit" class="btn-primary full-btn">Login</button>
       </form>
 
@@ -26,6 +33,8 @@
     </div>
   </div>
 
+  <script src="js/toast.js"></script>
+  <script src="js/password-toggle.js"></script>
   <script src="js/login.js"></script>
 </body>
 </html>

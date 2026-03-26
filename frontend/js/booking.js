@@ -10,6 +10,7 @@ const roomCapacityInput = document.getElementById("roomCapacity");
 const checkInInput = document.getElementById("checkIn");
 const checkOutInput = document.getElementById("checkOut");
 const guestsInput = document.getElementById("guests");
+const paymentMethodInput = document.getElementById("paymentMethod");
 const totalNightsText = document.getElementById("totalNights");
 const estimatedTotalText = document.getElementById("estimatedTotal");
 
@@ -124,12 +125,13 @@ bookingForm.addEventListener("submit", async (e) => {
   const check_in = checkInInput.value;
   const check_out = checkOutInput.value;
   const guests = Number(guestsInput.value);
+  const payment_method = paymentMethodInput.value;
   const maxCapacity = Number(selectedRoom.capacity);
 
   const today = formatDateForInput(new Date());
   const minimumCheckOut = addDays(check_in, 1);
 
-  if (!check_in || !check_out || !guests) {
+  if (!check_in || !check_out || !guests || !payment_method) {
     bookingMessage.style.color = "red";
     bookingMessage.textContent = "Please fill in all fields.";
     return;
@@ -160,6 +162,7 @@ bookingForm.addEventListener("submit", async (e) => {
     check_in,
     check_out,
     guests,
+    payment_method,
   };
 
   try {
@@ -175,7 +178,11 @@ bookingForm.addEventListener("submit", async (e) => {
 
     if (response.ok) {
       localStorage.removeItem("selectedRoom");
-      window.location.href = "my-bookings.html";
+      if (data.bookingId) {
+        window.location.href = `booking-receipt.html?id=${data.bookingId}`;
+      } else {
+        window.location.href = "my-bookings.html";
+      }
     } else {
       bookingMessage.style.color = "red";
       bookingMessage.textContent = data.message;

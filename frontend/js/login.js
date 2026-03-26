@@ -12,8 +12,15 @@ if (savedRegisteredEmail) {
 loginForm.addEventListener("submit", async (e) => {
   e.preventDefault();
 
-  const email = document.getElementById("email").value;
-  const password = document.getElementById("password").value;
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value.trim();
+
+  loginMessage.textContent = "";
+
+  if (!email || !password) {
+    showToast("Please enter your email and password.", "error");
+    return;
+  }
 
   try {
     const response = await fetch("http://localhost:5000/api/auth/login", {
@@ -27,10 +34,8 @@ loginForm.addEventListener("submit", async (e) => {
     const data = await response.json();
 
     if (response.ok) {
-      loginMessage.style.color = "green";
-      loginMessage.textContent = data.message;
-
       localStorage.setItem("user", JSON.stringify(data.user));
+      showToast("Login successful!", "success");
 
       setTimeout(() => {
         if (data.user.role === "admin") {
@@ -40,12 +45,10 @@ loginForm.addEventListener("submit", async (e) => {
         }
       }, 1000);
     } else {
-      loginMessage.style.color = "red";
-      loginMessage.textContent = data.message;
+      showToast(data.message || "Invalid email or password.", "error");
     }
   } catch (error) {
-    loginMessage.style.color = "red";
-    loginMessage.textContent = "Something went wrong. Please try again.";
     console.error(error);
+    showToast("Something went wrong. Please try again.", "error");
   }
 });

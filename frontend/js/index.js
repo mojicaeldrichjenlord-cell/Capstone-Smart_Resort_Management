@@ -3,6 +3,7 @@ const user = JSON.parse(localStorage.getItem("user"));
 const loginNav = document.getElementById("loginNav");
 const registerNav = document.getElementById("registerNav");
 const myBookingsNav = document.getElementById("myBookingsNav");
+const profileNav = document.getElementById("profileNav");
 const adminNav = document.getElementById("adminNav");
 const logoutBtn = document.getElementById("logoutBtn");
 
@@ -28,6 +29,7 @@ if (user) {
     adminNav.style.display = "inline-block";
   } else {
     myBookingsNav.style.display = "inline-block";
+    profileNav.style.display = "inline-block";
   }
 }
 

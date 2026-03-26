@@ -1,3 +1,5 @@
+
+
 const mysql = require("mysql2");
 
 const db = mysql.createConnection({
@@ -16,3 +18,4 @@ db.connect((err) => {
 });
 
 module.exports = db;
+

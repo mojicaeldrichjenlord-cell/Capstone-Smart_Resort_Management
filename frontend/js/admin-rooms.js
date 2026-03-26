@@ -13,6 +13,9 @@ const roomCapacityInput = document.getElementById("roomCapacity");
 const roomImageInput = document.getElementById("roomImage");
 const roomStatusInput = document.getElementById("roomStatus");
 
+const roomImagePreview = document.getElementById("roomImagePreview");
+const imagePreviewText = document.getElementById("imagePreviewText");
+
 const user = JSON.parse(localStorage.getItem("user"));
 
 if (!user) {
@@ -32,12 +35,41 @@ logoutBtn.addEventListener("click", (e) => {
   window.location.href = "login.html";
 });
 
+function updateImagePreview() {
+  const imagePath = roomImageInput.value.trim();
+
+  if (!imagePath) {
+    roomImagePreview.style.display = "none";
+    roomImagePreview.src = "";
+    imagePreviewText.textContent = "No image selected yet.";
+    return;
+  }
+
+  roomImagePreview.src = imagePath;
+  roomImagePreview.style.display = "block";
+  imagePreviewText.textContent = "Previewing image...";
+}
+
+roomImageInput.addEventListener("input", updateImagePreview);
+
+roomImagePreview.addEventListener("load", () => {
+  imagePreviewText.textContent = "Image loaded successfully.";
+});
+
+roomImagePreview.addEventListener("error", () => {
+  roomImagePreview.style.display = "none";
+  imagePreviewText.textContent = "Image could not be loaded. Check the path or URL.";
+});
+
 function resetForm() {
   roomForm.reset();
   roomIdInput.value = "";
   formTitle.textContent = "Add New Room";
   cancelEditBtn.style.display = "none";
   roomMessage.textContent = "";
+  roomImagePreview.style.display = "none";
+  roomImagePreview.src = "";
+  imagePreviewText.textContent = "No image selected yet.";
 }
 
 cancelEditBtn.addEventListener("click", () => {
@@ -99,6 +131,7 @@ function editRoom(room) {
 
   formTitle.textContent = "Edit Room";
   cancelEditBtn.style.display = "block";
+  updateImagePreview();
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 

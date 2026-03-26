@@ -2,6 +2,7 @@ const myBookingsContainer = document.getElementById("myBookingsContainer");
 const logoutBtn = document.getElementById("logoutBtn");
 
 const user = JSON.parse(localStorage.getItem("user"));
+const API_BASE = "http://127.0.0.1:5000/api";
 
 if (!user) {
   alert("Please login first.");
@@ -28,12 +29,17 @@ function formatDate(dateString) {
   });
 }
 
+function formatPaymentMethod(method) {
+  if (method === "paypal") return "PayPal";
+  return "Cash on Arrival";
+}
+
 async function cancelBooking(bookingId) {
   const confirmed = confirm("Are you sure you want to cancel this booking?");
   if (!confirmed) return;
 
   try {
-    const response = await fetch(`http://localhost:5000/api/bookings/cancel/${bookingId}`, {
+    const response = await fetch(`${API_BASE}/bookings/cancel/${bookingId}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -57,7 +63,7 @@ async function cancelBooking(bookingId) {
 
 async function loadMyBookings() {
   try {
-    const response = await fetch(`http://localhost:5000/api/bookings/user/${user.id}`);
+    const response = await fetch(`${API_BASE}/bookings/user/${user.id}`);
     const bookings = await response.json();
 
     if (!response.ok) {
@@ -78,6 +84,8 @@ async function loadMyBookings() {
             <p><strong>Check-in:</strong> ${formatDate(booking.check_in)}</p>
             <p><strong>Check-out:</strong> ${formatDate(booking.check_out)}</p>
             <p><strong>Guests:</strong> ${booking.guests}</p>
+            <p><strong>Payment Method:</strong> ${formatPaymentMethod(booking.payment_method)}</p>
+            <p><strong>Payment Status:</strong> ${booking.payment_status}</p>
             <p><strong>Status:</strong> 
               <span class="status-badge status-${booking.status.toLowerCase()}">
                 ${booking.status}
@@ -85,15 +93,16 @@ async function loadMyBookings() {
             </p>
             <p><strong>Booked on:</strong> ${formatDate(booking.created_at)}</p>
 
-            ${
-              booking.status.toLowerCase() === "pending"
-                ? `<div class="admin-actions">
-                    <button class="btn-secondary admin-reject" onclick="cancelBooking(${booking.id})">
+            <div class="admin-actions">
+              <a href="booking-receipt.html?id=${booking.id}" class="btn-primary">View Receipt</a>
+              ${
+                booking.status.toLowerCase() === "pending"
+                  ? `<button class="btn-secondary admin-reject" onclick="cancelBooking(${booking.id})">
                       Cancel Booking
-                    </button>
-                  </div>`
-                : ""
-            }
+                    </button>`
+                  : ""
+              }
+            </div>
           </div>
         `
       )

@@ -1,143 +1,346 @@
-const bookingsContainer = document.getElementById("bookingsContainer");
-const adminLogoutBtn = document.getElementById("adminLogoutBtn");
-const statsContainer = document.getElementById("statsContainer");
+const API_BASE = "http://127.0.0.1:5000/api";
 
-const user = JSON.parse(localStorage.getItem("user"));
+const BOOKING_STATUSES = [
+  "pending",
+  "approved",
+  "rejected",
+  "cancelled",
+  "completed",
+];
 
-if (!user) {
-  alert("Please login first.");
-  window.location.href = "login.html";
-}
+const PAYMENT_STATUSES = [
+  "unpaid",
+  "pending",
+  "paid",
+  "refunded",
+];
 
-if (user && user.role !== "admin") {
-  alert("Access denied. Admins only.");
-  window.location.href = "index.html";
-}
+let allBookings = [];
 
-adminLogoutBtn.addEventListener("click", (e) => {
-  e.preventDefault();
-  localStorage.removeItem("user");
-  localStorage.removeItem("selectedRoom");
-  window.location.href = "login.html";
+document.addEventListener("DOMContentLoaded", () => {
+  checkAdminAccess();
+  setupEvents();
+  loadBookings();
 });
 
-function formatDate(dateString) {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+function checkAdminAccess() {
+  const user = JSON.parse(localStorage.getItem("user"));
+
+  if (!user) {
+    alert("Please login first.");
+    window.location.href = "login.html";
+    return;
+  }
+
+  if (user.role !== "admin") {
+    alert("Access denied. Admin only.");
+    window.location.href = "index.html";
+    return;
+  }
 }
 
-async function loadStats() {
-  try {
-    const response = await fetch("http://localhost:5000/api/bookings/stats/summary");
-    const stats = await response.json();
+function setupEvents() {
+  const logoutBtn = document.getElementById("logoutBtn");
+  const refreshBtn = document.getElementById("refreshBtn");
+  const searchInput = document.getElementById("searchInput");
+  const statusFilter = document.getElementById("statusFilter");
+  const paymentStatusFilter = document.getElementById("paymentStatusFilter");
+  const paymentMethodFilter = document.getElementById("paymentMethodFilter");
 
-    if (!response.ok) {
-      statsContainer.innerHTML = "<p>Failed to load dashboard summary.</p>";
-      return;
-    }
+  if (logoutBtn) {
+    logoutBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      localStorage.removeItem("user");
+      showMessage("Logged out successfully.", "success");
+      setTimeout(() => {
+        window.location.href = "login.html";
+      }, 700);
+    });
+  }
 
-    statsContainer.innerHTML = `
-      <div class="stat-card">
-        <h3>Total Rooms</h3>
-        <p>${stats.total_rooms ?? 0}</p>
-      </div>
-      <div class="stat-card">
-        <h3>Total Bookings</h3>
-        <p>${stats.total_bookings ?? 0}</p>
-      </div>
-      <div class="stat-card">
-        <h3>Pending</h3>
-        <p>${stats.pending_bookings ?? 0}</p>
-      </div>
-      <div class="stat-card">
-        <h3>Approved</h3>
-        <p>${stats.approved_bookings ?? 0}</p>
-      </div>
-      <div class="stat-card">
-        <h3>Cancelled</h3>
-        <p>${stats.cancelled_bookings ?? 0}</p>
-      </div>
-    `;
-  } catch (error) {
-    console.error(error);
-    statsContainer.innerHTML = "<p>Something went wrong while loading summary cards.</p>";
+  if (refreshBtn) {
+    refreshBtn.addEventListener("click", loadBookings);
+  }
+
+  if (searchInput) {
+    searchInput.addEventListener("input", applyFilters);
+  }
+
+  if (statusFilter) {
+    statusFilter.addEventListener("change", applyFilters);
+  }
+
+  if (paymentStatusFilter) {
+    paymentStatusFilter.addEventListener("change", applyFilters);
+  }
+
+  if (paymentMethodFilter) {
+    paymentMethodFilter.addEventListener("change", applyFilters);
   }
 }
 
 async function loadBookings() {
+  const tbody = document.getElementById("adminBookingsTableBody");
+
   try {
-    const response = await fetch("http://localhost:5000/api/bookings");
-    const bookings = await response.json();
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="13" class="table-message">Loading bookings...</td>
+      </tr>
+    `;
+
+    const response = await fetch(`${API_BASE}/admin/bookings`);
+    const data = await response.json();
 
     if (!response.ok) {
-      bookingsContainer.innerHTML = "<p>Failed to load bookings.</p>";
-      return;
+      throw new Error(data.message || "Failed to fetch bookings.");
     }
 
-    if (bookings.length === 0) {
-      bookingsContainer.innerHTML = "<p>No bookings found.</p>";
-      return;
-    }
-
-    bookingsContainer.innerHTML = bookings
-      .map(
-        (booking) => `
-          <div class="admin-card">
-            <h3>${booking.room_name}</h3>
-            <p><strong>Guest:</strong> ${booking.fullname}</p>
-            <p><strong>Email:</strong> ${booking.email}</p>
-            <p><strong>Check-in:</strong> ${formatDate(booking.check_in)}</p>
-            <p><strong>Check-out:</strong> ${formatDate(booking.check_out)}</p>
-            <p><strong>Guests:</strong> ${booking.guests}</p>
-            <p><strong>Status:</strong> 
-              <span class="status-badge status-${booking.status.toLowerCase()}">
-                ${booking.status}
-              </span>
-            </p>
-
-            <div class="admin-actions">
-              <button class="btn-primary" onclick="updateStatus(${booking.id}, 'approved')">Approve</button>
-              <button class="btn-secondary admin-reject" onclick="updateStatus(${booking.id}, 'rejected')">Reject</button>
-              <button class="btn-secondary admin-pending" onclick="updateStatus(${booking.id}, 'pending')">Pending</button>
-            </div>
-          </div>
-        `
-      )
-      .join("");
+    allBookings = Array.isArray(data) ? data : data.bookings || [];
+    updateSummaryCards(allBookings);
+    applyFilters();
   } catch (error) {
-    console.error(error);
-    bookingsContainer.innerHTML = "<p>Something went wrong while loading bookings.</p>";
+    console.error("loadBookings error:", error);
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="13" class="table-message">Failed to load bookings.</td>
+      </tr>
+    `;
+    showMessage(error.message || "Failed to load bookings.", "error");
   }
 }
 
-async function updateStatus(id, status) {
+function applyFilters() {
+  const searchValue = document.getElementById("searchInput").value.trim().toLowerCase();
+  const statusValue = document.getElementById("statusFilter").value.trim().toLowerCase();
+  const paymentStatusValue = document.getElementById("paymentStatusFilter").value.trim().toLowerCase();
+  const paymentMethodValue = document.getElementById("paymentMethodFilter").value.trim().toLowerCase();
+
+  let filtered = [...allBookings];
+
+  if (searchValue) {
+    filtered = filtered.filter((booking) => {
+      const text = `
+        ${booking.id || ""}
+        ${booking.fullname || ""}
+        ${booking.phone || ""}
+        ${booking.email || ""}
+        ${booking.room_name || ""}
+      `.toLowerCase();
+
+      return text.includes(searchValue);
+    });
+  }
+
+  if (statusValue) {
+    filtered = filtered.filter(
+      (booking) => String(booking.status || "").toLowerCase() === statusValue
+    );
+  }
+
+  if (paymentStatusValue) {
+    filtered = filtered.filter(
+      (booking) =>
+        String(booking.payment_status || "").toLowerCase() === paymentStatusValue
+    );
+  }
+
+  if (paymentMethodValue) {
+    filtered = filtered.filter(
+      (booking) =>
+        String(booking.payment_method || "").toLowerCase() === paymentMethodValue
+    );
+  }
+
+  renderBookings(filtered);
+}
+
+function updateSummaryCards(bookings) {
+  const totalBookings = bookings.length;
+  const pendingCount = bookings.filter(
+    (b) => String(b.status || "").toLowerCase() === "pending"
+  ).length;
+  const approvedCount = bookings.filter(
+    (b) => String(b.status || "").toLowerCase() === "approved"
+  ).length;
+  const paidCount = bookings.filter(
+    (b) => String(b.payment_status || "").toLowerCase() === "paid"
+  ).length;
+
+  document.getElementById("totalBookings").textContent = totalBookings;
+  document.getElementById("pendingCount").textContent = pendingCount;
+  document.getElementById("approvedCount").textContent = approvedCount;
+  document.getElementById("paidCount").textContent = paidCount;
+}
+
+function renderBookings(bookings) {
+  const tbody = document.getElementById("adminBookingsTableBody");
+
+  if (!bookings.length) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="13" class="table-message">No bookings found.</td>
+      </tr>
+    `;
+    return;
+  }
+
+  tbody.innerHTML = bookings
+    .map((booking) => {
+      const bookingStatus = String(booking.status || "pending").toLowerCase();
+      const paymentMethod = String(booking.payment_method || "cash").toLowerCase();
+      const paymentStatus = String(booking.payment_status || "unpaid").toLowerCase();
+
+      return `
+        <tr>
+          <td>#${booking.id}</td>
+          <td>${escapeHtml(booking.fullname || "N/A")}</td>
+          <td>${escapeHtml(booking.phone || "N/A")}</td>
+          <td>${escapeHtml(booking.email || "N/A")}</td>
+          <td>${escapeHtml(booking.room_name || "N/A")}</td>
+          <td>${formatDate(booking.check_in)}</td>
+          <td>${formatDate(booking.check_out)}</td>
+          <td>${booking.guests || 0}</td>
+          <td>
+            <select id="bookingStatus-${booking.id}">
+              ${BOOKING_STATUSES.map(
+                (status) => `
+                  <option value="${status}" ${bookingStatus === status ? "selected" : ""}>
+                    ${capitalize(status)}
+                  </option>
+                `
+              ).join("")}
+            </select>
+          </td>
+          <td>${capitalize(paymentMethod)}</td>
+          <td>
+            <select id="paymentStatus-${booking.id}">
+              ${PAYMENT_STATUSES.map(
+                (status) => `
+                  <option value="${status}" ${paymentStatus === status ? "selected" : ""}>
+                    ${capitalize(status)}
+                  </option>
+                `
+              ).join("")}
+            </select>
+          </td>
+          <td>${formatDateTime(booking.created_at)}</td>
+          <td>
+            <div class="action-buttons">
+              <button class="action-btn save-booking-btn" onclick="saveAllStatus(${booking.id})">
+                Save Status
+              </button>
+              <button class="action-btn receipt-btn" onclick="viewReceipt(${booking.id})">
+                View Receipt
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    })
+    .join("");
+}
+
+async function saveAllStatus(bookingId) {
+  const bookingSelect = document.getElementById(`bookingStatus-${bookingId}`);
+  const paymentSelect = document.getElementById(`paymentStatus-${bookingId}`);
+
+  const newBookingStatus = bookingSelect.value;
+  const newPaymentStatus = paymentSelect.value;
+
+  const saveButton = document.querySelector(
+    `button[onclick="saveAllStatus(${bookingId})"]`
+  );
+
+  const originalButtonText = saveButton ? saveButton.textContent : "Save Status";
+
   try {
-    const response = await fetch(`http://localhost:5000/api/bookings/${id}`, {
+    if (saveButton) {
+      saveButton.disabled = true;
+      saveButton.textContent = "Saving...";
+      saveButton.style.opacity = "0.7";
+      saveButton.style.cursor = "not-allowed";
+    }
+
+    const bookingResponse = await fetch(`${API_BASE}/admin/bookings/${bookingId}/status`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status: newBookingStatus }),
     });
 
-    const data = await response.json();
+    const bookingData = await bookingResponse.json();
 
-    if (response.ok) {
-      alert(data.message);
-      loadBookings();
-      loadStats();
-    } else {
-      alert(data.message);
+    if (!bookingResponse.ok) {
+      throw new Error(bookingData.message || "Failed to update booking status.");
     }
+
+    const paymentResponse = await fetch(`${API_BASE}/admin/payments/${bookingId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ payment_status: newPaymentStatus }),
+    });
+
+    const paymentData = await paymentResponse.json();
+
+    if (!paymentResponse.ok) {
+      throw new Error(paymentData.message || "Failed to update payment status.");
+    }
+
+    showMessage("Booking and payment status updated successfully.", "success");
+    await loadBookings();
   } catch (error) {
-    console.error(error);
-    alert("Failed to update booking status.");
+    console.error("saveAllStatus error:", error);
+    showMessage(error.message || "Failed to save status.", "error");
+  } finally {
+    if (saveButton) {
+      saveButton.disabled = false;
+      saveButton.textContent = originalButtonText;
+      saveButton.style.opacity = "1";
+      saveButton.style.cursor = "pointer";
+    }
   }
 }
 
-loadStats();
-loadBookings();
+function viewReceipt(bookingId) {
+  window.location.href = `booking-receipt.html?id=${bookingId}`;
+}
+
+function formatDate(dateValue) {
+  if (!dateValue) return "N/A";
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return "N/A";
+  return date.toLocaleDateString();
+}
+
+function formatDateTime(dateValue) {
+  if (!dateValue) return "N/A";
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return "N/A";
+  return date.toLocaleString();
+}
+
+function capitalize(text) {
+  if (!text) return "";
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+function showMessage(message, type = "success") {
+  if (typeof showToast === "function") {
+    showToast(message, type);
+  } else {
+    alert(message);
+  }
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}

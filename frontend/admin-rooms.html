@@ -10,8 +10,10 @@
   <header class="navbar">
     <div class="logo">SmartResort Admin</div>
     <nav>
+      <a href="admin-reports.html">Reports</a>
       <a href="admin.html">Bookings</a>
       <a href="admin-rooms.html">Rooms</a>
+      <a href="admin-reports.html">Reports</a>
       <a href="#" id="logoutBtn">Logout</a>
     </nav>
   </header>
@@ -40,8 +42,26 @@
         <label for="roomCapacity">Capacity</label>
         <input type="number" id="roomCapacity" placeholder="Enter capacity" min="1" required />
 
-        <label for="roomImage">Image URL</label>
-        <input type="text" id="roomImage" placeholder="Enter image URL or local image path" required />
+        <label for="roomImage">Image URL or Local Path</label>
+        <input
+          type="text"
+          id="roomImage"
+          placeholder="Example: images/room2.jpg or https://..."
+          required
+        />
+
+        <div class="image-preview-box">
+          <p><strong>Image Preview</strong></p>
+          <img
+            id="roomImagePreview"
+            src=""
+            alt="Room preview"
+            style="display: none;"
+          />
+          <p id="imagePreviewText" class="image-preview-text">
+            No image selected yet.
+          </p>
+        </div>
 
         <label for="roomStatus">Status</label>
         <select id="roomStatus" required>
@@ -62,5 +82,6 @@
   </section>
 
   <script src="js/admin-rooms.js"></script>
+  <script src="js/active-nav.js"></script>
 </body>
 </html>

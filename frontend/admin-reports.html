@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Reports - SmartResort</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="navbar">
+    <div class="logo">SmartResort Admin</div>
+    <nav>
+      <a href="admin.html">Bookings</a>
+      <a href="admin-rooms.html">Rooms</a>
+      <a href="admin-reports.html">Reports</a>
+      <a href="#" id="reportsLogoutBtn">Logout</a>
+    </nav>
+  </header>
+
+  <section class="page-header">
+    <h1>Booking Reports & Analytics</h1>
+    <p>View charts and summary insights for your resort system.</p>
+  </section>
+
+  <section class="admin-section">
+    <div class="filter-box no-print">
+      <h2>Filter Reports by Date</h2>
+
+      <div class="filter-grid">
+        <div>
+          <label for="reportStartDate">Start Date</label>
+          <input type="date" id="reportStartDate" />
+        </div>
+
+        <div>
+          <label for="reportEndDate">End Date</label>
+          <input type="date" id="reportEndDate" />
+        </div>
+      </div>
+
+      <div class="report-filter-actions">
+        <button id="applyReportFilter" class="btn-primary">Apply Filter</button>
+        <button id="resetReportFilter" class="btn-secondary">Reset</button>
+        <button id="printReportBtn" class="btn-primary">Print Report</button>
+      </div>
+    </div>
+
+    <div class="print-report-header print-only">
+      <h1>SmartResort Reports</h1>
+      <p id="printDateRange">All records</p>
+      <p id="printGeneratedAt"></p>
+    </div>
+
+    <div class="stats-grid" id="reportCards">
+      <div class="stat-card">
+        <h3>Total Rooms</h3>
+        <p>0</p>
+      </div>
+      <div class="stat-card">
+        <h3>Total Bookings</h3>
+        <p>0</p>
+      </div>
+      <div class="stat-card">
+        <h3>Total Guests</h3>
+        <p>0</p>
+      </div>
+    </div>
+
+    <div class="chart-grid">
+      <div class="chart-box">
+        <h2>Bookings by Status</h2>
+        <canvas id="statusChart"></canvas>
+      </div>
+
+      <div class="chart-box">
+        <h2>Bookings per Room</h2>
+        <canvas id="roomChart"></canvas>
+      </div>
+    </div>
+
+    <div class="chart-box">
+      <h2>Guests per Room</h2>
+      <canvas id="guestChart"></canvas>
+    </div>
+  </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="js/active-nav.js"></script>
+  <script src="js/admin-reports.js"></script>
+</body>
+</html>
