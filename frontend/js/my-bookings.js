@@ -1,116 +1,175 @@
-const myBookingsContainer = document.getElementById("myBookingsContainer");
-const logoutBtn = document.getElementById("logoutBtn");
-
-const user = JSON.parse(localStorage.getItem("user"));
 const API_BASE = "http://127.0.0.1:5000/api";
 
-if (!user) {
-  alert("Please login first.");
-  window.location.href = "login.html";
-}
+document.addEventListener("DOMContentLoaded", () => {
+  const user = JSON.parse(localStorage.getItem("user"));
 
-if (user && user.role === "admin") {
-  window.location.href = "admin.html";
-}
+  if (!user) {
+    alert("Please login first.");
+    window.location.href = "login.html";
+    return;
+  }
 
-logoutBtn.addEventListener("click", (e) => {
-  e.preventDefault();
-  localStorage.removeItem("user");
-  localStorage.removeItem("selectedRoom");
-  window.location.href = "login.html";
+  setupLogout();
+  loadMyBookings(user.id);
 });
 
-function formatDate(dateString) {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
+function setupLogout() {
+  const logoutBtns = [
+    document.getElementById("logoutBtn"),
+    document.getElementById("mobileLogoutBtn"),
+  ].filter(Boolean);
+
+  logoutBtns.forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      localStorage.removeItem("user");
+
+      if (typeof showToast === "function") {
+        showToast("Logged out successfully.", "success");
+      } else {
+        alert("Logged out successfully.");
+      }
+
+      setTimeout(() => {
+        window.location.href = "login.html";
+      }, 700);
+    });
   });
 }
 
-function formatPaymentMethod(method) {
-  if (method === "paypal") return "PayPal";
-  return "Cash on Arrival";
-}
+async function loadMyBookings(userId) {
+  const container = document.getElementById("myBookingsContainer");
 
-async function cancelBooking(bookingId) {
-  const confirmed = confirm("Are you sure you want to cancel this booking?");
-  if (!confirmed) return;
+  if (!container) return;
 
   try {
-    const response = await fetch(`${API_BASE}/bookings/cancel/${bookingId}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ user_id: user.id }),
-    });
+    container.innerHTML = `<p>Loading your bookings...</p>`;
 
+    const response = await fetch(`${API_BASE}/bookings/user/${userId}`);
     const data = await response.json();
 
-    if (response.ok) {
-      alert(data.message);
-      loadMyBookings();
-    } else {
-      alert(data.message);
-    }
-  } catch (error) {
-    console.error(error);
-    alert("Failed to cancel booking.");
-  }
-}
-
-async function loadMyBookings() {
-  try {
-    const response = await fetch(`${API_BASE}/bookings/user/${user.id}`);
-    const bookings = await response.json();
-
     if (!response.ok) {
-      myBookingsContainer.innerHTML = "<p>Failed to load your bookings.</p>";
-      return;
+      throw new Error(data.message || "Failed to load bookings.");
     }
+
+    const bookings = Array.isArray(data) ? data : data.bookings || [];
 
     if (bookings.length === 0) {
-      myBookingsContainer.innerHTML = "<p>You have no bookings yet.</p>";
+      container.innerHTML = `<p>You do not have any bookings yet.</p>`;
       return;
     }
 
-    myBookingsContainer.innerHTML = bookings
-      .map(
-        (booking) => `
-          <div class="admin-card">
-            <h3>${booking.room_name}</h3>
-            <p><strong>Check-in:</strong> ${formatDate(booking.check_in)}</p>
-            <p><strong>Check-out:</strong> ${formatDate(booking.check_out)}</p>
-            <p><strong>Guests:</strong> ${booking.guests}</p>
-            <p><strong>Payment Method:</strong> ${formatPaymentMethod(booking.payment_method)}</p>
-            <p><strong>Payment Status:</strong> ${booking.payment_status}</p>
-            <p><strong>Status:</strong> 
-              <span class="status-badge status-${booking.status.toLowerCase()}">
-                ${booking.status}
-              </span>
-            </p>
-            <p><strong>Booked on:</strong> ${formatDate(booking.created_at)}</p>
+    container.innerHTML = bookings
+      .map((booking) => {
+        const status = String(booking.status || "pending").toLowerCase();
+        const paymentMethod = booking.payment_method || "cash";
+        const paymentStatus = booking.payment_status || "unpaid";
+
+        return `
+          <div class="admin-card" style="margin-bottom: 20px;">
+            <h3>${escapeHtml(booking.room_name || "Room")}</h3>
+
+            <p><strong>Booking ID:</strong> #${booking.id}</p>
+            <p><strong>Check In:</strong> ${formatDate(booking.check_in)}</p>
+            <p><strong>Check Out:</strong> ${formatDate(booking.check_out)}</p>
+            <p><strong>Guests:</strong> ${booking.guests || 0}</p>
+            <p><strong>Status:</strong> ${capitalize(status)}</p>
+            <p><strong>Payment Method:</strong> ${capitalize(paymentMethod)}</p>
+            <p><strong>Payment Status:</strong> ${escapeHtml(paymentStatus)}</p>
+            <p><strong>Created:</strong> ${formatDateTime(booking.created_at)}</p>
 
             <div class="admin-actions">
-              <a href="booking-receipt.html?id=${booking.id}" class="btn-primary">View Receipt</a>
+              <a href="booking-receipt.html?id=${booking.id}" class="btn-primary">
+                View Receipt
+              </a>
+
               ${
-                booking.status.toLowerCase() === "pending"
-                  ? `<button class="btn-secondary admin-reject" onclick="cancelBooking(${booking.id})">
+                status === "pending"
+                  ? `<button class="btn-secondary" onclick="cancelBooking(${booking.id})">
                       Cancel Booking
                     </button>`
                   : ""
               }
             </div>
           </div>
-        `
-      )
+        `;
+      })
       .join("");
   } catch (error) {
-    console.error(error);
-    myBookingsContainer.innerHTML = "<p>Something went wrong while loading your bookings.</p>";
+    console.error("loadMyBookings error:", error);
+    container.innerHTML = `<p>Something went wrong while loading your bookings.</p>`;
   }
 }
 
-loadMyBookings();
+async function cancelBooking(bookingId) {
+  const user = JSON.parse(localStorage.getItem("user"));
+
+  if (!user) {
+    alert("Please login first.");
+    window.location.href = "login.html";
+    return;
+  }
+
+  const confirmed = confirm("Are you sure you want to cancel this booking?");
+  if (!confirmed) return;
+
+  try {
+    const response = await fetch(`${API_BASE}/bookings/${bookingId}/cancel`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to cancel booking.");
+    }
+
+    if (typeof showToast === "function") {
+      showToast(data.message || "Booking cancelled successfully.", "success");
+    } else {
+      alert(data.message || "Booking cancelled successfully.");
+    }
+
+    loadMyBookings(user.id);
+  } catch (error) {
+    console.error("cancelBooking error:", error);
+
+    if (typeof showToast === "function") {
+      showToast(error.message || "Failed to cancel booking.", "error");
+    } else {
+      alert(error.message || "Failed to cancel booking.");
+    }
+  }
+}
+
+function formatDate(dateValue) {
+  if (!dateValue) return "N/A";
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return "N/A";
+  return date.toLocaleDateString();
+}
+
+function formatDateTime(dateValue) {
+  if (!dateValue) return "N/A";
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return "N/A";
+  return date.toLocaleString();
+}
+
+function capitalize(text) {
+  if (!text) return "";
+  const value = String(text);
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}

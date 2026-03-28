@@ -5,13 +5,391 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Book Room - SmartResort</title>
   <link rel="stylesheet" href="css/style.css" />
-</head>
-<body class="auth-page">
-  <div class="auth-container">
-    <div class="auth-box">
-      <h1>Book Your Stay</h1>
-      <p>Complete your reservation details below.</p>
 
+  <style>
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 2000;
+      background: #0f172a;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+    }
+
+    .site-header-inner {
+      width: 94%;
+      max-width: 1300px;
+      margin: 0 auto;
+      min-height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .site-logo {
+      color: #ffffff;
+      font-size: 1.9rem;
+      font-weight: 800;
+      text-decoration: none;
+      line-height: 1;
+    }
+
+    .desktop-nav {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .desktop-nav a,
+    .mobile-nav a {
+      text-decoration: none;
+      color: #ffffff;
+      font-weight: 700;
+      padding: 10px 14px;
+      border-radius: 10px;
+      transition: 0.2s ease;
+      display: inline-block;
+    }
+
+    .desktop-nav a:hover,
+    .mobile-nav a:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .desktop-nav a.active,
+    .mobile-nav a.active {
+      background: #14b8a6;
+      color: #ffffff;
+    }
+
+    .menu-toggle {
+      display: none;
+      width: 46px;
+      height: 46px;
+      border: none;
+      border-radius: 10px;
+      background: #14b8a6;
+      cursor: pointer;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .menu-toggle span {
+      position: absolute;
+      left: 11px;
+      width: 24px;
+      height: 3px;
+      background: white;
+      border-radius: 999px;
+      transition: 0.25s ease;
+    }
+
+    .menu-toggle span:nth-child(1) { top: 13px; }
+    .menu-toggle span:nth-child(2) { top: 21px; }
+    .menu-toggle span:nth-child(3) { top: 29px; }
+
+    .menu-toggle.active span:nth-child(1) {
+      transform: rotate(45deg);
+      top: 21px;
+    }
+
+    .menu-toggle.active span:nth-child(2) {
+      opacity: 0;
+    }
+
+    .menu-toggle.active span:nth-child(3) {
+      transform: rotate(-45deg);
+      top: 21px;
+    }
+
+    .mobile-nav {
+      display: none;
+      width: 94%;
+      max-width: 1300px;
+      margin: 0 auto 14px;
+      background: #1e293b;
+      border-radius: 14px;
+      padding: 10px;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .mobile-nav.show {
+      display: flex;
+    }
+
+    .mobile-nav a {
+      width: 100%;
+      text-align: left;
+    }
+
+    .page-header {
+      background: linear-gradient(135deg, #0f172a, #14b8a6);
+      color: white;
+      text-align: center;
+      padding: 56px 18px;
+    }
+
+    .page-header h1 {
+      margin: 0 0 10px;
+      font-size: 2.5rem;
+    }
+
+    .page-header p {
+      margin: 0;
+      font-size: 1rem;
+      opacity: 0.95;
+    }
+
+    .booking-page-wrapper {
+      width: 92%;
+      max-width: 760px;
+      margin: 28px auto 40px;
+    }
+
+    .booking-top-actions {
+      display: flex;
+      justify-content: flex-start;
+      margin-bottom: 16px;
+    }
+
+    .back-btn {
+      display: inline-block;
+      text-decoration: none;
+      background: #e2e8f0;
+      color: #0f172a;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-weight: 700;
+      transition: 0.2s ease;
+    }
+
+    .back-btn:hover {
+      background: #cbd5e1;
+    }
+
+    .booking-card {
+      background: #ffffff;
+      border-radius: 18px;
+      padding: 28px;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    .booking-info-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 16px 18px;
+      margin-bottom: 22px;
+    }
+
+    .booking-info-box p {
+      margin: 0 0 10px;
+      color: #334155;
+      line-height: 1.5;
+      font-size: 1rem;
+    }
+
+    .booking-info-box p:last-child {
+      margin-bottom: 0;
+    }
+
+    .booking-form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px 18px;
+      margin-bottom: 18px;
+    }
+
+    .booking-form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .booking-form-group.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .booking-form-group label {
+      font-weight: 700;
+      color: #0f172a;
+      font-size: 0.98rem;
+    }
+
+    .booking-form-group input,
+    .booking-form-group select {
+      width: 100%;
+      padding: 13px 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      font-size: 1rem;
+      outline: none;
+      background: #fff;
+    }
+
+    .booking-form-group input:focus,
+    .booking-form-group select:focus {
+      border-color: #14b8a6;
+      box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
+    }
+
+    .booking-summary {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 16px 18px;
+      margin-top: 2px;
+      margin-bottom: 16px;
+    }
+
+    .booking-summary h3 {
+      margin: 0 0 12px;
+      color: #0f172a;
+      font-size: 1.45rem;
+    }
+
+    .booking-summary p {
+      margin-bottom: 10px;
+      color: #334155;
+      line-height: 1.5;
+      font-size: 1rem;
+    }
+
+    .booking-summary p:last-child {
+      margin-bottom: 0;
+    }
+
+    .booking-form-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .back-btn-full {
+      display: inline-block;
+      text-align: center;
+      text-decoration: none;
+      background: #e2e8f0;
+      color: #0f172a;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-weight: 700;
+      transition: 0.2s ease;
+    }
+
+    .back-btn-full:hover {
+      background: #cbd5e1;
+    }
+
+    .message {
+      margin-top: 14px;
+      text-align: center;
+      font-weight: 700;
+    }
+
+    @media (max-width: 768px) {
+      .desktop-nav {
+        display: none;
+      }
+
+      .menu-toggle {
+        display: inline-block;
+      }
+
+      .page-header {
+        padding: 42px 16px;
+      }
+
+      .page-header h1 {
+        font-size: 2rem;
+      }
+
+      .booking-form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .site-header-inner {
+        min-height: 66px;
+      }
+
+      .site-logo {
+        font-size: 1.55rem;
+      }
+
+      .page-header h1 {
+        font-size: 1.8rem;
+      }
+
+      .booking-card {
+        padding: 20px;
+      }
+
+      .booking-info-box,
+      .booking-summary {
+        padding: 14px 14px;
+      }
+
+      .back-btn,
+      .back-btn-full,
+      .btn-primary.full-btn {
+        width: 100%;
+        text-align: center;
+      }
+
+      .booking-top-actions {
+        display: block;
+      }
+
+      .booking-summary h3 {
+        font-size: 1.3rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="site-header-inner">
+      <a href="index.html" class="site-logo">SmartResort</a>
+
+      <nav class="desktop-nav">
+        <a href="index.html">Home</a>
+        <a href="rooms.html" class="active">Rooms</a>
+        <a href="my-bookings.html">My Bookings</a>
+        <a href="profile.html">Profile</a>
+        <a href="#" id="logoutBtn">Logout</a>
+      </nav>
+
+      <button class="menu-toggle" id="menuToggle" aria-label="Open menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+
+    <nav class="mobile-nav" id="mobileNav">
+      <a href="index.html">Home</a>
+      <a href="rooms.html" class="active">Rooms</a>
+      <a href="my-bookings.html">My Bookings</a>
+      <a href="profile.html">Profile</a>
+      <a href="#" id="mobileLogoutBtn">Logout</a>
+    </nav>
+  </header>
+
+  <section class="page-header">
+    <h1>Book Your Stay</h1>
+    <p>Complete your reservation details below.</p>
+  </section>
+
+  <main class="booking-page-wrapper">
+    <div class="booking-top-actions">
+      <a href="rooms.html" class="back-btn">← Back to Rooms</a>
+    </div>
+
+    <div class="booking-card">
       <form id="bookingForm">
         <div class="booking-info-box">
           <p><strong>Selected Room:</strong> <span id="roomName">-</span></p>
@@ -19,26 +397,36 @@
           <p><strong>Maximum Capacity:</strong> <span id="roomCapacity">0</span></p>
         </div>
 
-        <label for="checkIn">Check-in Date</label>
-        <input type="date" id="checkIn" required />
+        <div class="booking-form-grid">
+          <div class="booking-form-group">
+            <label for="checkIn">Check-in Date</label>
+            <input type="date" id="checkIn" required />
+          </div>
 
-        <label for="checkOut">Check-out Date</label>
-        <input type="date" id="checkOut" required />
+          <div class="booking-form-group">
+            <label for="checkOut">Check-out Date</label>
+            <input type="date" id="checkOut" required />
+          </div>
 
-        <label for="guests">Number of Guests</label>
-        <input
-          type="number"
-          id="guests"
-          placeholder="Enter number of guests"
-          min="1"
-          required
-        />
+          <div class="booking-form-group">
+            <label for="guests">Number of Guests</label>
+            <input
+              type="number"
+              id="guests"
+              placeholder="Enter number of guests"
+              min="1"
+              required
+            />
+          </div>
 
-        <label for="paymentMethod">Payment Method</label>
-        <select id="paymentMethod" required>
-          <option value="cash">Cash on Arrival</option>
-          <option value="paypal">PayPal</option>
-        </select>
+          <div class="booking-form-group">
+            <label for="paymentMethod">Payment Method</label>
+            <select id="paymentMethod" required>
+              <option value="cash">Cash on Arrival</option>
+              <option value="paypal">PayPal</option>
+            </select>
+          </div>
+        </div>
 
         <div class="booking-summary">
           <h3>Booking Summary</h3>
@@ -46,13 +434,18 @@
           <p><strong>Estimated Total:</strong> <span id="estimatedTotal">₱0</span></p>
         </div>
 
-        <button type="submit" class="btn-primary full-btn">Confirm Booking</button>
+        <div class="booking-form-actions">
+          <button type="submit" class="btn-primary full-btn">Confirm Booking</button>
+          <a href="rooms.html" class="back-btn-full">Back to Rooms</a>
+        </div>
       </form>
 
       <p id="bookingMessage" class="message"></p>
     </div>
-  </div>
+  </main>
 
+  <script src="js/toast.js"></script>
+  <script src="js/mobile-nav.js"></script>
   <script src="js/booking.js"></script>
 </body>
 </html>

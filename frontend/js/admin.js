@@ -202,27 +202,37 @@ function renderBookings(bookings) {
           <td>${formatDate(booking.check_out)}</td>
           <td>${booking.guests || 0}</td>
           <td>
-            <select id="bookingStatus-${booking.id}">
-              ${BOOKING_STATUSES.map(
-                (status) => `
-                  <option value="${status}" ${bookingStatus === status ? "selected" : ""}>
-                    ${capitalize(status)}
-                  </option>
-                `
-              ).join("")}
-            </select>
+            <div class="status-badge status-${bookingStatus}">
+              ${capitalize(bookingStatus)}
+            </div>
+            <div style="margin-top:6px;">
+              <select id="bookingStatus-${booking.id}">
+                ${BOOKING_STATUSES.map(
+                  (status) => `
+                    <option value="${status}" ${bookingStatus === status ? "selected" : ""}>
+                      ${capitalize(status)}
+                    </option>
+                  `
+                ).join("")}
+              </select>
+            </div>
           </td>
           <td>${capitalize(paymentMethod)}</td>
           <td>
-            <select id="paymentStatus-${booking.id}">
-              ${PAYMENT_STATUSES.map(
-                (status) => `
-                  <option value="${status}" ${paymentStatus === status ? "selected" : ""}>
-                    ${capitalize(status)}
-                  </option>
-                `
-              ).join("")}
-            </select>
+            <div class="payment-badge payment-${paymentStatus}">
+              ${capitalize(paymentStatus)}
+            </div>
+            <div style="margin-top:6px;">
+              <select id="paymentStatus-${booking.id}">
+                ${PAYMENT_STATUSES.map(
+                  (status) => `
+                    <option value="${status}" ${paymentStatus === status ? "selected" : ""}>
+                      ${capitalize(status)}
+                    </option>
+                  `
+                ).join("")}
+              </select>
+            </div>
           </td>
           <td>${formatDateTime(booking.created_at)}</td>
           <td>
@@ -325,7 +335,8 @@ function formatDateTime(dateValue) {
 
 function capitalize(text) {
   if (!text) return "";
-  return text.charAt(0).toUpperCase() + text.slice(1);
+  const value = String(text);
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
 function showMessage(message, type = "success") {

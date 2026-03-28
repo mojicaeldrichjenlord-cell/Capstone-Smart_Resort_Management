@@ -1,98 +1,196 @@
-const receiptBox = document.getElementById("receiptBox");
-const logoutBtn = document.getElementById("logoutBtn");
-
-const user = JSON.parse(localStorage.getItem("user"));
 const API_BASE = "http://127.0.0.1:5000/api";
 
-if (!user) {
-  alert("Please login first.");
-  window.location.href = "login.html";
-}
+document.addEventListener("DOMContentLoaded", () => {
+  const user = JSON.parse(localStorage.getItem("user"));
 
-logoutBtn.addEventListener("click", (e) => {
-  e.preventDefault();
-  localStorage.removeItem("user");
-  localStorage.removeItem("selectedRoom");
-  window.location.href = "login.html";
+  if (!user) {
+    alert("Please login first.");
+    window.location.href = "login.html";
+    return;
+  }
+
+  setupLogout();
+  loadReceipt();
 });
 
-function formatDate(dateString) {
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
+function setupLogout() {
+  const logoutBtns = [
+    document.getElementById("logoutBtn"),
+    document.getElementById("mobileLogoutBtn"),
+  ].filter(Boolean);
+
+  logoutBtns.forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      localStorage.removeItem("user");
+
+      if (typeof showToast === "function") {
+        showToast("Logged out successfully.", "success");
+      } else {
+        alert("Logged out successfully.");
+      }
+
+      setTimeout(() => {
+        window.location.href = "login.html";
+      }, 700);
+    });
   });
 }
 
-function getTotalNights(checkIn, checkOut) {
-  const start = new Date(checkIn);
-  const end = new Date(checkOut);
-  const diff = end - start;
-  return Math.ceil(diff / (1000 * 60 * 60 * 24));
-}
-
-function formatPaymentMethod(method) {
-  if (method === "paypal") return "PayPal";
-  return "Cash on Arrival";
-}
-
 async function loadReceipt() {
+  const receiptBox = document.getElementById("receiptBox");
   const params = new URLSearchParams(window.location.search);
   const bookingId = params.get("id");
 
   if (!bookingId) {
-    receiptBox.innerHTML = "<h2>Booking receipt not found.</h2>";
+    receiptBox.innerHTML = `<div class="receipt-error">Booking ID is missing.</div>`;
     return;
   }
 
   try {
-    const response = await fetch(`${API_BASE}/bookings/${bookingId}`);
-    const booking = await response.json();
+    const response = await fetch(`${API_BASE}/bookings/${bookingId}/receipt`);
+    const data = await response.json();
 
     if (!response.ok) {
-      receiptBox.innerHTML = `<h2>${booking.message || "Failed to load receipt."}</h2>`;
-      return;
+      throw new Error(data.message || "Failed to load receipt.");
     }
 
-    if (Number(booking.user_id) !== Number(user.id) && user.role !== "admin") {
-      receiptBox.innerHTML = "<h2>Access denied.</h2>";
-      return;
-    }
-
-    const totalNights = getTotalNights(booking.check_in, booking.check_out);
-    const estimatedTotal = totalNights * Number(booking.price || 0);
+    const booking = data.booking || data;
+    const bookingStatus = String(booking.status || "pending").toLowerCase();
+    const paymentStatus = String(booking.payment_status || "unpaid").toLowerCase();
 
     receiptBox.innerHTML = `
-      <div class="receipt-header">
-        <h2>SmartResort Booking Receipt</h2>
-        <p><strong>Booking ID:</strong> #${booking.id}</p>
+      <div class="print-header">
+        <h1>SmartResort Booking Receipt</h1>
+        <p>Please keep this receipt for your booking reference.</p>
+      </div>
+
+      <div class="receipt-top">
+        <div>
+          <div class="receipt-brand">SmartResort</div>
+          <h2>Receipt #${booking.id}</h2>
+        </div>
+
+        <span class="receipt-status status-${escapeHtml(bookingStatus)}">
+          ${capitalize(bookingStatus)}
+        </span>
       </div>
 
       <div class="receipt-grid">
-        <p><strong>Guest Name:</strong> ${booking.fullname}</p>
-        <p><strong>Email:</strong> ${booking.email}</p>
-        <p><strong>Room:</strong> ${booking.room_name}</p>
-        <p><strong>Status:</strong> <span class="status-badge status-${booking.status}">${booking.status}</span></p>
-        <p><strong>Payment Method:</strong> ${formatPaymentMethod(booking.payment_method)}</p>
-        <p><strong>Payment Status:</strong> ${booking.payment_status}</p>
-        <p><strong>Check-in:</strong> ${formatDate(booking.check_in)}</p>
-        <p><strong>Check-out:</strong> ${formatDate(booking.check_out)}</p>
-        <p><strong>Guests:</strong> ${booking.guests}</p>
-        <p><strong>Booked On:</strong> ${formatDate(booking.created_at)}</p>
-      </div>
+        <div class="receipt-item">
+          <label>Guest Name</label>
+          <div class="value">${escapeHtml(booking.fullname || "N/A")}</div>
+        </div>
 
-      <div class="receipt-summary">
-        <h3>Payment Summary</h3>
-        <p><strong>Price per Night:</strong> ₱${Number(booking.price).toLocaleString()}</p>
-        <p><strong>Total Nights:</strong> ${totalNights}</p>
-        <p><strong>Estimated Total:</strong> ₱${estimatedTotal.toLocaleString()}</p>
+        <div class="receipt-item">
+          <label>Email</label>
+          <div class="value">${escapeHtml(booking.email || "N/A")}</div>
+        </div>
+
+        <div class="receipt-item">
+          <label>Phone Number</label>
+          <div class="value">${escapeHtml(booking.phone || "N/A")}</div>
+        </div>
+
+        <div class="receipt-item full-width">
+          <label>Home Address</label>
+          <div class="value">${escapeHtml(booking.address || "N/A")}</div>
+        </div>
+
+        <div class="receipt-item">
+          <label>Room</label>
+          <div class="value">${escapeHtml(booking.room_name || "N/A")}</div>
+        </div>
+
+        <div class="receipt-item">
+          <label>Guests</label>
+          <div class="value">${booking.guests || 0}</div>
+        </div>
+
+        <div class="receipt-item">
+          <label>Check In</label>
+          <div class="value">${formatDate(booking.check_in)}</div>
+        </div>
+
+        <div class="receipt-item">
+          <label>Check Out</label>
+          <div class="value">${formatDate(booking.check_out)}</div>
+        </div>
+
+        <div class="receipt-item">
+          <label>Payment Method</label>
+          <div class="value">${capitalize(booking.payment_method || "cash")}</div>
+        </div>
+
+        <div class="receipt-item">
+          <label>Payment Status</label>
+          <div class="value">
+            <span class="payment-pill payment-${escapeHtml(paymentStatus)}">
+              ${formatPaymentStatus(paymentStatus)}
+            </span>
+          </div>
+        </div>
+
+        <div class="receipt-item">
+          <label>Room Price</label>
+          <div class="value">₱${formatMoney(booking.price || 0)}</div>
+        </div>
+
+        <div class="receipt-item">
+          <label>Created At</label>
+          <div class="value">${formatDateTime(booking.created_at)}</div>
+        </div>
       </div>
     `;
   } catch (error) {
-    console.error(error);
-    receiptBox.innerHTML = "<h2>Something went wrong while loading the receipt.</h2>";
+    console.error("loadReceipt error:", error);
+    receiptBox.innerHTML = `<div class="receipt-error">${escapeHtml(error.message || "Failed to load receipt.")}</div>`;
   }
 }
 
-loadReceipt();
+function formatPaymentStatus(status) {
+  const value = String(status || "").toLowerCase();
+
+  if (value === "pending") {
+    return "Pending online payment";
+  }
+
+  return capitalize(value);
+}
+
+function formatDate(dateValue) {
+  if (!dateValue) return "N/A";
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return "N/A";
+  return date.toLocaleDateString();
+}
+
+function formatDateTime(dateValue) {
+  if (!dateValue) return "N/A";
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return "N/A";
+  return date.toLocaleString();
+}
+
+function formatMoney(value) {
+  const num = Number(value || 0);
+  return num.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function capitalize(text) {
+  if (!text) return "";
+  const value = String(text);
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}

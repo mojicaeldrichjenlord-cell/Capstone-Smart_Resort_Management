@@ -1,41 +1,39 @@
-const user = JSON.parse(localStorage.getItem("user"));
+document.addEventListener("DOMContentLoaded", () => {
+  const user = JSON.parse(localStorage.getItem("user"));
 
-const loginNav = document.getElementById("loginNav");
-const registerNav = document.getElementById("registerNav");
-const myBookingsNav = document.getElementById("myBookingsNav");
-const profileNav = document.getElementById("profileNav");
-const adminNav = document.getElementById("adminNav");
-const logoutBtn = document.getElementById("logoutBtn");
-
-const heroTitle = document.getElementById("heroTitle");
-const heroText = document.getElementById("heroText");
-const getStartedBtn = document.getElementById("getStartedBtn");
-const heroLoginBtn = document.getElementById("heroLoginBtn");
-const bookNowBtn = document.getElementById("bookNowBtn");
-
-if (user) {
-  loginNav.style.display = "none";
-  registerNav.style.display = "none";
-  logoutBtn.style.display = "inline-block";
-
-  heroTitle.textContent = `Welcome, ${user.fullname}`;
-  heroText.textContent = "You are now logged in. You can browse rooms and manage your bookings.";
-
-  getStartedBtn.style.display = "none";
-  heroLoginBtn.style.display = "none";
-  bookNowBtn.style.display = "inline-block";
+  if (!user) {
+    window.location.href = "login.html";
+    return;
+  }
 
   if (user.role === "admin") {
-    adminNav.style.display = "inline-block";
-  } else {
-    myBookingsNav.style.display = "inline-block";
-    profileNav.style.display = "inline-block";
+    window.location.href = "admin.html";
+    return;
   }
-}
 
-logoutBtn.addEventListener("click", (e) => {
-  e.preventDefault();
-  localStorage.removeItem("user");
-  localStorage.removeItem("selectedRoom");
-  window.location.href = "login.html";
+  setupLogout();
 });
+
+function setupLogout() {
+  const logoutBtns = [
+    document.getElementById("logoutBtn"),
+    document.getElementById("mobileLogoutBtn"),
+  ].filter(Boolean);
+
+  logoutBtns.forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      localStorage.removeItem("user");
+
+      if (typeof showToast === "function") {
+        showToast("Logged out successfully.", "success");
+      } else {
+        alert("Logged out successfully.");
+      }
+
+      setTimeout(() => {
+        window.location.href = "login.html";
+      }, 700);
+    });
+  });
+}

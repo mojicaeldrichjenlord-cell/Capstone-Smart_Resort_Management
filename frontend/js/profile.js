@@ -9,24 +9,33 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
+  if (user.role === "admin") {
+    window.location.href = "admin-profile.html";
+    return;
+  }
+
   setupLogout();
   loadProfile(user.id);
   setupPasswordForm(user.id);
 });
 
 function setupLogout() {
-  const logoutBtn = document.getElementById("logoutBtn");
+  const logoutBtns = [
+    document.getElementById("logoutBtn"),
+    document.getElementById("mobileLogoutBtn"),
+  ].filter(Boolean);
 
-  if (logoutBtn) {
-    logoutBtn.addEventListener("click", (e) => {
+  logoutBtns.forEach((btn) => {
+    btn.addEventListener("click", (e) => {
       e.preventDefault();
       localStorage.removeItem("user");
       showMessage("Logged out successfully.", "success");
+
       setTimeout(() => {
         window.location.href = "login.html";
       }, 700);
     });
-  }
+  });
 }
 
 async function loadProfile(userId) {

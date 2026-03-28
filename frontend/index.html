@@ -3,59 +3,715 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Smart Resort Booking System</title>
+  <title>SmartResort</title>
   <link rel="stylesheet" href="css/style.css" />
+
+  <style>
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 2000;
+      background: #0f172a;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+    }
+
+    .site-header-inner {
+      width: 94%;
+      max-width: 1300px;
+      margin: 0 auto;
+      min-height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .site-logo {
+      color: #ffffff;
+      font-size: 1.9rem;
+      font-weight: 800;
+      text-decoration: none;
+      line-height: 1;
+    }
+
+    .desktop-nav {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .desktop-nav a,
+    .mobile-nav a {
+      text-decoration: none;
+      color: #ffffff;
+      font-weight: 700;
+      padding: 10px 14px;
+      border-radius: 10px;
+      transition: 0.2s ease;
+      display: inline-block;
+    }
+
+    .desktop-nav a:hover,
+    .mobile-nav a:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .desktop-nav a.active,
+    .mobile-nav a.active {
+      background: #14b8a6;
+      color: #ffffff;
+    }
+
+    .menu-toggle {
+      display: none;
+      width: 46px;
+      height: 46px;
+      border: none;
+      border-radius: 10px;
+      background: #14b8a6;
+      cursor: pointer;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .menu-toggle span {
+      position: absolute;
+      left: 11px;
+      width: 24px;
+      height: 3px;
+      background: white;
+      border-radius: 999px;
+      transition: 0.25s ease;
+    }
+
+    .menu-toggle span:nth-child(1) { top: 13px; }
+    .menu-toggle span:nth-child(2) { top: 21px; }
+    .menu-toggle span:nth-child(3) { top: 29px; }
+
+    .menu-toggle.active span:nth-child(1) {
+      transform: rotate(45deg);
+      top: 21px;
+    }
+
+    .menu-toggle.active span:nth-child(2) {
+      opacity: 0;
+    }
+
+    .menu-toggle.active span:nth-child(3) {
+      transform: rotate(-45deg);
+      top: 21px;
+    }
+
+    .mobile-nav {
+      display: none;
+      width: 94%;
+      max-width: 1300px;
+      margin: 0 auto 14px;
+      background: #1e293b;
+      border-radius: 14px;
+      padding: 10px;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .mobile-nav.show {
+      display: flex;
+    }
+
+    .mobile-nav a {
+      width: 100%;
+      text-align: left;
+    }
+
+    .hero-section {
+      background: linear-gradient(135deg, #0f172a, #14b8a6);
+      color: white;
+      padding: 72px 18px 64px;
+    }
+
+    .hero-inner {
+      width: 94%;
+      max-width: 1200px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .hero-inner h1 {
+      margin: 0 0 14px;
+      font-size: 3rem;
+      line-height: 1.15;
+    }
+
+    .hero-inner p {
+      margin: 0 auto 24px;
+      max-width: 700px;
+      font-size: 1.08rem;
+      line-height: 1.6;
+      opacity: 0.95;
+    }
+
+    .hero-actions {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .home-wrapper {
+      width: 94%;
+      max-width: 1200px;
+      margin: 30px auto 100px;
+    }
+
+    .home-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 22px;
+    }
+
+    .home-card {
+      background: #ffffff;
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    .home-card h2 {
+      margin: 0 0 12px;
+      color: #0f172a;
+      font-size: 1.4rem;
+    }
+
+    .home-card p {
+      color: #475569;
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+
+    .welcome-box {
+      background: #ffffff;
+      border-radius: 18px;
+      padding: 24px;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+      margin-bottom: 22px;
+    }
+
+    .welcome-box h2 {
+      margin-bottom: 10px;
+      color: #0f172a;
+    }
+
+    .welcome-box p {
+      color: #475569;
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    .ai-chat-toggle {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      z-index: 3000;
+      border: none;
+      border-radius: 999px;
+      background: #14b8a6;
+      color: white;
+      font-weight: 800;
+      padding: 14px 18px;
+      cursor: pointer;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+    }
+
+    .ai-chat-window {
+      position: fixed;
+      right: 20px;
+      bottom: 82px;
+      width: 380px;
+      max-width: calc(100vw - 24px);
+      background: white;
+      border-radius: 18px;
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.2);
+      overflow: hidden;
+      z-index: 3000;
+      display: none;
+    }
+
+    .ai-chat-window.show {
+      display: block;
+    }
+
+    .ai-chat-window.maximized {
+      width: min(820px, calc(100vw - 24px));
+      height: min(82vh, 760px);
+      bottom: 20px;
+    }
+
+    .ai-chat-window.maximized .ai-chat-messages {
+      height: calc(min(82vh, 760px) - 126px);
+    }
+
+    .ai-chat-header {
+      background: #0f172a;
+      color: white;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .ai-chat-header h3 {
+      margin: 0;
+      font-size: 1rem;
+      flex: 1;
+    }
+
+    .ai-chat-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .ai-chat-header-btn {
+      border: none;
+      background: rgba(255, 255, 255, 0.12);
+      color: white;
+      font-size: 0.85rem;
+      cursor: pointer;
+      min-width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      padding: 0 10px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ai-chat-messages {
+      height: 340px;
+      overflow-y: auto;
+      padding: 14px;
+      background: #f8fafc;
+    }
+
+    .ai-message {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 10px;
+    }
+
+    .ai-message.user {
+      align-items: flex-end;
+    }
+
+    .ai-message.assistant {
+      align-items: flex-start;
+    }
+
+    .ai-bubble {
+      max-width: 88%;
+      padding: 10px 12px;
+      border-radius: 14px;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      word-break: break-word;
+    }
+
+    .ai-message.user .ai-bubble {
+      background: #14b8a6;
+      color: white;
+      border-bottom-right-radius: 6px;
+    }
+
+    .ai-message.assistant .ai-bubble {
+      background: white;
+      color: #0f172a;
+      border: 1px solid #e2e8f0;
+      border-bottom-left-radius: 6px;
+    }
+
+    .ai-chat-input-area {
+      display: flex;
+      gap: 8px;
+      padding: 12px;
+      border-top: 1px solid #e2e8f0;
+      background: white;
+    }
+
+    .ai-chat-input-area input {
+      flex: 1;
+      padding: 12px 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      outline: none;
+      font-size: 0.95rem;
+    }
+
+    .ai-chat-input-area input:focus {
+      border-color: #14b8a6;
+      box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
+    }
+
+    .ai-chat-mic-btn {
+      border: none;
+      background: #e2e8f0;
+      color: #0f172a;
+      width: 48px;
+      min-width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      font-size: 1.2rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .ai-chat-mic-btn:hover {
+      background: #cbd5e1;
+    }
+
+    .ai-chat-mic-btn.active-voice-btn {
+      background: #14b8a6 !important;
+      color: white !important;
+    }
+
+    .ai-chat-send {
+      border: none;
+      background: #14b8a6;
+      color: white;
+      padding: 12px 14px;
+      border-radius: 12px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .ai-chat-send:hover {
+      background: #0f766e;
+    }
+
+    @media (max-width: 992px) {
+      .home-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .hero-inner h1 {
+        font-size: 2.5rem;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .desktop-nav {
+        display: none;
+      }
+
+      .menu-toggle {
+        display: inline-block;
+      }
+
+      .mobile-nav {
+        margin: 0 auto 10px;
+        padding: 8px;
+        gap: 6px;
+        border-radius: 12px;
+      }
+
+      .mobile-nav a {
+        padding: 10px 12px;
+        font-size: 0.98rem;
+        border-radius: 10px;
+      }
+
+      .hero-section {
+        padding: 38px 16px 34px;
+      }
+
+      .hero-inner h1 {
+        font-size: 2rem;
+        line-height: 1.15;
+        margin-bottom: 10px;
+      }
+
+      .hero-inner p {
+        font-size: 0.98rem;
+        line-height: 1.6;
+        margin-bottom: 18px;
+      }
+
+      .home-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+
+      .welcome-box,
+      .home-card {
+        padding: 18px;
+        border-radius: 16px;
+      }
+
+      .home-wrapper {
+        margin: 20px auto 90px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .site-header {
+        box-shadow: none;
+      }
+
+      .site-header-inner {
+        min-height: 62px;
+        width: 92%;
+      }
+
+      .site-logo {
+        font-size: 1.45rem;
+      }
+
+      .mobile-nav {
+        width: 92%;
+        margin-top: 0;
+        margin-bottom: 8px;
+        padding: 8px;
+        border-radius: 12px;
+      }
+
+      .mobile-nav a {
+        font-size: 0.95rem;
+        padding: 10px 12px;
+      }
+
+      .hero-section {
+        padding: 30px 14px 28px;
+      }
+
+      .hero-inner {
+        width: 92%;
+      }
+
+      .hero-inner h1 {
+        font-size: 1.75rem;
+        margin-bottom: 10px;
+      }
+
+      .hero-inner p {
+        font-size: 0.95rem;
+        margin-bottom: 16px;
+      }
+
+      .hero-actions {
+        gap: 10px;
+      }
+
+      .hero-actions .btn-primary,
+      .hero-actions .btn-secondary {
+        width: 100%;
+        text-align: center;
+        padding: 12px 14px;
+      }
+
+      .home-wrapper {
+        width: 92%;
+        margin: 16px auto 92px;
+      }
+
+      .welcome-box,
+      .home-card {
+        padding: 16px;
+        border-radius: 14px;
+      }
+
+      .welcome-box h2,
+      .home-card h2 {
+        font-size: 1.15rem;
+        line-height: 1.3;
+      }
+
+      .welcome-box p,
+      .home-card p {
+        font-size: 0.94rem;
+        line-height: 1.6;
+      }
+
+      .ai-chat-toggle {
+        right: 12px;
+        left: 12px;
+        bottom: 12px;
+        width: auto;
+        padding: 13px 16px;
+        font-size: 0.95rem;
+        border-radius: 14px;
+      }
+
+      .ai-chat-window {
+        right: 12px;
+        left: 12px;
+        bottom: 70px;
+        width: auto;
+        max-width: none;
+        border-radius: 16px;
+      }
+
+      .ai-chat-window.maximized {
+        left: 10px;
+        right: 10px;
+        width: auto;
+        height: calc(100vh - 90px);
+        bottom: 10px;
+      }
+
+      .ai-chat-window.maximized .ai-chat-messages {
+        height: calc(100vh - 210px);
+      }
+
+      .ai-chat-header {
+        align-items: center;
+      }
+
+      .ai-chat-messages {
+        height: 280px;
+      }
+
+      .ai-bubble {
+        max-width: 96%;
+      }
+    }
+
+    @media (max-width: 360px) {
+      .site-logo {
+        font-size: 1.3rem;
+      }
+
+      .hero-inner h1 {
+        font-size: 1.55rem;
+      }
+
+      .hero-inner p {
+        font-size: 0.92rem;
+      }
+
+      .welcome-box,
+      .home-card {
+        padding: 14px;
+      }
+    }
+  </style>
 </head>
 <body>
-  <header class="navbar">
-    <div class="logo">SmartResort</div>
-    <nav>
-      <a href="index.html">Home</a>
-      <a href="rooms.html" id="roomsNav">Rooms</a>
-      <a href="login.html" id="loginNav">Login</a>
-      <a href="register.html" class="btn-nav" id="registerNav">Register</a>
-      <a href="my-bookings.html" id="myBookingsNav" style="display: none;">My Bookings</a>
-      <a href="profile.html" id="profileNav" style="display: none;">Profile</a>
-      <a href="admin.html" id="adminNav" style="display: none;">Admin</a>
-      <a href="#" id="logoutBtn" style="display: none;">Logout</a>
+  <header class="site-header">
+    <div class="site-header-inner">
+      <a href="index.html" class="site-logo">SmartResort</a>
+
+      <nav class="desktop-nav">
+        <a href="index.html" class="active">Home</a>
+        <a href="rooms.html">Rooms</a>
+        <a href="my-bookings.html">My Bookings</a>
+        <a href="profile.html">Profile</a>
+        <a href="#" id="logoutBtn">Logout</a>
+      </nav>
+
+      <button class="menu-toggle" id="menuToggle" aria-label="Open menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+
+    <nav class="mobile-nav" id="mobileNav">
+      <a href="index.html" class="active">Home</a>
+      <a href="rooms.html">Rooms</a>
+      <a href="my-bookings.html">My Bookings</a>
+      <a href="profile.html">Profile</a>
+      <a href="#" id="mobileLogoutBtn">Logout</a>
     </nav>
   </header>
 
-  <section class="hero">
-    <div class="hero-overlay">
-      <div class="hero-content">
-        <h1 id="heroTitle">Book Your Perfect Getaway</h1>
-        <p id="heroText">
-          A modern and easy resort booking experience for guests and admins.
+  <section class="hero-section">
+    <div class="hero-inner">
+      <h1>Welcome to SmartResort</h1>
+      <p>
+        Find the right room for your stay, manage your bookings, and enjoy a smoother
+        resort reservation experience on desktop or phone.
+      </p>
+
+      <div class="hero-actions">
+        <a href="rooms.html" class="btn-primary">Browse Rooms</a>
+        <a href="my-bookings.html" class="btn-secondary">View My Bookings</a>
+      </div>
+    </div>
+  </section>
+
+  <main class="home-wrapper">
+    <section class="welcome-box">
+      <h2>Plan your stay with ease</h2>
+      <p>
+        SmartResort helps guests explore room options, check booking details, and
+        keep reservation information in one place. Our AI assistant can also help
+        recommend rooms based on your preferences.
+      </p>
+    </section>
+
+    <section class="home-grid">
+      <div class="home-card">
+        <h2>Browse Rooms</h2>
+        <p>
+          View available rooms, compare prices, check room capacity, and see important
+          details like bed count, view type, aircon type, and amenities.
         </p>
-        <div class="hero-buttons">
-          <a href="register.html" class="btn-primary" id="getStartedBtn">Get Started</a>
-          <a href="login.html" class="btn-secondary" id="heroLoginBtn">Login</a>
-          <a href="rooms.html" class="btn-primary" id="bookNowBtn" style="display: none;">Book Now</a>
-        </div>
+        <a href="rooms.html" class="btn-primary">Go to Rooms</a>
+      </div>
+
+      <div class="home-card">
+        <h2>Manage Bookings</h2>
+        <p>
+          Keep track of your reservations, open your receipt, and review your payment
+          details and booking status anytime.
+        </p>
+        <a href="my-bookings.html" class="btn-primary">Go to My Bookings</a>
+      </div>
+
+      <div class="home-card">
+        <h2>Your Profile</h2>
+        <p>
+          View your saved account details and update your password securely whenever
+          needed.
+        </p>
+        <a href="profile.html" class="btn-primary">Go to Profile</a>
+      </div>
+    </section>
+  </main>
+
+  <button id="aiChatToggle" class="ai-chat-toggle">Ask AI Assistant</button>
+
+  <div id="aiChatWindow" class="ai-chat-window">
+    <div class="ai-chat-header">
+      <h3>SmartResort AI Assistant</h3>
+
+      <div class="ai-chat-header-actions">
+        <button id="aiChatMaximize" class="ai-chat-header-btn" title="Maximize">▢</button>
+        <button id="aiChatClose" class="ai-chat-header-btn" title="Close">&times;</button>
       </div>
     </div>
-  </section>
 
-  <section class="features">
-    <h2>Why Choose Our System</h2>
-    <div class="card-grid">
-      <div class="card">
-        <h3>Easy Booking</h3>
-        <p>Guests can quickly reserve rooms and view resort services.</p>
-      </div>
-      <div class="card">
-        <h3>Modern Design</h3>
-        <p>Clean, eye-catching interface that can be customized later.</p>
-      </div>
-      <div class="card">
-        <h3>Admin Control</h3>
-        <p>Manage reservations, rooms, and guest data in one dashboard.</p>
-      </div>
+    <div id="aiChatMessages" class="ai-chat-messages"></div>
+
+    <div class="ai-chat-input-area">
+      <input
+        type="text"
+        id="aiChatInput"
+        placeholder="Ask about rooms, dates, payment, or booking help..."
+      />
+      <button id="aiMicBtn" class="ai-chat-mic-btn" title="Voice input" aria-label="Voice input">🎤</button>
+      <button id="aiSendBtn" class="ai-chat-send">Send</button>
     </div>
-  </section>
+  </div>
 
+  <script src="js/toast.js"></script>
+  <script src="js/mobile-nav.js"></script>
   <script src="js/index.js"></script>
-  <script src="js/active-nav.js"></script>
+  <script src="js/ai-chat.js"></script>
 </body>
 </html>

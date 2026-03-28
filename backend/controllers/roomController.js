@@ -1,121 +1,329 @@
 const db = require("../config/db");
 
-const getAllRooms = (req, res) => {
-  const sql = "SELECT * FROM rooms ORDER BY id ASC";
+exports.getAllRooms = async (req, res) => {
+  try {
+    const [rows] = await db.promise().query(`
+      SELECT
+        id,
+        room_name,
+        description,
+        price,
+        capacity,
+        bed_count,
+        bed_type,
+        view_type,
+        aircon_type,
+        amenities,
+        image,
+        status
+      FROM rooms
+      ORDER BY id DESC
+    `);
 
-  db.query(sql, (err, result) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ message: "Failed to fetch rooms" });
-    }
-
-    res.status(200).json(result);
-  });
-};
-
-const addRoom = (req, res) => {
-  const { room_name, description, price, capacity, image, status } = req.body;
-
-  if (!room_name || !price || !capacity || !image || !status) {
-    return res.status(400).json({ message: "Please fill in all required room fields." });
-  }
-
-  const sql = `
-    INSERT INTO rooms (room_name, description, price, capacity, image, status)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `;
-
-  db.query(
-    sql,
-    [room_name, description || "", price, capacity, image, status],
-    (err) => {
-      if (err) {
-        console.error(err);
-        return res.status(500).json({ message: "Failed to add room." });
-      }
-
-      res.status(201).json({ message: "Room added successfully." });
-    }
-  );
-};
-
-const updateRoom = (req, res) => {
-  const { id } = req.params;
-  const { room_name, description, price, capacity, image, status } = req.body;
-
-  if (!room_name || !price || !capacity || !image || !status) {
-    return res.status(400).json({ message: "Please fill in all required room fields." });
-  }
-
-  const sql = `
-    UPDATE rooms
-    SET room_name = ?, description = ?, price = ?, capacity = ?, image = ?, status = ?
-    WHERE id = ?
-  `;
-
-  db.query(
-    sql,
-    [room_name, description || "", price, capacity, image, status, id],
-    (err) => {
-      if (err) {
-        console.error(err);
-        return res.status(500).json({ message: "Failed to update room." });
-      }
-
-      res.status(200).json({ message: "Room updated successfully." });
-    }
-  );
-};
-
-const deleteRoom = (req, res) => {
-  const { id } = req.params;
-
-  const checkBookingsSql = "SELECT COUNT(*) AS booking_count FROM bookings WHERE room_id = ?";
-
-  db.query(checkBookingsSql, [id], (checkErr, checkResult) => {
-    if (checkErr) {
-      console.error(checkErr);
-      return res.status(500).json({ message: "Failed to validate room bookings." });
-    }
-
-    const bookingCount = checkResult[0]?.booking_count || 0;
-
-    if (bookingCount > 0) {
-      const updateStatusSql = "UPDATE rooms SET status = 'unavailable' WHERE id = ?";
-
-      db.query(updateStatusSql, [id], (updateErr) => {
-        if (updateErr) {
-          console.error(updateErr);
-          return res.status(500).json({
-            message: "Room has bookings and could not be set to unavailable.",
-          });
-        }
-
-        return res.status(200).json({
-          message:
-            "Room has existing bookings, so it was not deleted. Status was set to unavailable instead.",
-        });
-      });
-
-      return;
-    }
-
-    const deleteSql = "DELETE FROM rooms WHERE id = ?";
-
-    db.query(deleteSql, [id], (deleteErr) => {
-      if (deleteErr) {
-        console.error(deleteErr);
-        return res.status(500).json({ message: "Failed to delete room." });
-      }
-
-      res.status(200).json({ message: "Room deleted successfully." });
+    return res.status(200).json({
+      success: true,
+      rooms: rows,
     });
-  });
+  } catch (error) {
+    console.error("getAllRooms error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch rooms.",
+      error: error.message,
+    });
+  }
 };
 
-module.exports = {
-  getAllRooms,
-  addRoom,
-  updateRoom,
-  deleteRoom,
+exports.getAvailableRooms = async (req, res) => {
+  try {
+    const [rows] = await db.promise().query(`
+      SELECT
+        id,
+        room_name,
+        description,
+        price,
+        capacity,
+        bed_count,
+        bed_type,
+        view_type,
+        aircon_type,
+        amenities,
+        image,
+        status
+      FROM rooms
+      WHERE status = 'available'
+      ORDER BY id DESC
+    `);
+
+    return res.status(200).json({
+      success: true,
+      rooms: rows,
+    });
+  } catch (error) {
+    console.error("getAvailableRooms error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch available rooms.",
+      error: error.message,
+    });
+  }
+};
+
+exports.getRoomById = async (req, res) => {
+  try {
+    const roomId = req.params.id;
+
+    const [rows] = await db.promise().query(
+      `
+      SELECT
+        id,
+        room_name,
+        description,
+        price,
+        capacity,
+        bed_count,
+        bed_type,
+        view_type,
+        aircon_type,
+        amenities,
+        image,
+        status
+      FROM rooms
+      WHERE id = ?
+      LIMIT 1
+      `,
+      [roomId]
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Room not found.",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      room: rows[0],
+    });
+  } catch (error) {
+    console.error("getRoomById error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch room.",
+      error: error.message,
+    });
+  }
+};
+
+exports.createRoom = async (req, res) => {
+  try {
+    const {
+      room_name,
+      description,
+      price,
+      capacity,
+      bed_count,
+      bed_type,
+      view_type,
+      aircon_type,
+      amenities,
+      image,
+      status,
+    } = req.body;
+
+    if (
+      !room_name ||
+      !description ||
+      !price ||
+      !capacity ||
+      !bed_count ||
+      !bed_type ||
+      !view_type ||
+      !aircon_type ||
+      !amenities ||
+      !status
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Please fill in all room fields.",
+      });
+    }
+
+    await db.promise().query(
+      `
+      INSERT INTO rooms
+      (room_name, description, price, capacity, bed_count, bed_type, view_type, aircon_type, amenities, image, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+      [
+        room_name,
+        description,
+        Number(price),
+        Number(capacity),
+        Number(bed_count),
+        bed_type,
+        view_type,
+        aircon_type,
+        amenities,
+        image || "",
+        status,
+      ]
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: "Room added successfully.",
+    });
+  } catch (error) {
+    console.error("createRoom error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to add room.",
+      error: error.message,
+    });
+  }
+};
+
+exports.updateRoom = async (req, res) => {
+  try {
+    const roomId = req.params.id;
+    const {
+      room_name,
+      description,
+      price,
+      capacity,
+      bed_count,
+      bed_type,
+      view_type,
+      aircon_type,
+      amenities,
+      image,
+      status,
+    } = req.body;
+
+    if (
+      !room_name ||
+      !description ||
+      !price ||
+      !capacity ||
+      !bed_count ||
+      !bed_type ||
+      !view_type ||
+      !aircon_type ||
+      !amenities ||
+      !status
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Please fill in all room fields.",
+      });
+    }
+
+    const [existingRows] = await db.promise().query(
+      `SELECT id FROM rooms WHERE id = ?`,
+      [roomId]
+    );
+
+    if (existingRows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Room not found.",
+      });
+    }
+
+    await db.promise().query(
+      `
+      UPDATE rooms
+      SET
+        room_name = ?,
+        description = ?,
+        price = ?,
+        capacity = ?,
+        bed_count = ?,
+        bed_type = ?,
+        view_type = ?,
+        aircon_type = ?,
+        amenities = ?,
+        image = ?,
+        status = ?
+      WHERE id = ?
+      `,
+      [
+        room_name,
+        description,
+        Number(price),
+        Number(capacity),
+        Number(bed_count),
+        bed_type,
+        view_type,
+        aircon_type,
+        amenities,
+        image || "",
+        status,
+        roomId,
+      ]
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Room updated successfully.",
+    });
+  } catch (error) {
+    console.error("updateRoom error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update room.",
+      error: error.message,
+    });
+  }
+};
+
+exports.deleteRoom = async (req, res) => {
+  try {
+    const roomId = req.params.id;
+
+    const [existingRows] = await db.promise().query(
+      `SELECT id FROM rooms WHERE id = ?`,
+      [roomId]
+    );
+
+    if (existingRows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Room not found.",
+      });
+    }
+
+    const [bookingRows] = await db.promise().query(
+      `SELECT id FROM bookings WHERE room_id = ? LIMIT 1`,
+      [roomId]
+    );
+
+    if (bookingRows.length > 0) {
+      await db.promise().query(
+        `UPDATE rooms SET status = 'unavailable' WHERE id = ?`,
+        [roomId]
+      );
+
+      return res.status(200).json({
+        success: true,
+        message: "Room has bookings, so it was set to unavailable instead of deleting.",
+      });
+    }
+
+    await db.promise().query(`DELETE FROM rooms WHERE id = ?`, [roomId]);
+
+    return res.status(200).json({
+      success: true,
+      message: "Room deleted successfully.",
+    });
+  } catch (error) {
+    console.error("deleteRoom error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete room.",
+      error: error.message,
+    });
+  }
 };

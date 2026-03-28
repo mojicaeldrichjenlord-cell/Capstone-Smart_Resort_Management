@@ -1,79 +1,118 @@
-const roomsContainer = document.getElementById("roomsContainer");
-const user = JSON.parse(localStorage.getItem("user"));
+const API_BASE = "http://127.0.0.1:5000/api";
 
-const loginNav = document.getElementById("loginNav");
-const registerNav = document.getElementById("registerNav");
-const logoutBtn = document.getElementById("logoutBtn");
-
-if (user) {
-  loginNav.style.display = "none";
-  registerNav.style.display = "none";
-  logoutBtn.style.display = "inline-block";
-}
-
-logoutBtn.addEventListener("click", (e) => {
-  e.preventDefault();
-  localStorage.removeItem("user");
-  localStorage.removeItem("selectedRoom");
-  window.location.href = "index.html";
+document.addEventListener("DOMContentLoaded", () => {
+  setupLogout();
+  loadRooms();
 });
 
+function setupLogout() {
+  const logoutBtns = [
+    document.getElementById("logoutBtn"),
+    document.getElementById("mobileLogoutBtn"),
+  ].filter(Boolean);
+
+  logoutBtns.forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.preventDefault();
+      localStorage.removeItem("user");
+
+      if (typeof showToast === "function") {
+        showToast("Logged out successfully.", "success");
+      } else {
+        alert("Logged out successfully.");
+      }
+
+      setTimeout(() => {
+        window.location.href = "login.html";
+      }, 700);
+    });
+  });
+}
+
 async function loadRooms() {
+  const container = document.getElementById("roomsContainer");
+
   try {
-    const response = await fetch("http://localhost:5000/api/rooms");
-    const rooms = await response.json();
+    container.innerHTML = `<p>Loading rooms...</p>`;
+
+    const response = await fetch(`${API_BASE}/rooms/available`);
+    const data = await response.json();
 
     if (!response.ok) {
-      roomsContainer.innerHTML = "<p>Failed to load rooms.</p>";
+      throw new Error(data.message || "Failed to load rooms.");
+    }
+
+    const rooms = Array.isArray(data) ? data : data.rooms || [];
+
+    if (!rooms.length) {
+      container.innerHTML = `<p>No available rooms found.</p>`;
       return;
     }
 
-    if (rooms.length === 0) {
-      roomsContainer.innerHTML = "<p>No rooms available.</p>";
-      return;
-    }
+    container.innerHTML = rooms
+      .map((room) => {
+        return `
+          <div class="room-ai-card">
+            <img
+              src="${escapeHtml(room.image || "images/no-image.jpg")}"
+              alt="${escapeHtml(room.room_name || "Room")}"
+              onerror="this.src='images/no-image.jpg'"
+            />
 
-    roomsContainer.innerHTML = rooms
-      .map(
-        (room) => `
-        <div class="room-card">
-          <img src="${room.image}" alt="${room.room_name}" class="room-img" />
-          <div class="room-content">
-            <h3>${room.room_name}</h3>
-            <p>${room.description ?? ""}</p>
-            <p><strong>Capacity:</strong> ${room.capacity}</p>
-            <p><strong>Price:</strong> ₱${Number(room.price).toLocaleString()}</p>
-            <p><strong>Status:</strong> ${room.status}</p>
-            <button
-              class="btn-primary"
-              onclick="bookRoom(${room.id}, '${String(room.room_name).replace(/'/g, "\\'")}', ${room.price}, ${room.capacity})"
-              ${room.status !== "available" ? "disabled" : ""}
-            >
-              ${room.status === "available" ? "Book Now" : "Unavailable"}
-            </button>
+            <div class="room-ai-content">
+              <h3>${escapeHtml(room.room_name || "N/A")}</h3>
+              <p>${escapeHtml(room.description || "No description available.")}</p>
+              <div class="room-price">₱${formatMoney(room.price)} per night</div>
+
+              <div class="room-ai-meta">
+                <div><strong>Capacity:</strong> ${room.capacity || 0}</div>
+                <div><strong>Bed Count:</strong> ${room.bed_count || 0}</div>
+                <div><strong>Bed Type:</strong> ${escapeHtml(room.bed_type || "N/A")}</div>
+                <div><strong>View:</strong> ${capitalize(room.view_type || "N/A")}</div>
+                <div><strong>Aircon:</strong> ${capitalize(room.aircon_type || "N/A")}</div>
+                <div><strong>Status:</strong> ${capitalize(room.status || "available")}</div>
+              </div>
+
+              <div class="room-ai-amenities">
+                <strong>Amenities:</strong> ${escapeHtml(room.amenities || "N/A")}
+              </div>
+
+              <div class="room-ai-actions">
+                <a href="booking.html?room_id=${room.id}" class="book-now-btn">Book Now</a>
+              </div>
+            </div>
           </div>
-        </div>
-      `
-      )
+        `;
+      })
       .join("");
   } catch (error) {
-    console.error(error);
-    roomsContainer.innerHTML = "<p>Something went wrong while loading rooms.</p>";
+    console.error("loadRooms error:", error);
+    container.innerHTML = `<p>Failed to load rooms.</p>`;
   }
 }
 
-function bookRoom(id, name, price, capacity) {
-  if (!user) {
-    alert("Please login or register first before booking.");
-    window.location.href = "login.html";
-    return;
-  }
-
-  localStorage.setItem(
-    "selectedRoom",
-    JSON.stringify({ id, name, price, capacity })
-  );
-  window.location.href = "booking.html";
+function formatMoney(value) {
+  const num = Number(value || 0);
+  return num.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
-loadRooms();
+function capitalize(text) {
+  if (!text) return "";
+  const value = String(text);
+  return value
+    .split(" ")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}

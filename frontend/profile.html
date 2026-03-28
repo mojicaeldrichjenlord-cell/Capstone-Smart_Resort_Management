@@ -7,10 +7,165 @@
   <link rel="stylesheet" href="css/style.css" />
 
   <style>
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 2000;
+      background: #0f172a;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+    }
+
+    .site-header-inner {
+      width: 94%;
+      max-width: 1300px;
+      margin: 0 auto;
+      min-height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .site-logo {
+      color: #ffffff;
+      font-size: 1.9rem;
+      font-weight: 800;
+      text-decoration: none;
+      line-height: 1;
+    }
+
+    .desktop-nav {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .desktop-nav a,
+    .mobile-nav a {
+      text-decoration: none;
+      color: #ffffff;
+      font-weight: 700;
+      padding: 10px 14px;
+      border-radius: 10px;
+      transition: 0.2s ease;
+      display: inline-block;
+    }
+
+    .desktop-nav a:hover,
+    .mobile-nav a:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .desktop-nav a.active,
+    .mobile-nav a.active {
+      background: #14b8a6;
+      color: #ffffff;
+    }
+
+    .menu-toggle {
+      display: none;
+      width: 46px;
+      height: 46px;
+      border: none;
+      border-radius: 10px;
+      background: #14b8a6;
+      cursor: pointer;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .menu-toggle span {
+      position: absolute;
+      left: 11px;
+      width: 24px;
+      height: 3px;
+      background: white;
+      border-radius: 999px;
+      transition: 0.25s ease;
+    }
+
+    .menu-toggle span:nth-child(1) { top: 13px; }
+    .menu-toggle span:nth-child(2) { top: 21px; }
+    .menu-toggle span:nth-child(3) { top: 29px; }
+
+    .menu-toggle.active span:nth-child(1) {
+      transform: rotate(45deg);
+      top: 21px;
+    }
+
+    .menu-toggle.active span:nth-child(2) {
+      opacity: 0;
+    }
+
+    .menu-toggle.active span:nth-child(3) {
+      transform: rotate(-45deg);
+      top: 21px;
+    }
+
+    .mobile-nav {
+      display: none;
+      width: 94%;
+      max-width: 1300px;
+      margin: 0 auto 14px;
+      background: #1e293b;
+      border-radius: 14px;
+      padding: 10px;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .mobile-nav.show {
+      display: flex;
+    }
+
+    .mobile-nav a {
+      width: 100%;
+      text-align: left;
+    }
+
+    .page-header {
+      background: linear-gradient(135deg, #0f172a, #14b8a6);
+      color: white;
+      text-align: center;
+      padding: 56px 18px;
+    }
+
+    .page-header h1 {
+      margin: 0 0 10px;
+      font-size: 2.5rem;
+    }
+
+    .page-header p {
+      margin: 0;
+      font-size: 1rem;
+      opacity: 0.95;
+    }
+
     .profile-wrapper {
       width: 92%;
       max-width: 1100px;
-      margin: 0 auto 40px;
+      margin: 28px auto 40px;
+    }
+
+    .top-page-actions {
+      display: flex;
+      justify-content: flex-start;
+      margin-bottom: 18px;
+    }
+
+    .back-btn {
+      display: inline-block;
+      text-decoration: none;
+      background: #e2e8f0;
+      color: #0f172a;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-weight: 700;
+      transition: 0.2s ease;
+    }
+
+    .back-btn:hover {
+      background: #cbd5e1;
     }
 
     .profile-card {
@@ -120,6 +275,22 @@
     }
 
     @media (max-width: 768px) {
+      .desktop-nav {
+        display: none;
+      }
+
+      .menu-toggle {
+        display: inline-block;
+      }
+
+      .page-header {
+        padding: 42px 16px;
+      }
+
+      .page-header h1 {
+        font-size: 2rem;
+      }
+
       .profile-form-grid {
         grid-template-columns: 1fr;
       }
@@ -132,17 +303,57 @@
         font-size: 1.6rem;
       }
     }
+
+    @media (max-width: 480px) {
+      .site-header-inner {
+        min-height: 66px;
+      }
+
+      .site-logo {
+        font-size: 1.55rem;
+      }
+
+      .page-header h1 {
+        font-size: 1.8rem;
+      }
+
+      .back-btn {
+        width: 100%;
+        text-align: center;
+      }
+
+      .top-page-actions {
+        display: block;
+      }
+    }
   </style>
 </head>
-<body class="has-fixed-navbar">
-  <header class="navbar">
-    <div class="logo">SmartResort</div>
-    <nav>
+<body>
+  <header class="site-header">
+    <div class="site-header-inner">
+      <a href="index.html" class="site-logo">SmartResort</a>
+
+      <nav class="desktop-nav">
+        <a href="index.html">Home</a>
+        <a href="rooms.html">Rooms</a>
+        <a href="my-bookings.html">My Bookings</a>
+        <a href="profile.html" class="active">Profile</a>
+        <a href="#" id="logoutBtn">Logout</a>
+      </nav>
+
+      <button class="menu-toggle" id="menuToggle" aria-label="Open menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+    </div>
+
+    <nav class="mobile-nav" id="mobileNav">
       <a href="index.html">Home</a>
       <a href="rooms.html">Rooms</a>
       <a href="my-bookings.html">My Bookings</a>
-      <a href="profile.html">Profile</a>
-      <a href="#" id="logoutBtn">Logout</a>
+      <a href="profile.html" class="active">Profile</a>
+      <a href="#" id="mobileLogoutBtn">Logout</a>
     </nav>
   </header>
 
@@ -152,6 +363,10 @@
   </section>
 
   <main class="profile-wrapper">
+    <div class="top-page-actions">
+      <a href="index.html" class="back-btn">← Back to Home</a>
+    </div>
+
     <section class="profile-card">
       <h2>Profile Information</h2>
 
@@ -219,7 +434,7 @@
 
   <script src="js/toast.js"></script>
   <script src="js/password-toggle.js"></script>
-  <script src="js/active-nav.js"></script>
+  <script src="js/mobile-nav.js"></script>
   <script src="js/profile.js"></script>
 </body>
 </html>

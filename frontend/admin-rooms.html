@@ -3,85 +3,450 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin Room Management - SmartResort</title>
+  <title>Admin Rooms | Smart Resort Booking System</title>
   <link rel="stylesheet" href="css/style.css" />
+
+  <style>
+    .admin-rooms-wrapper {
+      width: 95%;
+      max-width: 1400px;
+      margin: 0 auto 30px;
+    }
+
+    .top-page-actions {
+      display: flex;
+      justify-content: flex-start;
+      margin-top: 30px;
+      margin-bottom: 18px;
+    }
+
+    .back-btn {
+      display: inline-block;
+      text-decoration: none;
+      background: #e2e8f0;
+      color: #0f172a;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-weight: 700;
+      transition: 0.2s ease;
+    }
+
+    .back-btn:hover {
+      background: #cbd5e1;
+    }
+
+    .admin-rooms-header {
+      background: linear-gradient(135deg, #0f172a, #14b8a6);
+      color: white;
+      border-radius: 18px;
+      padding: 28px 24px;
+      margin-bottom: 20px;
+      text-align: center;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+    }
+
+    .admin-rooms-header h1 {
+      margin: 0 0 8px;
+      font-size: 2rem;
+    }
+
+    .admin-rooms-header p {
+      margin: 0;
+      opacity: 0.95;
+    }
+
+    .room-form-box {
+      background: white;
+      padding: 24px;
+      border-radius: 18px;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+      margin-bottom: 24px;
+    }
+
+    .room-form-box h2 {
+      margin-bottom: 18px;
+      color: #0f172a;
+      font-size: 1.5rem;
+    }
+
+    .room-form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px 18px;
+    }
+
+    .room-form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .room-form-group.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .room-form-group label {
+      font-weight: 700;
+      color: #0f172a;
+      font-size: 0.95rem;
+    }
+
+    .room-form-group input,
+    .room-form-group textarea,
+    .room-form-group select {
+      padding: 12px 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      width: 100%;
+      outline: none;
+      background: #fff;
+    }
+
+    .room-form-group textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .room-form-group input:focus,
+    .room-form-group textarea:focus,
+    .room-form-group select:focus {
+      border-color: #14b8a6;
+      box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
+    }
+
+    .room-form-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+    }
+
+    .btn-main {
+      background: #14b8a6;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: 0.2s ease;
+    }
+
+    .btn-main:hover {
+      background: #0f766e;
+    }
+
+    .btn-light {
+      background: #e2e8f0;
+      color: #0f172a;
+      border: none;
+      border-radius: 10px;
+      padding: 12px 18px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: 0.2s ease;
+    }
+
+    .btn-light:hover {
+      background: #cbd5e1;
+    }
+
+    .image-preview-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 14px;
+    }
+
+    .image-preview-box img {
+      width: 100%;
+      max-height: 240px;
+      object-fit: cover;
+      border-radius: 12px;
+      border: 1px solid #cbd5e1;
+      margin-top: 10px;
+    }
+
+    .room-list-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
+      gap: 20px;
+    }
+
+    .room-admin-card {
+      background: white;
+      border-radius: 18px;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+      overflow: hidden;
+    }
+
+    .room-admin-card img {
+      width: 100%;
+      height: 220px;
+      object-fit: cover;
+      background: #f1f5f9;
+    }
+
+    .room-admin-content {
+      padding: 18px;
+    }
+
+    .room-admin-content h3 {
+      margin-bottom: 10px;
+      color: #0f172a;
+      font-size: 1.25rem;
+    }
+
+    .room-admin-content p {
+      margin-bottom: 8px;
+      color: #475569;
+      font-size: 0.95rem;
+    }
+
+    .room-meta {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 12px;
+      margin-top: 12px;
+      margin-bottom: 14px;
+    }
+
+    .room-meta div {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 0.9rem;
+      color: #334155;
+      word-break: break-word;
+    }
+
+    .room-amenities-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-top: 10px;
+      margin-bottom: 14px;
+      color: #334155;
+      font-size: 0.92rem;
+      word-break: break-word;
+    }
+
+    .room-admin-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .btn-edit {
+      background: #2563eb;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: 0.2s ease;
+    }
+
+    .btn-edit:hover {
+      opacity: 0.92;
+    }
+
+    .btn-delete {
+      background: #ef4444;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: 0.2s ease;
+    }
+
+    .btn-delete:hover {
+      opacity: 0.92;
+    }
+
+    .room-status-badge {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 0.8rem;
+    }
+
+    .status-available {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .status-unavailable {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    @media (max-width: 768px) {
+      .room-form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .room-form-actions {
+        flex-direction: column;
+      }
+
+      .btn-main,
+      .btn-light {
+        width: 100%;
+      }
+
+      .room-meta {
+        grid-template-columns: 1fr;
+      }
+
+      .admin-rooms-header h1 {
+        font-size: 1.6rem;
+      }
+    }
+  </style>
 </head>
-<body>
+<body class="has-fixed-navbar">
   <header class="navbar">
-    <div class="logo">SmartResort Admin</div>
+    <div class="logo">Smart Resort Admin</div>
     <nav>
-      <a href="admin-reports.html">Reports</a>
       <a href="admin.html">Bookings</a>
       <a href="admin-rooms.html">Rooms</a>
       <a href="admin-reports.html">Reports</a>
+      <a href="admin-profile.html">Profile</a>
       <a href="#" id="logoutBtn">Logout</a>
     </nav>
   </header>
 
-  <section class="page-header">
-    <h1>Room Management</h1>
-    <p>Add, edit, and delete resort rooms and cottages.</p>
-  </section>
+  <main class="admin-rooms-wrapper">
+    <div class="top-page-actions">
+      <a href="admin.html" class="back-btn">← Back to Admin Dashboard</a>
+    </div>
 
-  <section class="admin-section">
-    <div class="room-form-box">
+    <section class="admin-rooms-header">
+      <h1>Admin Room Management</h1>
+      <p>Add AI-ready room details like beds, view type, aircon type, and amenities.</p>
+    </section>
+
+    <section class="room-form-box">
       <h2 id="formTitle">Add New Room</h2>
 
       <form id="roomForm">
         <input type="hidden" id="roomId" />
 
-        <label for="roomName">Room Name</label>
-        <input type="text" id="roomName" placeholder="Enter room name" required />
+        <div class="room-form-grid">
+          <div class="room-form-group">
+            <label for="roomName">Room Name</label>
+            <input type="text" id="roomName" required />
+          </div>
 
-        <label for="roomDescription">Description</label>
-        <textarea id="roomDescription" placeholder="Enter room description"></textarea>
+          <div class="room-form-group">
+            <label for="roomPrice">Price</label>
+            <input type="number" id="roomPrice" min="1" required />
+          </div>
 
-        <label for="roomPrice">Price</label>
-        <input type="number" id="roomPrice" placeholder="Enter price" min="1" required />
+          <div class="room-form-group">
+            <label for="roomCapacity">Capacity</label>
+            <input type="number" id="roomCapacity" min="1" required />
+          </div>
 
-        <label for="roomCapacity">Capacity</label>
-        <input type="number" id="roomCapacity" placeholder="Enter capacity" min="1" required />
+          <div class="room-form-group">
+            <label for="bedCount">Bed Count</label>
+            <input type="number" id="bedCount" min="1" required />
+          </div>
 
-        <label for="roomImage">Image URL or Local Path</label>
-        <input
-          type="text"
-          id="roomImage"
-          placeholder="Example: images/room2.jpg or https://..."
-          required
-        />
+          <div class="room-form-group">
+            <label for="bedType">Bed Type</label>
+            <input type="text" id="bedType" placeholder="Example: 2 Queen Beds" required />
+          </div>
 
-        <div class="image-preview-box">
-          <p><strong>Image Preview</strong></p>
-          <img
-            id="roomImagePreview"
-            src=""
-            alt="Room preview"
-            style="display: none;"
-          />
-          <p id="imagePreviewText" class="image-preview-text">
-            No image selected yet.
-          </p>
+          <div class="room-form-group">
+            <label for="viewType">View Type</label>
+            <select id="viewType" required>
+              <option value="">Select View Type</option>
+              <option value="beach view">Beach View</option>
+              <option value="pool view">Pool View</option>
+              <option value="garden view">Garden View</option>
+              <option value="mountain view">Mountain View</option>
+              <option value="standard view">Standard View</option>
+            </select>
+          </div>
+
+          <div class="room-form-group">
+            <label for="airconType">Aircon Type</label>
+            <select id="airconType" required>
+              <option value="">Select Aircon Type</option>
+              <option value="aircon">Aircon</option>
+              <option value="non-aircon">Non-Aircon</option>
+            </select>
+          </div>
+
+          <div class="room-form-group">
+            <label for="roomStatus">Status</label>
+            <select id="roomStatus" required>
+              <option value="available">Available</option>
+              <option value="unavailable">Unavailable</option>
+            </select>
+          </div>
+
+          <div class="room-form-group full-width">
+            <label for="roomDescription">Description</label>
+            <textarea id="roomDescription" required></textarea>
+          </div>
+
+          <div class="room-form-group full-width">
+            <label for="roomAmenities">Amenities</label>
+            <textarea
+              id="roomAmenities"
+              placeholder="Example: WiFi, TV, Hot Shower, Mini Fridge, Balcony"
+              required
+            ></textarea>
+          </div>
+
+          <div class="room-form-group full-width">
+            <label for="roomImage">Image Path or URL</label>
+            <input
+              type="text"
+              id="roomImage"
+              placeholder="Example: images/room2.jpg or https://..."
+            />
+          </div>
+
+          <div class="room-form-group full-width">
+            <label>Image Preview</label>
+            <div class="image-preview-box">
+              <div id="imagePreviewText">No image selected.</div>
+              <img
+                id="imagePreview"
+                src=""
+                alt="Room Preview"
+                style="display:none;"
+              />
+            </div>
+          </div>
         </div>
-
-        <label for="roomStatus">Status</label>
-        <select id="roomStatus" required>
-          <option value="available">Available</option>
-          <option value="unavailable">Unavailable</option>
-        </select>
 
         <div class="room-form-actions">
-          <button type="submit" class="btn-primary full-btn" id="saveRoomBtn">Save Room</button>
-          <button type="button" class="btn-secondary full-btn" id="cancelEditBtn" style="display: none;">Cancel Edit</button>
+          <button type="submit" class="btn-main" id="saveRoomBtn">Save Room</button>
+          <button type="button" class="btn-light" id="clearFormBtn">Clear Form</button>
         </div>
       </form>
+    </section>
 
-      <p id="roomMessage" class="message"></p>
-    </div>
+    <section>
+      <div class="room-list-grid" id="adminRoomsContainer"></div>
+    </section>
+  </main>
 
-    <div class="admin-grid" id="adminRoomsContainer"></div>
-  </section>
-
-  <script src="js/admin-rooms.js"></script>
+  <script src="js/toast.js"></script>
   <script src="js/active-nav.js"></script>
+  <script src="js/admin-rooms.js"></script>
 </body>
 </html>

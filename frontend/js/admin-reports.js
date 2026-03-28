@@ -1,216 +1,344 @@
-const reportsLogoutBtn = document.getElementById("reportsLogoutBtn");
-const reportCards = document.getElementById("reportCards");
-const reportStartDate = document.getElementById("reportStartDate");
-const reportEndDate = document.getElementById("reportEndDate");
-const applyReportFilter = document.getElementById("applyReportFilter");
-const resetReportFilter = document.getElementById("resetReportFilter");
-const printReportBtn = document.getElementById("printReportBtn");
-const printDateRange = document.getElementById("printDateRange");
-const printGeneratedAt = document.getElementById("printGeneratedAt");
-
-const user = JSON.parse(localStorage.getItem("user"));
 const API_BASE = "http://127.0.0.1:5000/api";
 
-if (!user) {
-  alert("Please login first.");
-  window.location.href = "login.html";
-}
+let allBookings = [];
+let bookingStatusChart = null;
+let popularRoomsChart = null;
+let paymentMethodChart = null;
+let guestsPerRoomChart = null;
 
-if (user && user.role !== "admin") {
-  alert("Access denied. Admins only.");
-  window.location.href = "index.html";
-}
-
-reportsLogoutBtn.addEventListener("click", (e) => {
-  e.preventDefault();
-  localStorage.removeItem("user");
-  localStorage.removeItem("selectedRoom");
-  window.location.href = "login.html";
+document.addEventListener("DOMContentLoaded", () => {
+  checkAdminAccess();
+  setupLogout();
+  setupReportEvents();
+  loadReports();
 });
 
-let statusChartInstance = null;
-let roomChartInstance = null;
-let guestChartInstance = null;
+function checkAdminAccess() {
+  const user = JSON.parse(localStorage.getItem("user"));
 
-function buildQueryString() {
-  const params = new URLSearchParams();
+  if (!user) {
+    alert("Please login first.");
+    window.location.href = "login.html";
+    return;
+  }
 
-  if (reportStartDate.value) params.append("startDate", reportStartDate.value);
-  if (reportEndDate.value) params.append("endDate", reportEndDate.value);
-
-  const queryString = params.toString();
-  return queryString ? `?${queryString}` : "";
+  if (user.role !== "admin") {
+    alert("Access denied. Admin only.");
+    window.location.href = "index.html";
+  }
 }
 
-function formatDate(dateString) {
-  if (!dateString) return "";
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
+function setupLogout() {
+  const logoutBtn = document.getElementById("logoutBtn");
+
+  if (!logoutBtn) return;
+
+  logoutBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    localStorage.removeItem("user");
+
+    if (typeof showToast === "function") {
+      showToast("Logged out successfully.", "success");
+    } else {
+      alert("Logged out successfully.");
+    }
+
+    setTimeout(() => {
+      window.location.href = "login.html";
+    }, 700);
   });
 }
 
-function updatePrintHeader() {
-  const start = reportStartDate.value;
-  const end = reportEndDate.value;
+function setupReportEvents() {
+  const applyBtn = document.getElementById("applyReportFilterBtn");
+  const clearBtn = document.getElementById("clearReportFilterBtn");
+  const printBtn = document.getElementById("printReportBtn");
 
-  if (start && end) {
-    printDateRange.textContent = `Date Range: ${formatDate(start)} to ${formatDate(end)}`;
-  } else if (start) {
-    printDateRange.textContent = `From: ${formatDate(start)}`;
-  } else if (end) {
-    printDateRange.textContent = `Up to: ${formatDate(end)}`;
-  } else {
-    printDateRange.textContent = "All records";
+  if (applyBtn) {
+    applyBtn.addEventListener("click", applyReportFilters);
   }
 
-  const now = new Date();
-  printGeneratedAt.textContent = `Generated on: ${now.toLocaleString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  })}`;
+  if (clearBtn) {
+    clearBtn.addEventListener("click", () => {
+      document.getElementById("reportStartDate").value = "";
+      document.getElementById("reportEndDate").value = "";
+      renderReports(allBookings);
+    });
+  }
+
+  if (printBtn) {
+    printBtn.addEventListener("click", () => {
+      window.print();
+    });
+  }
 }
 
-function buildChart(chartId, label, labels, values) {
-  const ctx = document.getElementById(chartId).getContext("2d");
+async function loadReports() {
+  try {
+    hideReportError();
 
-  return new Chart(ctx, {
+    const response = await fetch(`${API_BASE}/bookings`);
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to load reports.");
+    }
+
+    allBookings = Array.isArray(data) ? data : data.bookings || [];
+    renderReports(allBookings);
+  } catch (error) {
+    console.error("loadReports error:", error);
+    showReportError("Something went wrong while loading report cards.");
+    renderReports([]);
+  }
+}
+
+function applyReportFilters() {
+  const startDate = document.getElementById("reportStartDate").value;
+  const endDate = document.getElementById("reportEndDate").value;
+
+  let filtered = [...allBookings];
+
+  if (startDate) {
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+
+    filtered = filtered.filter((booking) => {
+      const created = new Date(booking.created_at);
+      return !Number.isNaN(created.getTime()) && created >= start;
+    });
+  }
+
+  if (endDate) {
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    filtered = filtered.filter((booking) => {
+      const created = new Date(booking.created_at);
+      return !Number.isNaN(created.getTime()) && created <= end;
+    });
+  }
+
+  renderReports(filtered);
+}
+
+function renderReports(bookings) {
+  updateStats(bookings);
+  renderBookingStatusChart(bookings);
+  renderPopularRoomsChart(bookings);
+  renderPaymentMethodChart(bookings);
+  renderGuestsPerRoomChart(bookings);
+}
+
+function updateStats(bookings) {
+  const totalBookings = bookings.length;
+
+  const approvedBookings = bookings.filter((booking) => {
+    const status = String(booking.status || "").toLowerCase();
+    return status === "approved";
+  }).length;
+
+  const pendingBookings = bookings.filter((booking) => {
+    const status = String(booking.status || "").toLowerCase();
+    return status === "pending";
+  }).length;
+
+  const totalRevenue = bookings.reduce((sum, booking) => {
+    const status = String(booking.status || "").toLowerCase();
+    if (status === "approved" || status === "completed") {
+      return sum + Number(booking.price || 0);
+    }
+    return sum;
+  }, 0);
+
+  setText("totalBookingsCount", totalBookings);
+  setText("approvedBookingsCount", approvedBookings);
+  setText("pendingBookingsCount", pendingBookings);
+  setText("totalRevenueAmount", `₱${formatMoney(totalRevenue)}`);
+}
+
+function renderBookingStatusChart(bookings) {
+  const counts = {
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+    cancelled: 0,
+    completed: 0,
+  };
+
+  bookings.forEach((booking) => {
+    const status = String(booking.status || "").toLowerCase();
+    if (counts.hasOwnProperty(status)) {
+      counts[status]++;
+    }
+  });
+
+  const canvas = document.getElementById("bookingStatusChart");
+  if (!canvas) return;
+
+  if (bookingStatusChart) {
+    bookingStatusChart.destroy();
+  }
+
+  bookingStatusChart = new Chart(canvas, {
     type: "bar",
     data: {
-      labels,
+      labels: ["Pending", "Approved", "Rejected", "Cancelled", "Completed"],
       datasets: [
         {
-          label,
-          data: values,
-          borderWidth: 1,
+          label: "Bookings",
+          data: [
+            counts.pending,
+            counts.approved,
+            counts.rejected,
+            counts.cancelled,
+            counts.completed,
+          ],
         },
       ],
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      animation: false,
-      scales: {
-        y: {
-          beginAtZero: true,
-          ticks: {
-            precision: 0,
-          },
-        },
-      },
-      plugins: {
-        legend: {
-          display: false,
-        },
-      },
     },
   });
 }
 
-async function loadReportCards() {
-  try {
-    const queryString = buildQueryString();
+function renderPopularRoomsChart(bookings) {
+  const roomCounts = {};
 
-    const [statsResponse, analyticsResponse] = await Promise.all([
-      fetch(`${API_BASE}/bookings/stats/summary${queryString}`),
-      fetch(`${API_BASE}/bookings/stats/analytics${queryString}`),
-    ]);
+  bookings.forEach((booking) => {
+    const roomName = booking.room_name || "Unknown Room";
+    roomCounts[roomName] = (roomCounts[roomName] || 0) + 1;
+  });
 
-    const stats = await statsResponse.json();
-    const analytics = await analyticsResponse.json();
+  const sortedRooms = Object.entries(roomCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8);
 
-    if (!statsResponse.ok || !analyticsResponse.ok) {
-      reportCards.innerHTML = "<p>Failed to load report cards.</p>";
-      return;
-    }
+  const canvas = document.getElementById("popularRoomsChart");
+  if (!canvas) return;
 
-    const totalGuests = (analytics.roomBookingData || []).reduce(
-      (sum, room) => sum + Number(room.total_guests || 0),
-      0
-    );
+  if (popularRoomsChart) {
+    popularRoomsChart.destroy();
+  }
 
-    reportCards.innerHTML = `
-      <div class="stat-card">
-        <h3>Total Rooms</h3>
-        <p>${stats.total_rooms ?? 0}</p>
-      </div>
-      <div class="stat-card">
-        <h3>Total Bookings</h3>
-        <p>${stats.total_bookings ?? 0}</p>
-      </div>
-      <div class="stat-card">
-        <h3>Total Guests</h3>
-        <p>${totalGuests}</p>
-      </div>
-    `;
-  } catch (error) {
-    console.error("loadReportCards error:", error);
-    reportCards.innerHTML = "<p>Something went wrong while loading report cards.</p>";
+  popularRoomsChart = new Chart(canvas, {
+    type: "bar",
+    data: {
+      labels: sortedRooms.map((item) => item[0]),
+      datasets: [
+        {
+          label: "Bookings",
+          data: sortedRooms.map((item) => item[1]),
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      indexAxis: "y",
+    },
+  });
+}
+
+function renderPaymentMethodChart(bookings) {
+  const paymentCounts = {};
+
+  bookings.forEach((booking) => {
+    const method = capitalize(booking.payment_method || "unknown");
+    paymentCounts[method] = (paymentCounts[method] || 0) + 1;
+  });
+
+  const canvas = document.getElementById("paymentMethodChart");
+  if (!canvas) return;
+
+  if (paymentMethodChart) {
+    paymentMethodChart.destroy();
+  }
+
+  paymentMethodChart = new Chart(canvas, {
+    type: "pie",
+    data: {
+      labels: Object.keys(paymentCounts),
+      datasets: [
+        {
+          data: Object.values(paymentCounts),
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+    },
+  });
+}
+
+function renderGuestsPerRoomChart(bookings) {
+  const guestTotals = {};
+
+  bookings.forEach((booking) => {
+    const roomName = booking.room_name || "Unknown Room";
+    guestTotals[roomName] = (guestTotals[roomName] || 0) + Number(booking.guests || 0);
+  });
+
+  const canvas = document.getElementById("guestsPerRoomChart");
+  if (!canvas) return;
+
+  if (guestsPerRoomChart) {
+    guestsPerRoomChart.destroy();
+  }
+
+  guestsPerRoomChart = new Chart(canvas, {
+    type: "bar",
+    data: {
+      labels: Object.keys(guestTotals),
+      datasets: [
+        {
+          label: "Guests",
+          data: Object.values(guestTotals),
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+    },
+  });
+}
+
+function showReportError(message) {
+  const errorEl = document.getElementById("reportErrorMessage");
+  if (!errorEl) return;
+
+  errorEl.textContent = message;
+  errorEl.style.display = "block";
+}
+
+function hideReportError() {
+  const errorEl = document.getElementById("reportErrorMessage");
+  if (!errorEl) return;
+
+  errorEl.textContent = "";
+  errorEl.style.display = "none";
+}
+
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (el) {
+    el.textContent = value;
   }
 }
 
-async function loadAnalyticsCharts() {
-  try {
-    const queryString = buildQueryString();
-    const response = await fetch(`${API_BASE}/bookings/stats/analytics${queryString}`);
-    const analytics = await response.json();
-
-    if (!response.ok) {
-      console.error("Failed to load analytics");
-      return;
-    }
-
-    const statusLabels = analytics.bookingStatusData.map((item) => item.status);
-    const statusValues = analytics.bookingStatusData.map((item) => Number(item.count));
-
-    const roomLabels = analytics.roomBookingData.map((item) => item.room_name);
-    const bookingValues = analytics.roomBookingData.map((item) => Number(item.booking_count));
-    const guestValues = analytics.roomBookingData.map((item) => Number(item.total_guests));
-
-    if (statusChartInstance) statusChartInstance.destroy();
-    if (roomChartInstance) roomChartInstance.destroy();
-    if (guestChartInstance) guestChartInstance.destroy();
-
-    statusChartInstance = buildChart("statusChart", "Booking Count", statusLabels, statusValues);
-    roomChartInstance = buildChart("roomChart", "Bookings per Room", roomLabels, bookingValues);
-    guestChartInstance = buildChart("guestChart", "Guests per Room", roomLabels, guestValues);
-  } catch (error) {
-    console.error("loadAnalyticsCharts error:", error);
-  }
+function formatMoney(value) {
+  return Number(value || 0).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
-async function loadReports() {
-  updatePrintHeader();
-  await loadReportCards();
-  await loadAnalyticsCharts();
+function capitalize(text) {
+  if (!text) return "";
+  const value = String(text);
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }
-
-applyReportFilter.addEventListener("click", () => {
-  if (reportStartDate.value && reportEndDate.value && reportStartDate.value > reportEndDate.value) {
-    alert("Start date cannot be later than end date.");
-    return;
-  }
-
-  loadReports();
-});
-
-resetReportFilter.addEventListener("click", () => {
-  reportStartDate.value = "";
-  reportEndDate.value = "";
-  loadReports();
-});
-
-printReportBtn.addEventListener("click", async () => {
-  updatePrintHeader();
-  await loadReports();
-  setTimeout(() => {
-    window.print();
-  }, 300);
-});
-
-loadReports();
