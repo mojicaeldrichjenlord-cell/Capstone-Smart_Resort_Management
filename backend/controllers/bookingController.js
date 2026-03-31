@@ -7,6 +7,8 @@ exports.createBooking = async (req, res) => {
       room_id,
       check_in,
       check_out,
+      check_in_time,
+      check_out_time,
       guests,
       payment_method,
       payment_status,
@@ -17,11 +19,13 @@ exports.createBooking = async (req, res) => {
       !room_id ||
       !check_in ||
       !check_out ||
+      !check_in_time ||
+      !check_out_time ||
       !guests ||
       !payment_method
     ) {
       return res.status(400).json({
-        message: "Please fill in all required booking fields.",
+        message: "Please fill in all required booking fields, including check-in and check-out time.",
       });
     }
 
@@ -91,14 +95,27 @@ exports.createBooking = async (req, res) => {
     const [result] = await db.promise().query(
       `
       INSERT INTO bookings
-      (user_id, room_id, check_in, check_out, guests, status, payment_method, payment_status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      (
+        user_id,
+        room_id,
+        check_in,
+        check_out,
+        check_in_time,
+        check_out_time,
+        guests,
+        status,
+        payment_method,
+        payment_status
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         user_id,
         room_id,
         check_in,
         check_out,
+        check_in_time,
+        check_out_time,
         guests,
         "pending",
         payment_method,
@@ -131,6 +148,8 @@ exports.getUserBookings = async (req, res) => {
         b.room_id,
         b.check_in,
         b.check_out,
+        b.check_in_time,
+        b.check_out_time,
         b.guests,
         b.status,
         b.created_at,
@@ -211,6 +230,8 @@ exports.getBookingReceipt = async (req, res) => {
         b.room_id,
         b.check_in,
         b.check_out,
+        b.check_in_time,
+        b.check_out_time,
         b.guests,
         b.status,
         b.created_at,
@@ -260,6 +281,8 @@ exports.getAllBookings = async (req, res) => {
         b.room_id,
         b.check_in,
         b.check_out,
+        b.check_in_time,
+        b.check_out_time,
         b.guests,
         b.status,
         b.created_at,

@@ -114,6 +114,34 @@ function normalizeLanguageStyle(value) {
   return null;
 }
 
+function normalizeTimeValue(value) {
+  const text = String(value || "").trim();
+  if (!text) return null;
+
+  const timeMatch = text.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
+  if (!timeMatch) return null;
+
+  let hours = Number(timeMatch[1]);
+  const minutes = Number(timeMatch[2]);
+  const seconds = Number(timeMatch[3] || 0);
+
+  if (
+    Number.isNaN(hours) ||
+    Number.isNaN(minutes) ||
+    Number.isNaN(seconds) ||
+    hours < 0 ||
+    hours > 23 ||
+    minutes < 0 ||
+    minutes > 59 ||
+    seconds < 0 ||
+    seconds > 59
+  ) {
+    return null;
+  }
+
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
 function detectLanguageFromMessage(message) {
   const text = normalizeText(message);
   if (!text) return null;
@@ -123,13 +151,13 @@ function detectLanguageFromMessage(message) {
     "gusto", "pwede", "puwede", "kuwarto", "kwarto", "magkano", "kailan",
     "saan", "petsa", "bayad", "bisita", "ilan", "meron", "wala", "naka",
     "lang", "muna", "nga", "dito", "iyan", "yan", "ito", "para", "pa",
-    "booking ko", "galing", "tignan", "pakisabi", "pakibigyan"
+    "paano", "hanggang", "mula", "oras"
   ];
 
   const englishWords = [
     "room", "booking", "check-in", "check-out", "guest", "payment", "price",
     "available", "recommend", "book", "cash", "online", "view", "aircon",
-    "nights", "date", "dates"
+    "nights", "date", "dates", "how", "where", "what", "time"
   ];
 
   let tagalogScore = 0;
@@ -155,6 +183,14 @@ function mergeContext(existing = {}, extracted = {}) {
   return {
     check_in: cleanContextValue(extracted.check_in) ?? cleanContextValue(existing.check_in),
     check_out: cleanContextValue(extracted.check_out) ?? cleanContextValue(existing.check_out),
+    check_in_time:
+      normalizeTimeValue(extracted.check_in_time) ||
+      normalizeTimeValue(existing.check_in_time) ||
+      null,
+    check_out_time:
+      normalizeTimeValue(extracted.check_out_time) ||
+      normalizeTimeValue(existing.check_out_time) ||
+      null,
     guests: cleanContextValue(extracted.guests) ?? cleanContextValue(existing.guests),
     bed_count: cleanContextValue(extracted.bed_count) ?? cleanContextValue(existing.bed_count),
     view_type: cleanContextValue(extracted.view_type) ?? cleanContextValue(existing.view_type),
@@ -174,6 +210,38 @@ function mergeContext(existing = {}, extracted = {}) {
       normalizePaymentMethod(existing.payment_method) ||
       null,
   };
+}
+
+function getMissingCoreDetails(context = {}) {
+  const missing = [];
+  if (!context.check_in) missing.push("check-in date");
+  if (!context.check_in_time) missing.push("check-in time");
+  if (!context.check_out) missing.push("check-out date");
+  if (!context.check_out_time) missing.push("check-out time");
+  if (!context.guests) missing.push("number of guests");
+  return missing;
+}
+
+function hasEnoughForAvailability(context = {}) {
+  return Boolean(
+    context.check_in &&
+      context.check_in_time &&
+      context.check_out &&
+      context.check_out_time &&
+      context.guests
+  );
+}
+
+function hasEnoughForBookingPreview(context = {}, chosenRoom = null, nights = 0) {
+  return Boolean(
+    chosenRoom &&
+      context.check_in &&
+      context.check_in_time &&
+      context.check_out &&
+      context.check_out_time &&
+      context.guests &&
+      nights > 0
+  );
 }
 
 async function getAvailableRooms(checkIn, checkOut, guests) {
@@ -280,6 +348,18 @@ function buildRoomsSummary(rooms, nights) {
     .join("\n\n");
 }
 
+function buildTopRecommendationSummary(rooms, nights) {
+  if (!rooms.length) return "No strong recommendation available.";
+
+  return rooms
+    .slice(0, 3)
+    .map((room, index) => {
+      const total = Number(room.price || 0) * Number(nights || 1);
+      return `${index + 1}. ${room.room_name} | ₱${formatCurrency(room.price)}/night | est. total ₱${formatCurrency(total)} | capacity ${room.capacity} | ${room.view_type || "no view info"} | ${room.aircon_type || "no aircon info"}`;
+    })
+    .join("\n");
+}
+
 async function findRoomByName(roomName) {
   const [rows] = await db.promise().query(
     `
@@ -364,7 +444,9 @@ Use this exact JSON shape:
 {
   "intent": "",
   "check_in": null,
+  "check_in_time": null,
   "check_out": null,
+  "check_out_time": null,
   "guests": null,
   "bed_count": null,
   "view_type": null,
@@ -384,6 +466,14 @@ Important date rules:
 - If the user gives month/day without a year, choose the nearest FUTURE valid year.
 - Never return a past date unless the user clearly asked for a past date.
 - If the month/day this year is already past, use next year.
+
+Time rules:
+- Return time in HH:MM:SS 24-hour format if the user gives a specific time.
+- If time is not mentioned, return null.
+- Examples:
+  - 2 PM => 14:00:00
+  - 11:30 AM => 11:30:00
+  - 14:00 => 14:00:00
 
 Payment method rules:
 - If user says cash, cash on arrival, or pay in person, set payment_method to "cash".
@@ -433,7 +523,9 @@ function buildBookingPreview(room, context, nights) {
     room_name: room.room_name,
     image: room.image,
     check_in: context.check_in,
+    check_in_time: context.check_in_time,
     check_out: context.check_out,
+    check_out_time: context.check_out_time,
     guests: Number(context.guests),
     nights,
     payment_method: paymentMethod,
@@ -463,7 +555,9 @@ exports.chatWithGemini = async (req, res) => {
 
     const requestContext = {
       check_in: req.body.check_in,
+      check_in_time: req.body.check_in_time,
       check_out: req.body.check_out,
+      check_out_time: req.body.check_out_time,
       guests: req.body.guests,
       bed_count: req.body.bed_count,
       view_type: req.body.view_type,
@@ -499,17 +593,16 @@ exports.chatWithGemini = async (req, res) => {
     let matchedRooms = [];
     let availableRooms = [];
     let roomSummary = "No live room availability was checked.";
+    let topRecommendationSummary = "No strong recommendation available.";
     let alternativeDates = [];
     let alternativeSummary = "No alternative dates were checked.";
     let chosenRoom = null;
     let bookingPreview = null;
 
-    const hasBookingCoreDetails =
-      mergedContext.check_in &&
-      mergedContext.check_out &&
-      mergedContext.guests;
+    const missingCoreDetails = getMissingCoreDetails(mergedContext);
+    const hasAvailabilityDetails = hasEnoughForAvailability(mergedContext);
 
-    if (hasBookingCoreDetails) {
+    if (hasAvailabilityDetails) {
       nights = getNightDifference(mergedContext.check_in, mergedContext.check_out);
 
       if (nights > 0) {
@@ -530,6 +623,7 @@ exports.chatWithGemini = async (req, res) => {
         });
 
         roomSummary = buildRoomsSummary(matchedRooms, nights);
+        topRecommendationSummary = buildTopRecommendationSummary(matchedRooms, nights);
 
         if (matchedRooms.length > 0) {
           chosenRoom = matchedRooms[0];
@@ -548,7 +642,10 @@ exports.chatWithGemini = async (req, res) => {
             if (byName) chosenRoom = byName;
           }
 
-          if (mergedContext.wants_booking === true) {
+          if (
+            mergedContext.wants_booking === true &&
+            hasEnoughForBookingPreview(mergedContext, chosenRoom, nights)
+          ) {
             bookingPreview = buildBookingPreview(chosenRoom, mergedContext, nights);
           }
         } else {
@@ -588,6 +685,10 @@ exports.chatWithGemini = async (req, res) => {
         ? "Reply in natural Taglish."
         : "Reply in clear English.";
 
+    const missingDetailsText = missingCoreDetails.length
+      ? missingCoreDetails.join(", ")
+      : "None";
+
     const finalPrompt = `
 You are SmartResort's friendly booking assistant.
 Be friendly, casual, and helpful like a resort staff assistant.
@@ -596,31 +697,43 @@ ${replyLanguage}
 
 Important rules:
 - Only use the room/system data provided below.
-- Do not invent rooms, prices, amenities, or availability.
+- Do not invent rooms, prices, amenities, availability, or times.
 - Do not use markdown symbols like **, *, #, or messy formatting.
 - Use clean short paragraphs or simple numbered points only when needed.
-- Keep the format easy to read in a chat window.
-- If the customer has not yet provided complete booking details, ask only for the missing important detail(s).
-- Missing important details for availability are:
-  1. check-in
-  2. check-out
-  3. guests
-- Payment method is optional until booking confirmation, but if missing and the user wants to book, ask whether they prefer cash on arrival or online payment via PayPal.
-- If the user says online payment, explain that the booking will be saved as pending online payment for now.
-- Keep replies practical, clear, friendly, and not too long.
-- Mention price when helpful.
-- Mention why the room matches the user's request.
+- Keep replies easy to read in a chat window.
+- Keep replies practical and not too long.
+- Do not repeat saved details unless useful.
+- Do not ask again for information that is already saved.
+- If details are incomplete, ask ONLY for the missing important detail(s).
+- Missing core details right now: ${missingDetailsText}
+- If rooms are available, recommend only the best 1 to 3 options.
+- Briefly explain why each recommended room matches.
+- If there are no exact matches, say that clearly and mention alternative dates if provided.
+- If booking preview is ready, clearly tell the user they can press the confirm booking button.
+- If the user wants to book but payment method is still missing, ask whether they prefer cash on arrival or PayPal.
+- If the user wants to book but check-in time or check-out time is missing, ask for the missing time.
+- If the user says online payment, explain that booking will be saved as pending online payment.
+- If dates are invalid or nights is 0 or negative, ask the user to correct the dates.
+- Prefer concise answers over long answers.
 
 Saved booking context:
 ${JSON.stringify(mergedContext, null, 2)}
 
 Live booking details:
-- Check-in: ${mergedContext.check_in || "Not provided"}
-- Check-out: ${mergedContext.check_out || "Not provided"}
+- Check-in date: ${mergedContext.check_in || "Not provided"}
+- Check-in time: ${mergedContext.check_in_time || "Not provided"}
+- Check-out date: ${mergedContext.check_out || "Not provided"}
+- Check-out time: ${mergedContext.check_out_time || "Not provided"}
 - Guests: ${mergedContext.guests || "Not provided"}
 - Nights: ${nights || "Not provided"}
 - Payment method: ${paymentMethodText}
 - Preferred language style: ${mergedContext.language_style || "english"}
+
+Missing core details:
+${missingDetailsText}
+
+Top recommendations:
+${topRecommendationSummary}
 
 Matching room results:
 ${roomSummary}
@@ -681,7 +794,7 @@ Translate the following SmartResort AI assistant reply into natural, easy-to-und
 
 Rules:
 - Keep the meaning exactly the same.
-- Keep dates, room names, prices, and booking details accurate.
+- Keep dates, times, room names, prices, and booking details accurate.
 - Do not add information.
 - Do not remove important information.
 - Use natural Tagalog that a normal resort guest can easily understand.
@@ -735,7 +848,7 @@ Translate the following SmartResort AI assistant reply into natural Taglish.
 
 Rules:
 - Keep the meaning exactly the same.
-- Keep dates, room names, prices, and booking details accurate.
+- Keep dates, times, room names, prices, and booking details accurate.
 - Do not add information.
 - Do not remove important information.
 - Use natural Taglish that normal Filipino resort guests can easily understand.
@@ -773,12 +886,22 @@ exports.createBookingFromChat = async (req, res) => {
       user_id,
       room_id,
       check_in,
+      check_in_time,
       check_out,
+      check_out_time,
       guests,
       payment_method,
     } = req.body;
 
-    if (!user_id || !room_id || !check_in || !check_out || !guests) {
+    if (
+      !user_id ||
+      !room_id ||
+      !check_in ||
+      !check_in_time ||
+      !check_out ||
+      !check_out_time ||
+      !guests
+    ) {
       return res.status(400).json({
         success: false,
         message: "Missing booking details from chat.",
@@ -801,6 +924,16 @@ exports.createBookingFromChat = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Check-out must be at least one day after check-in.",
+      });
+    }
+
+    const normalizedCheckInTime = normalizeTimeValue(check_in_time);
+    const normalizedCheckOutTime = normalizeTimeValue(check_out_time);
+
+    if (!normalizedCheckInTime || !normalizedCheckOutTime) {
+      return res.status(400).json({
+        success: false,
+        message: "Check-in time and check-out time are required.",
       });
     }
 
@@ -857,14 +990,27 @@ exports.createBookingFromChat = async (req, res) => {
     const [result] = await db.promise().query(
       `
       INSERT INTO bookings
-      (user_id, room_id, check_in, check_out, guests, status, payment_method, payment_status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      (
+        user_id,
+        room_id,
+        check_in,
+        check_out,
+        check_in_time,
+        check_out_time,
+        guests,
+        status,
+        payment_method,
+        payment_status
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         user_id,
         room_id,
         check_in,
         check_out,
+        normalizedCheckInTime,
+        normalizedCheckOutTime,
         guests,
         "pending",
         finalPaymentMethod,
