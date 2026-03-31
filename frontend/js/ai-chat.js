@@ -6,6 +6,8 @@ let aiRecognition = null;
 let aiIsListening = false;
 let aiShouldKeepListening = false;
 let aiFinalTranscript = "";
+let aiStoppedManually = false;
+let aiSendAfterStop = false;
 
 document.addEventListener("DOMContentLoaded", () => {
   setupAiChat();
@@ -60,7 +62,7 @@ function setupAiChat() {
   if (!messages.dataset.initialized) {
     appendAiMessage(
       "assistant",
-      "Hi! I’m your SmartResort AI assistant. Tell me your travel dates, number of guests, preferences like pool view, aircon, bed count, and payment method."
+      "Hi! I’m your SmartResort assistant. You can ask about booking steps, payment methods, rooms, or use the mic."
     );
 
     const savedContext = getStoredAiContext();
@@ -98,7 +100,7 @@ function setupSpeechRecognition() {
     updateMicButton();
   };
 
-  aiRecognition.onend = () => {
+  aiRecognition.onend = async () => {
     aiIsListening = false;
     updateMicButton();
 
@@ -110,6 +112,20 @@ function setupSpeechRecognition() {
           console.error("Speech recognition restart error:", error);
         }
       }, 150);
+      return;
+    }
+
+    if (aiStoppedManually && aiSendAfterStop) {
+      aiStoppedManually = false;
+      aiSendAfterStop = false;
+
+      const input = document.getElementById("aiChatInput");
+      if (input && input.value.trim()) {
+        await sendAiMessage();
+      }
+    } else {
+      aiStoppedManually = false;
+      aiSendAfterStop = false;
     }
   };
 
@@ -119,13 +135,10 @@ function setupSpeechRecognition() {
     if (event.error === "not-allowed" || event.error === "service-not-allowed") {
       aiShouldKeepListening = false;
       aiIsListening = false;
+      aiStoppedManually = false;
+      aiSendAfterStop = false;
       updateMicButton();
       appendAiSystemNote("Microphone permission was denied.");
-      return;
-    }
-
-    if (event.error === "aborted") {
-      return;
     }
   };
 
@@ -161,30 +174,29 @@ function toggleVoiceInput() {
   }
 
   if (aiShouldKeepListening) {
-    stopVoiceInput();
+    stopVoiceInput(true);
   } else {
     startVoiceInput();
   }
 }
 
 function startVoiceInput() {
-  if (!aiRecognition) return;
-
   aiFinalTranscript = "";
   aiShouldKeepListening = true;
+  aiStoppedManually = false;
+  aiSendAfterStop = false;
 
   try {
-    aiRecognition.lang = "en-PH";
     aiRecognition.start();
   } catch (error) {
     console.error("startVoiceInput error:", error);
   }
 }
 
-function stopVoiceInput() {
-  if (!aiRecognition) return;
-
+function stopVoiceInput(autoSend = false) {
   aiShouldKeepListening = false;
+  aiStoppedManually = true;
+  aiSendAfterStop = autoSend;
 
   try {
     aiRecognition.stop();
@@ -203,15 +215,14 @@ function updateMicButton() {
   const active = aiShouldKeepListening || aiIsListening;
   micBtn.textContent = active ? "⏹" : "🎤";
   micBtn.classList.toggle("active-voice-btn", active);
-  micBtn.title = active ? "Stop mic" : "Voice input";
+  micBtn.title = active ? "Stop mic and send" : "Voice input";
 }
 
 async function sendAiMessage() {
   const input = document.getElementById("aiChatInput");
-  const messages = document.getElementById("aiChatMessages");
   const sendBtn = document.getElementById("aiSendBtn");
 
-  if (!input || !messages || !sendBtn) return;
+  if (!input || !sendBtn) return;
 
   const message = input.value.trim();
   if (!message) return;
@@ -232,7 +243,6 @@ async function sendAiMessage() {
   try {
     sendBtn.disabled = true;
     sendBtn.textContent = "Sending...";
-
     appendTypingIndicator();
 
     const response = await fetch(`${AI_API_BASE}/ai/chat`, {
@@ -267,7 +277,6 @@ async function sendAiMessage() {
       const altText = data.alternative_dates
         .map((item, index) => `${index + 1}. ${item.check_in} to ${item.check_out}`)
         .join("\n");
-
       appendAiSystemNote(`Alternative dates found:\n${altText}`);
     }
 
@@ -277,10 +286,19 @@ async function sendAiMessage() {
   } catch (error) {
     console.error("AI chat error:", error);
     removeTypingIndicator();
-    appendAiMessage(
-      "assistant",
-      `Sorry, something went wrong: ${error.message || "Unable to contact the AI assistant."}`
-    );
+
+    const fallback = getOfflineFallbackReply(message, storedContext, pageContext);
+    const mergedFallbackContext = mergeContext(storedContext, fallback.context || {});
+    saveAiContext(mergedFallbackContext);
+
+    appendAiSystemNote(fallback.modeNotice);
+
+    const summary = summarizeContext(mergedFallbackContext);
+    if (summary) {
+      appendAiSystemNote(`Saved details: ${summary}`);
+    }
+
+    appendAiMessage("assistant", fallback.reply);
   } finally {
     sendBtn.disabled = false;
     sendBtn.textContent = "Send";
@@ -338,15 +356,44 @@ function summarizeContext(context = {}) {
 
   if (context.check_in && context.check_out) parts.push(`dates ${context.check_in} to ${context.check_out}`);
   if (context.guests) parts.push(`${context.guests} guest(s)`);
-  if (context.bed_count) parts.push(`${context.bed_count}+ bed(s)`);
-  if (context.view_type) parts.push(context.view_type);
-  if (context.aircon_type) parts.push(context.aircon_type);
-  if (context.bed_type) parts.push(context.bed_type);
-  if (context.max_price) parts.push(`budget ₱${context.max_price}`);
-  if (context.room_name) parts.push(`room ${context.room_name}`);
   if (context.payment_method) parts.push(`payment ${context.payment_method}`);
+  if (context.language_style) parts.push(`language ${context.language_style}`);
 
   return parts.join(", ");
+}
+
+function detectOfflineLanguage(message, context = {}) {
+  const text = String(message || "").toLowerCase();
+
+  const tagalogHints = [
+    "gusto", "kuwarto", "kwarto", "bisita", "mula", "hanggang", "petsa",
+    "bayad", "pwede", "puwede", "magkano", "saan", "kailan", "ako",
+    "po", "opo", "naman", "lang", "muna", "wala", "meron", "para",
+    "paano", "mag", "ng", "sa", "ito", "iyan", "pwede ba"
+  ];
+
+  const englishHints = [
+    "room", "guest", "guests", "payment", "book", "booking", "receipt",
+    "available", "price", "check-in", "check-out", "cash", "paypal",
+    "online", "date", "dates", "how", "where", "what"
+  ];
+
+  let tagalogScore = 0;
+  let englishScore = 0;
+
+  tagalogHints.forEach((word) => {
+    if (text.includes(word)) tagalogScore++;
+  });
+
+  englishHints.forEach((word) => {
+    if (text.includes(word)) englishScore++;
+  });
+
+  if (tagalogScore >= 2 && englishScore >= 2) return "taglish";
+  if (tagalogScore >= 2) return "tagalog";
+  if (englishScore >= 2) return "english";
+
+  return context.language_style || "english";
 }
 
 function appendAiMessage(role, text) {
@@ -358,6 +405,8 @@ function appendAiMessage(role, text) {
 
   const bubble = document.createElement("div");
   bubble.className = "ai-bubble";
+  bubble.dataset.originalText = text;
+  bubble.dataset.currentText = text;
 
   if (role === "assistant") {
     bubble.innerHTML = formatAiReply(text);
@@ -387,63 +436,127 @@ function appendReplyActions(wrapper, originalText) {
   speakBtn.textContent = "Read Aloud";
   speakBtn.style.cssText =
     "border:none;background:#e2e8f0;color:#0f172a;padding:6px 10px;border-radius:8px;font-size:0.82rem;font-weight:700;cursor:pointer;";
-  speakBtn.addEventListener("click", () => speakText(originalText));
+  speakBtn.addEventListener("click", () => speakText(getCurrentBubbleText(wrapper, originalText)));
 
-  const translateBtn = document.createElement("button");
-  translateBtn.type = "button";
-  translateBtn.textContent = "Translate to Tagalog";
-  translateBtn.style.cssText =
+  const translateTagalogBtn = document.createElement("button");
+  translateTagalogBtn.type = "button";
+  translateTagalogBtn.textContent = "Translate to Tagalog";
+  translateTagalogBtn.style.cssText =
     "border:none;background:#e2e8f0;color:#0f172a;padding:6px 10px;border-radius:8px;font-size:0.82rem;font-weight:700;cursor:pointer;";
 
-  let translated = false;
+  const translateTaglishBtn = document.createElement("button");
+  translateTaglishBtn.type = "button";
+  translateTaglishBtn.textContent = "Translate to Taglish";
+  translateTaglishBtn.style.cssText =
+    "border:none;background:#e2e8f0;color:#0f172a;padding:6px 10px;border-radius:8px;font-size:0.82rem;font-weight:700;cursor:pointer;";
+
+  let currentMode = "original";
   const bubble = wrapper.querySelector(".ai-bubble");
 
-  translateBtn.addEventListener("click", () => {
+  translateTagalogBtn.addEventListener("click", async () => {
     if (!bubble) return;
 
-    if (!translated) {
-      const translatedText = fallbackTranslateToTagalog(originalText);
-      bubble.innerHTML = formatAiReply(translatedText);
-      translateBtn.textContent = "Show Original";
-      translated = true;
-    } else {
+    if (currentMode === "tagalog") {
       bubble.innerHTML = formatAiReply(originalText);
-      translateBtn.textContent = "Translate to Tagalog";
-      translated = false;
+      bubble.dataset.currentText = originalText;
+      currentMode = "original";
+      translateTagalogBtn.textContent = "Translate to Tagalog";
+      translateTaglishBtn.textContent = "Translate to Taglish";
+      return;
+    }
+
+    translateTagalogBtn.disabled = true;
+    translateTaglishBtn.disabled = true;
+    translateTagalogBtn.textContent = "Translating...";
+
+    try {
+      const response = await fetch(`${AI_API_BASE}/ai/translate`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text: originalText }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Translation failed.");
+      }
+
+      const translatedText = data.translated_text || originalText;
+      bubble.innerHTML = formatAiReply(translatedText);
+      bubble.dataset.currentText = translatedText;
+      currentMode = "tagalog";
+      translateTagalogBtn.textContent = "Show Original";
+      translateTaglishBtn.textContent = "Translate to Taglish";
+    } catch (error) {
+      console.error("Tagalog translate error:", error);
+      appendAiSystemNote("Tagalog translation is unavailable right now.");
+      translateTagalogBtn.textContent = "Translate to Tagalog";
+    } finally {
+      translateTagalogBtn.disabled = false;
+      translateTaglishBtn.disabled = false;
+    }
+  });
+
+  translateTaglishBtn.addEventListener("click", async () => {
+    if (!bubble) return;
+
+    if (currentMode === "taglish") {
+      bubble.innerHTML = formatAiReply(originalText);
+      bubble.dataset.currentText = originalText;
+      currentMode = "original";
+      translateTaglishBtn.textContent = "Translate to Taglish";
+      translateTagalogBtn.textContent = "Translate to Tagalog";
+      return;
+    }
+
+    translateTagalogBtn.disabled = true;
+    translateTaglishBtn.disabled = true;
+    translateTaglishBtn.textContent = "Translating...";
+
+    try {
+      const response = await fetch(`${AI_API_BASE}/ai/translate-taglish`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text: originalText }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Translation failed.");
+      }
+
+      const translatedText = data.translated_text || originalText;
+      bubble.innerHTML = formatAiReply(translatedText);
+      bubble.dataset.currentText = translatedText;
+      currentMode = "taglish";
+      translateTaglishBtn.textContent = "Show Original";
+      translateTagalogBtn.textContent = "Translate to Tagalog";
+    } catch (error) {
+      console.error("Taglish translate error:", error);
+      appendAiSystemNote("Taglish translation is unavailable right now.");
+      translateTaglishBtn.textContent = "Translate to Taglish";
+    } finally {
+      translateTagalogBtn.disabled = false;
+      translateTaglishBtn.disabled = false;
     }
   });
 
   actions.appendChild(speakBtn);
-  actions.appendChild(translateBtn);
+  actions.appendChild(translateTagalogBtn);
+  actions.appendChild(translateTaglishBtn);
   wrapper.appendChild(actions);
 }
 
-function fallbackTranslateToTagalog(text) {
-  let output = String(text || "");
-  const replacements = [
-    [/room/gi, "kuwarto"],
-    [/rooms/gi, "mga kuwarto"],
-    [/guest/gi, "bisita"],
-    [/guests/gi, "mga bisita"],
-    [/check-in/gi, "petsa ng pag-check-in"],
-    [/check-out/gi, "petsa ng pag-check-out"],
-    [/payment/gi, "bayad"],
-    [/booking/gi, "booking"],
-    [/price per night/gi, "presyo bawat gabi"],
-    [/estimated total/gi, "tinatayang kabuuan"],
-    [/cash on arrival/gi, "cash pagdating"],
-    [/online payment/gi, "online payment"],
-    [/pool view/gi, "tanawin ng pool"],
-    [/aircon/gi, "aircon"],
-    [/available/gi, "available"],
-    [/Alternative dates/gi, "Mga alternatibong petsa"],
-  ];
-
-  replacements.forEach(([pattern, replacement]) => {
-    output = output.replace(pattern, replacement);
-  });
-
-  return output;
+function getCurrentBubbleText(wrapper, fallbackText) {
+  const bubble = wrapper.querySelector(".ai-bubble");
+  if (!bubble) return fallbackText;
+  return bubble.dataset.currentText || bubble.dataset.originalText || fallbackText;
 }
 
 function appendAiSystemNote(text) {
@@ -569,6 +682,246 @@ async function createBookingFromPreview(preview, button) {
   }
 }
 
+function getOfflineFallbackReply(message, storedContext = {}, pageContext = {}) {
+  const text = String(message || "").toLowerCase();
+  const context = {
+    ...storedContext,
+    ...pageContext,
+  };
+
+  const extracted = extractOfflineDetails(message);
+  const detectedLanguage = detectOfflineLanguage(message, context);
+  extracted.language_style = detectedLanguage;
+
+  const merged = mergeContext(context, extracted);
+
+  if (detectedLanguage === "tagalog") {
+    return getTagalogFallbackReply(text, merged);
+  }
+
+  if (detectedLanguage === "taglish") {
+    return getTaglishFallbackReply(text, merged);
+  }
+
+  return getEnglishFallbackReply(text, merged);
+}
+
+function getEnglishFallbackReply(text, merged) {
+  if (text.includes("hello") || text.includes("hi") || text.includes("hey")) {
+    return {
+      modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.",
+      reply: "Hello! I can still help in offline mode. You can ask about booking steps, payment methods, your bookings page, or tell me your dates and number of guests.",
+      context: merged,
+    };
+  }
+
+  if (text.includes("how to book") || text.includes("book room") || text.includes("booking process")) {
+    return {
+      modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.",
+      reply: "To book a room, open the Rooms page, choose a room, enter your check-in date, check-out date, number of guests, and payment method, then confirm the booking. After that, you can view the receipt in My Bookings.",
+      context: merged,
+    };
+  }
+
+  if (text.includes("payment") || text.includes("paypal") || text.includes("cash")) {
+    return {
+      modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.",
+      reply: "Available payment methods are Cash on Arrival and PayPal. If you choose PayPal, the booking can be saved with pending online payment status until it is confirmed.",
+      context: merged,
+    };
+  }
+
+  if (text.includes("my booking") || text.includes("my bookings") || text.includes("receipt")) {
+    return {
+      modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.",
+      reply: "You can open the My Bookings page to view your reservation history, booking status, and receipt.",
+      context: merged,
+    };
+  }
+
+  if (merged.check_in || merged.check_out || merged.guests) {
+    const missing = [];
+    if (!merged.check_in) missing.push("check-in date");
+    if (!merged.check_out) missing.push("check-out date");
+    if (!merged.guests) missing.push("number of guests");
+
+    if (missing.length) {
+      return {
+        modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.",
+        reply: `I saved part of your booking details. I still need your ${missing.join(", ")}. After that, you can continue on the Rooms page or Booking page.`,
+        context: merged,
+      };
+    }
+
+    return {
+      modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.",
+      reply: `I saved your booking details: check-in ${merged.check_in}, check-out ${merged.check_out}, and ${merged.guests} guest(s). Offline mode cannot check live room availability right now, but you can go to the Rooms page and choose the best room manually.`,
+      context: merged,
+    };
+  }
+
+  return {
+    modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.",
+    reply: "AI is temporarily unavailable, but I can still help with offline guidance. You can ask about booking steps, payment methods, receipts, My Bookings, or tell me your dates and number of guests.",
+    context: merged,
+  };
+}
+
+function getTagalogFallbackReply(text, merged) {
+  if (text.includes("hello") || text.includes("hi") || text.includes("hey") || text.includes("kumusta")) {
+    return {
+      modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
+      reply: "Hello! Makakatulong pa rin ako sa offline mode. Maaari kang magtanong tungkol sa booking steps, payment methods, My Bookings page, o ibigay ang iyong dates at bilang ng bisita.",
+      context: merged,
+    };
+  }
+
+  if (text.includes("paano mag book") || text.includes("paano mag-book") || text.includes("booking process") || text.includes("mag book")) {
+    return {
+      modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
+      reply: "Para mag-book ng room, buksan ang Rooms page, pumili ng room, ilagay ang check-in date, check-out date, bilang ng bisita, at payment method, pagkatapos ay i-confirm ang booking. Pagkatapos noon, makikita mo ang receipt sa My Bookings.",
+      context: merged,
+    };
+  }
+
+  if (text.includes("bayad") || text.includes("payment") || text.includes("paypal") || text.includes("cash")) {
+    return {
+      modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
+      reply: "Ang available na payment methods ay Cash on Arrival at PayPal. Kapag PayPal ang pinili mo, puwedeng ma-save ang booking bilang pending online payment habang hindi pa nakukumpirma.",
+      context: merged,
+    };
+  }
+
+  if (text.includes("my bookings") || text.includes("aking booking") || text.includes("resibo") || text.includes("receipt")) {
+    return {
+      modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
+      reply: "Maaari mong buksan ang My Bookings page para makita ang reservation history, booking status, at receipt mo.",
+      context: merged,
+    };
+  }
+
+  if (merged.check_in || merged.check_out || merged.guests) {
+    const missing = [];
+    if (!merged.check_in) missing.push("check-in date");
+    if (!merged.check_out) missing.push("check-out date");
+    if (!merged.guests) missing.push("bilang ng bisita");
+
+    if (missing.length) {
+      return {
+        modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
+        reply: `Na-save ko ang ilang booking details mo. Kailangan ko pa ang ${missing.join(", ")}. Pagkatapos noon, maaari kang magpatuloy sa Rooms page o Booking page.`,
+        context: merged,
+      };
+    }
+
+    return {
+      modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
+      reply: `Na-save ko ang booking details mo: check-in ${merged.check_in}, check-out ${merged.check_out}, at ${merged.guests} bisita. Hindi makakapag-check ng live room availability ang offline mode ngayon, pero maaari kang pumunta sa Rooms page at manual na pumili ng pinakamagandang room.`,
+      context: merged,
+    };
+  }
+
+  return {
+    modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
+    reply: "Pansamantalang hindi available ang AI, pero makakatulong pa rin ako gamit ang offline guidance. Maaari kang magtanong tungkol sa booking steps, payment methods, resibo, My Bookings, o sabihin ang iyong dates at bilang ng bisita.",
+    context: merged,
+  };
+}
+
+function getTaglishFallbackReply(text, merged) {
+  if (text.includes("hello") || text.includes("hi") || text.includes("hey") || text.includes("kumusta")) {
+    return {
+      modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
+      reply: "Hello! Makakatulong pa rin ako sa offline mode. Pwede kang magtanong tungkol sa booking steps, payment methods, My Bookings page, o ibigay ang dates at number of guests mo.",
+      context: merged,
+    };
+  }
+
+  if (text.includes("how to book") || text.includes("paano mag book") || text.includes("paano mag-book") || text.includes("booking process")) {
+    return {
+      modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
+      reply: "Para mag-book ng room, open mo ang Rooms page, pumili ng room, ilagay ang check-in date, check-out date, number of guests, at payment method, then confirm the booking. After that, makikita mo ang receipt sa My Bookings.",
+      context: merged,
+    };
+  }
+
+  if (text.includes("payment") || text.includes("bayad") || text.includes("paypal") || text.includes("cash")) {
+    return {
+      modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
+      reply: "Available na payment methods ay Cash on Arrival at PayPal. Kapag PayPal ang pinili mo, puwedeng ma-save ang booking as pending online payment habang hindi pa confirmed.",
+      context: merged,
+    };
+  }
+
+  if (text.includes("my booking") || text.includes("my bookings") || text.includes("receipt") || text.includes("resibo")) {
+    return {
+      modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
+      reply: "Pwede mong buksan ang My Bookings page para makita ang reservation history, booking status, at receipt mo.",
+      context: merged,
+    };
+  }
+
+  if (merged.check_in || merged.check_out || merged.guests) {
+    const missing = [];
+    if (!merged.check_in) missing.push("check-in date");
+    if (!merged.check_out) missing.push("check-out date");
+    if (!merged.guests) missing.push("number of guests");
+
+    if (missing.length) {
+      return {
+        modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
+        reply: `Na-save ko na ang part ng booking details mo. Kailangan ko pa ang ${missing.join(", ")}. After that, pwede ka nang magpatuloy sa Rooms page or Booking page.`,
+        context: merged,
+      };
+    }
+
+    return {
+      modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
+      reply: `Na-save ko ang booking details mo: check-in ${merged.check_in}, check-out ${merged.check_out}, at ${merged.guests} guest(s). Hindi makakapag-check ng live room availability ang offline mode ngayon, pero pwede kang pumunta sa Rooms page at manual na pumili ng best room.`,
+      context: merged,
+    };
+  }
+
+  return {
+    modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
+    reply: "Temporarily unavailable ang AI, pero makakatulong pa rin ako gamit ang offline guidance. Pwede kang magtanong tungkol sa booking steps, payment methods, receipt, My Bookings, o sabihin ang dates at number of guests mo.",
+    context: merged,
+  };
+}
+
+function extractOfflineDetails(message) {
+  const result = {
+    check_in: null,
+    check_out: null,
+    guests: null,
+    payment_method: null,
+    language_style: null,
+  };
+
+  const text = String(message || "");
+
+  const guestMatch = text.match(/(\d+)\s*(guest|guests|bisita)/i);
+  if (guestMatch) {
+    result.guests = Number(guestMatch[1]);
+  }
+
+  if (/paypal|online payment|pay online/i.test(text)) {
+    result.payment_method = "paypal";
+  } else if (/cash|cash on arrival/i.test(text)) {
+    result.payment_method = "cash";
+  }
+
+  const isoDates = text.match(/\b\d{4}-\d{2}-\d{2}\b/g);
+  if (isoDates && isoDates.length >= 1) {
+    result.check_in = isoDates[0];
+  }
+  if (isoDates && isoDates.length >= 2) {
+    result.check_out = isoDates[1];
+  }
+
+  return result;
+}
+
 function appendTypingIndicator() {
   const messages = document.getElementById("aiChatMessages");
   if (!messages) return;
@@ -643,7 +996,7 @@ function formatAiReply(text) {
   let html = "";
   let inList = false;
 
-  for (let rawLine of lines) {
+  for (const rawLine of lines) {
     const line = rawLine.trim();
 
     if (!line) {

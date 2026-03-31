@@ -103,6 +103,54 @@ function normalizePaymentMethod(value) {
   return null;
 }
 
+function normalizeLanguageStyle(value) {
+  const text = normalizeText(value);
+
+  if (!text) return null;
+  if (text.includes("taglish")) return "taglish";
+  if (text.includes("tagalog")) return "tagalog";
+  if (text.includes("english")) return "english";
+
+  return null;
+}
+
+function detectLanguageFromMessage(message) {
+  const text = normalizeText(message);
+  if (!text) return null;
+
+  const tagalogWords = [
+    "ako", "ikaw", "siya", "kami", "tayo", "kayo", "po", "opo", "naman",
+    "gusto", "pwede", "puwede", "kuwarto", "kwarto", "magkano", "kailan",
+    "saan", "petsa", "bayad", "bisita", "ilan", "meron", "wala", "naka",
+    "lang", "muna", "nga", "dito", "iyan", "yan", "ito", "para", "pa",
+    "booking ko", "galing", "tignan", "pakisabi", "pakibigyan"
+  ];
+
+  const englishWords = [
+    "room", "booking", "check-in", "check-out", "guest", "payment", "price",
+    "available", "recommend", "book", "cash", "online", "view", "aircon",
+    "nights", "date", "dates"
+  ];
+
+  let tagalogScore = 0;
+  let englishScore = 0;
+
+  tagalogWords.forEach((word) => {
+    if (text.includes(word)) tagalogScore++;
+  });
+
+  englishWords.forEach((word) => {
+    if (text.includes(word)) englishScore++;
+  });
+
+  if (tagalogScore >= 2 && englishScore >= 2) return "taglish";
+  if (tagalogScore >= 2 && englishScore === 0) return "tagalog";
+  if (englishScore >= 2 && tagalogScore === 0) return "english";
+  if (tagalogScore >= 1 && englishScore >= 1) return "taglish";
+
+  return null;
+}
+
 function mergeContext(existing = {}, extracted = {}) {
   return {
     check_in: cleanContextValue(extracted.check_in) ?? cleanContextValue(existing.check_in),
@@ -117,7 +165,10 @@ function mergeContext(existing = {}, extracted = {}) {
     room_id: cleanContextValue(extracted.room_id) ?? cleanContextValue(existing.room_id),
     intent: cleanContextValue(extracted.intent) ?? cleanContextValue(existing.intent),
     wants_booking: cleanContextValue(extracted.wants_booking) ?? cleanContextValue(existing.wants_booking),
-    language_style: cleanContextValue(extracted.language_style) ?? cleanContextValue(existing.language_style),
+    language_style:
+      normalizeLanguageStyle(extracted.language_style) ||
+      normalizeLanguageStyle(existing.language_style) ||
+      null,
     payment_method:
       normalizePaymentMethod(extracted.payment_method) ||
       normalizePaymentMethod(existing.payment_method) ||
@@ -338,6 +389,11 @@ Payment method rules:
 - If user says cash, cash on arrival, or pay in person, set payment_method to "cash".
 - If user says online payment, paypal, pay online, gcash, or card, set payment_method to "paypal".
 
+language_style rules:
+- Return "tagalog" if the message is mostly Tagalog.
+- Return "taglish" if the message is mixed Tagalog and English.
+- Return "english" if the message is mostly English.
+
 Allowed intent values:
 - ask_recommendation
 - ask_availability
@@ -349,11 +405,6 @@ Allowed intent values:
 Allowed aircon_type examples:
 - aircon
 - non-aircon
-
-language_style must be one of:
-- english
-- tagalog
-- taglish
 
 Current saved context:
 ${JSON.stringify(existingContext, null, 2)}
@@ -430,6 +481,11 @@ exports.chatWithGemini = async (req, res) => {
 
     const extractedContext = await extractStructuredIntent(message, requestContext);
     const mergedContext = mergeContext(requestContext, extractedContext);
+
+    const detectedLanguage = detectLanguageFromMessage(message);
+    if (!mergedContext.language_style && detectedLanguage) {
+      mergedContext.language_style = detectedLanguage;
+    }
 
     if (mergedContext.check_in) {
       mergedContext.check_in = ensureFutureDate(mergedContext.check_in);
@@ -525,10 +581,18 @@ exports.chatWithGemini = async (req, res) => {
         ? "Cash on arrival"
         : "Not provided";
 
+    const replyLanguage =
+      mergedContext.language_style === "tagalog"
+        ? "Reply in natural Tagalog."
+        : mergedContext.language_style === "taglish"
+        ? "Reply in natural Taglish."
+        : "Reply in clear English.";
+
     const finalPrompt = `
 You are SmartResort's friendly booking assistant.
-You can reply in English, Tagalog, or Taglish depending on the user's style.
 Be friendly, casual, and helpful like a resort staff assistant.
+
+${replyLanguage}
 
 Important rules:
 - Only use the room/system data provided below.
@@ -543,11 +607,7 @@ Important rules:
   3. guests
 - Payment method is optional until booking confirmation, but if missing and the user wants to book, ask whether they prefer cash on arrival or online payment via PayPal.
 - If the user says online payment, explain that the booking will be saved as pending online payment for now.
-- If the user already gave some preferences, remember them and use them.
-- If there are matching rooms, recommend the best 1 to 3 options only.
-- If there are no matching rooms, clearly say that and suggest other available dates if provided.
-- If booking preview is available, clearly tell the user that booking is ready and they can press the confirm booking button.
-- Keep replies practical, clear, and not too long.
+- Keep replies practical, clear, friendly, and not too long.
 - Mention price when helpful.
 - Mention why the room matches the user's request.
 
@@ -560,6 +620,7 @@ Live booking details:
 - Guests: ${mergedContext.guests || "Not provided"}
 - Nights: ${nights || "Not provided"}
 - Payment method: ${paymentMethodText}
+- Preferred language style: ${mergedContext.language_style || "english"}
 
 Matching room results:
 ${roomSummary}
@@ -597,6 +658,115 @@ ${message}
   }
 };
 
+exports.translateReplyToTagalog = async (req, res) => {
+  try {
+    const { text } = req.body;
+
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(500).json({
+        success: false,
+        message: "GEMINI_API_KEY is missing in .env",
+      });
+    }
+
+    if (!text || !String(text).trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Text is required for translation.",
+      });
+    }
+
+    const prompt = `
+Translate the following SmartResort AI assistant reply into natural, easy-to-understand Tagalog.
+
+Rules:
+- Keep the meaning exactly the same.
+- Keep dates, room names, prices, and booking details accurate.
+- Do not add information.
+- Do not remove important information.
+- Use natural Tagalog that a normal resort guest can easily understand.
+- Keep the tone friendly and helpful.
+- Do not use markdown symbols like ** or #.
+- Return only the translated text.
+
+Text:
+${text}
+`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+    });
+
+    return res.status(200).json({
+      success: true,
+      translated_text: response.text || "",
+    });
+  } catch (error) {
+    console.error("translateReplyToTagalog error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to translate reply.",
+      error: error.message,
+    });
+  }
+};
+
+exports.translateReplyToTaglish = async (req, res) => {
+  try {
+    const { text } = req.body;
+
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(500).json({
+        success: false,
+        message: "GEMINI_API_KEY is missing in .env",
+      });
+    }
+
+    if (!text || !String(text).trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Text is required for translation.",
+      });
+    }
+
+    const prompt = `
+Translate the following SmartResort AI assistant reply into natural Taglish.
+
+Rules:
+- Keep the meaning exactly the same.
+- Keep dates, room names, prices, and booking details accurate.
+- Do not add information.
+- Do not remove important information.
+- Use natural Taglish that normal Filipino resort guests can easily understand.
+- Blend English and Tagalog naturally.
+- Keep the tone friendly, casual, and helpful.
+- Do not use markdown symbols like ** or #.
+- Return only the translated text.
+
+Text:
+${text}
+`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+    });
+
+    return res.status(200).json({
+      success: true,
+      translated_text: response.text || "",
+    });
+  } catch (error) {
+    console.error("translateReplyToTaglish error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to translate reply to Taglish.",
+      error: error.message,
+    });
+  }
+};
+
 exports.createBookingFromChat = async (req, res) => {
   try {
     const {
@@ -616,7 +786,6 @@ exports.createBookingFromChat = async (req, res) => {
     }
 
     const startDate = new Date(check_in);
-    const endDate = new Date(check_out);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 

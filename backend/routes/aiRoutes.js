@@ -2,20 +2,15 @@ const express = require("express");
 const router = express.Router();
 
 const {
-  getAvailableRooms,
-  recommendRooms,
-  getRoomAlternativeDates,
-} = require("../controllers/aiController");
-
-const {
   chatWithGemini,
   createBookingFromChat,
+  translateReplyToTagalog,
+  translateReplyToTaglish,
 } = require("../controllers/geminiChatController");
 
-router.get("/available-rooms", getAvailableRooms);
-router.post("/recommend-rooms", recommendRooms);
-router.get("/room-alternative-dates/:roomId", getRoomAlternativeDates);
 router.post("/chat", chatWithGemini);
 router.post("/create-booking", createBookingFromChat);
+router.post("/translate", translateReplyToTagalog);
+router.post("/translate-taglish", translateReplyToTaglish);
 
 module.exports = router;
