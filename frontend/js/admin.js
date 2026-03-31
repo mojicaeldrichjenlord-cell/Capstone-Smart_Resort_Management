@@ -85,7 +85,7 @@ async function loadBookings() {
   try {
     tbody.innerHTML = `
       <tr>
-        <td colspan="13" class="table-message">Loading bookings...</td>
+        <td colspan="15" class="table-message">Loading bookings...</td>
       </tr>
     `;
 
@@ -103,7 +103,7 @@ async function loadBookings() {
     console.error("loadBookings error:", error);
     tbody.innerHTML = `
       <tr>
-        <td colspan="13" class="table-message">Failed to load bookings.</td>
+        <td colspan="15" class="table-message">Failed to load bookings.</td>
       </tr>
     `;
     showMessage(error.message || "Failed to load bookings.", "error");
@@ -179,7 +179,7 @@ function renderBookings(bookings) {
   if (!bookings.length) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="13" class="table-message">No bookings found.</td>
+        <td colspan="15" class="table-message">No bookings found.</td>
       </tr>
     `;
     return;
@@ -199,7 +199,9 @@ function renderBookings(bookings) {
           <td>${escapeHtml(booking.email || "N/A")}</td>
           <td>${escapeHtml(booking.room_name || "N/A")}</td>
           <td>${formatDate(booking.check_in)}</td>
+          <td>${formatTime(booking.check_in_time)}</td>
           <td>${formatDate(booking.check_out)}</td>
+          <td>${formatTime(booking.check_out_time)}</td>
           <td>${booking.guests || 0}</td>
           <td>
             <div class="status-badge status-${bookingStatus}">
@@ -217,17 +219,17 @@ function renderBookings(bookings) {
               </select>
             </div>
           </td>
-          <td>${capitalize(paymentMethod)}</td>
+          <td>${formatPaymentMethod(paymentMethod)}</td>
           <td>
             <div class="payment-badge payment-${paymentStatus}">
-              ${capitalize(paymentStatus)}
+              ${formatPaymentStatus(paymentStatus)}
             </div>
             <div style="margin-top:6px;">
               <select id="paymentStatus-${booking.id}">
                 ${PAYMENT_STATUSES.map(
                   (status) => `
                     <option value="${status}" ${paymentStatus === status ? "selected" : ""}>
-                      ${capitalize(status)}
+                      ${formatPaymentStatus(status)}
                     </option>
                   `
                 ).join("")}
@@ -326,11 +328,46 @@ function formatDate(dateValue) {
   return date.toLocaleDateString();
 }
 
+function formatTime(timeValue) {
+  if (!timeValue) return "N/A";
+
+  const timeText = String(timeValue).trim();
+  if (!timeText) return "N/A";
+
+  const parts = timeText.split(":");
+  if (parts.length < 2) return timeText;
+
+  let hours = Number(parts[0]);
+  const minutes = parts[1];
+
+  if (Number.isNaN(hours)) return timeText;
+
+  const suffix = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12;
+  if (hours === 0) hours = 12;
+
+  return `${hours}:${minutes} ${suffix}`;
+}
+
 function formatDateTime(dateValue) {
   if (!dateValue) return "N/A";
   const date = new Date(dateValue);
   if (Number.isNaN(date.getTime())) return "N/A";
   return date.toLocaleString();
+}
+
+function formatPaymentMethod(method) {
+  if (method === "paypal") return "PayPal";
+  if (method === "cash") return "Cash";
+  return capitalize(method);
+}
+
+function formatPaymentStatus(status) {
+  if (status === "pending") return "Pending";
+  if (status === "unpaid") return "Unpaid";
+  if (status === "paid") return "Paid";
+  if (status === "refunded") return "Refunded";
+  return capitalize(status);
 }
 
 function capitalize(text) {

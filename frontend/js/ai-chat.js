@@ -100,7 +100,7 @@ function setupSpeechRecognition() {
     updateMicButton();
   };
 
-  aiRecognition.onend = async () => {
+  aiRecognition.onend = () => {
     aiIsListening = false;
     updateMicButton();
 
@@ -115,18 +115,8 @@ function setupSpeechRecognition() {
       return;
     }
 
-    if (aiStoppedManually && aiSendAfterStop) {
-      aiStoppedManually = false;
-      aiSendAfterStop = false;
-
-      const input = document.getElementById("aiChatInput");
-      if (input && input.value.trim()) {
-        await sendAiMessage();
-      }
-    } else {
-      aiStoppedManually = false;
-      aiSendAfterStop = false;
-    }
+    aiStoppedManually = false;
+    aiSendAfterStop = false;
   };
 
   aiRecognition.onerror = (event) => {
@@ -174,7 +164,7 @@ function toggleVoiceInput() {
   }
 
   if (aiShouldKeepListening) {
-    stopVoiceInput(true);
+    stopVoiceInput(false);
   } else {
     startVoiceInput();
   }
@@ -215,7 +205,7 @@ function updateMicButton() {
   const active = aiShouldKeepListening || aiIsListening;
   micBtn.textContent = active ? "⏹" : "🎤";
   micBtn.classList.toggle("active-voice-btn", active);
-  micBtn.title = active ? "Stop mic and send" : "Voice input";
+  micBtn.title = active ? "Stop voice input" : "Voice input";
 }
 
 async function sendAiMessage() {
@@ -307,16 +297,34 @@ async function sendAiMessage() {
 
 function getAiPageContext() {
   const checkIn = document.getElementById("checkIn");
+  const checkInTime = document.getElementById("checkInTime");
   const checkOut = document.getElementById("checkOut");
+  const checkOutTime = document.getElementById("checkOutTime");
   const guests = document.getElementById("guests");
 
   const context = {};
 
   if (checkIn && checkIn.value) context.check_in = checkIn.value;
+  if (checkInTime && checkInTime.value) context.check_in_time = normalizeTimeForContext(checkInTime.value);
   if (checkOut && checkOut.value) context.check_out = checkOut.value;
+  if (checkOutTime && checkOutTime.value) context.check_out_time = normalizeTimeForContext(checkOutTime.value);
   if (guests && guests.value) context.guests = Number(guests.value);
 
   return context;
+}
+
+function normalizeTimeForContext(value) {
+  const text = String(value || "").trim();
+  if (!text) return null;
+
+  const parts = text.split(":");
+  if (parts.length < 2) return null;
+
+  const hours = String(parts[0]).padStart(2, "0");
+  const minutes = String(parts[1]).padStart(2, "0");
+  const seconds = String(parts[2] || "00").padStart(2, "0");
+
+  return `${hours}:${minutes}:${seconds}`;
 }
 
 function getStoredAiContext() {
@@ -335,7 +343,9 @@ function saveAiContext(context) {
 function mergeContext(oldContext = {}, newContext = {}) {
   return {
     check_in: newContext.check_in ?? oldContext.check_in ?? null,
+    check_in_time: newContext.check_in_time ?? oldContext.check_in_time ?? null,
     check_out: newContext.check_out ?? oldContext.check_out ?? null,
+    check_out_time: newContext.check_out_time ?? oldContext.check_out_time ?? null,
     guests: newContext.guests ?? oldContext.guests ?? null,
     bed_count: newContext.bed_count ?? oldContext.bed_count ?? null,
     view_type: newContext.view_type ?? oldContext.view_type ?? null,
@@ -354,7 +364,15 @@ function mergeContext(oldContext = {}, newContext = {}) {
 function summarizeContext(context = {}) {
   const parts = [];
 
-  if (context.check_in && context.check_out) parts.push(`dates ${context.check_in} to ${context.check_out}`);
+  if (context.check_in && context.check_out) {
+    parts.push(`dates ${context.check_in} to ${context.check_out}`);
+  }
+  if (context.check_in_time) {
+    parts.push(`check-in time ${formatTime(context.check_in_time)}`);
+  }
+  if (context.check_out_time) {
+    parts.push(`check-out time ${formatTime(context.check_out_time)}`);
+  }
   if (context.guests) parts.push(`${context.guests} guest(s)`);
   if (context.payment_method) parts.push(`payment ${context.payment_method}`);
   if (context.language_style) parts.push(`language ${context.language_style}`);
@@ -369,13 +387,13 @@ function detectOfflineLanguage(message, context = {}) {
     "gusto", "kuwarto", "kwarto", "bisita", "mula", "hanggang", "petsa",
     "bayad", "pwede", "puwede", "magkano", "saan", "kailan", "ako",
     "po", "opo", "naman", "lang", "muna", "wala", "meron", "para",
-    "paano", "mag", "ng", "sa", "ito", "iyan", "pwede ba"
+    "paano", "mag", "ng", "sa", "ito", "iyan", "pwede ba", "oras"
   ];
 
   const englishHints = [
     "room", "guest", "guests", "payment", "book", "booking", "receipt",
     "available", "price", "check-in", "check-out", "cash", "paypal",
-    "online", "date", "dates", "how", "where", "what"
+    "online", "date", "dates", "how", "where", "what", "time"
   ];
 
   let tagalogScore = 0;
@@ -608,8 +626,10 @@ function appendBookingPreviewCard(preview) {
     </div>
     <div style="font-size:0.94rem;line-height:1.7;">
       <div><strong>Room:</strong> ${escapeHtml(preview.room_name)}</div>
-      <div><strong>Check-in:</strong> ${escapeHtml(preview.check_in)}</div>
-      <div><strong>Check-out:</strong> ${escapeHtml(preview.check_out)}</div>
+      <div><strong>Check-in Date:</strong> ${escapeHtml(preview.check_in)}</div>
+      <div><strong>Check-in Time:</strong> ${escapeHtml(formatTime(preview.check_in_time))}</div>
+      <div><strong>Check-out Date:</strong> ${escapeHtml(preview.check_out)}</div>
+      <div><strong>Check-out Time:</strong> ${escapeHtml(formatTime(preview.check_out_time))}</div>
       <div><strong>Guests:</strong> ${preview.guests}</div>
       <div><strong>Nights:</strong> ${preview.nights}</div>
       <div><strong>Payment:</strong> ${escapeHtml(paymentLabel)}</div>
@@ -656,7 +676,9 @@ async function createBookingFromPreview(preview, button) {
         user_id: user.id,
         room_id: preview.room_id,
         check_in: preview.check_in,
+        check_in_time: preview.check_in_time,
         check_out: preview.check_out,
+        check_out_time: preview.check_out_time,
         guests: preview.guests,
         payment_method: preview.payment_method || "cash",
       }),
@@ -710,7 +732,7 @@ function getEnglishFallbackReply(text, merged) {
   if (text.includes("hello") || text.includes("hi") || text.includes("hey")) {
     return {
       modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.",
-      reply: "Hello! I can still help in offline mode. You can ask about booking steps, payment methods, your bookings page, or tell me your dates and number of guests.",
+      reply: "Hello! I can still help in offline mode. You can ask about booking steps, payment methods, your bookings page, or tell me your dates, time, and number of guests.",
       context: merged,
     };
   }
@@ -718,7 +740,7 @@ function getEnglishFallbackReply(text, merged) {
   if (text.includes("how to book") || text.includes("book room") || text.includes("booking process")) {
     return {
       modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.",
-      reply: "To book a room, open the Rooms page, choose a room, enter your check-in date, check-out date, number of guests, and payment method, then confirm the booking. After that, you can view the receipt in My Bookings.",
+      reply: "To book a room, open the Rooms page, choose a room, enter your check-in date, check-in time, check-out date, check-out time, number of guests, and payment method, then confirm the booking. After that, you can view the receipt in My Bookings.",
       context: merged,
     };
   }
@@ -739,10 +761,12 @@ function getEnglishFallbackReply(text, merged) {
     };
   }
 
-  if (merged.check_in || merged.check_out || merged.guests) {
+  if (merged.check_in || merged.check_out || merged.guests || merged.check_in_time || merged.check_out_time) {
     const missing = [];
     if (!merged.check_in) missing.push("check-in date");
+    if (!merged.check_in_time) missing.push("check-in time");
     if (!merged.check_out) missing.push("check-out date");
+    if (!merged.check_out_time) missing.push("check-out time");
     if (!merged.guests) missing.push("number of guests");
 
     if (missing.length) {
@@ -755,14 +779,14 @@ function getEnglishFallbackReply(text, merged) {
 
     return {
       modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.",
-      reply: `I saved your booking details: check-in ${merged.check_in}, check-out ${merged.check_out}, and ${merged.guests} guest(s). Offline mode cannot check live room availability right now, but you can go to the Rooms page and choose the best room manually.`,
+      reply: `I saved your booking details: check-in ${merged.check_in} at ${formatTime(merged.check_in_time)}, check-out ${merged.check_out} at ${formatTime(merged.check_out_time)}, and ${merged.guests} guest(s). Offline mode cannot check live room availability right now, but you can go to the Rooms page and choose the best room manually.`,
       context: merged,
     };
   }
 
   return {
     modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.",
-    reply: "AI is temporarily unavailable, but I can still help with offline guidance. You can ask about booking steps, payment methods, receipts, My Bookings, or tell me your dates and number of guests.",
+    reply: "AI is temporarily unavailable, but I can still help with offline guidance. You can ask about booking steps, payment methods, receipts, My Bookings, or tell me your dates, time, and number of guests.",
     context: merged,
   };
 }
@@ -771,7 +795,7 @@ function getTagalogFallbackReply(text, merged) {
   if (text.includes("hello") || text.includes("hi") || text.includes("hey") || text.includes("kumusta")) {
     return {
       modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
-      reply: "Hello! Makakatulong pa rin ako sa offline mode. Maaari kang magtanong tungkol sa booking steps, payment methods, My Bookings page, o ibigay ang iyong dates at bilang ng bisita.",
+      reply: "Hello! Makakatulong pa rin ako sa offline mode. Maaari kang magtanong tungkol sa booking steps, payment methods, My Bookings page, o ibigay ang iyong dates, oras, at bilang ng bisita.",
       context: merged,
     };
   }
@@ -779,7 +803,7 @@ function getTagalogFallbackReply(text, merged) {
   if (text.includes("paano mag book") || text.includes("paano mag-book") || text.includes("booking process") || text.includes("mag book")) {
     return {
       modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
-      reply: "Para mag-book ng room, buksan ang Rooms page, pumili ng room, ilagay ang check-in date, check-out date, bilang ng bisita, at payment method, pagkatapos ay i-confirm ang booking. Pagkatapos noon, makikita mo ang receipt sa My Bookings.",
+      reply: "Para mag-book ng room, buksan ang Rooms page, pumili ng room, ilagay ang check-in date, check-in time, check-out date, check-out time, bilang ng bisita, at payment method, pagkatapos ay i-confirm ang booking. Pagkatapos noon, makikita mo ang receipt sa My Bookings.",
       context: merged,
     };
   }
@@ -800,10 +824,12 @@ function getTagalogFallbackReply(text, merged) {
     };
   }
 
-  if (merged.check_in || merged.check_out || merged.guests) {
+  if (merged.check_in || merged.check_out || merged.guests || merged.check_in_time || merged.check_out_time) {
     const missing = [];
     if (!merged.check_in) missing.push("check-in date");
+    if (!merged.check_in_time) missing.push("check-in time");
     if (!merged.check_out) missing.push("check-out date");
+    if (!merged.check_out_time) missing.push("check-out time");
     if (!merged.guests) missing.push("bilang ng bisita");
 
     if (missing.length) {
@@ -816,14 +842,14 @@ function getTagalogFallbackReply(text, merged) {
 
     return {
       modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
-      reply: `Na-save ko ang booking details mo: check-in ${merged.check_in}, check-out ${merged.check_out}, at ${merged.guests} bisita. Hindi makakapag-check ng live room availability ang offline mode ngayon, pero maaari kang pumunta sa Rooms page at manual na pumili ng pinakamagandang room.`,
+      reply: `Na-save ko ang booking details mo: check-in ${merged.check_in} nang ${formatTime(merged.check_in_time)}, check-out ${merged.check_out} nang ${formatTime(merged.check_out_time)}, at ${merged.guests} bisita. Hindi makakapag-check ng live room availability ang offline mode ngayon, pero maaari kang pumunta sa Rooms page at manual na pumili ng pinakamagandang room.`,
       context: merged,
     };
   }
 
   return {
     modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
-    reply: "Pansamantalang hindi available ang AI, pero makakatulong pa rin ako gamit ang offline guidance. Maaari kang magtanong tungkol sa booking steps, payment methods, resibo, My Bookings, o sabihin ang iyong dates at bilang ng bisita.",
+    reply: "Pansamantalang hindi available ang AI, pero makakatulong pa rin ako gamit ang offline guidance. Maaari kang magtanong tungkol sa booking steps, payment methods, resibo, My Bookings, o sabihin ang iyong dates, oras, at bilang ng bisita.",
     context: merged,
   };
 }
@@ -832,7 +858,7 @@ function getTaglishFallbackReply(text, merged) {
   if (text.includes("hello") || text.includes("hi") || text.includes("hey") || text.includes("kumusta")) {
     return {
       modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
-      reply: "Hello! Makakatulong pa rin ako sa offline mode. Pwede kang magtanong tungkol sa booking steps, payment methods, My Bookings page, o ibigay ang dates at number of guests mo.",
+      reply: "Hello! Makakatulong pa rin ako sa offline mode. Pwede kang magtanong tungkol sa booking steps, payment methods, My Bookings page, o ibigay ang dates, time, at number of guests mo.",
       context: merged,
     };
   }
@@ -840,7 +866,7 @@ function getTaglishFallbackReply(text, merged) {
   if (text.includes("how to book") || text.includes("paano mag book") || text.includes("paano mag-book") || text.includes("booking process")) {
     return {
       modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
-      reply: "Para mag-book ng room, open mo ang Rooms page, pumili ng room, ilagay ang check-in date, check-out date, number of guests, at payment method, then confirm the booking. After that, makikita mo ang receipt sa My Bookings.",
+      reply: "Para mag-book ng room, open mo ang Rooms page, pumili ng room, ilagay ang check-in date, check-in time, check-out date, check-out time, number of guests, at payment method, then confirm the booking. After that, makikita mo ang receipt sa My Bookings.",
       context: merged,
     };
   }
@@ -861,10 +887,12 @@ function getTaglishFallbackReply(text, merged) {
     };
   }
 
-  if (merged.check_in || merged.check_out || merged.guests) {
+  if (merged.check_in || merged.check_out || merged.guests || merged.check_in_time || merged.check_out_time) {
     const missing = [];
     if (!merged.check_in) missing.push("check-in date");
+    if (!merged.check_in_time) missing.push("check-in time");
     if (!merged.check_out) missing.push("check-out date");
+    if (!merged.check_out_time) missing.push("check-out time");
     if (!merged.guests) missing.push("number of guests");
 
     if (missing.length) {
@@ -877,14 +905,14 @@ function getTaglishFallbackReply(text, merged) {
 
     return {
       modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
-      reply: `Na-save ko ang booking details mo: check-in ${merged.check_in}, check-out ${merged.check_out}, at ${merged.guests} guest(s). Hindi makakapag-check ng live room availability ang offline mode ngayon, pero pwede kang pumunta sa Rooms page at manual na pumili ng best room.`,
+      reply: `Na-save ko ang booking details mo: check-in ${merged.check_in} at ${formatTime(merged.check_in_time)}, check-out ${merged.check_out} at ${formatTime(merged.check_out_time)}, at ${merged.guests} guest(s). Hindi makakapag-check ng live room availability ang offline mode ngayon, pero pwede kang pumunta sa Rooms page at manual na pumili ng best room.`,
       context: merged,
     };
   }
 
   return {
     modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
-    reply: "Temporarily unavailable ang AI, pero makakatulong pa rin ako gamit ang offline guidance. Pwede kang magtanong tungkol sa booking steps, payment methods, receipt, My Bookings, o sabihin ang dates at number of guests mo.",
+    reply: "Temporarily unavailable ang AI, pero makakatulong pa rin ako gamit ang offline guidance. Pwede kang magtanong tungkol sa booking steps, payment methods, receipt, My Bookings, o sabihin ang dates, time, at number of guests mo.",
     context: merged,
   };
 }
@@ -892,7 +920,9 @@ function getTaglishFallbackReply(text, merged) {
 function extractOfflineDetails(message) {
   const result = {
     check_in: null,
+    check_in_time: null,
     check_out: null,
+    check_out_time: null,
     guests: null,
     payment_method: null,
     language_style: null,
@@ -917,6 +947,14 @@ function extractOfflineDetails(message) {
   }
   if (isoDates && isoDates.length >= 2) {
     result.check_out = isoDates[1];
+  }
+
+  const timeMatches = text.match(/\b([01]?\d|2[0-3]):[0-5]\d\b/g);
+  if (timeMatches && timeMatches.length >= 1) {
+    result.check_in_time = normalizeTimeForContext(timeMatches[0]);
+  }
+  if (timeMatches && timeMatches.length >= 2) {
+    result.check_out_time = normalizeTimeForContext(timeMatches[1]);
   }
 
   return result;
@@ -1034,6 +1072,27 @@ function formatMoney(value) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+}
+
+function formatTime(timeValue) {
+  if (!timeValue) return "N/A";
+
+  const timeText = String(timeValue).trim();
+  if (!timeText) return "N/A";
+
+  const parts = timeText.split(":");
+  if (parts.length < 2) return timeText;
+
+  let hours = Number(parts[0]);
+  const minutes = parts[1];
+
+  if (Number.isNaN(hours)) return timeText;
+
+  const suffix = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12;
+  if (hours === 0) hours = 12;
+
+  return `${hours}:${minutes} ${suffix}`;
 }
 
 function escapeHtml(value) {

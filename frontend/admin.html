@@ -289,22 +289,28 @@
     .admin-table td:nth-child(7) { width: 6%; }
 
     .admin-table th:nth-child(8),
-    .admin-table td:nth-child(8) { width: 4%; }
+    .admin-table td:nth-child(8) { width: 6%; }
 
     .admin-table th:nth-child(9),
-    .admin-table td:nth-child(9) { width: 8%; }
+    .admin-table td:nth-child(9) { width: 6%; }
 
     .admin-table th:nth-child(10),
-    .admin-table td:nth-child(10) { width: 8%; }
+    .admin-table td:nth-child(10) { width: 4%; }
 
     .admin-table th:nth-child(11),
     .admin-table td:nth-child(11) { width: 8%; }
 
     .admin-table th:nth-child(12),
-    .admin-table td:nth-child(12) { width: 7%; }
+    .admin-table td:nth-child(12) { width: 8%; }
 
     .admin-table th:nth-child(13),
-    .admin-table td:nth-child(13) { width: 9%; }
+    .admin-table td:nth-child(13) { width: 8%; }
+
+    .admin-table th:nth-child(14),
+    .admin-table td:nth-child(14) { width: 7%; }
+
+    .admin-table th:nth-child(15),
+    .admin-table td:nth-child(15) { width: 9%; }
 
     @media (max-width: 1200px) {
       .table-wrapper {
@@ -312,7 +318,7 @@
       }
 
       .admin-table {
-        min-width: 1200px;
+        min-width: 1450px;
       }
     }
 
@@ -341,7 +347,7 @@
       }
 
       .admin-table {
-        min-width: 1100px;
+        min-width: 1450px;
       }
     }
   </style>
@@ -438,7 +444,7 @@
       <div class="table-top-bar">
         <div>
           <h2>All Bookings</h2>
-          <p>Guest phone number is now included in the table.</p>
+          <p>Guest phone number, check-in time, and check-out time are included in the table.</p>
         </div>
         <button id="refreshBtn" class="refresh-btn">Refresh</button>
       </div>
@@ -452,8 +458,10 @@
               <th>Phone</th>
               <th>Email</th>
               <th>Room</th>
-              <th>Check In</th>
-              <th>Check Out</th>
+              <th>Check In Date</th>
+              <th>Check In Time</th>
+              <th>Check Out Date</th>
+              <th>Check Out Time</th>
               <th>Guests</th>
               <th>Booking Status</th>
               <th>Payment Method</th>
@@ -464,7 +472,7 @@
           </thead>
           <tbody id="adminBookingsTableBody">
             <tr>
-              <td colspan="13" class="table-message">Loading bookings...</td>
+              <td colspan="15" class="table-message">Loading bookings...</td>
             </tr>
           </tbody>
         </table>

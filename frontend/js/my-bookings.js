@@ -62,20 +62,22 @@ async function loadMyBookings(userId) {
     container.innerHTML = bookings
       .map((booking) => {
         const status = String(booking.status || "pending").toLowerCase();
-        const paymentMethod = booking.payment_method || "cash";
-        const paymentStatus = booking.payment_status || "unpaid";
+        const paymentMethod = String(booking.payment_method || "cash").toLowerCase();
+        const paymentStatus = String(booking.payment_status || "unpaid").toLowerCase();
 
         return `
           <div class="admin-card" style="margin-bottom: 20px;">
             <h3>${escapeHtml(booking.room_name || "Room")}</h3>
 
             <p><strong>Booking ID:</strong> #${booking.id}</p>
-            <p><strong>Check In:</strong> ${formatDate(booking.check_in)}</p>
-            <p><strong>Check Out:</strong> ${formatDate(booking.check_out)}</p>
+            <p><strong>Check In Date:</strong> ${formatDate(booking.check_in)}</p>
+            <p><strong>Check In Time:</strong> ${formatTime(booking.check_in_time)}</p>
+            <p><strong>Check Out Date:</strong> ${formatDate(booking.check_out)}</p>
+            <p><strong>Check Out Time:</strong> ${formatTime(booking.check_out_time)}</p>
             <p><strong>Guests:</strong> ${booking.guests || 0}</p>
             <p><strong>Status:</strong> ${capitalize(status)}</p>
-            <p><strong>Payment Method:</strong> ${capitalize(paymentMethod)}</p>
-            <p><strong>Payment Status:</strong> ${escapeHtml(paymentStatus)}</p>
+            <p><strong>Payment Method:</strong> ${formatPaymentMethod(paymentMethod)}</p>
+            <p><strong>Payment Status:</strong> ${formatPaymentStatus(paymentStatus)}</p>
             <p><strong>Created:</strong> ${formatDateTime(booking.created_at)}</p>
 
             <div class="admin-actions">
@@ -152,11 +154,43 @@ function formatDate(dateValue) {
   return date.toLocaleDateString();
 }
 
+function formatTime(timeValue) {
+  if (!timeValue) return "N/A";
+
+  const timeText = String(timeValue).trim();
+  if (!timeText) return "N/A";
+
+  const parts = timeText.split(":");
+  if (parts.length < 2) return timeText;
+
+  let hours = Number(parts[0]);
+  const minutes = parts[1];
+
+  if (Number.isNaN(hours)) return timeText;
+
+  const suffix = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12;
+  if (hours === 0) hours = 12;
+
+  return `${hours}:${minutes} ${suffix}`;
+}
+
 function formatDateTime(dateValue) {
   if (!dateValue) return "N/A";
   const date = new Date(dateValue);
   if (Number.isNaN(date.getTime())) return "N/A";
   return date.toLocaleString();
+}
+
+function formatPaymentMethod(method) {
+  if (method === "paypal") return "PayPal";
+  if (method === "cash") return "Cash";
+  return capitalize(method);
+}
+
+function formatPaymentStatus(status) {
+  if (status === "pending") return "Pending online payment";
+  return capitalize(status);
 }
 
 function capitalize(text) {

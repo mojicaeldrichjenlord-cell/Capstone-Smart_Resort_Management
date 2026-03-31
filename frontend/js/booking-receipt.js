@@ -108,18 +108,28 @@ async function loadReceipt() {
         </div>
 
         <div class="receipt-item">
-          <label>Check In</label>
+          <label>Check In Date</label>
           <div class="value">${formatDate(booking.check_in)}</div>
         </div>
 
         <div class="receipt-item">
-          <label>Check Out</label>
+          <label>Check In Time</label>
+          <div class="value">${formatTime(booking.check_in_time)}</div>
+        </div>
+
+        <div class="receipt-item">
+          <label>Check Out Date</label>
           <div class="value">${formatDate(booking.check_out)}</div>
         </div>
 
         <div class="receipt-item">
+          <label>Check Out Time</label>
+          <div class="value">${formatTime(booking.check_out_time)}</div>
+        </div>
+
+        <div class="receipt-item">
           <label>Payment Method</label>
-          <div class="value">${capitalize(booking.payment_method || "cash")}</div>
+          <div class="value">${formatPaymentMethod(booking.payment_method || "cash")}</div>
         </div>
 
         <div class="receipt-item">
@@ -148,6 +158,20 @@ async function loadReceipt() {
   }
 }
 
+function formatPaymentMethod(method) {
+  const value = String(method || "").toLowerCase();
+
+  if (value === "paypal") {
+    return "PayPal";
+  }
+
+  if (value === "cash") {
+    return "Cash";
+  }
+
+  return capitalize(value);
+}
+
 function formatPaymentStatus(status) {
   const value = String(status || "").toLowerCase();
 
@@ -163,6 +187,27 @@ function formatDate(dateValue) {
   const date = new Date(dateValue);
   if (Number.isNaN(date.getTime())) return "N/A";
   return date.toLocaleDateString();
+}
+
+function formatTime(timeValue) {
+  if (!timeValue) return "N/A";
+
+  const timeText = String(timeValue).trim();
+  if (!timeText) return "N/A";
+
+  const parts = timeText.split(":");
+  if (parts.length < 2) return timeText;
+
+  let hours = Number(parts[0]);
+  const minutes = parts[1];
+
+  if (Number.isNaN(hours)) return timeText;
+
+  const suffix = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12;
+  if (hours === 0) hours = 12;
+
+  return `${hours}:${minutes} ${suffix}`;
 }
 
 function formatDateTime(dateValue) {

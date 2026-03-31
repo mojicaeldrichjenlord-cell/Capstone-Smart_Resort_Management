@@ -10,6 +10,8 @@ const roomPriceInput = document.getElementById("roomPrice");
 const roomCapacityInput = document.getElementById("roomCapacity");
 const checkInInput = document.getElementById("checkIn");
 const checkOutInput = document.getElementById("checkOut");
+const checkInTimeInput = document.getElementById("checkInTime");
+const checkOutTimeInput = document.getElementById("checkOutTime");
 const guestsInput = document.getElementById("guests");
 const paymentMethodInput = document.getElementById("paymentMethod");
 const totalNightsText = document.getElementById("totalNights");
@@ -25,6 +27,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   setupLogout();
+  setDefaultTimes();
   await loadSelectedRoom();
   setupDateValidation();
   setupSummaryListeners();
@@ -53,6 +56,16 @@ function setupLogout() {
       }, 700);
     });
   });
+}
+
+function setDefaultTimes() {
+  if (checkInTimeInput && !checkInTimeInput.value) {
+    checkInTimeInput.value = "14:00";
+  }
+
+  if (checkOutTimeInput && !checkOutTimeInput.value) {
+    checkOutTimeInput.value = "12:00";
+  }
 }
 
 async function loadSelectedRoom() {
@@ -136,7 +149,10 @@ function setupSummaryListeners() {
 
     if (Number(guestsInput.value) > maxCapacity) {
       guestsInput.value = maxCapacity;
-      showMessage(`Maximum guests allowed for this room is ${maxCapacity}.`, "error");
+      showMessage(
+        `Maximum guests allowed for this room is ${maxCapacity}.`,
+        "error"
+      );
     } else {
       bookingMessage.textContent = "";
     }
@@ -145,6 +161,14 @@ function setupSummaryListeners() {
   });
 
   paymentMethodInput.addEventListener("change", updateBookingSummary);
+
+  if (checkInTimeInput) {
+    checkInTimeInput.addEventListener("input", updateBookingSummary);
+  }
+
+  if (checkOutTimeInput) {
+    checkOutTimeInput.addEventListener("input", updateBookingSummary);
+  }
 }
 
 function updateBookingSummary() {
@@ -193,6 +217,8 @@ function setupBookingForm(user) {
 
     const check_in = checkInInput.value;
     const check_out = checkOutInput.value;
+    const check_in_time = checkInTimeInput ? checkInTimeInput.value : "";
+    const check_out_time = checkOutTimeInput ? checkOutTimeInput.value : "";
     const guests = Number(guestsInput.value);
     const payment_method = paymentMethodInput.value;
     const maxCapacity = Number(selectedRoom.capacity || 0);
@@ -200,8 +226,15 @@ function setupBookingForm(user) {
     const today = formatDateForInput(new Date());
     const minimumCheckOut = addDays(check_in, 1);
 
-    if (!check_in || !check_out || !guests || !payment_method) {
-      showMessage("Please fill in all fields.", "error");
+    if (
+      !check_in ||
+      !check_out ||
+      !check_in_time ||
+      !check_out_time ||
+      !guests ||
+      !payment_method
+    ) {
+      showMessage("Please fill in all fields, including check-in and check-out time.", "error");
       return;
     }
 
@@ -211,12 +244,18 @@ function setupBookingForm(user) {
     }
 
     if (check_out < minimumCheckOut) {
-      showMessage("Check-out date must be at least one day after check-in.", "error");
+      showMessage(
+        "Check-out date must be at least one day after check-in.",
+        "error"
+      );
       return;
     }
 
     if (guests > maxCapacity) {
-      showMessage(`This room can only accommodate up to ${maxCapacity} guests.`, "error");
+      showMessage(
+        `This room can only accommodate up to ${maxCapacity} guests.`,
+        "error"
+      );
       return;
     }
 
@@ -225,6 +264,8 @@ function setupBookingForm(user) {
       room_id: selectedRoom.id,
       check_in,
       check_out,
+      check_in_time,
+      check_out_time,
       guests,
       payment_method,
       payment_status: payment_method === "paypal" ? "pending" : "unpaid",
