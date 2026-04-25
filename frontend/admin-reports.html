@@ -3,50 +3,84 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin Reports - SmartResort</title>
+  <title>Admin Reports | SmartResort</title>
   <link rel="stylesheet" href="css/style.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
-    .reports-wrapper {
-      width: 95%;
-      max-width: 1400px;
-      margin: 0 auto 40px;
+    .reports-shell {
+      width: 94%;
+      max-width: 1450px;
+      margin: 0 auto 38px;
     }
 
-    .top-page-actions {
+    .admin-top-link {
       display: flex;
       justify-content: flex-start;
-      margin-top: 30px;
-      margin-bottom: 18px;
+      margin: 10px 0 18px;
     }
 
     .back-btn {
-      display: inline-block;
+      display: inline-flex;
       text-decoration: none;
-      background: #e2e8f0;
+      background: rgba(255,255,255,0.96);
       color: #0f172a;
-      padding: 10px 16px;
-      border-radius: 10px;
-      font-weight: 700;
+      padding: 11px 18px;
+      border-radius: 999px;
+      font-weight: 800;
       transition: 0.2s ease;
+      box-shadow: 0 10px 20px rgba(15,23,42,0.06);
+      border: 1px solid rgba(219,231,239,0.92);
     }
 
     .back-btn:hover {
-      background: #cbd5e1;
+      transform: translateY(-1px);
     }
 
-    .filter-box {
-      background: white;
+    .reports-hero {
+      background:
+        linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(20, 184, 166, 0.82)),
+        linear-gradient(135deg, #0f172a, #14b8a6);
+      color: white;
+      border-radius: 30px;
+      padding: 34px 28px;
+      margin-bottom: 22px;
+      box-shadow: 0 20px 46px rgba(15, 23, 42, 0.16);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .reports-hero h1 {
+      margin: 0 0 10px;
+      font-size: 2.2rem;
+    }
+
+    .reports-hero p {
+      margin: 0;
+      max-width: 760px;
+      line-height: 1.7;
+      opacity: 0.96;
+    }
+
+    .reports-panel {
+      background: rgba(255,255,255,0.96);
+      border: 1px solid rgba(219,231,239,0.92);
+      border-radius: 28px;
       padding: 24px;
-      border-radius: 18px;
-      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
-      margin-bottom: 24px;
+      box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08);
+      margin-bottom: 22px;
     }
 
-    .filter-box h2 {
-      margin-bottom: 18px;
+    .reports-panel h2 {
+      margin: 0 0 8px;
       color: #0f172a;
+      font-size: 1.35rem;
+    }
+
+    .reports-panel p {
+      margin: 0 0 18px;
+      color: #64748b;
+      line-height: 1.65;
     }
 
     .filter-grid {
@@ -59,22 +93,18 @@
     .filter-grid label {
       display: block;
       margin-bottom: 8px;
-      font-weight: 700;
+      font-weight: 800;
       color: #0f172a;
     }
 
     .filter-grid input {
       width: 100%;
-      padding: 12px 14px;
+      padding: 13px 14px;
       border: 1px solid #cbd5e1;
-      border-radius: 10px;
+      border-radius: 14px;
       font-size: 0.95rem;
       outline: none;
-    }
-
-    .filter-grid input:focus {
-      border-color: #14b8a6;
-      box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
+      background: #fff;
     }
 
     .report-filter-actions {
@@ -85,29 +115,30 @@
 
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(6, 1fr);
       gap: 18px;
       margin-bottom: 24px;
     }
 
     .stat-card {
-      background: white;
-      border-radius: 18px;
+      background: rgba(255,255,255,0.98);
+      border: 1px solid rgba(219,231,239,0.92);
+      border-radius: 24px;
       padding: 22px;
-      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+      box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
       text-align: center;
     }
 
     .stat-card h3 {
       margin-bottom: 10px;
-      color: #475569;
-      font-size: 1rem;
+      color: #64748b;
+      font-size: 0.92rem;
     }
 
     .stat-card p {
       margin: 0;
-      font-size: 2rem;
-      font-weight: 700;
+      font-size: 1.8rem;
+      font-weight: 800;
       color: #14b8a6;
     }
 
@@ -118,11 +149,12 @@
     }
 
     .chart-box {
-      background: white;
-      border-radius: 18px;
+      background: rgba(255,255,255,0.96);
+      border: 1px solid rgba(219,231,239,0.92);
+      border-radius: 26px;
       padding: 20px;
-      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
-      min-height: 420px;
+      box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08);
+      min-height: 430px;
       display: flex;
       flex-direction: column;
     }
@@ -130,7 +162,7 @@
     .chart-box h2 {
       margin-bottom: 14px;
       color: #0f172a;
-      font-size: 1.15rem;
+      font-size: 1.12rem;
     }
 
     .chart-box canvas {
@@ -144,55 +176,31 @@
       font-weight: 700;
     }
 
-    .print-only {
-      display: none;
-    }
-
-    @media print {
-      .navbar,
-      .top-page-actions,
-      .filter-box,
-      .no-print {
-        display: none !important;
-      }
-
-      .print-only {
-        display: block !important;
-      }
-
-      body {
-        background: white;
-        padding-top: 0 !important;
-      }
-
-      .chart-grid {
-        gap: 14px;
-      }
-
-      .chart-box,
-      .stat-card {
-        box-shadow: none;
-        border: 1px solid #d1d5db;
-        break-inside: avoid;
-        page-break-inside: avoid;
+    @media (max-width: 1200px) {
+      .stats-grid {
+        grid-template-columns: repeat(3, 1fr);
       }
     }
 
     @media (max-width: 992px) {
-      .stats-grid {
-        grid-template-columns: 1fr 1fr;
-      }
-
-      .chart-grid {
-        grid-template-columns: 1fr;
-      }
-
+      .chart-grid,
       .filter-grid {
         grid-template-columns: 1fr;
       }
     }
 
-    @media (max-width: 600px) {
+    @media (max-width: 700px) {
+      .reports-shell {
+        width: 92%;
+      }
+
+      .reports-hero,
+      .reports-panel,
+      .chart-box {
+        padding: 18px;
+        border-radius: 22px;
+      }
+
       .stats-grid {
         grid-template-columns: 1fr;
       }
@@ -204,30 +212,29 @@
     <div class="logo">SmartResort Admin</div>
     <nav>
       <a href="admin.html">Bookings</a>
-      <a href="admin-rooms.html">Rooms</a>
+      <a href="admin-rooms.html">Accommodations</a>
       <a href="admin-reports.html">Reports</a>
       <a href="admin-profile.html">Profile</a>
       <a href="#" id="logoutBtn">Logout</a>
     </nav>
   </header>
 
-  <section class="page-header">
-    <h1>Booking Reports & Analytics</h1>
-    <p>View charts and summary insights for your resort system.</p>
-  </section>
-
-  <main class="reports-wrapper">
-    <div class="top-page-actions no-print">
+  <main class="reports-shell">
+    <div class="admin-top-link">
       <a href="admin.html" class="back-btn">← Back to Admin Dashboard</a>
     </div>
 
-    <div class="print-only" style="text-align:center; margin-bottom: 20px;">
-      <h1>Booking Reports & Analytics</h1>
-      <p>SmartResort Admin Report</p>
-    </div>
+    <section class="reports-hero">
+      <h1>Reservation Reports and Analytics</h1>
+      <p>
+        Track online and manual reservations, payment performance, source trends,
+        most booked accommodations, and slot usage in one analytics dashboard.
+      </p>
+    </section>
 
-    <section class="filter-box no-print">
-      <h2>Filter Reports by Date</h2>
+    <section class="reports-panel">
+      <h2>Filter Report Range</h2>
+      <p>Select a date range to focus the analytics on a specific reporting period.</p>
 
       <div class="filter-grid">
         <div>
@@ -250,10 +257,20 @@
 
     <p id="reportErrorMessage" class="report-error" style="display:none;"></p>
 
-    <section class="stats-grid" id="reportStatsGrid">
+    <section class="stats-grid">
       <div class="stat-card">
-        <h3>Total Bookings</h3>
+        <h3>Total Reservations</h3>
         <p id="totalBookingsCount">0</p>
+      </div>
+
+      <div class="stat-card">
+        <h3>Online</h3>
+        <p id="onlineBookingsCount">0</p>
+      </div>
+
+      <div class="stat-card">
+        <h3>Manual</h3>
+        <p id="manualBookingsCount">0</p>
       </div>
 
       <div class="stat-card">
@@ -274,12 +291,17 @@
 
     <section class="chart-grid">
       <div class="chart-box">
-        <h2>Bookings by Status</h2>
+        <h2>Reservations by Status</h2>
         <canvas id="bookingStatusChart"></canvas>
       </div>
 
       <div class="chart-box">
-        <h2>Bookings per Room</h2>
+        <h2>Reservation Source Breakdown</h2>
+        <canvas id="bookingSourceChart"></canvas>
+      </div>
+
+      <div class="chart-box">
+        <h2>Most Booked Accommodations</h2>
         <canvas id="popularRoomsChart"></canvas>
       </div>
 
@@ -289,8 +311,13 @@
       </div>
 
       <div class="chart-box">
-        <h2>Guests per Room</h2>
+        <h2>Guests per Accommodation</h2>
         <canvas id="guestsPerRoomChart"></canvas>
+      </div>
+
+      <div class="chart-box">
+        <h2>Slot Usage</h2>
+        <canvas id="slotUsageChart"></canvas>
       </div>
     </section>
   </main>

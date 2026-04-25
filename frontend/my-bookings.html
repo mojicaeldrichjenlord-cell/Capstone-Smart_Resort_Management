@@ -11,15 +11,16 @@
       position: sticky;
       top: 0;
       z-index: 2000;
-      background: #0f172a;
-      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+      background: rgba(15, 23, 42, 0.9);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
     }
 
     .site-header-inner {
       width: 94%;
       max-width: 1300px;
       margin: 0 auto;
-      min-height: 72px;
+      min-height: 74px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -28,16 +29,15 @@
 
     .site-logo {
       color: #ffffff;
-      font-size: 1.9rem;
+      font-size: 1.95rem;
       font-weight: 800;
       text-decoration: none;
-      line-height: 1;
     }
 
     .desktop-nav {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
     }
 
     .desktop-nav a,
@@ -46,14 +46,14 @@
       color: #ffffff;
       font-weight: 700;
       padding: 10px 14px;
-      border-radius: 10px;
-      transition: 0.2s ease;
+      border-radius: 999px;
+      transition: 0.25s ease;
       display: inline-block;
     }
 
     .desktop-nav a:hover,
     .mobile-nav a:hover {
-      background: rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.1);
     }
 
     .desktop-nav a.active,
@@ -64,19 +64,20 @@
 
     .menu-toggle {
       display: none;
-      width: 46px;
-      height: 46px;
+      width: 48px;
+      height: 48px;
       border: none;
-      border-radius: 10px;
+      border-radius: 14px;
       background: #14b8a6;
       cursor: pointer;
       position: relative;
       flex-shrink: 0;
+      box-shadow: 0 10px 22px rgba(20, 184, 166, 0.25);
     }
 
     .menu-toggle span {
       position: absolute;
-      left: 11px;
+      left: 12px;
       width: 24px;
       height: 3px;
       background: white;
@@ -84,13 +85,13 @@
       transition: 0.25s ease;
     }
 
-    .menu-toggle span:nth-child(1) { top: 13px; }
-    .menu-toggle span:nth-child(2) { top: 21px; }
-    .menu-toggle span:nth-child(3) { top: 29px; }
+    .menu-toggle span:nth-child(1) { top: 14px; }
+    .menu-toggle span:nth-child(2) { top: 22px; }
+    .menu-toggle span:nth-child(3) { top: 30px; }
 
     .menu-toggle.active span:nth-child(1) {
       transform: rotate(45deg);
-      top: 21px;
+      top: 22px;
     }
 
     .menu-toggle.active span:nth-child(2) {
@@ -99,7 +100,7 @@
 
     .menu-toggle.active span:nth-child(3) {
       transform: rotate(-45deg);
-      top: 21px;
+      top: 22px;
     }
 
     .mobile-nav {
@@ -107,11 +108,12 @@
       width: 94%;
       max-width: 1300px;
       margin: 0 auto 14px;
-      background: #1e293b;
-      border-radius: 14px;
+      background: rgba(30, 41, 59, 0.98);
+      border-radius: 18px;
       padding: 10px;
       flex-direction: column;
       gap: 8px;
+      box-shadow: 0 18px 34px rgba(15, 23, 42, 0.18);
     }
 
     .mobile-nav.show {
@@ -124,27 +126,30 @@
     }
 
     .page-header {
-      background: linear-gradient(135deg, #0f172a, #14b8a6);
+      background:
+        linear-gradient(rgba(15, 23, 42, 0.6), rgba(20, 184, 166, 0.52)),
+        url("https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?auto=format&fit=crop&w=1600&q=80")
+        center/cover no-repeat;
       color: white;
       text-align: center;
-      padding: 56px 18px;
+      padding: 68px 18px;
     }
 
     .page-header h1 {
       margin: 0 0 10px;
-      font-size: 2.5rem;
+      font-size: 2.55rem;
     }
 
     .page-header p {
       margin: 0;
       font-size: 1rem;
-      opacity: 0.95;
+      opacity: 0.96;
     }
 
     .my-bookings-wrapper {
       width: 92%;
       max-width: 1100px;
-      margin: 28px auto 40px;
+      margin: 30px auto 44px;
     }
 
     .top-page-actions {
@@ -154,18 +159,40 @@
     }
 
     .back-btn {
-      display: inline-block;
+      display: inline-flex;
       text-decoration: none;
-      background: #e2e8f0;
+      background: rgba(255,255,255,0.96);
       color: #0f172a;
-      padding: 10px 16px;
-      border-radius: 10px;
+      padding: 11px 18px;
+      border-radius: 999px;
       font-weight: 700;
       transition: 0.2s ease;
+      box-shadow: 0 10px 20px rgba(15, 23, 42, 0.06);
+      border: 1px solid rgba(219,231,239,0.9);
     }
 
     .back-btn:hover {
-      background: #cbd5e1;
+      transform: translateY(-1px);
+    }
+
+    .bookings-shell {
+      background: rgba(255,255,255,0.94);
+      border-radius: 30px;
+      padding: 24px;
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+      border: 1px solid rgba(219,231,239,0.92);
+    }
+
+    .bookings-shell h2 {
+      color: #0f172a;
+      margin-bottom: 8px;
+      font-size: 1.55rem;
+    }
+
+    .bookings-shell .subtext {
+      color: #64748b;
+      margin-bottom: 18px;
+      line-height: 1.65;
     }
 
     @media (max-width: 768px) {
@@ -178,7 +205,7 @@
       }
 
       .page-header {
-        padding: 42px 16px;
+        padding: 52px 16px;
       }
 
       .page-header h1 {
@@ -201,11 +228,17 @@
 
       .back-btn {
         width: 100%;
+        justify-content: center;
         text-align: center;
       }
 
       .top-page-actions {
         display: block;
+      }
+
+      .bookings-shell {
+        padding: 18px;
+        border-radius: 22px;
       }
     }
   </style>
@@ -241,7 +274,7 @@
 
   <section class="page-header">
     <h1>My Bookings</h1>
-    <p>View your reservation history and booking status.</p>
+    <p>Review your reservation history, receipt access, and current booking status.</p>
   </section>
 
   <main class="my-bookings-wrapper">
@@ -249,7 +282,11 @@
       <a href="index.html" class="back-btn">← Back to Home</a>
     </div>
 
-    <section class="admin-section">
+    <section class="bookings-shell">
+      <h2>Your Reservation History</h2>
+      <p class="subtext">
+        Keep track of your booked rooms, stay schedule, payment method, and latest reservation updates.
+      </p>
       <div id="myBookingsContainer"></div>
     </section>
   </main>

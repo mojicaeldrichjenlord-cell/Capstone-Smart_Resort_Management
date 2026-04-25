@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manual Reservation Payment | SmartResort Admin</title>
+  <link rel="stylesheet" href="css/style.css" />
+
+  <style>
+    .payment-wrapper {
+      width: 92%;
+      max-width: 1100px;
+      margin: 0 auto 40px;
+    }
+
+    .back-btn {
+      display: inline-flex;
+      text-decoration: none;
+      background: rgba(255,255,255,0.96);
+      color: #0f172a;
+      padding: 11px 18px;
+      border-radius: 999px;
+      font-weight: 700;
+      border: 1px solid rgba(219,231,239,0.9);
+      margin: 12px 0 16px;
+    }
+
+    .payment-hero {
+      background:
+        linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(20, 184, 166, 0.82)),
+        linear-gradient(135deg, #0f172a, #14b8a6);
+      color: white;
+      border-radius: 30px;
+      padding: 34px 28px;
+      margin: 6px 0 22px;
+      box-shadow: 0 20px 46px rgba(15, 23, 42, 0.16);
+    }
+
+    .payment-hero h1 {
+      margin: 0 0 10px;
+      font-size: 2.1rem;
+    }
+
+    .payment-card {
+      background: rgba(255,255,255,0.96);
+      border-radius: 28px;
+      padding: 26px;
+      box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08);
+      border: 1px solid rgba(219,231,239,0.92);
+    }
+
+    .section-box {
+      background: linear-gradient(180deg, #fcfeff 0%, #f4fbfc 100%);
+      border: 1px solid #dbe7ef;
+      border-radius: 22px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .section-box h2 {
+      margin: 0 0 14px;
+      color: #0f172a;
+      font-size: 1.35rem;
+    }
+
+    .payment-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 18px;
+    }
+
+    .summary-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .summary-item {
+      background: white;
+      border: 1px solid #dbe7ef;
+      border-radius: 16px;
+      padding: 14px 16px;
+      color: #334155;
+      line-height: 1.6;
+    }
+
+    .payment-form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .payment-form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .payment-form-group.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .payment-form-group label {
+      font-weight: 700;
+      color: #0f172a;
+    }
+
+    .payment-form-group input,
+    .payment-form-group select,
+    .payment-form-group textarea {
+      width: 100%;
+      padding: 14px 15px;
+      border: 1px solid #cbd5e1;
+      border-radius: 14px;
+      font-size: 1rem;
+      outline: none;
+      background: #fff;
+    }
+
+    .payment-form-group textarea {
+      min-height: 95px;
+      resize: vertical;
+    }
+
+    .payment-breakdown {
+      background: linear-gradient(135deg, #0f172a, #16233b);
+      color: white;
+      border-radius: 20px;
+      padding: 18px;
+    }
+
+    .payment-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .payment-row:last-child {
+      margin-bottom: 0;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255,255,255,0.14);
+      font-weight: 800;
+    }
+
+    .payment-note {
+      margin-top: 14px;
+      background: #fff7ed;
+      border: 1px solid #fdba74;
+      border-radius: 16px;
+      padding: 14px 16px;
+      color: #9a3412;
+      line-height: 1.6;
+    }
+
+    .payment-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    @media (max-width: 900px) {
+      .payment-grid,
+      .payment-form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body class="has-fixed-navbar">
+  <header class="navbar">
+    <div class="logo">SmartResort Admin</div>
+    <nav>
+      <a href="admin.html">Bookings</a>
+      <a href="admin-walkin.html">Manual Reservation</a>
+      <a href="admin-rooms.html">Accommodations</a>
+      <a href="admin-reports.html">Reports</a>
+      <a href="admin-profile.html">Profile</a>
+      <a href="#" id="logoutBtn">Logout</a>
+    </nav>
+  </header>
+
+  <main class="payment-wrapper">
+    <a href="admin-walkin.html" class="back-btn">← Back to Manual Reservation Form</a>
+
+    <section class="payment-hero">
+      <h1>Manual Reservation Payment</h1>
+      <p>Simple admin payment step. Choose mode of payment and whether the guest paid in full or only the required 50% down payment.</p>
+    </section>
+
+    <section class="payment-card">
+      <div class="payment-grid">
+        <div>
+          <section class="section-box">
+            <h2>Reservation Summary</h2>
+            <div id="reservationSummaryList" class="summary-list"></div>
+          </section>
+
+          <section class="section-box">
+            <h2>Payment Details</h2>
+
+            <form id="adminPaymentForm">
+              <div class="payment-form-grid">
+                <div class="payment-form-group">
+                  <label for="paymentMethod">Mode of Payment</label>
+                  <select id="paymentMethod" required>
+                    <option value="cash">Cash</option>
+                    <option value="gcash">GCash</option>
+                    <option value="paymaya">PayMaya</option>
+                    <option value="bank_transfer">Bank Transfer</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+
+                <div class="payment-form-group">
+                  <label for="paymentType">Payment Type</label>
+                  <select id="paymentType" required>
+                    <option value="full">Full Payment</option>
+                    <option value="downpayment">50% Down Payment</option>
+                  </select>
+                </div>
+
+                <div class="payment-form-group full-width">
+                  <label for="paymentNote">Admin Note (Optional)</label>
+                  <textarea
+                    id="paymentNote"
+                    placeholder="Optional note for manual reservation"
+                  ></textarea>
+                </div>
+              </div>
+
+              <div class="payment-actions">
+                <button type="submit" class="btn-primary">Submit Manual Reservation</button>
+                <a href="admin-walkin.html" class="btn-secondary">Back</a>
+              </div>
+            </form>
+
+            <p id="adminPaymentMessage" class="message"></p>
+          </section>
+        </div>
+
+        <div>
+          <section class="section-box">
+            <h2>Payment Breakdown</h2>
+
+            <div class="payment-breakdown">
+              <div class="payment-row">
+                <span>Accommodation Total</span>
+                <strong id="paymentAccommodationTotal">₱0.00</strong>
+              </div>
+              <div class="payment-row">
+                <span>Required Down Payment (50%)</span>
+                <strong id="paymentDownpayment">₱0.00</strong>
+              </div>
+              <div class="payment-row">
+                <span>Remaining 50% Onsite</span>
+                <strong id="paymentRemaining">₱0.00</strong>
+              </div>
+              <div class="payment-row">
+                <span>Estimated Entrance Fee</span>
+                <strong id="paymentEntranceFee">₱0.00</strong>
+              </div>
+              <div class="payment-row">
+                <span>Total Reminder for Front Desk</span>
+                <strong id="paymentFrontDeskReminder">₱0.00</strong>
+              </div>
+            </div>
+
+            <div class="payment-note">
+              <strong>Admin Flow:</strong><br />
+              Once submitted, this manual reservation will be automatically approved.
+              If Full Payment is selected, payment status becomes Paid.
+              If 50% Down Payment is selected, payment status becomes Partially Paid.
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/toast.js"></script>
+  <script src="js/admin-walkin-payment.js"></script>
+</body>
+</html>

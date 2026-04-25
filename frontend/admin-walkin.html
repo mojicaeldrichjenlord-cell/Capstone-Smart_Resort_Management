@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Manual Reservation | SmartResort Admin</title>
+  <link rel="stylesheet" href="css/style.css" />
+
+  <style>
+    .walkin-wrapper {
+      width: 92%;
+      max-width: 1180px;
+      margin: 0 auto 40px;
+    }
+
+    .back-btn {
+      display: inline-flex;
+      text-decoration: none;
+      background: rgba(255,255,255,0.96);
+      color: #0f172a;
+      padding: 11px 18px;
+      border-radius: 999px;
+      font-weight: 700;
+      border: 1px solid rgba(219,231,239,0.9);
+      margin: 12px 0 16px;
+    }
+
+    .walkin-hero {
+      background:
+        linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(20, 184, 166, 0.82)),
+        linear-gradient(135deg, #0f172a, #14b8a6);
+      color: white;
+      border-radius: 30px;
+      padding: 34px 28px;
+      margin: 6px 0 22px;
+      box-shadow: 0 20px 46px rgba(15, 23, 42, 0.16);
+    }
+
+    .walkin-hero h1 {
+      margin: 0 0 10px;
+      font-size: 2.1rem;
+    }
+
+    .walkin-hero p {
+      margin: 0;
+      max-width: 760px;
+      line-height: 1.7;
+      opacity: 0.96;
+    }
+
+    .walkin-card {
+      background: rgba(255,255,255,0.96);
+      border-radius: 28px;
+      padding: 26px;
+      box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08);
+      border: 1px solid rgba(219,231,239,0.92);
+    }
+
+    .section-box {
+      background: linear-gradient(180deg, #fcfeff 0%, #f4fbfc 100%);
+      border: 1px solid #dbe7ef;
+      border-radius: 22px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+
+    .section-box h2 {
+      margin: 0 0 14px;
+      color: #0f172a;
+      font-size: 1.35rem;
+    }
+
+    .walkin-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+
+    .walkin-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .walkin-group.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .walkin-group label {
+      font-weight: 800;
+      color: #0f172a;
+    }
+
+    .walkin-group input,
+    .walkin-group textarea,
+    .walkin-group select {
+      width: 100%;
+      padding: 14px 15px;
+      border: 1px solid #cbd5e1;
+      border-radius: 14px;
+      font-size: 1rem;
+      outline: none;
+      background: #fff;
+    }
+
+    .walkin-group textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .field-help {
+      font-size: 0.85rem;
+      color: #64748b;
+      line-height: 1.5;
+    }
+
+    .booking-items-wrap {
+      display: grid;
+      gap: 16px;
+    }
+
+    .booking-item-card {
+      background: #ffffff;
+      border: 1px solid #dbe7ef;
+      border-radius: 18px;
+      padding: 16px;
+    }
+
+    .booking-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .booking-item-title {
+      color: #0f172a;
+      font-size: 1.08rem;
+      font-weight: 800;
+    }
+
+    .remove-item-btn {
+      border: none;
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-weight: 800;
+      cursor: pointer;
+      background: #ef4444;
+      color: white;
+    }
+
+    .slot-preview {
+      background: #f8fafc;
+      border: 1px solid #dbe7ef;
+      border-radius: 14px;
+      padding: 12px 14px;
+      color: #334155;
+      line-height: 1.6;
+      margin-top: 12px;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .summary-box {
+      background: white;
+      border: 1px solid #dbe7ef;
+      border-radius: 16px;
+      padding: 14px 16px;
+      color: #334155;
+      line-height: 1.6;
+    }
+
+    .summary-box strong {
+      display: block;
+      color: #0f172a;
+      margin-bottom: 4px;
+    }
+
+    .highlight-box {
+      background: linear-gradient(135deg, #0f172a, #16233b);
+      color: white;
+      border-radius: 20px;
+      padding: 18px;
+      margin-top: 14px;
+    }
+
+    .highlight-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .highlight-row:last-child {
+      margin-bottom: 0;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255,255,255,0.14);
+      font-weight: 800;
+    }
+
+    .walkin-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+    }
+
+    @media (max-width: 780px) {
+      .walkin-grid,
+      .summary-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .walkin-actions {
+        flex-direction: column;
+      }
+
+      .walkin-actions .btn-primary,
+      .walkin-actions .btn-secondary,
+      .remove-item-btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body class="has-fixed-navbar">
+  <header class="navbar">
+    <div class="logo">SmartResort Admin</div>
+    <nav>
+      <a href="admin.html">Bookings</a>
+      <a href="admin-walkin.html">Manual Reservation</a>
+      <a href="admin-rooms.html">Accommodations</a>
+      <a href="admin-reports.html">Reports</a>
+      <a href="admin-profile.html">Profile</a>
+      <a href="#" id="logoutBtn">Logout</a>
+    </nav>
+  </header>
+
+  <main class="walkin-wrapper">
+    <a href="admin.html" class="back-btn">← Back to Dashboard</a>
+
+    <section class="walkin-hero">
+      <h1>Create Manual Reservation</h1>
+      <p>
+        Encode guest details and accommodation selection first, then continue to the payment screen.
+      </p>
+    </section>
+
+    <section class="walkin-card">
+      <form id="walkInForm">
+        <section class="section-box">
+          <h2>Guest Information</h2>
+
+          <div class="walkin-grid">
+            <div class="walkin-group">
+              <label for="firstName">First Name</label>
+              <input type="text" id="firstName" required />
+            </div>
+
+            <div class="walkin-group">
+              <label for="middleName">Middle Name (Optional)</label>
+              <input type="text" id="middleName" />
+            </div>
+
+            <div class="walkin-group">
+              <label for="lastName">Last Name</label>
+              <input type="text" id="lastName" required />
+            </div>
+
+            <div class="walkin-group">
+              <label for="contactNo">Contact Number</label>
+              <input type="text" id="contactNo" required />
+            </div>
+
+            <div class="walkin-group">
+              <label for="guestCount">Guest Count</label>
+              <input type="number" id="guestCount" min="1" required />
+            </div>
+
+            <div class="walkin-group">
+              <label for="entranceType">Entrance Type</label>
+              <select id="entranceType" required>
+                <option value="pool_beach">Pool &amp; Beach Entrance</option>
+                <option value="beach_only">Beach Entrance Only</option>
+              </select>
+              <small class="field-help">
+                Entrance fee is estimated only and will be finalized at the front desk.
+              </small>
+            </div>
+
+            <div class="walkin-group full-width">
+              <label for="customerNote">Note / Concern</label>
+              <textarea
+                id="customerNote"
+                placeholder="Kung may gusto kayong ihabilin or concern, ilagay dito. If may kids, senior, or PWD guests, ilagay dito for front-desk verification."
+              ></textarea>
+            </div>
+          </div>
+        </section>
+
+        <section class="section-box">
+          <div class="booking-item-header">
+            <div class="booking-item-title">Reservation Items</div>
+            <button type="button" class="btn-primary" id="addItemBtn">Add Another Accommodation</button>
+          </div>
+
+          <div id="bookingItemsWrap" class="booking-items-wrap"></div>
+        </section>
+
+        <section class="section-box">
+          <h2>Manual Reservation Preview</h2>
+
+          <div class="summary-grid">
+            <div class="summary-box">
+              <strong>Total Selected Accommodations</strong>
+              <span id="summaryItemCount">0 item(s)</span>
+            </div>
+
+            <div class="summary-box">
+              <strong>Estimated Entrance Fee</strong>
+              <span id="estimatedEntranceFee">₱0.00</span>
+            </div>
+
+            <div class="summary-box">
+              <strong>Accommodation Total</strong>
+              <span id="accommodationTotal">₱0.00</span>
+            </div>
+
+            <div class="summary-box">
+              <strong>Required Down Payment</strong>
+              <span id="requiredDownpayment">₱0.00</span>
+            </div>
+          </div>
+
+          <div class="highlight-box">
+            <div class="highlight-row">
+              <span>Accommodation Total</span>
+              <strong id="highlightAccommodationTotal">₱0.00</strong>
+            </div>
+            <div class="highlight-row">
+              <span>Suggested Down Payment (50%)</span>
+              <strong id="highlightDownpayment">₱0.00</strong>
+            </div>
+            <div class="highlight-row">
+              <span>Remaining Balance Onsite</span>
+              <strong id="highlightRemainingBalance">₱0.00</strong>
+            </div>
+            <div class="highlight-row">
+              <span>Entrance Fee Estimate</span>
+              <strong id="highlightEntranceFee">₱0.00</strong>
+            </div>
+          </div>
+        </section>
+
+        <div class="walkin-actions">
+          <button type="submit" class="btn-primary">Next to Payment</button>
+          <a href="admin.html" class="btn-secondary">Cancel</a>
+        </div>
+      </form>
+
+      <p id="walkInMessage" class="message"></p>
+    </section>
+  </main>
+
+  <script src="js/toast.js"></script>
+  <script src="js/admin-walkin.js"></script>
+</body>
+</html>

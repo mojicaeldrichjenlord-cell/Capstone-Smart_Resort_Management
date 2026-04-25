@@ -3,38 +3,302 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Login - SmartResort</title>
+  <title>Login | SmartResort</title>
   <link rel="stylesheet" href="css/style.css" />
+
+  <style>
+    .auth-page {
+      min-height: 100vh;
+      background:
+        linear-gradient(rgba(15, 23, 42, 0.62), rgba(15, 23, 42, 0.45)),
+        url("https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1600&q=80")
+        center/cover no-repeat;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 30px 16px;
+    }
+
+    .auth-container {
+      width: 100%;
+      max-width: 1080px;
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      gap: 24px;
+      align-items: stretch;
+    }
+
+    .auth-showcase {
+      background:
+        linear-gradient(135deg, rgba(15, 23, 42, 0.88), rgba(20, 184, 166, 0.68));
+      color: white;
+      border-radius: 30px;
+      padding: 42px 34px;
+      box-shadow: 0 24px 50px rgba(15, 23, 42, 0.18);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .auth-showcase::after {
+      content: "";
+      position: absolute;
+      top: -50px;
+      right: -50px;
+      width: 220px;
+      height: 220px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+      filter: blur(6px);
+    }
+
+    .auth-badge {
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.14);
+      border: 1px solid rgba(255,255,255,0.16);
+      font-size: 0.88rem;
+      font-weight: 700;
+      margin-bottom: 18px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .auth-showcase h1 {
+      font-size: 2.5rem;
+      line-height: 1.1;
+      margin-bottom: 14px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .auth-showcase p {
+      font-size: 1rem;
+      line-height: 1.8;
+      max-width: 480px;
+      opacity: 0.96;
+      position: relative;
+      z-index: 1;
+    }
+
+    .auth-highlights {
+      margin-top: 24px;
+      display: grid;
+      gap: 12px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .auth-highlight {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 16px;
+      padding: 14px 16px;
+    }
+
+    .auth-highlight strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 0.96rem;
+    }
+
+    .auth-card {
+      background: rgba(255,255,255,0.97);
+      border-radius: 30px;
+      padding: 34px 30px;
+      box-shadow: 0 24px 50px rgba(15, 23, 42, 0.14);
+      border: 1px solid rgba(255,255,255,0.7);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .auth-card h2 {
+      color: #0f172a;
+      font-size: 2rem;
+      margin-bottom: 8px;
+    }
+
+    .auth-card .auth-subtext {
+      color: #64748b;
+      margin-bottom: 22px;
+      line-height: 1.65;
+    }
+
+    .auth-card form {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .auth-card label {
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    .auth-card input {
+      width: 100%;
+      padding: 14px 15px;
+      border: 1px solid #cbd5e1;
+      border-radius: 16px;
+      outline: none;
+      font-size: 1rem;
+      background: #fff;
+    }
+
+    .auth-card input:focus {
+      border-color: #14b8a6;
+      box-shadow: 0 0 0 3px rgba(20,184,166,0.15);
+    }
+
+    .auth-submit {
+      margin-top: 6px;
+      width: 100%;
+      padding: 14px 16px;
+      border: none;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #14b8a6, #0f9488);
+      color: white;
+      font-weight: 800;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: 0.2s ease;
+      box-shadow: 0 14px 28px rgba(20,184,166,0.2);
+    }
+
+    .auth-submit:hover {
+      transform: translateY(-1px);
+    }
+
+    .auth-link {
+      margin-top: 18px;
+      text-align: center;
+      color: #475569;
+      line-height: 1.6;
+    }
+
+    .auth-link a {
+      color: #14b8a6;
+      text-decoration: none;
+      font-weight: 800;
+    }
+
+    .message {
+      margin-top: 14px;
+      text-align: center;
+      font-weight: 700;
+    }
+
+    @media (max-width: 900px) {
+      .auth-container {
+        grid-template-columns: 1fr;
+      }
+
+      .auth-showcase {
+        order: 2;
+        padding: 28px 22px;
+      }
+
+      .auth-card {
+        order: 1;
+      }
+
+      .auth-showcase h1 {
+        font-size: 2rem;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .auth-page {
+        padding: 18px 12px;
+      }
+
+      .auth-card,
+      .auth-showcase {
+        border-radius: 22px;
+      }
+
+      .auth-card {
+        padding: 24px 18px;
+      }
+
+      .auth-showcase {
+        padding: 24px 18px;
+      }
+
+      .auth-card h2 {
+        font-size: 1.6rem;
+      }
+
+      .auth-showcase h1 {
+        font-size: 1.7rem;
+      }
+    }
+  </style>
 </head>
 <body class="auth-page">
   <div class="auth-container">
-    <div class="auth-box">
-      <h1>Welcome to SmartResort</h1>
-      <p>Login to continue your booking journey.</p>
+    <section class="auth-showcase">
+      <div class="auth-badge">Smart resort reservation platform</div>
+      <h1>Welcome back to SmartResort</h1>
+      <p>
+        Sign in to manage bookings, explore available rooms, view receipts,
+        and continue your resort reservation journey in one place.
+      </p>
+
+      <div class="auth-highlights">
+        <div class="auth-highlight">
+          <strong>Faster reservation access</strong>
+          View your booking records and receipt details anytime.
+        </div>
+        <div class="auth-highlight">
+          <strong>Smarter room selection</strong>
+          Explore room details, prices, amenities, and view types.
+        </div>
+        <div class="auth-highlight">
+          <strong>Client-ready resort experience</strong>
+          Designed for a modern and premium booking presentation.
+        </div>
+      </div>
+    </section>
+
+    <section class="auth-card">
+      <h2>Login</h2>
+      <p class="auth-subtext">
+        Enter your account details to continue to your SmartResort dashboard.
+      </p>
 
       <form id="loginForm">
-        <label for="email">Email</label>
-        <input type="email" id="email" placeholder="Email" required />
-
-        <label for="password">Password</label>
-        <div class="password-group">
-          <input type="password" id="password" placeholder="Password" required />
-          <button type="button" class="toggle-password">Show</button>
+        <div>
+          <label for="email">Email</label>
+          <input type="email" id="email" placeholder="Enter your email" required />
         </div>
 
-        <button type="submit" class="btn-primary full-btn">Login</button>
+        <div>
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="Enter your password" required />
+        </div>
+
+        <button type="submit" class="auth-submit">Login</button>
       </form>
 
       <p id="loginMessage" class="message"></p>
 
-      <p class="auth-link">
-        Don’t have an account? <a href="register.html">Register here</a>
-      </p>
-    </div>
+      <div class="auth-link">
+        Don’t have an account yet?
+        <a href="register.html">Create one here</a>
+      </div>
+    </section>
   </div>
 
   <script src="js/toast.js"></script>
-  <script src="js/password-toggle.js"></script>
   <script src="js/login.js"></script>
 </body>
 </html>

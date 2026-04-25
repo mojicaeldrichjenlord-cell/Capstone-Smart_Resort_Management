@@ -1,12 +1,13 @@
 const AI_API_BASE = "http://127.0.0.1:5000/api";
 const AI_CONTEXT_KEY = "smartresort_ai_context_v1";
 const AI_WINDOW_STATE_KEY = "smartresort_ai_window_state_v1";
+const AI_CHAT_HISTORY_KEY = "smartresort_ai_chat_history_v1";
 
 let aiRecognition = null;
 let aiIsListening = false;
 let aiShouldKeepListening = false;
 let aiFinalTranscript = "";
-let aiStoppedManually = false;
+let aiStoppedManually = false;  
 let aiSendAfterStop = false;
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -17,6 +18,7 @@ function setupAiChat() {
   const toggleBtn = document.getElementById("aiChatToggle");
   const closeBtn = document.getElementById("aiChatClose");
   const maximizeBtn = document.getElementById("aiChatMaximize");
+  const newChatBtn = document.getElementById("aiNewChatBtn");
   const micBtn = document.getElementById("aiMicBtn");
   const chatWindow = document.getElementById("aiChatWindow");
   const sendBtn = document.getElementById("aiSendBtn");
@@ -26,6 +28,7 @@ function setupAiChat() {
   if (!toggleBtn || !chatWindow || !sendBtn || !input || !messages) return;
 
   restoreWindowState();
+  restoreChatHistory();
   setupSpeechRecognition();
 
   toggleBtn.addEventListener("click", () => {
@@ -41,6 +44,16 @@ function setupAiChat() {
   if (maximizeBtn) {
     maximizeBtn.addEventListener("click", () => {
       toggleMaximize();
+    });
+  }
+
+  if (newChatBtn) {
+    newChatBtn.addEventListener("click", () => {
+      const confirmed = confirm(
+        "Start a new chat? This will clear the current AI conversation."
+      );
+      if (!confirmed) return;
+      clearAiConversation();
     });
   }
 
@@ -60,18 +73,6 @@ function setupAiChat() {
   });
 
   if (!messages.dataset.initialized) {
-    appendAiMessage(
-      "assistant",
-      "Hi! I’m your SmartResort assistant. You can ask about booking steps, payment methods, rooms, or use the mic."
-    );
-
-    const savedContext = getStoredAiContext();
-    const summary = summarizeContext(savedContext);
-
-    if (summary) {
-      appendAiSystemNote(`Saved details from this chat: ${summary}`);
-    }
-
     messages.dataset.initialized = "true";
   }
 }
@@ -340,6 +341,88 @@ function saveAiContext(context) {
   localStorage.setItem(AI_CONTEXT_KEY, JSON.stringify(context || {}));
 }
 
+function getStoredChatHistory() {
+  try {
+    const raw = localStorage.getItem(AI_CHAT_HISTORY_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function saveChatHistory(history) {
+  localStorage.setItem(AI_CHAT_HISTORY_KEY, JSON.stringify(history || []));
+}
+
+function addToChatHistory(entry) {
+  const history = getStoredChatHistory();
+  history.push(entry);
+  saveChatHistory(history);
+}
+
+function clearChatMessagesUI() {
+  const messages = document.getElementById("aiChatMessages");
+  if (messages) {
+    messages.innerHTML = "";
+  }
+}
+
+function restoreChatHistory() {
+  const messages = document.getElementById("aiChatMessages");
+  if (!messages) return;
+
+  clearChatMessagesUI();
+
+  const history = getStoredChatHistory();
+
+  if (!history.length) {
+    appendAiMessage(
+      "assistant",
+      "Hi! I’m your SmartResort assistant. This is a fresh new chat. You can ask about rooms, booking dates, check-in/check-out time, guests, or payment method.",
+      false
+    );
+
+    const savedContext = getStoredAiContext();
+    const summary = summarizeContext(savedContext);
+
+    if (summary) {
+      appendAiSystemNote(`Saved details from this chat: ${summary}`, false);
+    }
+
+    return;
+  }
+
+  history.forEach((item) => {
+    if (item.type === "message") {
+      appendAiMessage(item.role, item.text, false);
+    } else if (item.type === "system") {
+      appendAiSystemNote(item.text, false);
+    } else if (item.type === "preview") {
+      appendBookingPreviewCard(item.preview, false);
+    }
+  });
+
+  messages.scrollTop = messages.scrollHeight;
+}
+
+function clearAiConversation() {
+  localStorage.removeItem(AI_CHAT_HISTORY_KEY);
+  localStorage.removeItem(AI_CONTEXT_KEY);
+
+  const input = document.getElementById("aiChatInput");
+  if (input) {
+    input.value = "";
+  }
+
+  aiFinalTranscript = "";
+  aiShouldKeepListening = false;
+  aiStoppedManually = false;
+  aiSendAfterStop = false;
+
+  restoreChatHistory();
+  appendAiSystemNote("New chat started.");
+}
+
 function mergeContext(oldContext = {}, newContext = {}) {
   return {
     check_in: newContext.check_in ?? oldContext.check_in ?? null,
@@ -414,7 +497,7 @@ function detectOfflineLanguage(message, context = {}) {
   return context.language_style || "english";
 }
 
-function appendAiMessage(role, text) {
+function appendAiMessage(role, text, save = true) {
   const messages = document.getElementById("aiChatMessages");
   if (!messages) return;
 
@@ -440,6 +523,14 @@ function appendAiMessage(role, text) {
   }
 
   messages.scrollTop = messages.scrollHeight;
+
+  if (save) {
+    addToChatHistory({
+      type: "message",
+      role,
+      text,
+    });
+  }
 }
 
 function appendReplyActions(wrapper, originalText) {
@@ -577,7 +668,7 @@ function getCurrentBubbleText(wrapper, fallbackText) {
   return bubble.dataset.currentText || bubble.dataset.originalText || fallbackText;
 }
 
-function appendAiSystemNote(text) {
+function appendAiSystemNote(text, save = true) {
   const messages = document.getElementById("aiChatMessages");
   if (!messages) return;
 
@@ -595,9 +686,16 @@ function appendAiSystemNote(text) {
   wrapper.appendChild(bubble);
   messages.appendChild(wrapper);
   messages.scrollTop = messages.scrollHeight;
+
+  if (save) {
+    addToChatHistory({
+      type: "system",
+      text,
+    });
+  }
 }
 
-function appendBookingPreviewCard(preview) {
+function appendBookingPreviewCard(preview, save = true) {
   const messages = document.getElementById("aiChatMessages");
   if (!messages) return;
 
@@ -654,6 +752,13 @@ function appendBookingPreviewCard(preview) {
   if (confirmBtn) {
     confirmBtn.addEventListener("click", () => createBookingFromPreview(preview, confirmBtn));
   }
+
+  if (save) {
+    addToChatHistory({
+      type: "preview",
+      preview,
+    });
+  }
 }
 
 async function createBookingFromPreview(preview, button) {
@@ -692,6 +797,7 @@ async function createBookingFromPreview(preview, button) {
 
     appendAiSystemNote("Booking created successfully. Redirecting to your receipt...");
     localStorage.removeItem(AI_CONTEXT_KEY);
+    localStorage.removeItem(AI_CHAT_HISTORY_KEY);
 
     setTimeout(() => {
       window.location.href = `booking-receipt.html?id=${data.bookingId}`;

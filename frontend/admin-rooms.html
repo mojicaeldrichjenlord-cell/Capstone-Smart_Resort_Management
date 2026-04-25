@@ -3,63 +3,95 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin Rooms | Smart Resort Booking System</title>
+  <title>Admin Accommodations | SmartResort</title>
   <link rel="stylesheet" href="css/style.css" />
 
   <style>
-    .admin-rooms-wrapper {
-      width: 95%;
-      max-width: 1400px;
-      margin: 0 auto 30px;
+    .rooms-admin-shell {
+      width: 94%;
+      max-width: 1450px;
+      margin: 0 auto 36px;
     }
 
-    .top-page-actions {
+    .admin-top-link {
       display: flex;
       justify-content: flex-start;
-      margin-top: 30px;
-      margin-bottom: 18px;
+      margin: 10px 0 18px;
     }
 
     .back-btn {
-      display: inline-block;
+      display: inline-flex;
       text-decoration: none;
-      background: #e2e8f0;
+      background: rgba(255,255,255,0.96);
       color: #0f172a;
-      padding: 10px 16px;
-      border-radius: 10px;
-      font-weight: 700;
+      padding: 11px 18px;
+      border-radius: 999px;
+      font-weight: 800;
       transition: 0.2s ease;
+      box-shadow: 0 10px 20px rgba(15,23,42,0.06);
+      border: 1px solid rgba(219,231,239,0.92);
     }
 
     .back-btn:hover {
-      background: #cbd5e1;
+      transform: translateY(-1px);
     }
 
-    .admin-rooms-header {
-      background: linear-gradient(135deg, #0f172a, #14b8a6);
+    .rooms-admin-hero {
+      background:
+        linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(20, 184, 166, 0.82)),
+        linear-gradient(135deg, #0f172a, #14b8a6);
       color: white;
-      border-radius: 18px;
-      padding: 28px 24px;
-      margin-bottom: 20px;
-      text-align: center;
-      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+      border-radius: 30px;
+      padding: 34px 28px;
+      margin-bottom: 22px;
+      box-shadow: 0 20px 46px rgba(15, 23, 42, 0.16);
+      position: relative;
+      overflow: hidden;
     }
 
-    .admin-rooms-header h1 {
-      margin: 0 0 8px;
-      font-size: 2rem;
+    .rooms-admin-hero::after {
+      content: "";
+      position: absolute;
+      top: -50px;
+      right: -50px;
+      width: 200px;
+      height: 200px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 50%;
+      filter: blur(6px);
     }
 
-    .admin-rooms-header p {
+    .rooms-admin-hero h1 {
+      margin: 0 0 10px;
+      font-size: 2.2rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .rooms-admin-hero p {
       margin: 0;
-      opacity: 0.95;
+      max-width: 820px;
+      line-height: 1.7;
+      opacity: 0.96;
+      position: relative;
+      z-index: 1;
+    }
+
+    .quick-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+      position: relative;
+      z-index: 1;
     }
 
     .room-form-box {
-      background: white;
-      padding: 24px;
-      border-radius: 18px;
-      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+      background: rgba(255,255,255,0.96);
+      border: 1px solid rgba(219,231,239,0.92);
+      border-radius: 28px;
+      padding: 26px;
+      box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08);
       margin-bottom: 24px;
     }
 
@@ -69,10 +101,18 @@
       font-size: 1.5rem;
     }
 
+    .category-inline-box {
+      display: grid;
+      grid-template-columns: 2fr 1.2fr auto;
+      gap: 12px;
+      margin-bottom: 18px;
+      align-items: end;
+    }
+
     .room-form-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 16px 18px;
+      gap: 18px;
     }
 
     .room-form-group {
@@ -86,25 +126,25 @@
     }
 
     .room-form-group label {
-      font-weight: 700;
+      font-weight: 800;
       color: #0f172a;
-      font-size: 0.95rem;
+      font-size: 0.94rem;
     }
 
     .room-form-group input,
     .room-form-group textarea,
     .room-form-group select {
-      padding: 12px 14px;
+      padding: 13px 14px;
       border: 1px solid #cbd5e1;
-      border-radius: 10px;
+      border-radius: 14px;
       font-size: 0.95rem;
-      width: 100%;
       outline: none;
       background: #fff;
+      width: 100%;
     }
 
     .room-form-group textarea {
-      min-height: 100px;
+      min-height: 105px;
       resize: vertical;
     }
 
@@ -112,7 +152,30 @@
     .room-form-group textarea:focus,
     .room-form-group select:focus {
       border-color: #14b8a6;
-      box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
+      box-shadow: 0 0 0 3px rgba(20,184,166,0.15);
+    }
+
+    .field-help {
+      font-size: 0.84rem;
+      color: #64748b;
+      line-height: 1.5;
+    }
+
+    .image-preview-box {
+      background: linear-gradient(180deg, #fcfeff 0%, #f4fbfc 100%);
+      border: 1px solid #dbe7ef;
+      border-radius: 18px;
+      padding: 16px;
+      color: #475569;
+    }
+
+    .image-preview-box img {
+      width: 100%;
+      max-height: 240px;
+      object-fit: cover;
+      border-radius: 16px;
+      border: 1px solid #cbd5e1;
+      margin-top: 12px;
     }
 
     .room-form-actions {
@@ -122,63 +185,66 @@
       margin-top: 18px;
     }
 
-    .btn-main {
-      background: #14b8a6;
-      color: white;
+    .btn-main,
+    .btn-light {
       border: none;
-      border-radius: 10px;
-      padding: 12px 18px;
-      font-weight: 700;
+      border-radius: 999px;
+      padding: 13px 20px;
+      font-weight: 800;
       cursor: pointer;
       transition: 0.2s ease;
     }
 
-    .btn-main:hover {
-      background: #0f766e;
+    .btn-main {
+      background: linear-gradient(135deg, #14b8a6, #0f9488);
+      color: white;
+      box-shadow: 0 12px 24px rgba(20,184,166,0.24);
     }
 
     .btn-light {
       background: #e2e8f0;
       color: #0f172a;
-      border: none;
-      border-radius: 10px;
-      padding: 12px 18px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: 0.2s ease;
     }
 
+    .btn-main:hover,
     .btn-light:hover {
-      background: #cbd5e1;
+      transform: translateY(-1px);
     }
 
-    .image-preview-box {
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      padding: 14px;
+    .rooms-list-panel {
+      background: rgba(255,255,255,0.96);
+      border: 1px solid rgba(219,231,239,0.92);
+      border-radius: 28px;
+      padding: 22px;
+      box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08);
     }
 
-    .image-preview-box img {
-      width: 100%;
-      max-height: 240px;
-      object-fit: cover;
-      border-radius: 12px;
-      border: 1px solid #cbd5e1;
-      margin-top: 10px;
+    .rooms-list-panel h2 {
+      margin: 0 0 8px;
+      color: #0f172a;
+      font-size: 1.4rem;
+    }
+
+    .rooms-list-panel p {
+      margin: 0 0 18px;
+      color: #64748b;
+      line-height: 1.65;
     }
 
     .room-list-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
-      gap: 20px;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 22px;
     }
 
     .room-admin-card {
       background: white;
-      border-radius: 18px;
-      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+      border-radius: 22px;
       overflow: hidden;
+      box-shadow: 0 12px 30px rgba(15,23,42,0.08);
+      border: 1px solid #e2e8f0;
+      display: flex;
+      flex-direction: column;
     }
 
     .room-admin-card img {
@@ -193,90 +259,75 @@
     }
 
     .room-admin-content h3 {
-      margin-bottom: 10px;
+      margin: 0;
       color: #0f172a;
       font-size: 1.25rem;
     }
 
     .room-admin-content p {
-      margin-bottom: 8px;
+      margin: 0 0 8px;
       color: #475569;
-      font-size: 0.95rem;
+      line-height: 1.6;
     }
 
     .room-meta {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 8px 12px;
-      margin-top: 12px;
-      margin-bottom: 14px;
+      gap: 10px;
+      margin: 14px 0;
     }
 
     .room-meta div {
       background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 10px;
-      padding: 10px 12px;
-      font-size: 0.9rem;
+      border: 1px solid #dbe7ef;
+      border-radius: 14px;
+      padding: 12px;
       color: #334155;
-      word-break: break-word;
+      font-size: 0.9rem;
+      line-height: 1.5;
     }
 
     .room-amenities-box {
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      padding: 12px 14px;
-      margin-top: 10px;
-      margin-bottom: 14px;
+      background: linear-gradient(180deg, #fcfeff 0%, #f4fbfc 100%);
+      border: 1px solid #dbe7ef;
+      border-radius: 16px;
+      padding: 14px;
       color: #334155;
-      font-size: 0.92rem;
-      word-break: break-word;
+      margin-bottom: 14px;
+      line-height: 1.6;
     }
 
     .room-admin-actions {
       display: flex;
       gap: 10px;
       flex-wrap: wrap;
-      margin-top: 12px;
+    }
+
+    .btn-edit,
+    .btn-delete {
+      border: none;
+      border-radius: 999px;
+      padding: 11px 16px;
+      font-weight: 800;
+      cursor: pointer;
     }
 
     .btn-edit {
       background: #2563eb;
       color: white;
-      border: none;
-      border-radius: 10px;
-      padding: 10px 14px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: 0.2s ease;
-    }
-
-    .btn-edit:hover {
-      opacity: 0.92;
     }
 
     .btn-delete {
       background: #ef4444;
       color: white;
-      border: none;
-      border-radius: 10px;
-      padding: 10px 14px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: 0.2s ease;
-    }
-
-    .btn-delete:hover {
-      opacity: 0.92;
     }
 
     .room-status-badge {
-      display: inline-block;
-      padding: 6px 10px;
+      display: inline-flex;
+      padding: 8px 12px;
       border-radius: 999px;
-      font-weight: 700;
       font-size: 0.8rem;
+      font-weight: 800;
     }
 
     .status-available {
@@ -289,103 +340,117 @@
       color: #991b1b;
     }
 
-    @media (max-width: 768px) {
-      .room-form-grid {
+    @media (max-width: 980px) {
+      .room-form-grid,
+      .category-inline-box {
         grid-template-columns: 1fr;
       }
+    }
 
-      .room-form-actions {
+    @media (max-width: 700px) {
+      .rooms-admin-shell {
+        width: 92%;
+      }
+
+      .rooms-admin-hero {
+        padding: 24px 18px;
+        border-radius: 22px;
+      }
+
+      .rooms-admin-hero h1 {
+        font-size: 1.7rem;
+      }
+
+      .room-form-box,
+      .rooms-list-panel {
+        padding: 18px;
+        border-radius: 22px;
+      }
+
+      .room-form-actions,
+      .quick-actions,
+      .room-admin-actions {
         flex-direction: column;
       }
 
       .btn-main,
-      .btn-light {
+      .btn-light,
+      .btn-edit,
+      .btn-delete {
         width: 100%;
       }
 
       .room-meta {
         grid-template-columns: 1fr;
       }
-
-      .admin-rooms-header h1 {
-        font-size: 1.6rem;
-      }
     }
   </style>
 </head>
 <body class="has-fixed-navbar">
   <header class="navbar">
-    <div class="logo">Smart Resort Admin</div>
+    <div class="logo">SmartResort Admin</div>
     <nav>
       <a href="admin.html">Bookings</a>
-      <a href="admin-rooms.html">Rooms</a>
+      <a href="admin-rooms.html">Accommodations</a>
       <a href="admin-reports.html">Reports</a>
       <a href="admin-profile.html">Profile</a>
       <a href="#" id="logoutBtn">Logout</a>
     </nav>
   </header>
 
-  <main class="admin-rooms-wrapper">
-    <div class="top-page-actions">
+  <main class="rooms-admin-shell">
+    <div class="admin-top-link">
       <a href="admin.html" class="back-btn">← Back to Admin Dashboard</a>
     </div>
 
-    <section class="admin-rooms-header">
-      <h1>Admin Room Management</h1>
-      <p>Add AI-ready room details like beds, view type, aircon type, and amenities.</p>
+    <section class="rooms-admin-hero">
+      <h1>Accommodation Management Console</h1>
+      <p>
+        Create and manage cottages, rooms, and function areas with flexible slot pricing,
+        capacity display, location label, and status control.
+      </p>
+
+      <div class="quick-actions">
+        <button type="button" class="btn-main" id="seedDefaultsBtn">Seed Default Accommodations</button>
+      </div>
     </section>
 
     <section class="room-form-box">
-      <h2 id="formTitle">Add New Room</h2>
+      <h2 id="formTitle">Add New Accommodation</h2>
+
+      <div class="category-inline-box">
+        <div class="room-form-group">
+          <label for="categoryName">Create New Category</label>
+          <input type="text" id="categoryName" placeholder="Example: Cottage" />
+        </div>
+
+        <div class="room-form-group">
+          <label for="categoryDescription">Category Description</label>
+          <input type="text" id="categoryDescription" placeholder="Optional description" />
+        </div>
+
+        <button type="button" class="btn-light" id="addCategoryBtn">Add Category</button>
+      </div>
 
       <form id="roomForm">
         <input type="hidden" id="roomId" />
 
         <div class="room-form-grid">
           <div class="room-form-group">
-            <label for="roomName">Room Name</label>
+            <label for="categoryId">Accommodation Category</label>
+            <select id="categoryId" required>
+              <option value="">Loading categories...</option>
+            </select>
+          </div>
+
+          <div class="room-form-group">
+            <label for="roomName">Accommodation Name</label>
             <input type="text" id="roomName" required />
           </div>
 
           <div class="room-form-group">
-            <label for="roomPrice">Price</label>
-            <input type="number" id="roomPrice" min="1" required />
-          </div>
-
-          <div class="room-form-group">
-            <label for="roomCapacity">Capacity</label>
-            <input type="number" id="roomCapacity" min="1" required />
-          </div>
-
-          <div class="room-form-group">
-            <label for="bedCount">Bed Count</label>
-            <input type="number" id="bedCount" min="1" required />
-          </div>
-
-          <div class="room-form-group">
-            <label for="bedType">Bed Type</label>
-            <input type="text" id="bedType" placeholder="Example: 2 Queen Beds" required />
-          </div>
-
-          <div class="room-form-group">
-            <label for="viewType">View Type</label>
-            <select id="viewType" required>
-              <option value="">Select View Type</option>
-              <option value="beach view">Beach View</option>
-              <option value="pool view">Pool View</option>
-              <option value="garden view">Garden View</option>
-              <option value="mountain view">Mountain View</option>
-              <option value="standard view">Standard View</option>
-            </select>
-          </div>
-
-          <div class="room-form-group">
-            <label for="airconType">Aircon Type</label>
-            <select id="airconType" required>
-              <option value="">Select Aircon Type</option>
-              <option value="aircon">Aircon</option>
-              <option value="non-aircon">Non-Aircon</option>
-            </select>
+            <label for="roomCapacity">Max Capacity (display only)</label>
+            <input type="number" id="roomCapacity" min="0" required />
           </div>
 
           <div class="room-form-group">
@@ -396,27 +461,71 @@
             </select>
           </div>
 
+          <div class="room-form-group">
+            <label for="roomPrice">Day Tour Price</label>
+            <input type="number" id="roomPrice" min="0" required />
+          </div>
+
+          <div class="room-form-group">
+            <label for="overnightPrice">Overnight Price</label>
+            <input type="number" id="overnightPrice" min="0" required />
+          </div>
+
+          <div class="room-form-group">
+            <label for="extendedPrice">Extended Price (22/23 Hours)</label>
+            <input type="number" id="extendedPrice" min="0" required />
+          </div>
+
+          <div class="room-form-group">
+            <label for="mapLabel">Map Label / Location</label>
+            <input type="text" id="mapLabel" placeholder="Example: Poolside Area A" />
+          </div>
+
+          <div class="room-form-group">
+            <label for="dayStartTime">Day Tour Start Time</label>
+            <input type="time" id="dayStartTime" required />
+          </div>
+
+          <div class="room-form-group">
+            <label for="dayEndTime">Day Tour End Time</label>
+            <input type="time" id="dayEndTime" required />
+          </div>
+
+          <div class="room-form-group">
+            <label for="overnightStartTime">Overnight Start Time</label>
+            <input type="time" id="overnightStartTime" required />
+          </div>
+
+          <div class="room-form-group">
+            <label for="overnightEndTime">Overnight End Time</label>
+            <input type="time" id="overnightEndTime" required />
+          </div>
+
+          <div class="room-form-group">
+            <label for="extendedStartTime">Extended Start Time</label>
+            <input type="time" id="extendedStartTime" required />
+          </div>
+
+          <div class="room-form-group">
+            <label for="extendedEndTime">Extended End Time</label>
+            <input type="time" id="extendedEndTime" required />
+          </div>
+
           <div class="room-form-group full-width">
             <label for="roomDescription">Description</label>
             <textarea id="roomDescription" required></textarea>
           </div>
 
           <div class="room-form-group full-width">
-            <label for="roomAmenities">Amenities</label>
-            <textarea
-              id="roomAmenities"
-              placeholder="Example: WiFi, TV, Hot Shower, Mini Fridge, Balcony"
-              required
-            ></textarea>
-          </div>
-
-          <div class="room-form-group full-width">
-            <label for="roomImage">Image Path or URL</label>
+            <label for="roomImage">Cover Image</label>
             <input
               type="text"
               id="roomImage"
-              placeholder="Example: images/room2.jpg or https://..."
+              placeholder="Example: images/cottage-a.jpg or https://..."
             />
+            <small class="field-help">
+              You can keep this blank for now and update the image later.
+            </small>
           </div>
 
           <div class="room-form-group full-width">
@@ -426,7 +535,7 @@
               <img
                 id="imagePreview"
                 src=""
-                alt="Room Preview"
+                alt="Accommodation Preview"
                 style="display:none;"
               />
             </div>
@@ -434,13 +543,18 @@
         </div>
 
         <div class="room-form-actions">
-          <button type="submit" class="btn-main" id="saveRoomBtn">Save Room</button>
+          <button type="submit" class="btn-main" id="saveRoomBtn">Save Accommodation</button>
           <button type="button" class="btn-light" id="clearFormBtn">Clear Form</button>
         </div>
       </form>
     </section>
 
-    <section>
+    <section class="rooms-list-panel">
+      <h2>Current Accommodation Inventory</h2>
+      <p>
+        Review cottages, rooms, and function areas including category, pricing per slot,
+        capacity display, location label, and availability.
+      </p>
       <div class="room-list-grid" id="adminRoomsContainer"></div>
     </section>
   </main>

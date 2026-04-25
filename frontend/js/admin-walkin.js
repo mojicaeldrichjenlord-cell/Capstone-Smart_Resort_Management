@@ -1,18 +1,18 @@
 const API_BASE = "http://127.0.0.1:5000/api";
-const BOOKING_DRAFT_KEY = "smartresort_booking_draft_v2";
+const ADMIN_WALKIN_DRAFT_KEY = "smartresort_admin_walkin_draft_v2";
 
 let availableAccommodations = [];
 let bookingItemCounter = 0;
 
-const bookingForm = document.getElementById("bookingForm");
-const bookingMessage = document.getElementById("bookingMessage");
-const bookingItemsWrap = document.getElementById("bookingItemsWrap");
-const addItemBtn = document.getElementById("addItemBtn");
-
-const params = new URLSearchParams(window.location.search);
-const selectedRoomIdFromUrl = Number(params.get("room_id")) || null;
-
 document.addEventListener("DOMContentLoaded", async () => {
+  checkAdminAccess();
+  setupLogout();
+  await loadAccommodations();
+  setupManualForm();
+  restoreDraftIfAny();
+});
+
+function checkAdminAccess() {
   const user = JSON.parse(localStorage.getItem("user"));
 
   if (!user) {
@@ -21,57 +21,21 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  setupLogout();
-  await loadAccommodations();
-  prefillUserInfo(user);
-  setupBookingForm(user);
-
-  if (selectedRoomIdFromUrl) {
-    sessionStorage.removeItem(BOOKING_DRAFT_KEY);
-  } else {
-    restoreDraftIfAny();
+  if (user.role !== "admin") {
+    alert("Access denied. Admin only.");
+    window.location.href = "index.html";
   }
-});
-
-function setupLogout() {
-  const logoutBtns = [
-    document.getElementById("logoutBtn"),
-    document.getElementById("mobileLogoutBtn"),
-  ].filter(Boolean);
-
-  logoutBtns.forEach((btn) => {
-    btn.addEventListener("click", (e) => {
-      e.preventDefault();
-      localStorage.removeItem("user");
-
-      if (typeof showToast === "function") {
-        showToast("Logged out successfully.", "success");
-      } else {
-        alert("Logged out successfully.");
-      }
-
-      setTimeout(() => {
-        window.location.href = "login.html";
-      }, 700);
-    });
-  });
 }
 
-function prefillUserInfo(user) {
-  const fullname = String(user.fullname || "").trim();
+function setupLogout() {
+  const logoutBtn = document.getElementById("logoutBtn");
+  if (!logoutBtn) return;
 
-  if (fullname) {
-    const parts = fullname.split(" ");
-    if (parts.length >= 1) document.getElementById("firstName").value = parts[0] || "";
-    if (parts.length >= 2) document.getElementById("lastName").value = parts[parts.length - 1] || "";
-    if (parts.length > 2) {
-      document.getElementById("middleName").value = parts.slice(1, -1).join(" ");
-    }
-  }
-
-  if (user.phone) {
-    document.getElementById("contactNo").value = user.phone;
-  }
+  logoutBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    localStorage.removeItem("user");
+    window.location.href = "login.html";
+  });
 }
 
 async function loadAccommodations() {
@@ -90,7 +54,7 @@ async function loadAccommodations() {
       return;
     }
 
-    addBookingItem(selectedRoomIdFromUrl);
+    addBookingItem();
     updateSummary();
   } catch (error) {
     console.error("loadAccommodations error:", error);
@@ -98,7 +62,10 @@ async function loadAccommodations() {
   }
 }
 
-function setupBookingForm(user) {
+function setupManualForm() {
+  const addItemBtn = document.getElementById("addItemBtn");
+  const form = document.getElementById("walkInForm");
+
   if (addItemBtn) {
     addItemBtn.addEventListener("click", () => {
       addBookingItem();
@@ -120,49 +87,52 @@ function setupBookingForm(user) {
     }
   });
 
-  bookingForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
+  if (form) {
+    form.addEventListener("submit", goToPaymentScreen);
+  }
+}
 
-    const first_name = document.getElementById("firstName").value.trim();
-    const middle_name = document.getElementById("middleName").value.trim();
-    const last_name = document.getElementById("lastName").value.trim();
-    const contact_no = document.getElementById("contactNo").value.trim();
-    const guest_count = Number(document.getElementById("guestCount").value);
-    const entrance_type = document.getElementById("entranceType").value;
-    const customerNote = document.getElementById("customerNote").value.trim();
+function goToPaymentScreen(e) {
+  e.preventDefault();
 
-    const items = collectBookingItems();
+  const first_name = document.getElementById("firstName").value.trim();
+  const middle_name = document.getElementById("middleName").value.trim();
+  const last_name = document.getElementById("lastName").value.trim();
+  const contact_no = document.getElementById("contactNo").value.trim();
+  const guest_count = Number(document.getElementById("guestCount").value);
+  const entrance_type = document.getElementById("entranceType").value;
+  const customerNote = document.getElementById("customerNote").value.trim();
+  const items = collectBookingItems();
 
-    if (!first_name || !last_name || !contact_no || !guest_count) {
-      showMessage("Please fill in all required guest information.", "error");
-      return;
-    }
+  if (!first_name || !last_name || !contact_no || !guest_count) {
+    showMessage("Please fill in all required guest information.", "error");
+    return;
+  }
 
-    if (!items.length) {
-      showMessage("Please add at least one accommodation item.", "error");
-      return;
-    }
+  if (!items.length) {
+    showMessage("Please add at least one accommodation item.", "error");
+    return;
+  }
 
-    const draft = {
-      user_id: user.id,
-      first_name,
-      middle_name,
-      last_name,
-      contact_no,
-      guest_count,
-      entrance_type,
-      note: customerNote,
-      items,
-      saved_at: new Date().toISOString(),
-    };
+  const draft = {
+    first_name,
+    middle_name,
+    last_name,
+    contact_no,
+    guest_count,
+    entrance_type,
+    note: customerNote,
+    items,
+    saved_at: new Date().toISOString(),
+  };
 
-    sessionStorage.setItem(BOOKING_DRAFT_KEY, JSON.stringify(draft));
-    window.location.href = "booking-payment.html";
-  });
+  sessionStorage.setItem(ADMIN_WALKIN_DRAFT_KEY, JSON.stringify(draft));
+  window.location.href = "admin-walkin-payment.html";
 }
 
 function addBookingItem(preselectedId = null) {
-  if (!bookingItemsWrap) return;
+  const wrap = document.getElementById("bookingItemsWrap");
+  if (!wrap) return;
 
   bookingItemCounter += 1;
   const itemId = bookingItemCounter;
@@ -182,8 +152,8 @@ function addBookingItem(preselectedId = null) {
       }
     </div>
 
-    <div class="booking-form-grid">
-      <div class="booking-form-group">
+    <div class="walkin-grid">
+      <div class="walkin-group">
         <label>Accommodation</label>
         <select class="accommodation-select" data-item-id="${itemId}">
           <option value="">Select accommodation</option>
@@ -199,19 +169,19 @@ function addBookingItem(preselectedId = null) {
         </select>
       </div>
 
-      <div class="booking-form-group">
+      <div class="walkin-group">
         <label>Slot Type</label>
         <select class="slot-select" data-item-id="${itemId}">
           <option value="">Select slot</option>
         </select>
       </div>
 
-      <div class="booking-form-group">
+      <div class="walkin-group">
         <label>Reservation Date</label>
         <input type="date" class="date-input" data-item-id="${itemId}" min="${today}" value="${today}" />
       </div>
 
-      <div class="booking-form-group">
+      <div class="walkin-group">
         <label>Maximum Capacity (display only)</label>
         <input type="text" class="capacity-display" data-item-id="${itemId}" value="-" readonly />
       </div>
@@ -222,7 +192,7 @@ function addBookingItem(preselectedId = null) {
     </div>
   `;
 
-  bookingItemsWrap.appendChild(card);
+  wrap.appendChild(card);
 
   const removeBtn = card.querySelector(".remove-item-btn");
   const accommodationSelect = card.querySelector(".accommodation-select");
@@ -259,7 +229,7 @@ function addBookingItem(preselectedId = null) {
 }
 
 function restoreDraftIfAny() {
-  const raw = sessionStorage.getItem(BOOKING_DRAFT_KEY);
+  const raw = sessionStorage.getItem(ADMIN_WALKIN_DRAFT_KEY);
   if (!raw) return;
 
   try {
@@ -274,13 +244,14 @@ function restoreDraftIfAny() {
     if (draft.note) document.getElementById("customerNote").value = draft.note;
 
     if (Array.isArray(draft.items) && draft.items.length) {
-      bookingItemsWrap.innerHTML = "";
+      const wrap = document.getElementById("bookingItemsWrap");
+      wrap.innerHTML = "";
       bookingItemCounter = 0;
 
       draft.items.forEach((item, index) => {
         addBookingItem(Number(item.accommodation_id) || null);
 
-        const card = bookingItemsWrap.children[index];
+        const card = wrap.children[index];
         if (!card) return;
 
         const accommodationSelect = card.querySelector(".accommodation-select");
@@ -569,8 +540,11 @@ function formatDateDisplay(dateValue) {
 }
 
 function showMessage(message, type = "success") {
-  bookingMessage.textContent = message;
-  bookingMessage.style.color = type === "error" ? "red" : "green";
+  const messageEl = document.getElementById("walkInMessage");
+  if (messageEl) {
+    messageEl.textContent = message;
+    messageEl.style.color = type === "error" ? "red" : "green";
+  }
 
   if (typeof showToast === "function") {
     showToast(message, type);

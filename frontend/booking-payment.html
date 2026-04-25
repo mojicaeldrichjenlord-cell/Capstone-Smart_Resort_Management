@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Reserve Accommodation - SmartResort</title>
+    <title>Reservation Payment - SmartResort</title>
     <link rel="stylesheet" href="css/style.css" />
 
     <style>
@@ -128,7 +128,7 @@
       .page-header {
         background:
           linear-gradient(rgba(15, 23, 42, 0.58), rgba(20, 184, 166, 0.52)),
-          url("https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1600&q=80")
+          url("https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1600&q=80")
           center/cover no-repeat;
         color: white;
         text-align: center;
@@ -146,13 +146,13 @@
         opacity: 0.96;
       }
 
-      .booking-page-wrapper {
+      .payment-page-wrapper {
         width: 92%;
         max-width: 1100px;
         margin: 30px auto 48px;
       }
 
-      .booking-top-actions {
+      .payment-top-actions {
         display: flex;
         justify-content: flex-start;
         margin-bottom: 16px;
@@ -175,7 +175,7 @@
         transform: translateY(-1px);
       }
 
-      .booking-card {
+      .payment-card {
         background: rgba(255,255,255,0.96);
         border-radius: 30px;
         padding: 30px;
@@ -197,31 +197,37 @@
         font-size: 1.35rem;
       }
 
-      .booking-form-grid {
+      .payment-grid {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 18px;
+      }
+
+      .payment-form-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 18px;
       }
 
-      .booking-form-group {
+      .payment-form-group {
         display: flex;
         flex-direction: column;
         gap: 8px;
       }
 
-      .booking-form-group.full-width {
+      .payment-form-group.full-width {
         grid-column: 1 / -1;
       }
 
-      .booking-form-group label {
+      .payment-form-group label {
         font-weight: 700;
         color: #0f172a;
         font-size: 0.98rem;
       }
 
-      .booking-form-group input,
-      .booking-form-group select,
-      .booking-form-group textarea {
+      .payment-form-group input,
+      .payment-form-group select,
+      .payment-form-group textarea {
         width: 100%;
         padding: 14px 15px;
         border: 1px solid #cbd5e1;
@@ -231,78 +237,17 @@
         background: #fff;
       }
 
-      .booking-form-group textarea {
+      .payment-form-group textarea {
         min-height: 95px;
         resize: vertical;
       }
 
-      .booking-form-group input:focus,
-      .booking-form-group select:focus,
-      .booking-form-group textarea:focus {
-        border-color: #14b8a6;
-        box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
-      }
-
-      .field-help {
-        font-size: 0.85rem;
-        color: #64748b;
-        line-height: 1.5;
-      }
-
-      .booking-items-wrap {
+      .summary-list {
         display: grid;
-        gap: 16px;
-      }
-
-      .booking-item-card {
-        background: #ffffff;
-        border: 1px solid #dbe7ef;
-        border-radius: 18px;
-        padding: 16px;
-      }
-
-      .booking-item-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 12px;
-        flex-wrap: wrap;
-        margin-bottom: 12px;
-      }
-
-      .booking-item-title {
-        color: #0f172a;
-        font-size: 1.08rem;
-        font-weight: 800;
-      }
-
-      .remove-item-btn {
-        border: none;
-        border-radius: 999px;
-        padding: 10px 14px;
-        font-weight: 800;
-        cursor: pointer;
-        background: #ef4444;
-        color: white;
-      }
-
-      .slot-preview {
-        background: #f8fafc;
-        border: 1px solid #dbe7ef;
-        border-radius: 14px;
-        padding: 12px 14px;
-        color: #334155;
-        line-height: 1.6;
-        margin-top: 12px;
-      }
-
-      .summary-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 12px;
       }
 
-      .summary-box {
+      .summary-item {
         background: white;
         border: 1px solid #dbe7ef;
         border-radius: 16px;
@@ -311,35 +256,42 @@
         line-height: 1.6;
       }
 
-      .summary-box strong {
-        display: block;
+      .summary-item strong {
         color: #0f172a;
-        margin-bottom: 4px;
       }
 
-      .highlight-box {
+      .payment-breakdown {
         background: linear-gradient(135deg, #0f172a, #16233b);
         color: white;
         border-radius: 20px;
         padding: 18px;
-        margin-top: 14px;
       }
 
-      .highlight-row {
+      .payment-row {
         display: flex;
         justify-content: space-between;
         gap: 12px;
         margin-bottom: 10px;
       }
 
-      .highlight-row:last-child {
+      .payment-row:last-child {
         margin-bottom: 0;
         padding-top: 10px;
         border-top: 1px solid rgba(255,255,255,0.14);
         font-weight: 800;
       }
 
-      .booking-form-actions {
+      .payment-note {
+        margin-top: 14px;
+        background: #fff7ed;
+        border: 1px solid #fdba74;
+        border-radius: 16px;
+        padding: 14px 16px;
+        color: #9a3412;
+        line-height: 1.6;
+      }
+
+      .payment-actions {
         display: flex;
         flex-direction: column;
         gap: 10px;
@@ -356,11 +308,40 @@
         padding: 13px 16px;
         border-radius: 14px;
         font-weight: 700;
-        transition: 0.2s ease;
       }
 
-      .back-btn-full:hover {
-        background: #cbd5e1;
+      .qr-placeholder {
+        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+        border: 1px dashed #cbd5e1;
+        border-radius: 18px;
+        padding: 18px;
+        text-align: center;
+        color: #475569;
+        line-height: 1.7;
+      }
+
+      .proof-preview-box {
+        margin-top: 12px;
+        background: #fff;
+        border: 1px solid #dbe7ef;
+        border-radius: 16px;
+        padding: 14px;
+      }
+
+      .proof-preview-box img {
+        width: 100%;
+        max-height: 260px;
+        object-fit: contain;
+        border-radius: 12px;
+        border: 1px solid #e5e7eb;
+        background: #f8fafc;
+      }
+
+      @media (max-width: 900px) {
+        .payment-grid,
+        .payment-form-grid {
+          grid-template-columns: 1fr;
+        }
       }
 
       @media (max-width: 768px) {
@@ -370,19 +351,6 @@
 
         .menu-toggle {
           display: inline-block;
-        }
-
-        .page-header {
-          padding: 50px 16px;
-        }
-
-        .page-header h1 {
-          font-size: 2rem;
-        }
-
-        .booking-form-grid,
-        .summary-grid {
-          grid-template-columns: 1fr;
         }
       }
 
@@ -399,27 +367,21 @@
           font-size: 1.8rem;
         }
 
-        .booking-card {
+        .payment-card {
           padding: 20px;
           border-radius: 22px;
         }
 
         .back-btn,
         .back-btn-full,
-        .btn-primary.full-btn,
-        .remove-item-btn {
+        .btn-primary.full-btn {
           width: 100%;
           text-align: center;
           justify-content: center;
         }
 
-        .booking-top-actions {
+        .payment-top-actions {
           display: block;
-        }
-
-        .booking-item-header {
-          flex-direction: column;
-          align-items: stretch;
         }
       }
     </style>
@@ -454,137 +416,130 @@
     </header>
 
     <section class="page-header">
-      <h1>Create a Reservation</h1>
-      <p>Fill in your basic information and choose your accommodation before proceeding to payment.</p>
+      <h1>Reservation Payment</h1>
+      <p>Review your selected accommodations and complete the required down payment step.</p>
     </section>
 
-    <main class="booking-page-wrapper">
-      <div class="booking-top-actions">
-        <a href="rooms.html" class="back-btn">← Back to Accommodations</a>
+    <main class="payment-page-wrapper">
+      <div class="payment-top-actions">
+        <a href="booking.html" class="back-btn">← Back to Reservation Form</a>
       </div>
 
-      <div class="booking-card">
-        <form id="bookingForm">
-          <section class="section-box">
-            <h2>Guest Information</h2>
+      <div class="payment-card">
+        <div class="payment-grid">
+          <div>
+            <section class="section-box">
+              <h2>Reservation Summary</h2>
+              <div id="reservationSummaryList" class="summary-list"></div>
+            </section>
 
-            <div class="booking-form-grid">
-              <div class="booking-form-group">
-                <label for="firstName">First Name</label>
-                <input type="text" id="firstName" required />
-              </div>
+            <section class="section-box">
+              <h2>Payment Details</h2>
 
-              <div class="booking-form-group">
-                <label for="middleName">Middle Name (Optional)</label>
-                <input type="text" id="middleName" />
-              </div>
+              <form id="paymentForm" enctype="multipart/form-data">
+                <div class="payment-form-grid">
+                  <div class="payment-form-group">
+                    <label for="paymentMethod">Payment Method</label>
+                    <select id="paymentMethod" required>
+                      <option value="gcash">GCash</option>
+                      <option value="paymaya">PayMaya</option>
+                    </select>
+                  </div>
 
-              <div class="booking-form-group">
-                <label for="lastName">Last Name</label>
-                <input type="text" id="lastName" required />
-              </div>
+                  <div class="payment-form-group">
+                    <label for="paymentReference">Reference Number</label>
+                    <input
+                      type="text"
+                      id="paymentReference"
+                      placeholder="Transaction/reference number"
+                      required
+                    />
+                  </div>
 
-              <div class="booking-form-group">
-                <label for="contactNo">Contact Number</label>
-                <input type="text" id="contactNo" required />
-              </div>
+                  <div class="payment-form-group full-width">
+                    <label for="proofImage">Upload Payment Screenshot</label>
+                    <input
+                      type="file"
+                      id="proofImage"
+                      accept="image/png,image/jpeg,image/jpg,image/webp"
+                      required
+                    />
+                  </div>
 
-              <div class="booking-form-group">
-                <label for="guestCount">Guest Count</label>
-                <input type="number" id="guestCount" min="1" required />
-              </div>
+                  <div class="payment-form-group full-width">
+                    <div class="proof-preview-box" id="proofPreviewBox" style="display:none;">
+                      <img id="proofPreviewImage" src="" alt="Payment Proof Preview" />
+                    </div>
+                  </div>
 
-              <div class="booking-form-group">
-                <label for="entranceType">Entrance Type</label>
-                <select id="entranceType" required>
-                  <option value="pool_beach">Pool &amp; Beach Entrance</option>
-                  <option value="beach_only">Beach Entrance Only</option>
-                </select>
-                <small class="field-help">
-                  Entrance fee is estimated only and will be finalized at the front desk.
-                </small>
-              </div>
+                  <div class="payment-form-group full-width">
+                    <label for="paymentReminderNote">Optional Payment Note</label>
+                    <textarea
+                      id="paymentReminderNote"
+                      placeholder="Optional note about your payment or transaction"
+                    ></textarea>
+                  </div>
+                </div>
 
-              <div class="booking-form-group full-width">
-                <label for="customerNote">Note / Concern</label>
-                <textarea
-                  id="customerNote"
-                  placeholder="Kung may gusto kayong ihabilin or concern, ilagay dito. If you have kids, senior, or PWD guests, please mention it here for front-desk verification."
-                ></textarea>
-              </div>
-            </div>
-          </section>
+                <div class="payment-actions">
+                  <button type="submit" class="btn-primary full-btn">Submit Reservation</button>
+                  <a href="booking.html" class="back-btn-full">Back to Reservation Form</a>
+                </div>
+              </form>
 
-          <section class="section-box">
-            <div class="booking-item-header">
-              <div class="booking-item-title">Reservation Items</div>
-              <button type="button" class="btn-primary" id="addItemBtn">Add Another Accommodation</button>
-            </div>
-
-            <div id="bookingItemsWrap" class="booking-items-wrap"></div>
-          </section>
-
-          <section class="section-box">
-            <h2>Reservation Preview</h2>
-
-            <div class="summary-grid">
-              <div class="summary-box">
-                <strong>Total Selected Accommodations</strong>
-                <span id="summaryItemCount">0 item(s)</span>
-              </div>
-
-              <div class="summary-box">
-                <strong>Estimated Entrance Fee</strong>
-                <span id="estimatedEntranceFee">₱0.00</span>
-              </div>
-
-              <div class="summary-box">
-                <strong>Accommodation Total</strong>
-                <span id="accommodationTotal">₱0.00</span>
-              </div>
-
-              <div class="summary-box">
-                <strong>Required Down Payment</strong>
-                <span id="requiredDownpayment">₱0.00</span>
-              </div>
-            </div>
-
-            <div class="highlight-box">
-              <div class="highlight-row">
-                <span>Accommodation Total</span>
-                <strong id="highlightAccommodationTotal">₱0.00</strong>
-              </div>
-              <div class="highlight-row">
-                <span>Down Payment Now (50%)</span>
-                <strong id="highlightDownpayment">₱0.00</strong>
-              </div>
-              <div class="highlight-row">
-                <span>Remaining Balance Onsite</span>
-                <strong id="highlightRemainingBalance">₱0.00</strong>
-              </div>
-              <div class="highlight-row">
-                <span>Entrance Fee Estimate</span>
-                <strong id="highlightEntranceFee">₱0.00</strong>
-              </div>
-            </div>
-
-            <p class="field-help" style="margin-top: 14px;">
-              On the next screen, you will review your payment details and submit your reservation.
-            </p>
-          </section>
-
-          <div class="booking-form-actions">
-            <button type="submit" class="btn-primary full-btn">Next to Payment</button>
-            <a href="rooms.html" class="back-btn-full">Back to Accommodations</a>
+              <p id="paymentMessage" class="message"></p>
+            </section>
           </div>
-        </form>
 
-        <p id="bookingMessage" class="message"></p>
+          <div>
+            <section class="section-box">
+              <h2>Payment Breakdown</h2>
+
+              <div class="payment-breakdown">
+                <div class="payment-row">
+                  <span>Accommodation Total</span>
+                  <strong id="paymentAccommodationTotal">₱0.00</strong>
+                </div>
+                <div class="payment-row">
+                  <span>Required Down Payment (50%)</span>
+                  <strong id="paymentDownpayment">₱0.00</strong>
+                </div>
+                <div class="payment-row">
+                  <span>Remaining 50% Onsite</span>
+                  <strong id="paymentRemaining">₱0.00</strong>
+                </div>
+                <div class="payment-row">
+                  <span>Estimated Entrance Fee</span>
+                  <strong id="paymentEntranceFee">₱0.00</strong>
+                </div>
+                <div class="payment-row">
+                  <span>Total Reminder for Front Desk</span>
+                  <strong id="paymentFrontDeskReminder">₱0.00</strong>
+                </div>
+              </div>
+
+              <div class="payment-note">
+                <strong>Important Reminder:</strong><br />
+                Your required down payment is based on the accommodation total only.
+                The remaining 50% and the estimated entrance fee will be paid at the front desk.
+                Senior, PWD, and kids discounts will be verified onsite.
+              </div>
+            </section>
+
+            <section class="section-box">
+              <h2>QR / Payment Area</h2>
+              <div class="qr-placeholder" id="qrPlaceholderBox">
+                QR payment integration can be placed here later.<br />
+                For now, upload your screenshot proof after sending the payment.
+              </div>
+            </section>
+          </div>
+        </div>
       </div>
     </main>
 
     <script src="js/toast.js"></script>
     <script src="js/mobile-nav.js"></script>
-    <script src="js/booking.js"></script>
+    <script src="js/booking-payment.js"></script>
   </body>
 </html>

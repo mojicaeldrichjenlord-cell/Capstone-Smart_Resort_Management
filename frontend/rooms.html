@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Rooms - SmartResort</title>
+    <title>Accommodations - SmartResort</title>
     <link rel="stylesheet" href="css/style.css" />
 
     <style>
@@ -11,15 +11,16 @@
         position: sticky;
         top: 0;
         z-index: 2000;
-        background: #0f172a;
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+        background: rgba(15, 23, 42, 0.9);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid rgba(255,255,255,0.08);
       }
 
       .site-header-inner {
         width: 94%;
         max-width: 1300px;
         margin: 0 auto;
-        min-height: 72px;
+        min-height: 74px;
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -28,16 +29,15 @@
 
       .site-logo {
         color: #ffffff;
-        font-size: 1.9rem;
+        font-size: 1.95rem;
         font-weight: 800;
         text-decoration: none;
-        line-height: 1;
       }
 
       .desktop-nav {
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 10px;
       }
 
       .desktop-nav a,
@@ -46,14 +46,14 @@
         color: #ffffff;
         font-weight: 700;
         padding: 10px 14px;
-        border-radius: 10px;
-        transition: 0.2s ease;
+        border-radius: 999px;
+        transition: 0.25s ease;
         display: inline-block;
       }
 
       .desktop-nav a:hover,
       .mobile-nav a:hover {
-        background: rgba(255, 255, 255, 0.08);
+        background: rgba(255, 255, 255, 0.1);
       }
 
       .desktop-nav a.active,
@@ -64,19 +64,20 @@
 
       .menu-toggle {
         display: none;
-        width: 46px;
-        height: 46px;
+        width: 48px;
+        height: 48px;
         border: none;
-        border-radius: 10px;
+        border-radius: 14px;
         background: #14b8a6;
         cursor: pointer;
         position: relative;
         flex-shrink: 0;
+        box-shadow: 0 10px 22px rgba(20, 184, 166, 0.25);
       }
 
       .menu-toggle span {
         position: absolute;
-        left: 11px;
+        left: 12px;
         width: 24px;
         height: 3px;
         background: white;
@@ -84,19 +85,13 @@
         transition: 0.25s ease;
       }
 
-      .menu-toggle span:nth-child(1) {
-        top: 13px;
-      }
-      .menu-toggle span:nth-child(2) {
-        top: 21px;
-      }
-      .menu-toggle span:nth-child(3) {
-        top: 29px;
-      }
+      .menu-toggle span:nth-child(1) { top: 14px; }
+      .menu-toggle span:nth-child(2) { top: 22px; }
+      .menu-toggle span:nth-child(3) { top: 30px; }
 
       .menu-toggle.active span:nth-child(1) {
         transform: rotate(45deg);
-        top: 21px;
+        top: 22px;
       }
 
       .menu-toggle.active span:nth-child(2) {
@@ -105,7 +100,7 @@
 
       .menu-toggle.active span:nth-child(3) {
         transform: rotate(-45deg);
-        top: 21px;
+        top: 22px;
       }
 
       .mobile-nav {
@@ -113,11 +108,12 @@
         width: 94%;
         max-width: 1300px;
         margin: 0 auto 14px;
-        background: #1e293b;
-        border-radius: 14px;
+        background: rgba(30, 41, 59, 0.98);
+        border-radius: 18px;
         padding: 10px;
         flex-direction: column;
         gap: 8px;
+        box-shadow: 0 18px 34px rgba(15, 23, 42, 0.18);
       }
 
       .mobile-nav.show {
@@ -130,27 +126,32 @@
       }
 
       .page-header {
-        background: linear-gradient(135deg, #0f172a, #14b8a6);
+        background:
+          linear-gradient(rgba(15, 23, 42, 0.55), rgba(20, 184, 166, 0.5)),
+          url("https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1600&q=80")
+          center/cover no-repeat;
         color: white;
         text-align: center;
-        padding: 56px 18px;
+        padding: 76px 18px 72px;
       }
 
       .page-header h1 {
         margin: 0 0 10px;
-        font-size: 2.7rem;
+        font-size: 2.9rem;
       }
 
       .page-header p {
-        margin: 0;
+        margin: 0 auto;
+        max-width: 700px;
         font-size: 1rem;
-        opacity: 0.95;
+        opacity: 0.96;
+        line-height: 1.7;
       }
 
       .rooms-wrapper {
         width: 94%;
         max-width: 1350px;
-        margin: 28px auto 34px;
+        margin: 30px auto 34px;
       }
 
       .rooms-top-actions {
@@ -160,44 +161,48 @@
       }
 
       .back-btn {
-        display: inline-block;
+        display: inline-flex;
         text-decoration: none;
-        background: #e2e8f0;
+        background: rgba(255,255,255,0.95);
         color: #0f172a;
-        padding: 10px 16px;
-        border-radius: 10px;
+        padding: 11px 18px;
+        border-radius: 999px;
         font-weight: 700;
         transition: 0.2s ease;
+        box-shadow: 0 10px 20px rgba(15, 23, 42, 0.06);
+        border: 1px solid rgba(219,231,239,0.9);
       }
 
       .back-btn:hover {
-        background: #cbd5e1;
+        transform: translateY(-1px);
+        background: #ffffff;
       }
 
       .room-ai-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 22px;
+        grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+        gap: 24px;
       }
 
       .room-ai-card {
-        background: white;
-        border-radius: 18px;
+        background: rgba(255,255,255,0.96);
+        border-radius: 28px;
         overflow: hidden;
-        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+        box-shadow: 0 16px 38px rgba(15, 23, 42, 0.1);
         display: flex;
         flex-direction: column;
+        border: 1px solid rgba(219,231,239,0.92);
       }
 
       .room-ai-card img {
         width: 100%;
-        height: 220px;
+        height: 235px;
         object-fit: cover;
         background: #f1f5f9;
       }
 
       .room-ai-content {
-        padding: 18px;
+        padding: 20px;
         display: flex;
         flex-direction: column;
         height: 100%;
@@ -206,7 +211,7 @@
       .room-ai-content h3 {
         margin-bottom: 10px;
         color: #0f172a;
-        font-size: 1.25rem;
+        font-size: 1.32rem;
         line-height: 1.3;
       }
 
@@ -214,36 +219,12 @@
         margin-bottom: 8px;
         color: #475569;
         font-size: 0.95rem;
-        line-height: 1.5;
-      }
-      .ai-chat-mic-btn {
-        border: none;
-        background: #e2e8f0;
-        color: #0f172a;
-        width: 48px;
-        min-width: 48px;
-        height: 48px;
-        border-radius: 12px;
-        font-size: 1.2rem;
-        font-weight: 700;
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      .ai-chat-mic-btn:hover {
-        background: #cbd5e1;
-      }
-
-      .ai-chat-mic-btn.active-voice-btn {
-        background: #14b8a6 !important;
-        color: white !important;
+        line-height: 1.65;
       }
 
       .room-price {
-        font-size: 1rem;
-        font-weight: 700;
+        font-size: 1.05rem;
+        font-weight: 800;
         color: #0f172a;
         margin-bottom: 12px;
       }
@@ -251,52 +232,64 @@
       .room-ai-meta {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 8px 10px;
+        gap: 10px;
         margin: 14px 0;
       }
 
       .room-ai-meta div {
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 10px;
-        padding: 10px 12px;
+        background: linear-gradient(180deg, #fcfeff 0%, #f4fbfc 100%);
+        border: 1px solid #dbe7ef;
+        border-radius: 14px;
+        padding: 12px 14px;
         font-size: 0.9rem;
         color: #334155;
-        word-break: break-word;
-        line-height: 1.4;
+        line-height: 1.45;
       }
 
       .room-ai-amenities {
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 12px 14px;
+        background: linear-gradient(180deg, #fcfeff 0%, #f4fbfc 100%);
+        border: 1px solid #dbe7ef;
+        border-radius: 16px;
+        padding: 14px 16px;
         margin-top: 10px;
         margin-bottom: 16px;
         color: #334155;
         font-size: 0.92rem;
-        word-break: break-word;
-        line-height: 1.5;
+        line-height: 1.6;
       }
 
       .room-ai-actions {
         margin-top: auto;
         padding-top: 10px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
       }
 
       .book-now-btn {
-        display: inline-block;
+        display: inline-flex;
         text-decoration: none;
-        background: #14b8a6;
+        background: linear-gradient(135deg, #14b8a6, #0f9488);
         color: white;
-        padding: 11px 16px;
-        border-radius: 10px;
-        font-weight: 700;
+        padding: 12px 18px;
+        border-radius: 999px;
+        font-weight: 800;
         transition: 0.2s ease;
+        box-shadow: 0 12px 24px rgba(20, 184, 166, 0.24);
       }
 
       .book-now-btn:hover {
-        background: #0f766e;
+        transform: translateY(-1px);
+      }
+
+      .ask-ai-btn {
+        border: none;
+        border-radius: 999px;
+        padding: 12px 18px;
+        font-weight: 800;
+        cursor: pointer;
+        background: #0f172a;
+        color: white;
       }
 
       .ai-chat-toggle {
@@ -306,26 +299,27 @@
         z-index: 3000;
         border: none;
         border-radius: 999px;
-        background: #14b8a6;
+        background: linear-gradient(135deg, #14b8a6, #0f9488);
         color: white;
         font-weight: 800;
-        padding: 14px 18px;
+        padding: 14px 20px;
         cursor: pointer;
-        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+        box-shadow: 0 16px 28px rgba(20, 184, 166, 0.28);
       }
 
       .ai-chat-window {
         position: fixed;
         right: 20px;
         bottom: 82px;
-        width: 380px;
+        width: 390px;
         max-width: calc(100vw - 24px);
         background: white;
-        border-radius: 18px;
-        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.2);
+        border-radius: 24px;
+        box-shadow: 0 22px 46px rgba(15, 23, 42, 0.2);
         overflow: hidden;
         z-index: 3000;
         display: none;
+        border: 1px solid rgba(219, 231, 239, 0.9);
       }
 
       .ai-chat-window.show {
@@ -333,7 +327,7 @@
       }
 
       .ai-chat-window.maximized {
-        width: min(820px, calc(100vw - 24px));
+        width: min(860px, calc(100vw - 24px));
         height: min(82vh, 760px);
         bottom: 20px;
       }
@@ -364,21 +358,6 @@
         gap: 6px;
         flex-wrap: wrap;
         justify-content: flex-end;
-      }
-
-      .ai-chat-header-btn {
-        border: none;
-        background: rgba(255, 255, 255, 0.12);
-        color: white;
-        font-size: 0.85rem;
-        cursor: pointer;
-        min-width: 32px;
-        height: 32px;
-        border-radius: 8px;
-        padding: 0 10px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
       }
 
       .active-voice-btn {
@@ -451,6 +430,31 @@
         box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
       }
 
+      .ai-chat-mic-btn {
+        border: none;
+        background: #e2e8f0;
+        color: #0f172a;
+        width: 48px;
+        min-width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        font-size: 1.2rem;
+        font-weight: 700;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .ai-chat-mic-btn:hover {
+        background: #cbd5e1;
+      }
+
+      .ai-chat-mic-btn.active-voice-btn {
+        background: #14b8a6 !important;
+        color: white !important;
+      }
+
       .ai-chat-send {
         border: none;
         background: #14b8a6;
@@ -467,7 +471,7 @@
 
       @media (max-width: 900px) {
         .page-header h1 {
-          font-size: 2.2rem;
+          font-size: 2.35rem;
         }
       }
 
@@ -481,7 +485,7 @@
         }
 
         .page-header {
-          padding: 42px 16px;
+          padding: 58px 16px;
         }
 
         .page-header h1 {
@@ -523,12 +527,14 @@
         }
 
         .room-ai-content {
-          padding: 15px;
+          padding: 16px;
         }
 
         .back-btn,
-        .book-now-btn {
+        .book-now-btn,
+        .ask-ai-btn {
           width: 100%;
+          justify-content: center;
           text-align: center;
         }
 
@@ -592,7 +598,7 @@
 
         <nav class="desktop-nav">
           <a href="index.html">Home</a>
-          <a href="rooms.html" class="active">Rooms</a>
+          <a href="rooms.html" class="active">Accommodations</a>
           <a href="my-bookings.html">My Bookings</a>
           <a href="profile.html">Profile</a>
           <a href="#" id="logoutBtn">Logout</a>
@@ -607,7 +613,7 @@
 
       <nav class="mobile-nav" id="mobileNav">
         <a href="index.html">Home</a>
-        <a href="rooms.html" class="active">Rooms</a>
+        <a href="rooms.html" class="active">Accommodations</a>
         <a href="my-bookings.html">My Bookings</a>
         <a href="profile.html">Profile</a>
         <a href="#" id="mobileLogoutBtn">Logout</a>
@@ -615,8 +621,11 @@
     </header>
 
     <section class="page-header">
-      <h1>Our Rooms</h1>
-      <p>Choose the best room for your stay.</p>
+      <h1>Choose Your Accommodation</h1>
+      <p>
+        Browse cottages, rooms, and function areas. Compare morning, evening,
+        and extended rates before you reserve.
+      </p>
     </section>
 
     <main class="rooms-wrapper">
@@ -634,16 +643,9 @@
         <h3>SmartResort AI Assistant</h3>
 
         <div class="ai-chat-header-actions">
-          <button
-            id="aiChatMaximize"
-            class="ai-chat-header-btn"
-            title="Maximize"
-          >
-            ▢
-          </button>
-          <button id="aiChatClose" class="ai-chat-header-btn" title="Close">
-            &times;
-          </button>
+          <button id="aiNewChatBtn" class="ai-chat-header-btn" title="New Chat">New</button>
+          <button id="aiChatMaximize" class="ai-chat-header-btn" title="Maximize">▢</button>
+          <button id="aiChatClose" class="ai-chat-header-btn" title="Close">&times;</button>
         </div>
       </div>
 
@@ -653,7 +655,7 @@
         <input
           type="text"
           id="aiChatInput"
-          placeholder="Ask about room recommendations, dates, or payment..."
+          placeholder="Ask about accommodation recommendations, dates, or payment..."
         />
         <button
           id="aiMicBtn"

@@ -3,64 +3,336 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Register - SmartResort</title>
+  <title>Register | SmartResort</title>
   <link rel="stylesheet" href="css/style.css" />
+
+  <style>
+    .auth-page {
+      min-height: 100vh;
+      background:
+        linear-gradient(rgba(15, 23, 42, 0.62), rgba(15, 23, 42, 0.45)),
+        url("https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?auto=format&fit=crop&w=1600&q=80")
+        center/cover no-repeat;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 30px 16px;
+    }
+
+    .register-container {
+      width: 100%;
+      max-width: 1150px;
+      display: grid;
+      grid-template-columns: 1fr 1.05fr;
+      gap: 24px;
+      align-items: stretch;
+    }
+
+    .register-showcase {
+      background:
+        linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(20, 184, 166, 0.68));
+      color: white;
+      border-radius: 30px;
+      padding: 38px 30px;
+      box-shadow: 0 24px 50px rgba(15, 23, 42, 0.18);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .register-showcase::after {
+      content: "";
+      position: absolute;
+      top: -55px;
+      right: -55px;
+      width: 220px;
+      height: 220px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.08);
+      filter: blur(6px);
+    }
+
+    .register-badge {
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      padding: 10px 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.14);
+      border: 1px solid rgba(255,255,255,0.16);
+      font-size: 0.88rem;
+      font-weight: 700;
+      margin-bottom: 18px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .register-showcase h1 {
+      font-size: 2.35rem;
+      line-height: 1.1;
+      margin-bottom: 14px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .register-showcase p {
+      font-size: 1rem;
+      line-height: 1.8;
+      max-width: 470px;
+      opacity: 0.96;
+      position: relative;
+      z-index: 1;
+    }
+
+    .register-points {
+      margin-top: 22px;
+      display: grid;
+      gap: 12px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .register-point {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 16px;
+      padding: 14px 16px;
+    }
+
+    .register-point strong {
+      display: block;
+      margin-bottom: 4px;
+      font-size: 0.96rem;
+    }
+
+    .register-card {
+      background: rgba(255,255,255,0.97);
+      border-radius: 30px;
+      padding: 32px 28px;
+      box-shadow: 0 24px 50px rgba(15, 23, 42, 0.14);
+      border: 1px solid rgba(255,255,255,0.7);
+    }
+
+    .register-card h2 {
+      color: #0f172a;
+      font-size: 2rem;
+      margin-bottom: 8px;
+    }
+
+    .register-subtext {
+      color: #64748b;
+      margin-bottom: 22px;
+      line-height: 1.65;
+    }
+
+    .register-form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px 16px;
+    }
+
+    .register-form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .register-form-group.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .register-form-group label {
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 6px;
+    }
+
+    .register-form-group input,
+    .register-form-group textarea {
+      width: 100%;
+      padding: 14px 15px;
+      border: 1px solid #cbd5e1;
+      border-radius: 16px;
+      outline: none;
+      font-size: 1rem;
+      background: #fff;
+    }
+
+    .register-form-group textarea {
+      min-height: 105px;
+      resize: vertical;
+    }
+
+    .register-form-group input:focus,
+    .register-form-group textarea:focus {
+      border-color: #14b8a6;
+      box-shadow: 0 0 0 3px rgba(20,184,166,0.15);
+    }
+
+    .register-submit {
+      margin-top: 18px;
+      width: 100%;
+      padding: 14px 16px;
+      border: none;
+      border-radius: 16px;
+      background: linear-gradient(135deg, #14b8a6, #0f9488);
+      color: white;
+      font-weight: 800;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: 0.2s ease;
+      box-shadow: 0 14px 28px rgba(20,184,166,0.2);
+    }
+
+    .register-submit:hover {
+      transform: translateY(-1px);
+    }
+
+    .auth-link {
+      margin-top: 18px;
+      text-align: center;
+      color: #475569;
+      line-height: 1.6;
+    }
+
+    .auth-link a {
+      color: #14b8a6;
+      text-decoration: none;
+      font-weight: 800;
+    }
+
+    .message {
+      margin-top: 14px;
+      text-align: center;
+      font-weight: 700;
+    }
+
+    @media (max-width: 950px) {
+      .register-container {
+        grid-template-columns: 1fr;
+      }
+
+      .register-showcase {
+        order: 2;
+      }
+
+      .register-card {
+        order: 1;
+      }
+
+      .register-showcase h1 {
+        font-size: 2rem;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .register-form-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .auth-page {
+        padding: 18px 12px;
+      }
+
+      .register-card,
+      .register-showcase {
+        border-radius: 22px;
+      }
+
+      .register-card {
+        padding: 24px 18px;
+      }
+
+      .register-showcase {
+        padding: 24px 18px;
+      }
+
+      .register-card h2 {
+        font-size: 1.6rem;
+      }
+
+      .register-showcase h1 {
+        font-size: 1.7rem;
+      }
+    }
+  </style>
 </head>
-<body>
-  <div class="auth-page">
-    <div class="auth-container">
-      <div class="auth-box">
-        <h1>Create Account</h1>
-        <p>Register to book rooms and enjoy resort services.</p>
+<body class="auth-page">
+  <div class="register-container">
+    <section class="register-showcase">
+      <div class="register-badge">Create your SmartResort guest account</div>
+      <h1>Start your resort booking experience today</h1>
+      <p>
+        Register your guest profile so you can browse rooms, reserve your stay,
+        track bookings, and access your receipt details anytime.
+      </p>
 
-        <form id="registerForm">
-          <label for="fullname">Full Name</label>
-          <input type="text" id="fullname" placeholder="Full Name" required />
-
-          <label for="email">Email</label>
-          <input type="email" id="email" placeholder="Email" required />
-
-          <label for="phone">Phone Number</label>
-          <input type="text" id="phone" placeholder="09XXXXXXXXX" required />
-
-          <label for="address">Home Address</label>
-          <input type="text" id="address" placeholder="Home Address" required />
-
-          <label for="password">Password</label>
-          <div class="password-group">
-            <input type="password" id="password" placeholder="Password" required />
-            <button type="button" class="toggle-password" data-target="password">Show</button>
-          </div>
-
-          <label for="confirmPassword">Confirm Password</label>
-          <div class="password-group">
-            <input
-              type="password"
-              id="confirmPassword"
-              placeholder="Confirm Password"
-              required
-            />
-            <button
-              type="button"
-              class="toggle-password"
-              data-target="confirmPassword"
-            >
-              Show
-            </button>
-          </div>
-
-          <button type="submit" class="btn-primary full-btn">Register</button>
-        </form>
-
-        <div class="auth-link">
-          <p>Already have an account? <a href="login.html">Login here</a></p>
+      <div class="register-points">
+        <div class="register-point">
+          <strong>Easy room booking</strong>
+          Reserve your preferred room with complete stay details and payment options.
+        </div>
+        <div class="register-point">
+          <strong>Organized guest profile</strong>
+          Save your contact details for a smoother reservation process.
+        </div>
+        <div class="register-point">
+          <strong>Presentation-ready resort system</strong>
+          A cleaner and more premium interface built for a real resort client.
         </div>
       </div>
-    </div>
+    </section>
+
+    <section class="register-card">
+      <h2>Create Account</h2>
+      <p class="register-subtext">
+        Fill in your details below to register your SmartResort guest account.
+      </p>
+
+      <form id="registerForm">
+        <div class="register-form-grid">
+          <div class="register-form-group">
+            <label for="fullname">Full Name</label>
+            <input type="text" id="fullname" placeholder="Enter full name" required />
+          </div>
+
+          <div class="register-form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" placeholder="Enter email" required />
+          </div>
+
+          <div class="register-form-group">
+            <label for="phone">Phone Number</label>
+            <input type="text" id="phone" placeholder="Enter phone number" required />
+          </div>
+
+          <div class="register-form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" placeholder="Create password" required />
+          </div>
+
+          <div class="register-form-group full-width">
+            <label for="address">Home Address</label>
+            <textarea id="address" placeholder="Enter your home address" required></textarea>
+          </div>
+        </div>
+
+        <button type="submit" class="register-submit">Register Account</button>
+      </form>
+
+      <p id="registerMessage" class="message"></p>
+
+      <div class="auth-link">
+        Already have an account?
+        <a href="login.html">Login here</a>
+      </div>
+    </section>
   </div>
 
   <script src="js/toast.js"></script>
-  <script src="js/password-toggle.js"></script>
   <script src="js/register.js"></script>
 </body>
 </html>

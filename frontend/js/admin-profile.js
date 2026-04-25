@@ -45,7 +45,7 @@ async function loadProfile(userId) {
       throw new Error(data.message || "Failed to load profile.");
     }
 
-    const user = data.user;
+    const user = data.user || {};
 
     document.getElementById("profileFullname").textContent = user.fullname || "N/A";
     document.getElementById("profileEmail").textContent = user.email || "N/A";
@@ -59,16 +59,22 @@ async function loadProfile(userId) {
 
 function setupPasswordForm(userId) {
   const changePasswordForm = document.getElementById("changePasswordForm");
+  if (!changePasswordForm) return;
 
   changePasswordForm.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const currentPassword = document.getElementById("currentPassword").value;
-    const newPassword = document.getElementById("newPassword").value;
-    const confirmNewPassword = document.getElementById("confirmNewPassword").value;
+    const currentPassword = document.getElementById("currentPassword").value.trim();
+    const newPassword = document.getElementById("newPassword").value.trim();
+    const confirmNewPassword = document.getElementById("confirmNewPassword").value.trim();
 
     if (!currentPassword || !newPassword || !confirmNewPassword) {
       showMessage("Please fill in all password fields.", "error");
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      showMessage("New password must be at least 6 characters.", "error");
       return;
     }
 
@@ -77,7 +83,17 @@ function setupPasswordForm(userId) {
       return;
     }
 
+    const submitBtn = changePasswordForm.querySelector('button[type="submit"]');
+    const originalBtnText = submitBtn ? submitBtn.textContent : "Change Password";
+
     try {
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Updating Password...";
+        submitBtn.style.opacity = "0.75";
+        submitBtn.style.cursor = "not-allowed";
+      }
+
       const response = await fetch(`${API_BASE}/auth/change-password/${userId}`, {
         method: "PUT",
         headers: {
@@ -100,6 +116,13 @@ function setupPasswordForm(userId) {
     } catch (error) {
       console.error("changePassword error:", error);
       showMessage(error.message || "Failed to change password.", "error");
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalBtnText;
+        submitBtn.style.opacity = "1";
+        submitBtn.style.cursor = "pointer";
+      }
     }
   });
 }

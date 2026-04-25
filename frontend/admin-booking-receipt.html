@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Receipt | SmartResort</title>
+  <link rel="stylesheet" href="css/style.css" />
+
+  <style>
+    body {
+      background: linear-gradient(180deg, #eef6f8 0%, #f8fbfc 100%);
+      margin: 0;
+      font-family: Arial, sans-serif;
+      color: #0f172a;
+    }
+
+   .receipt-page {
+  width: 92%;
+  max-width: 1150px;
+  margin: 120px auto 50px;
+}
+
+    .top-actions {
+      display: flex !important;
+      gap: 12px !important;
+      flex-wrap: wrap !important;
+      margin-bottom: 18px !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      position: relative !important;
+      z-index: 9999 !important;
+    }
+
+    .back-btn,
+    .print-btn {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      text-decoration: none !important;
+      border: none !important;
+      cursor: pointer !important;
+      padding: 12px 18px !important;
+      border-radius: 999px !important;
+      font-weight: 700 !important;
+      font-size: 0.96rem !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+    }
+
+    .back-btn {
+      background: #ffffff !important;
+      color: #0f172a !important;
+      border: 1px solid #dbe7ef !important;
+    }
+
+    .print-btn {
+      background: linear-gradient(135deg, #14b8a6, #0ea5e9) !important;
+      color: #ffffff !important;
+      box-shadow: 0 10px 24px rgba(20, 184, 166, 0.22) !important;
+    }
+
+    .print-btn.secondary {
+      background: #0f172a !important;
+      color: #ffffff !important;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.2) !important;
+    }
+
+    .receipt-shell {
+      background: rgba(255,255,255,0.97);
+      border-radius: 30px;
+      overflow: hidden;
+      box-shadow: 0 22px 46px rgba(15,23,42,0.08);
+      border: 1px solid rgba(219,231,239,0.92);
+    }
+
+    .receipt-header {
+      background: linear-gradient(135deg, #0f172a 0%, #16233b 60%, #14b8a6 100%);
+      color: white;
+      padding: 24px;
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      align-items: flex-start;
+      flex-wrap: wrap;
+    }
+
+    .receipt-header h1 {
+      margin: 0 0 8px;
+      font-size: 2rem;
+    }
+
+    .receipt-header p {
+      margin: 0;
+      line-height: 1.7;
+      opacity: 0.96;
+    }
+
+    .receipt-code-box {
+      min-width: 190px;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 18px;
+      padding: 12px 16px;
+      text-align: center;
+      backdrop-filter: blur(10px);
+    }
+
+    .receipt-code-box small {
+      display: block;
+      opacity: 0.9;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .receipt-code-box strong {
+      display: block;
+      font-size: 1.45rem;
+      font-weight: 900;
+      letter-spacing: 0.4px;
+    }
+
+    .receipt-content {
+      padding: 20px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    .grid-bottom {
+      display: grid;
+      grid-template-columns: 1fr 0.95fr;
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .grid-last {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-top: 18px;
+    }
+
+    .section-card {
+      background: linear-gradient(180deg, #fcfeff 0%, #f4fbfc 100%);
+      border: 1px solid #dbe7ef;
+      border-radius: 22px;
+      padding: 18px;
+    }
+
+    .section-card h2 {
+      margin: 0 0 12px;
+      font-size: 1.12rem;
+      font-weight: 800;
+      color: #0f172a;
+    }
+
+    .info-row {
+      display: grid;
+      grid-template-columns: 1fr 1.1fr;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid #dbe7ef;
+      align-items: start;
+      color: #334155;
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+
+    .info-row:last-child {
+      border-bottom: none;
+    }
+
+    .info-row strong {
+      color: #0f172a;
+    }
+
+    .table-shell {
+      background: #ffffff;
+      border: 1px solid #dbe7ef;
+      border-radius: 20px;
+      overflow: hidden;
+    }
+
+    .table-title {
+      background: linear-gradient(180deg, #0f172a 0%, #111c34 100%);
+      color: white;
+      padding: 14px 16px;
+      font-size: 1.02rem;
+      font-weight: 800;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 760px;
+    }
+
+    th {
+      padding: 12px 10px;
+      border-bottom: 1px solid #dbe7ef;
+      text-align: left;
+      font-size: 0.9rem;
+      white-space: nowrap;
+      background: #f8fafc;
+    }
+
+    td {
+      padding: 12px 10px;
+      border-bottom: 1px solid #e5e7eb;
+      color: #334155;
+      font-size: 0.9rem;
+      vertical-align: top;
+    }
+
+    .dark-summary {
+      background: linear-gradient(180deg, #0f172a 0%, #16233b 100%);
+      color: white;
+      border-radius: 22px;
+      padding: 20px;
+    }
+
+    .dark-summary h2 {
+      margin: 0 0 14px;
+      font-size: 1.16rem;
+    }
+
+    .amount-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+      font-size: 0.96rem;
+    }
+
+    .amount-total {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255,255,255,0.15);
+      font-weight: 900;
+      font-size: 1.08rem;
+    }
+
+    .note-box {
+      margin-top: 14px;
+      background: #fff7ed;
+      border: 1px solid #fdba74;
+      border-radius: 14px;
+      padding: 12px 14px;
+      color: #9a3412;
+      line-height: 1.7;
+      font-size: 0.93rem;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 800;
+      border: 1px solid transparent;
+    }
+
+    .badge.online {
+      background: #dbeafe;
+      color: #1d4ed8;
+      border-color: #bfdbfe;
+    }
+
+    .badge.manual {
+      background: #dcfce7;
+      color: #166534;
+      border-color: #bbf7d0;
+    }
+
+    .badge.pending {
+      background: #fef3c7;
+      color: #92400e;
+      border-color: #fde68a;
+    }
+
+    .badge.approved,
+    .badge.paid {
+      background: #dcfce7;
+      color: #166534;
+      border-color: #bbf7d0;
+    }
+
+    .badge.partial {
+      background: #dbeafe;
+      color: #1d4ed8;
+      border-color: #bfdbfe;
+    }
+
+    .badge.rejected {
+      background: #fee2e2;
+      color: #991b1b;
+      border-color: #fecaca;
+    }
+
+    .thermal-receipt-shell {
+      display: none;
+    }
+
+    @media (max-width: 900px) {
+      .grid-2,
+      .grid-bottom,
+      .grid-last {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media print {
+      body.print-a4 .top-actions,
+      body.print-thermal .top-actions,
+      body.print-a4 .navbar,
+      body.print-thermal .navbar {
+        display: none !important;
+      }
+
+      body.print-a4 {
+        background: #ffffff !important;
+      }
+
+      body.print-a4 .receipt-page {
+        width: 100%;
+        max-width: none;
+        margin: 0;
+      }
+
+      body.print-a4 .receipt-shell {
+        border: none;
+        box-shadow: none;
+        border-radius: 0;
+      }
+
+      body.print-thermal {
+        background: #ffffff !important;
+      }
+
+      body.print-thermal .receipt-shell {
+        display: none !important;
+      }
+
+      body.print-thermal .thermal-receipt-shell {
+        display: block !important;
+        width: 80mm;
+        max-width: 80mm;
+        margin: 0 auto;
+        background: #ffffff;
+        color: #000000;
+        font-family: Arial, sans-serif;
+      }
+
+      body.print-thermal .thermal-inner {
+        padding: 8px;
+        font-size: 11px;
+        line-height: 1.45;
+      }
+
+      body.print-thermal .thermal-center {
+        text-align: center;
+      }
+
+      body.print-thermal .thermal-divider {
+        border-top: 1px dashed #000;
+        margin: 8px 0;
+      }
+
+      body.print-thermal .thermal-row {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      body.print-thermal .thermal-title {
+        font-size: 14px;
+        font-weight: 800;
+      }
+
+      body.print-thermal .thermal-bold {
+        font-weight: 700;
+      }
+
+      body.print-thermal .thermal-items {
+        margin-top: 6px;
+      }
+
+      body.print-thermal .thermal-item {
+        margin-bottom: 8px;
+      }
+
+      @page {
+        size: auto;
+        margin: 6mm;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="navbar">
+    <div class="logo">SmartResort Admin</div>
+    <nav>
+      <a href="admin.html">Bookings</a>
+      <a href="admin-walkin.html">Manual Reservation</a>
+      <a href="admin-rooms.html">Accommodations</a>
+      <a href="admin-reports.html">Reports</a>
+      <a href="admin-profile.html">Profile</a>
+    </nav>
+  </header>
+
+  <main class="receipt-page">
+    <div class="top-actions">
+      <a href="admin.html" class="back-btn">← Back to Dashboard</a>
+      <button id="printA4Btn" class="print-btn" type="button">Print A4 Receipt</button>
+      <button id="printThermalBtn" class="print-btn secondary" type="button">Print Thermal Receipt</button>
+    </div>
+
+    <div id="receiptContainer">
+      <div class="receipt-shell">
+        <div class="receipt-header">
+          <div>
+            <h1>Reservation Receipt</h1>
+            <p>Admin copy for reservation review, front-desk processing, and payment verification.</p>
+          </div>
+
+          <div class="receipt-code-box">
+            <small>Reservation Code</small>
+            <strong id="reservationCode">-</strong>
+          </div>
+        </div>
+
+        <div class="receipt-content">
+          <div class="grid-2">
+            <div class="section-card">
+              <h2>Reservation Information</h2>
+              <div id="reservationInfo"></div>
+            </div>
+
+            <div class="section-card">
+              <h2>Guest Information</h2>
+              <div id="guestInfo"></div>
+            </div>
+          </div>
+
+          <div class="table-shell">
+            <div class="table-title">Reserved Accommodation Items</div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Accommodation</th>
+                    <th>Category</th>
+                    <th>Slot</th>
+                    <th>Check In</th>
+                    <th>Check Out</th>
+                    <th>Price</th>
+                    <th>Map Label</th>
+                  </tr>
+                </thead>
+                <tbody id="itemsTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="grid-bottom">
+            <div class="section-card">
+              <h2>Entrance Fee Deduction Details</h2>
+              <div id="deductionInfo"></div>
+              <div class="note-box">
+                This deduction is based on the free entrance included in the selected accommodation.
+                Senior, PWD, and kids discounts will still be verified at the front desk.
+              </div>
+            </div>
+
+            <div class="dark-summary">
+              <h2>Payment Breakdown</h2>
+              <div id="paymentBreakdown"></div>
+            </div>
+          </div>
+
+          <div class="grid-last">
+            <div class="section-card">
+              <h2>Payment Reference / Note</h2>
+              <div id="referenceInfo"></div>
+            </div>
+
+            <div class="section-card">
+              <h2>Reminder</h2>
+              <div style="color:#334155;line-height:1.8;font-size:0.95rem;">
+                Present the reservation code if the guest has a concern.<br>
+                Use this receipt for front-desk verification and payment checking.<br>
+                Remaining balance and entrance-related charges are settled onsite unless already fully paid.
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="thermalReceipt" class="thermal-receipt-shell"></div>
+    </div>
+  </main>
+
+  <script src="js/admin-booking-receipt.js"></script>
+</body>
+</html>
