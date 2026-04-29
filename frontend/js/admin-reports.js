@@ -42,7 +42,6 @@ function checkAdminAccess() {
   if (user.role !== "admin") {
     alert("Access denied. Admin only.");
     window.location.href = "index.html";
-    return;
   }
 }
 
@@ -152,13 +151,17 @@ function renderReports(bookings) {
 function updateStats(bookings) {
   const totalBookings = bookings.length;
 
-  const onlineBookings = bookings.filter(
-    (booking) => String(booking.booking_source || "").toLowerCase() === "online"
-  ).length;
+  const totalGuests = bookings.reduce((sum, booking) => {
+    return sum + Number(booking.guests || booking.guest_count || 0);
+  }, 0);
 
-  const manualBookings = bookings.filter(
-    (booking) => String(booking.booking_source || "").toLowerCase() === "manual"
-  ).length;
+  const onlineBookings = bookings.filter((booking) => {
+    return String(booking.booking_source || "online").toLowerCase() === "online";
+  }).length;
+
+  const manualBookings = bookings.filter((booking) => {
+    return String(booking.booking_source || "").toLowerCase() === "manual";
+  }).length;
 
   const approvedBookings = bookings.filter((booking) => {
     const status = String(booking.status || "").toLowerCase();
@@ -170,20 +173,19 @@ function updateStats(bookings) {
     return status === "pending";
   }).length;
 
-  const totalRevenue = bookings.reduce((sum, booking) => {
-    const status = String(booking.status || "").toLowerCase();
-    if (status === "approved" || status === "completed") {
-      return sum + Number(booking.accommodation_total || 0);
-    }
-    return sum;
+  // Money Collected = actual paid amount received.
+  // This is clearer for staff than using the full accommodation total.
+  const moneyCollected = bookings.reduce((sum, booking) => {
+    return sum + Number(booking.paid_amount || 0);
   }, 0);
 
   setText("totalBookingsCount", totalBookings);
+  setText("totalGuestsCount", totalGuests);
   setText("onlineBookingsCount", onlineBookings);
   setText("manualBookingsCount", manualBookings);
   setText("approvedBookingsCount", approvedBookings);
   setText("pendingBookingsCount", pendingBookings);
-  setText("totalRevenueAmount", `₱${formatMoney(totalRevenue)}`);
+  setText("totalRevenueAmount", `₱${formatMoney(moneyCollected)}`);
 }
 
 function renderBookingStatusChart(bookings) {
@@ -197,7 +199,7 @@ function renderBookingStatusChart(bookings) {
 
   bookings.forEach((booking) => {
     const status = String(booking.status || "").toLowerCase();
-    if (counts.hasOwnProperty(status)) {
+    if (Object.prototype.hasOwnProperty.call(counts, status)) {
       counts[status]++;
     }
   });
@@ -247,6 +249,7 @@ function renderBookingSourceChart(bookings) {
 
   bookings.forEach((booking) => {
     const source = String(booking.booking_source || "online").toLowerCase();
+
     if (source === "manual") {
       sourceCounts.Manual += 1;
     } else {
@@ -264,7 +267,7 @@ function renderBookingSourceChart(bookings) {
   bookingSourceChart = new Chart(canvas, {
     type: "doughnut",
     data: {
-      labels: ["Online", "Manual"],
+      labels: ["Online", "Walk-in / Manual"],
       datasets: [
         {
           data: [sourceCounts.Online, sourceCounts.Manual],
@@ -272,7 +275,7 @@ function renderBookingSourceChart(bookings) {
         },
       ],
     },
-    options: getPieChartOptions("Online vs manual reservation distribution."),
+    options: getPieChartOptions("Online and walk-in/manual reservation count."),
   });
 }
 
@@ -360,10 +363,13 @@ function renderGuestsPerRoomChart(bookings) {
 
   bookings.forEach((booking) => {
     const roomName = booking.room_name || "Unknown Accommodation";
-    guestTotals[roomName] = (guestTotals[roomName] || 0) + Number(booking.guests || 0);
+    guestTotals[roomName] =
+      (guestTotals[roomName] || 0) + Number(booking.guests || booking.guest_count || 0);
   });
 
-  const entries = Object.entries(guestTotals).slice(0, 10);
+  const entries = Object.entries(guestTotals)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10);
 
   const canvas = document.getElementById("guestsPerRoomChart");
   if (!canvas) return;
@@ -407,7 +413,7 @@ function renderSlotUsageChart(bookings) {
       slotCounts["Day Tour"] += 1;
     } else if (label.includes("overnight")) {
       slotCounts["Overnight"] += 1;
-    } else if (label.includes("22") || label.includes("23")) {
+    } else if (label.includes("22") || label.includes("23") || label.includes("extended")) {
       slotCounts["22/23 Hours"] += 1;
     }
   });
@@ -530,8 +536,10 @@ function formatPaymentMethodLabel(method) {
   if (value === "gcash") return "GCash";
   if (value === "paymaya") return "PayMaya";
   if (value === "cash") return "Cash";
+  if (value === "bank_transfer") return "Bank Transfer";
   if (value === "other") return "Other";
   if (value === "unknown") return "Unknown";
+
   return capitalize(value);
 }
 

@@ -96,13 +96,63 @@ exports.updateAdminBookingStatus = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: "Booking status updated successfully.",
+      message:
+        status === "completed"
+          ? "Guest checked out successfully."
+          : "Booking status updated successfully.",
     });
   } catch (error) {
     console.error("updateAdminBookingStatus error:", error);
     return res.status(500).json({
       success: false,
       message: "Failed to update booking status.",
+      error: error.message,
+    });
+  }
+};
+
+/*
+  Used by Guests Inside page.
+  This is optional because updateAdminBookingStatus already supports "completed",
+  but this gives us a clearer dedicated function if we add a separate route later.
+*/
+exports.markBookingAsCompleted = async (req, res) => {
+  try {
+    const bookingId = Number(req.params.id || req.params.booking_id);
+
+    if (!bookingId || Number.isNaN(bookingId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid booking ID.",
+      });
+    }
+
+    const [existingRows] = await db.promise().query(
+      `SELECT id, status FROM bookings WHERE id = ?`,
+      [bookingId]
+    );
+
+    if (existingRows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found.",
+      });
+    }
+
+    await db.promise().query(
+      `UPDATE bookings SET status = 'completed' WHERE id = ?`,
+      [bookingId]
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Guest checked out successfully.",
+    });
+  } catch (error) {
+    console.error("markBookingAsCompleted error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to check out guest.",
       error: error.message,
     });
   }

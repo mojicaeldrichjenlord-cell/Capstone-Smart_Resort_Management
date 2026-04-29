@@ -69,6 +69,7 @@ async function generateReservationCode(connection) {
     const parts = String(rows[0].reservation_code).split("-");
     const lastPart = parts[parts.length - 1];
     const parsed = Number(lastPart);
+
     if (Number.isFinite(parsed)) {
       nextNumber = parsed + 1;
     }
@@ -93,6 +94,7 @@ function getTotalFreeEntrancePaxFromItems(items, accommodationMap, guestCount) {
   for (const item of items) {
     const accommodationId = Number(item.accommodation_id);
     const accommodation = accommodationMap[accommodationId];
+
     if (!accommodation) continue;
 
     totalFreePax += Number(accommodation.free_entrance_pax || 0);
@@ -166,6 +168,7 @@ function buildCheckOutDate(checkInDate, startTime, endTime) {
 
 async function getAccommodationsMapByIds(ids) {
   const uniqueIds = [...new Set(ids.map((id) => Number(id)).filter(Boolean))];
+
   if (!uniqueIds.length) return {};
 
   const placeholders = uniqueIds.map(() => "?").join(",");
@@ -200,6 +203,7 @@ async function getAccommodationsMapByIds(ids) {
   );
 
   const map = {};
+
   rows.forEach((row) => {
     map[row.id] = row;
   });
@@ -323,7 +327,8 @@ async function createReservation({
     ) {
       throw {
         status: 400,
-        message: "Each accommodation item must have a valid accommodation, slot type, and date.",
+        message:
+          "Each accommodation item must have a valid accommodation, slot type, and date.",
       };
     }
 
@@ -344,6 +349,7 @@ async function createReservation({
     }
 
     const slotConfig = buildSlotConfig(accommodation, slotType);
+
     const checkOutDate = buildCheckOutDate(
       checkInDate,
       slotConfig.start_time,
@@ -387,9 +393,13 @@ async function createReservation({
   let paymentStatus = autoApprove ? "paid" : "pending";
 
   const noteParts = [];
+
   noteParts.push(
-    `Entrance Type: ${cleanEntranceType === "beach_only" ? "Beach Only" : "Pool & Beach"}`
+    `Entrance Type: ${
+      cleanEntranceType === "beach_only" ? "Beach Only" : "Pool & Beach"
+    }`
   );
+
   noteParts.push(`Free Entrance Included: ${totalFreeEntrancePax} pax`);
   noteParts.push(`Chargeable Entrance Guests: ${chargeableEntranceGuests}`);
   noteParts.push(
@@ -554,6 +564,7 @@ exports.createBooking = async (req, res) => {
     });
   } catch (error) {
     console.error("createBooking error:", error);
+
     return res.status(error.status || 500).json({
       message: error.message || "Failed to create reservation.",
       error: error.message,
@@ -580,6 +591,7 @@ exports.createWalkInBooking = async (req, res) => {
     });
   } catch (error) {
     console.error("createWalkInBooking error:", error);
+
     return res.status(error.status || 500).json({
       message: error.message || "Failed to create manual reservation.",
       error: error.message,
@@ -625,7 +637,9 @@ exports.getUserBookings = async (req, res) => {
 
         a.name AS room_name,
         a.image,
-        item_counts.total_items
+
+        item_counts.total_items,
+        acc_list.accommodation_list
       FROM reservations r
       LEFT JOIN (
         SELECT
@@ -641,6 +655,14 @@ exports.getUserBookings = async (req, res) => {
         FROM reservation_items
         GROUP BY reservation_id
       ) item_counts ON r.id = item_counts.reservation_id
+      LEFT JOIN (
+        SELECT
+          ri.reservation_id,
+          GROUP_CONCAT(a2.name ORDER BY ri.id ASC SEPARATOR ', ') AS accommodation_list
+        FROM reservation_items ri
+        INNER JOIN accommodations a2 ON ri.accommodation_id = a2.id
+        GROUP BY ri.reservation_id
+      ) acc_list ON r.id = acc_list.reservation_id
       WHERE r.user_id = ?
       ORDER BY r.created_at DESC
       `,
@@ -654,10 +676,7 @@ exports.getUserBookings = async (req, res) => {
       check_in_time: row.check_in_time,
       check_out_time: row.check_out_time,
       guests: row.guest_count,
-      room_name:
-        row.total_items > 1
-          ? `${row.room_name} +${row.total_items - 1} more`
-          : row.room_name,
+      room_name: row.accommodation_list || row.room_name || "N/A",
     }));
 
     return res.status(200).json({
@@ -665,6 +684,7 @@ exports.getUserBookings = async (req, res) => {
     });
   } catch (error) {
     console.error("getUserBookings error:", error);
+
     return res.status(500).json({
       message: "Failed to fetch user reservations.",
       error: error.message,
@@ -705,6 +725,7 @@ exports.cancelBooking = async (req, res) => {
     });
   } catch (error) {
     console.error("cancelBooking error:", error);
+
     return res.status(500).json({
       message: "Failed to cancel reservation.",
       error: error.message,
@@ -750,7 +771,9 @@ exports.getBookingReceipt = async (req, res) => {
 
         a.name AS room_name,
         a.image,
-        item_counts.total_items
+
+        item_counts.total_items,
+        acc_list.accommodation_list
       FROM reservations r
       LEFT JOIN users u ON r.user_id = u.id
       LEFT JOIN (
@@ -765,6 +788,14 @@ exports.getBookingReceipt = async (req, res) => {
         FROM reservation_items
         GROUP BY reservation_id
       ) item_counts ON r.id = item_counts.reservation_id
+      LEFT JOIN (
+        SELECT
+          ri.reservation_id,
+          GROUP_CONCAT(a2.name ORDER BY ri.id ASC SEPARATOR ', ') AS accommodation_list
+        FROM reservation_items ri
+        INNER JOIN accommodations a2 ON ri.accommodation_id = a2.id
+        GROUP BY ri.reservation_id
+      ) acc_list ON r.id = acc_list.reservation_id
       WHERE r.id = ?
       LIMIT 1
       `,
@@ -800,10 +831,7 @@ exports.getBookingReceipt = async (req, res) => {
       Number(booking.guest_count || 0) - totalFreeEntrancePax,
       0
     );
-    booking.room_name =
-      booking.total_items > 1
-        ? `${booking.room_name} +${booking.total_items - 1} more`
-        : booking.room_name;
+    booking.room_name = booking.accommodation_list || booking.room_name || "N/A";
     booking.items = items;
 
     return res.status(200).json({
@@ -811,6 +839,7 @@ exports.getBookingReceipt = async (req, res) => {
     });
   } catch (error) {
     console.error("getBookingReceipt error:", error);
+
     return res.status(500).json({
       message: "Failed to load reservation receipt.",
       error: error.message,
@@ -854,7 +883,9 @@ exports.getAllBookings = async (req, res) => {
 
         a.name AS room_name,
         a.image,
-        item_counts.total_items
+
+        item_counts.total_items,
+        acc_list.accommodation_list
       FROM reservations r
       LEFT JOIN users u ON r.user_id = u.id
       LEFT JOIN (
@@ -869,6 +900,14 @@ exports.getAllBookings = async (req, res) => {
         FROM reservation_items
         GROUP BY reservation_id
       ) item_counts ON r.id = item_counts.reservation_id
+      LEFT JOIN (
+        SELECT
+          ri.reservation_id,
+          GROUP_CONCAT(a2.name ORDER BY ri.id ASC SEPARATOR ', ') AS accommodation_list
+        FROM reservation_items ri
+        INNER JOIN accommodations a2 ON ri.accommodation_id = a2.id
+        GROUP BY ri.reservation_id
+      ) acc_list ON r.id = acc_list.reservation_id
       ORDER BY r.created_at DESC
       `
     );
@@ -884,10 +923,7 @@ exports.getAllBookings = async (req, res) => {
       check_in_time: row.check_in_time,
       check_out_time: row.check_out_time,
       guests: row.guest_count,
-      room_name:
-        row.total_items > 1
-          ? `${row.room_name} +${row.total_items - 1} more`
-          : row.room_name,
+      room_name: row.accommodation_list || row.room_name || "N/A",
     }));
 
     return res.status(200).json({
@@ -895,6 +931,7 @@ exports.getAllBookings = async (req, res) => {
     });
   } catch (error) {
     console.error("getAllBookings error:", error);
+
     return res.status(500).json({
       message: "Failed to fetch all reservations.",
       error: error.message,
@@ -907,7 +944,13 @@ exports.updateBookingStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
-    const allowedStatuses = ["pending", "approved", "cancelled", "completed", "rejected"];
+    const allowedStatuses = [
+      "pending",
+      "approved",
+      "cancelled",
+      "completed",
+      "rejected",
+    ];
 
     if (!allowedStatuses.includes(String(status).toLowerCase())) {
       return res.status(400).json({
@@ -936,6 +979,7 @@ exports.updateBookingStatus = async (req, res) => {
     });
   } catch (error) {
     console.error("updateBookingStatus error:", error);
+
     return res.status(500).json({
       message: "Failed to update reservation status.",
       error: error.message,
@@ -948,7 +992,13 @@ exports.updatePaymentStatus = async (req, res) => {
     const { id } = req.params;
     const { payment_status } = req.body;
 
-    const allowedPaymentStatuses = ["unpaid", "pending", "paid", "partially_paid", "rejected"];
+    const allowedPaymentStatuses = [
+      "unpaid",
+      "pending",
+      "paid",
+      "partially_paid",
+      "rejected",
+    ];
 
     if (!allowedPaymentStatuses.includes(String(payment_status).toLowerCase())) {
       return res.status(400).json({
@@ -991,6 +1041,7 @@ exports.updatePaymentStatus = async (req, res) => {
     });
   } catch (error) {
     console.error("updatePaymentStatus error:", error);
+
     return res.status(500).json({
       message: "Failed to update payment status.",
       error: error.message,

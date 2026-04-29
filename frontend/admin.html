@@ -1,479 +1,575 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin Dashboard | SmartResort</title>
-  <link rel="stylesheet" href="css/style.css" />
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Dashboard | SmartResort</title>
+    <link rel="stylesheet" href="css/style.css" />
 
-  <style>
-    .admin-wrapper {
-      width: 95%;
-      max-width: 1500px;
-      margin: 0 auto 36px;
-    }
-
-    .admin-hero {
-      background:
-        linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(20, 184, 166, 0.8)),
-        linear-gradient(135deg, #0f172a, #14b8a6);
-      color: white;
-      border-radius: 30px;
-      padding: 34px 28px;
-      margin: 10px 0 22px;
-      box-shadow: 0 20px 46px rgba(15, 23, 42, 0.16);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .admin-hero::after {
-      content: "";
-      position: absolute;
-      top: -60px;
-      right: -60px;
-      width: 220px;
-      height: 220px;
-      background: rgba(255,255,255,0.08);
-      border-radius: 50%;
-      filter: blur(6px);
-    }
-
-    .admin-hero h1 {
-      margin: 0 0 10px;
-      font-size: 2.25rem;
-      position: relative;
-      z-index: 1;
-    }
-
-    .admin-hero p {
-      margin: 0;
-      max-width: 760px;
-      line-height: 1.7;
-      opacity: 0.96;
-      position: relative;
-      z-index: 1;
-    }
-
-    .hero-actions {
-      margin-top: 18px;
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      position: relative;
-      z-index: 1;
-    }
-
-    .hero-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      text-decoration: none;
-      padding: 12px 18px;
-      border-radius: 999px;
-      font-weight: 800;
-      transition: 0.2s ease;
-    }
-
-    .hero-btn.primary {
-      background: #14b8a6;
-      color: white;
-      box-shadow: 0 12px 24px rgba(20,184,166,0.24);
-    }
-
-    .hero-btn.secondary {
-      background: rgba(255,255,255,0.14);
-      color: white;
-      border: 1px solid rgba(255,255,255,0.14);
-    }
-
-    .admin-overview-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 18px;
-      margin-bottom: 22px;
-    }
-
-    .overview-card {
-      background: rgba(255,255,255,0.96);
-      border: 1px solid rgba(219,231,239,0.92);
-      border-radius: 24px;
-      padding: 22px;
-      box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .overview-label {
-      color: #64748b;
-      font-size: 0.92rem;
-      font-weight: 700;
-      margin-bottom: 10px;
-    }
-
-    .overview-value {
-      color: #0f172a;
-      font-size: 2rem;
-      font-weight: 800;
-    }
-
-    .admin-panel {
-      background: rgba(255,255,255,0.95);
-      border: 1px solid rgba(219,231,239,0.92);
-      border-radius: 28px;
-      box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08);
-      padding: 24px;
-      margin-bottom: 22px;
-    }
-
-    .panel-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 16px;
-      flex-wrap: wrap;
-      margin-bottom: 18px;
-    }
-
-    .panel-header h2 {
-      margin: 0 0 6px;
-      color: #0f172a;
-      font-size: 1.35rem;
-    }
-
-    .panel-header p {
-      margin: 0;
-      color: #64748b;
-      line-height: 1.65;
-    }
-
-    .refresh-btn {
-      background: linear-gradient(135deg, #14b8a6, #0f9488);
-      color: white;
-      border: none;
-      padding: 12px 18px;
-      border-radius: 999px;
-      font-weight: 800;
-      cursor: pointer;
-    }
-
-    .filter-grid {
-      display: grid;
-      grid-template-columns: 2fr 1fr 1fr 1fr;
-      gap: 16px;
-    }
-
-    .filter-item {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .filter-item label {
-      font-size: 0.92rem;
-      font-weight: 700;
-      color: #0f172a;
-    }
-
-    .filter-item input,
-    .filter-item select {
-      width: 100%;
-      padding: 13px 14px;
-      border-radius: 14px;
-      border: 1px solid #cbd5e1;
-      outline: none;
-      background: #fff;
-      font-size: 0.95rem;
-    }
-
-    .admin-table-wrap {
-      overflow-x: auto;
-      border-radius: 22px;
-      border: 1px solid #dbe7ef;
-      background: #fff;
-    }
-
-    .admin-table {
-      width: 100%;
-      min-width: 1750px;
-      border-collapse: collapse;
-    }
-
-    .admin-table thead th {
-      background: #0f172a;
-      color: white;
-      padding: 15px 12px;
-      font-size: 0.88rem;
-      text-align: left;
-      white-space: nowrap;
-    }
-
-    .admin-table tbody td {
-      padding: 15px 12px;
-      border-bottom: 1px solid #e2e8f0;
-      font-size: 0.92rem;
-      color: #1e293b;
-      vertical-align: top;
-    }
-
-    .admin-table tbody tr:nth-child(even) {
-      background: #f8fafc;
-    }
-
-    .admin-table tbody tr:hover {
-      background: #ecfeff;
-    }
-
-    .status-badge,
-    .payment-badge,
-    .source-badge {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 8px 12px;
-      border-radius: 999px;
-      font-size: 0.8rem;
-      font-weight: 800;
-      white-space: nowrap;
-      margin-bottom: 8px;
-    }
-
-    .status-pending { background: #fef3c7; color: #92400e; }
-    .status-approved { background: #dcfce7; color: #166534; }
-    .status-rejected { background: #fee2e2; color: #991b1b; }
-    .status-cancelled { background: #e5e7eb; color: #374151; }
-    .status-completed { background: #dbeafe; color: #1d4ed8; }
-
-    .payment-unpaid { background: #fee2e2; color: #991b1b; }
-    .payment-pending { background: #fef3c7; color: #92400e; }
-    .payment-paid { background: #dcfce7; color: #166534; }
-    .payment-partially_paid { background: #dbeafe; color: #1d4ed8; }
-    .payment-rejected { background: #fee2e2; color: #991b1b; }
-
-    .source-online { background: #dbeafe; color: #1d4ed8; }
-    .source-manual { background: #ecfeff; color: #0f766e; }
-
-    .admin-table select {
-      width: 100%;
-      min-width: 130px;
-      padding: 10px 12px;
-      border-radius: 12px;
-      border: 1px solid #cbd5e1;
-      background: #fff;
-    }
-
-    .action-buttons {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      min-width: 145px;
-    }
-
-    .action-btn {
-      border: none;
-      border-radius: 12px;
-      padding: 10px 12px;
-      font-weight: 800;
-      cursor: pointer;
-      transition: 0.2s ease;
-    }
-
-    .save-booking-btn {
-      background: #2563eb;
-      color: white;
-    }
-
-    .receipt-btn {
-      background: #f59e0b;
-      color: #111827;
-    }
-
-    .table-message {
-      text-align: center;
-      padding: 28px !important;
-      color: #64748b;
-      font-weight: 700;
-    }
-
-    @media (max-width: 1100px) {
-      .admin-overview-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-
-      .filter-grid {
-        grid-template-columns: 1fr 1fr;
-      }
-    }
-
-    @media (max-width: 700px) {
+    <style>
       .admin-wrapper {
-        width: 92%;
+        width: 95%;
+        max-width: 1500px;
+        margin: 0 auto 36px;
       }
 
-      .admin-overview-grid,
-      .filter-grid {
-        grid-template-columns: 1fr;
+      .admin-hero {
+        background:
+          linear-gradient(
+            135deg,
+            rgba(15, 23, 42, 0.95),
+            rgba(20, 184, 166, 0.8)
+          ),
+          linear-gradient(135deg, #0f172a, #14b8a6);
+        color: white;
+        border-radius: 30px;
+        padding: 34px 28px;
+        margin: 10px 0 22px;
+        box-shadow: 0 20px 46px rgba(15, 23, 42, 0.16);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .admin-hero::after {
+        content: "";
+        position: absolute;
+        top: -60px;
+        right: -60px;
+        width: 220px;
+        height: 220px;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 50%;
+        filter: blur(6px);
+      }
+
+      .admin-hero h1 {
+        margin: 0 0 10px;
+        font-size: 2.25rem;
+        position: relative;
+        z-index: 1;
+      }
+
+      .admin-hero p {
+        margin: 0;
+        max-width: 760px;
+        line-height: 1.7;
+        opacity: 0.96;
+        position: relative;
+        z-index: 1;
       }
 
       .hero-actions {
-        flex-direction: column;
+        margin-top: 18px;
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        position: relative;
+        z-index: 1;
       }
 
       .hero-btn {
-        width: 100%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        padding: 12px 18px;
+        border-radius: 999px;
+        font-weight: 800;
+        transition: 0.2s ease;
       }
-    }
-  </style>
-</head>
-<body class="has-fixed-navbar">
-  <header class="navbar">
-    <div class="logo">SmartResort Admin</div>
-    <nav>
-      <a href="admin.html">Bookings</a>
-      <a href="admin-walkin.html">Manual Reservation</a>
-      <a href="admin-rooms.html">Accommodations</a>
-      <a href="admin-reports.html">Reports</a>
-      <a href="admin-profile.html">Profile</a>
-      <a href="#" id="logoutBtn">Logout</a>
-    </nav>
-  </header>
 
-  <main class="admin-wrapper">
-    <section class="admin-hero">
-      <h1>Admin Reservation Dashboard</h1>
-      <p>
-        Manage online and manual reservations, update payment progress,
-        and review all reservation records in one dashboard.
-      </p>
+      .hero-btn.primary {
+        background: #14b8a6;
+        color: white;
+        box-shadow: 0 12px 24px rgba(20, 184, 166, 0.24);
+      }
 
-      <div class="hero-actions">
-        <a href="admin-walkin.html" class="hero-btn primary">+ Create Manual Reservation</a>
-        <a href="admin-rooms.html" class="hero-btn secondary">Manage Accommodations</a>
-      </div>
-    </section>
+      .hero-btn.secondary {
+        background: rgba(255, 255, 255, 0.14);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+      }
 
-    <section class="admin-overview-grid">
-      <div class="overview-card">
-        <div class="overview-label">Total Reservations</div>
-        <div class="overview-value" id="totalBookings">0</div>
-      </div>
+      .admin-overview-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 18px;
+        margin-bottom: 22px;
+      }
 
-      <div class="overview-card">
-        <div class="overview-label">Pending</div>
-        <div class="overview-value" id="pendingCount">0</div>
-      </div>
+      .overview-card {
+        background: rgba(255, 255, 255, 0.96);
+        border: 1px solid rgba(219, 231, 239, 0.92);
+        border-radius: 24px;
+        padding: 22px;
+        box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
+        position: relative;
+        overflow: hidden;
+      }
 
-      <div class="overview-card">
-        <div class="overview-label">Approved</div>
-        <div class="overview-value" id="approvedCount">0</div>
-      </div>
+      .overview-label {
+        color: #64748b;
+        font-size: 0.92rem;
+        font-weight: 700;
+        margin-bottom: 10px;
+      }
 
-      <div class="overview-card">
-        <div class="overview-label">Paid</div>
-        <div class="overview-value" id="paidCount">0</div>
-      </div>
-    </section>
+      .overview-value {
+        color: #0f172a;
+        font-size: 2rem;
+        font-weight: 800;
+      }
 
-    <section class="admin-panel">
-      <div class="panel-header">
-        <div>
-          <h2>Search and Filter</h2>
-          <p>Quickly find reservations by code, customer, source, payment, or accommodation.</p>
+      .overview-note {
+        color: #64748b;
+        font-size: 0.82rem;
+        margin-top: 8px;
+        line-height: 1.4;
+      }
+
+      .admin-panel {
+        background: rgba(255, 255, 255, 0.95);
+        border: 1px solid rgba(219, 231, 239, 0.92);
+        border-radius: 28px;
+        box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08);
+        padding: 24px;
+        margin-bottom: 22px;
+      }
+
+      .panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-bottom: 18px;
+      }
+
+      .panel-header h2 {
+        margin: 0 0 6px;
+        color: #0f172a;
+        font-size: 1.35rem;
+      }
+
+      .panel-header p {
+        margin: 0;
+        color: #64748b;
+        line-height: 1.65;
+      }
+
+      .refresh-btn {
+        background: linear-gradient(135deg, #14b8a6, #0f9488);
+        color: white;
+        border: none;
+        padding: 12px 18px;
+        border-radius: 999px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      .filter-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr 1fr;
+        gap: 16px;
+      }
+
+      .filter-item {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .filter-item label {
+        font-size: 0.92rem;
+        font-weight: 700;
+        color: #0f172a;
+      }
+
+      .filter-item input,
+      .filter-item select {
+        width: 100%;
+        padding: 13px 14px;
+        border-radius: 14px;
+        border: 1px solid #cbd5e1;
+        outline: none;
+        background: #fff;
+        font-size: 0.95rem;
+      }
+
+      .admin-table-wrap {
+        overflow-x: auto;
+        border-radius: 22px;
+        border: 1px solid #dbe7ef;
+        background: #fff;
+      }
+
+      .admin-table {
+        width: 100%;
+        min-width: 1750px;
+        border-collapse: collapse;
+      }
+
+      .admin-table thead th {
+        background: #0f172a;
+        color: white;
+        padding: 15px 12px;
+        font-size: 0.88rem;
+        text-align: left;
+        white-space: nowrap;
+      }
+
+      .admin-table tbody td {
+        padding: 15px 12px;
+        border-bottom: 1px solid #e2e8f0;
+        font-size: 0.92rem;
+        color: #1e293b;
+        vertical-align: top;
+      }
+
+      .admin-table tbody tr:nth-child(even) {
+        background: #f8fafc;
+      }
+
+      .admin-table tbody tr:hover {
+        background: #ecfeff;
+      }
+
+      .status-badge,
+      .payment-badge,
+      .source-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 12px;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        font-weight: 800;
+        white-space: nowrap;
+        margin-bottom: 8px;
+      }
+
+      .status-pending {
+        background: #fef3c7;
+        color: #92400e;
+      }
+      .status-approved {
+        background: #dcfce7;
+        color: #166534;
+      }
+      .status-rejected {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+      .status-cancelled {
+        background: #e5e7eb;
+        color: #374151;
+      }
+      .status-completed {
+        background: #dbeafe;
+        color: #1d4ed8;
+      }
+
+      .payment-unpaid {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+      .payment-pending {
+        background: #fef3c7;
+        color: #92400e;
+      }
+      .payment-paid {
+        background: #dcfce7;
+        color: #166534;
+      }
+      .payment-partially_paid {
+        background: #dbeafe;
+        color: #1d4ed8;
+      }
+      .payment-rejected {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+
+      .source-online {
+        background: #dbeafe;
+        color: #1d4ed8;
+      }
+      .source-manual {
+        background: #ecfeff;
+        color: #0f766e;
+      }
+
+      .admin-table select {
+        width: 100%;
+        min-width: 130px;
+        padding: 10px 12px;
+        border-radius: 12px;
+        border: 1px solid #cbd5e1;
+        background: #fff;
+      }
+
+      .action-buttons {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-width: 145px;
+      }
+
+      .action-btn {
+        border: none;
+        border-radius: 12px;
+        padding: 10px 12px;
+        font-weight: 800;
+        cursor: pointer;
+        transition: 0.2s ease;
+      }
+
+      .save-booking-btn {
+        background: #2563eb;
+        color: white;
+      }
+
+      .receipt-btn {
+        background: #f59e0b;
+        color: #111827;
+      }
+
+      .table-message {
+        text-align: center;
+        padding: 28px !important;
+        color: #64748b;
+        font-weight: 700;
+      }
+
+      @media (max-width: 1100px) {
+        .admin-overview-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+
+        .filter-grid {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+
+      @media (max-width: 700px) {
+        .admin-wrapper {
+          width: 92%;
+        }
+
+        .admin-overview-grid,
+        .filter-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .hero-actions {
+          flex-direction: column;
+        }
+
+        .hero-btn {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+
+  <body class="has-fixed-navbar">
+    <header class="navbar">
+      <div class="logo">SmartResort Admin</div>
+      <nav>
+          <a href="admin.html">Bookings</a>
+          <a href="admin-walkin.html">Manual Reservation</a>
+          <a href="admin-guests-inside.html">Guests Inside</a>
+          <a href="admin-rooms.html">Accommodations</a>
+          <a href="admin-map-editor.html">Map Editor</a>
+          <a href="admin-reports.html">Reports</a>
+          <a href="admin-profile.html">Profile</a>
+          <a href="#" id="logoutBtn">Logout</a>
+      </nav>
+    </header>
+
+    <main class="admin-wrapper">
+      <section class="admin-hero">
+        <h1>Admin Reservation Dashboard</h1>
+        <p>
+          Manage online and manual reservations, monitor today’s resort
+          activity, update payment progress, and review all reservation records
+          in one dashboard.
+        </p>
+
+        <div class="hero-actions">
+          <a href="admin-walkin.html" class="hero-btn primary"
+            >+ Create Manual Reservation</a
+          >
+          <a href="admin-guests-inside.html" class="hero-btn secondary"
+            >View Guests Inside</a
+          >
+          <a href="admin-rooms.html" class="hero-btn secondary"
+            >Manage Accommodations</a
+          >
         </div>
-      </div>
+      </section>
 
-      <div class="filter-grid">
-        <div class="filter-item">
-          <label for="searchInput">Search</label>
-          <input
-            type="text"
-            id="searchInput"
-            placeholder="Search reservation code, name, phone, email, accommodation..."
-          />
+      <section class="admin-overview-grid">
+        <div class="overview-card">
+          <div class="overview-label">Total Reservations</div>
+          <div class="overview-value" id="totalBookings">0</div>
+          <div class="overview-note">All online and manual records</div>
         </div>
 
-        <div class="filter-item">
-          <label for="statusFilter">Reservation Status</label>
-          <select id="statusFilter">
-            <option value="">All</option>
-            <option value="pending">Pending</option>
-            <option value="approved">Approved</option>
-            <option value="rejected">Rejected</option>
-            <option value="cancelled">Cancelled</option>
-            <option value="completed">Completed</option>
-          </select>
+        <div class="overview-card">
+          <div class="overview-label">Pending</div>
+          <div class="overview-value" id="pendingCount">0</div>
+          <div class="overview-note">Needs admin checking</div>
         </div>
 
-        <div class="filter-item">
-          <label for="paymentStatusFilter">Payment Status</label>
-          <select id="paymentStatusFilter">
-            <option value="">All</option>
-            <option value="unpaid">Unpaid</option>
-            <option value="pending">Pending</option>
-            <option value="paid">Paid</option>
-            <option value="partially_paid">Partially Paid</option>
-            <option value="rejected">Rejected</option>
-          </select>
+        <div class="overview-card">
+          <div class="overview-label">Approved</div>
+          <div class="overview-value" id="approvedCount">0</div>
+          <div class="overview-note">Confirmed reservations</div>
         </div>
 
-        <div class="filter-item">
-          <label for="paymentMethodFilter">Payment Method</label>
-          <select id="paymentMethodFilter">
-            <option value="">All</option>
-            <option value="cash">Cash</option>
-            <option value="gcash">GCash</option>
-            <option value="paymaya">PayMaya</option>
-            <option value="other">Other</option>
-          </select>
+        <div class="overview-card">
+          <div class="overview-label">Paid</div>
+          <div class="overview-value" id="paidCount">0</div>
+          <div class="overview-note">Fully paid bookings</div>
         </div>
-      </div>
-    </section>
 
-    <section class="admin-panel">
-      <div class="panel-header">
-        <div>
-          <h2>All Reservations</h2>
-          <p>Now includes both online and manual reservations.</p>
+        <div class="overview-card">
+          <div class="overview-label">Today Reservations</div>
+          <div class="overview-value" id="todayBookings">0</div>
+          <div class="overview-note">Created today</div>
         </div>
-        <button id="refreshBtn" class="refresh-btn">Refresh</button>
-      </div>
 
-      <div class="admin-table-wrap">
-        <table class="admin-table">
-          <thead>
-            <tr>
-              <th>ID</th>
-              <th>Reservation Code</th>
-              <th>Source</th>
-              <th>Customer</th>
-              <th>Phone</th>
-              <th>Email</th>
-              <th>Accommodation</th>
-              <th>Check In Date</th>
-              <th>Check In Time</th>
-              <th>Check Out Date</th>
-              <th>Check Out Time</th>
-              <th>Guests</th>
-              <th>Total</th>
-              <th>Down Payment</th>
-              <th>Reservation Status</th>
-              <th>Payment Method</th>
-              <th>Payment Status</th>
-              <th>Created</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="adminBookingsTableBody">
-            <tr>
-              <td colspan="19" class="table-message">Loading reservations...</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-  </main>
+        <div class="overview-card">
+          <div class="overview-label">Walk-ins Today</div>
+          <div class="overview-value" id="walkinToday">0</div>
+          <div class="overview-note">Manual reservations today</div>
+        </div>
 
-  <script src="js/toast.js"></script>
-  <script src="js/active-nav.js"></script>
-  <script src="js/admin.js"></script>
-</body>
+        <div class="overview-card">
+          <div class="overview-label">Guests Inside</div>
+          <div class="overview-value" id="guestsInside">0</div>
+          <div class="overview-note">Estimated active guests</div>
+        </div>
+
+        <div class="overview-card">
+          <div class="overview-label">Today Revenue</div>
+          <div class="overview-value" id="todayRevenue">₱0</div>
+          <div class="overview-note">Based on paid amount today</div>
+        </div>
+      </section>
+
+      <section class="admin-panel">
+        <div class="panel-header">
+          <div>
+            <h2>Search and Filter</h2>
+            <p>
+              Quickly find reservations by code, customer, source, payment, or
+              accommodation.
+            </p>
+          </div>
+        </div>
+
+        <div class="filter-grid">
+          <div class="filter-item">
+            <label for="searchInput">Search</label>
+            <input
+              type="text"
+              id="searchInput"
+              placeholder="Search reservation code, name, phone, email, accommodation..."
+            />
+          </div>
+
+          <div class="filter-item">
+            <label for="statusFilter">Reservation Status</label>
+            <select id="statusFilter">
+              <option value="">All</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="completed">Completed</option>
+            </select>
+          </div>
+
+          <div class="filter-item">
+            <label for="paymentStatusFilter">Payment Status</label>
+            <select id="paymentStatusFilter">
+              <option value="">All</option>
+              <option value="unpaid">Unpaid</option>
+              <option value="pending">Pending</option>
+              <option value="paid">Paid</option>
+              <option value="partially_paid">Partially Paid</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+
+          <div class="filter-item">
+            <label for="paymentMethodFilter">Payment Method</label>
+            <select id="paymentMethodFilter">
+              <option value="">All</option>
+              <option value="cash">Cash</option>
+              <option value="gcash">GCash</option>
+              <option value="paymaya">PayMaya</option>
+              <option value="bank_transfer">Bank Transfer</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section class="admin-panel">
+        <div class="panel-header">
+          <div>
+            <h2>All Reservations</h2>
+            <p>
+              Includes online reservations, manual reservations, and walk-in
+              records.
+            </p>
+          </div>
+          <button id="refreshBtn" class="refresh-btn">Refresh</button>
+        </div>
+
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Reservation Code</th>
+                <th>Source</th>
+                <th>Customer</th>
+                <th>Phone</th>
+                <th>Email</th>
+                <th>Accommodation</th>
+                <th>Check In Date</th>
+                <th>Check In Time</th>
+                <th>Check Out Date</th>
+                <th>Check Out Time</th>
+                <th>Guests</th>
+                <th>Total</th>
+                <th>Down Payment</th>
+                <th>Reservation Status</th>
+                <th>Payment Method</th>
+                <th>Payment Status</th>
+                <th>Created</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+
+            <tbody id="adminBookingsTableBody">
+              <tr>
+                <td colspan="19" class="table-message">
+                  Loading reservations...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script src="js/toast.js"></script>
+    <script src="js/active-nav.js"></script>
+    <script src="js/admin.js"></script>
+  </body>
 </html>

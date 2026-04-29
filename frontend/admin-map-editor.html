@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Admin Map Editor | SmartResort</title>
+  <link rel="stylesheet" href="css/style.css" />
+
+  <style>
+    .map-editor-shell {
+      width: 94%;
+      max-width: 1500px;
+      margin: 0 auto 40px;
+    }
+
+    .map-editor-hero {
+      background: linear-gradient(135deg, #0f172a, #14b8a6);
+      color: white;
+      border-radius: 30px;
+      padding: 34px 28px;
+      margin: 18px 0 22px;
+      box-shadow: 0 20px 46px rgba(15, 23, 42, 0.16);
+    }
+
+    .map-editor-hero h1 {
+      margin: 0 0 10px;
+      font-size: 2.2rem;
+    }
+
+    .map-editor-hero p {
+      margin: 0;
+      max-width: 900px;
+      line-height: 1.7;
+      opacity: 0.96;
+    }
+
+    .editor-layout {
+      display: grid;
+      grid-template-columns: 1.65fr 0.85fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .editor-card,
+    .editor-panel {
+      background: white;
+      border: 1px solid #dbe7ef;
+      border-radius: 28px;
+      padding: 18px;
+      box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08);
+    }
+
+    .editor-toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+
+    .editor-btn {
+      border: none;
+      border-radius: 999px;
+      padding: 12px 18px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .editor-btn.primary {
+      background: linear-gradient(135deg, #14b8a6, #0ea5e9);
+      color: white;
+    }
+
+    .editor-btn.light {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+
+    .editor-btn.danger {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .map-editor-wrap {
+      position: relative;
+      overflow: hidden;
+      border-radius: 22px;
+      border: 1px solid #dbe7ef;
+      background: #f1f5f9;
+    }
+
+    .map-editor-wrap img {
+      width: 100%;
+      display: block;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+
+    .admin-map-marker {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      padding: 0;
+      border-radius: 999px;
+      border: 3px solid white;
+      transform: translate(-50%, -50%);
+      cursor: grab;
+      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
+      z-index: 10;
+    }
+
+    .admin-map-marker:active {
+      cursor: grabbing;
+    }
+
+    .admin-map-marker.active {
+      outline: 4px solid rgba(20, 184, 166, 0.3);
+      transform: translate(-50%, -50%) scale(1.25);
+      z-index: 20;
+    }
+
+    .marker-name-tag {
+      position: absolute;
+      top: -34px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #0f172a;
+      color: white;
+      padding: 6px 10px;
+      font-size: 0.72rem;
+      border-radius: 8px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: 0.2s ease;
+    }
+
+    .admin-map-marker:hover .marker-name-tag,
+    .admin-map-marker.active .marker-name-tag {
+      opacity: 1;
+    }
+
+    .editor-panel {
+      position: sticky;
+      top: 110px;
+    }
+
+    .editor-panel h2 {
+      margin: 0 0 14px;
+      color: #0f172a;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-group label {
+      display: block;
+      font-weight: 900;
+      color: #0f172a;
+      margin-bottom: 6px;
+      font-size: 0.92rem;
+    }
+
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 14px;
+      font-size: 0.95rem;
+      background: white;
+    }
+
+    .form-group textarea {
+      min-height: 90px;
+      resize: vertical;
+    }
+
+    .position-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .marker-list {
+      margin-top: 18px;
+      display: grid;
+      gap: 10px;
+      max-height: 260px;
+      overflow-y: auto;
+    }
+
+    .marker-list-item {
+      border: 1px solid #dbe7ef;
+      border-radius: 16px;
+      padding: 11px;
+      cursor: pointer;
+      background: #f8fafc;
+    }
+
+    .marker-list-item.active {
+      border-color: #14b8a6;
+      background: #ecfeff;
+    }
+
+    .marker-list-item strong {
+      display: block;
+      color: #0f172a;
+      margin-bottom: 4px;
+    }
+
+    .marker-list-item span {
+      color: #64748b;
+      font-size: 0.86rem;
+    }
+
+    .editor-note {
+      margin-top: 14px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1e3a8a;
+      border-radius: 18px;
+      padding: 14px;
+      line-height: 1.6;
+      font-weight: 700;
+      font-size: 0.92rem;
+    }
+
+    @media (max-width: 1000px) {
+      .editor-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .editor-panel {
+        position: static;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .map-editor-shell {
+        width: 92%;
+      }
+
+      .map-editor-hero,
+      .editor-card,
+      .editor-panel {
+        padding: 18px;
+        border-radius: 22px;
+      }
+
+      .editor-btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body class="has-fixed-navbar">
+  <header class="navbar">
+    <div class="logo">SmartResort Admin</div>
+    <nav>
+      <a href="admin.html">Bookings</a>
+      <a href="admin-walkin.html">Manual Reservation</a>
+      <a href="admin-guests-inside.html">Guests Inside</a>
+      <a href="admin-rooms.html">Accommodations</a>
+      <a href="admin-map-editor.html">Map Editor</a>
+      <a href="admin-reports.html">Reports</a>
+      <a href="admin-profile.html">Profile</a>
+      <a href="#" id="logoutBtn">Logout</a>
+    </nav>
+  </header>
+
+  <main class="map-editor-shell">
+    <section class="map-editor-hero">
+      <h1>Resort Map Editor</h1>
+      <p>
+        Add, move, rename, and color-code map markers. These markers will later be displayed
+        on the customer Resort Map page.
+      </p>
+    </section>
+
+    <section class="editor-layout">
+      <div class="editor-card">
+        <div class="editor-toolbar">
+          <button type="button" class="editor-btn primary" id="addMarkerBtn">+ Add Marker</button>
+          <button type="button" class="editor-btn primary" id="saveLayoutBtn">Save Layout</button>
+          <button type="button" class="editor-btn light" id="loadDefaultBtn">Load Default Markers</button>
+          <button type="button" class="editor-btn danger" id="clearMarkersBtn">Clear Markers</button>
+        </div>
+
+        <div class="map-editor-wrap" id="mapEditorWrap">
+          <img
+            id="resortMapImage"
+            src="images/resort-map-layout.jpg"
+            alt="SmartResort Map Layout"
+            onerror="this.src='images/no-image.jpg'"
+          />
+          <div id="mapMarkersLayer"></div>
+        </div>
+
+        <div class="editor-note">
+          Tip: Click <strong>Add Marker</strong>, then click the exact spot on the map.
+          Drag existing markers to move them. Edit details on the right panel.
+        </div>
+      </div>
+
+      <aside class="editor-panel">
+        <h2>Marker Details</h2>
+
+        <div class="form-group">
+          <label for="markerName">Marker Name</label>
+          <input type="text" id="markerName" placeholder="Example: Family Room-B" />
+        </div>
+
+        <div class="form-group">
+          <label for="markerType">Marker Type</label>
+          <select id="markerType">
+            <option value="room">Room</option>
+            <option value="shade">Shade</option>
+            <option value="pavilion">Pavilion</option>
+            <option value="kubo">Kubo / Nipa Hut</option>
+            <option value="service">Service Area</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="markerColor">Marker Color</label>
+          <input type="color" id="markerColor" value="#14b8a6" />
+        </div>
+
+        <div class="form-group">
+          <label for="markerInfo">Short Info</label>
+          <textarea id="markerInfo" placeholder="Example: Near pool area / good for family guests"></textarea>
+        </div>
+
+        <div class="position-grid">
+          <div class="form-group">
+            <label for="markerX">X Position (%)</label>
+            <input type="number" id="markerX" min="0" max="100" step="0.1" />
+          </div>
+
+          <div class="form-group">
+            <label for="markerY">Y Position (%)</label>
+            <input type="number" id="markerY" min="0" max="100" step="0.1" />
+          </div>
+        </div>
+
+        <div class="editor-toolbar">
+          <button type="button" class="editor-btn primary" id="updateMarkerBtn">Update Marker</button>
+          <button type="button" class="editor-btn danger" id="deleteMarkerBtn">Delete Marker</button>
+        </div>
+
+        <div class="marker-list" id="markerList"></div>
+      </aside>
+    </section>
+  </main>
+
+  <script src="js/active-nav.js"></script>
+  <script src="js/admin-map-editor.js"></script>
+</body>
+</html>

@@ -173,79 +173,94 @@ function renderThermalReceipt(booking) {
     booking.chargeable_entrance_guests ?? Math.max(totalGuests - freeEntrancePax, 0)
   );
 
+  const onsiteTotal =
+    Number(booking.remaining_balance || 0) +
+    Number(booking.estimated_entrance_fee || 0);
+
   const thermal = document.getElementById("thermalReceipt");
   if (!thermal) return;
 
   thermal.innerHTML = `
     <div class="thermal-inner">
+
+      <!-- HEADER -->
       <div class="thermal-center">
-        <div class="thermal-title">SMARTRESORT</div>
-        <div class="thermal-bold">ADMIN RECEIPT</div>
-        <div>${escapeHtml(booking.reservation_code || `#${booking.id}`)}</div>
+        <div class="thermal-title">SMART RESORT</div>
+        <div class="thermal-sub">ADMIN RECEIPT</div>
+        <div class="thermal-code">${escapeHtml(booking.reservation_code || `#${booking.id}`)}</div>
       </div>
 
       <div class="thermal-divider"></div>
 
-      <div><span class="thermal-bold">Guest:</span> ${escapeHtml(booking.fullname || "-")}</div>
-      <div><span class="thermal-bold">Phone:</span> ${escapeHtml(booking.phone || booking.contact_no || "-")}</div>
-      <div><span class="thermal-bold">Source:</span> ${escapeHtml(String(booking.booking_source || "online"))}</div>
-      <div><span class="thermal-bold">Status:</span> ${escapeHtml(String(booking.status || "pending"))}</div>
-      <div><span class="thermal-bold">Payment:</span> ${escapeHtml(formatPaymentStatus(booking.payment_status || "pending"))}</div>
-      <div><span class="thermal-bold">Method:</span> ${escapeHtml(formatPaymentMethod(booking.payment_method || "cash"))}</div>
-      <div><span class="thermal-bold">Reserved At:</span> ${escapeHtml(formatDateTime(booking.reserved_at || booking.created_at))}</div>
+      <!-- BASIC INFO -->
+      <div class="thermal-row">
+        <span>Guest</span>
+        <span>${escapeHtml(booking.fullname || "-")}</span>
+      </div>
 
-      <div class="thermal-divider"></div>
+      <div class="thermal-row">
+        <span>Guests</span>
+        <span>${totalGuests}</span>
+      </div>
 
-      <div class="thermal-bold">ITEMS</div>
-      <div class="thermal-items">
-        ${
-          items.length
-            ? items
-                .map(
-                  (item) => `
-            <div class="thermal-item">
-              <div class="thermal-bold">${escapeHtml(item.accommodation_name || "-")}</div>
-              <div>${escapeHtml(item.slot_label || "-")}</div>
-              <div>${formatDate(item.check_in_date)} ${formatTime(item.check_in_time)}</div>
-              <div>${formatDate(item.check_out_date)} ${formatTime(item.check_out_time)}</div>
-              <div class="thermal-row">
-                <span>Price</span>
-                <span>₱${formatMoney(item.item_price)}</span>
-              </div>
-            </div>
-          `
-                )
-                .join("")
-            : `<div>No items found.</div>`
-        }
+      <div class="thermal-row">
+        <span>Payment</span>
+        <span>${formatPaymentStatus(booking.payment_status || "pending")}</span>
+      </div>
+
+      <div class="thermal-row">
+        <span>Method</span>
+        <span>${formatPaymentMethod(booking.payment_method || "cash")}</span>
+      </div>
+
+      <div class="thermal-row">
+        <span>Date</span>
+        <span>${formatDate(booking.reserved_at || booking.created_at)}</span>
       </div>
 
       <div class="thermal-divider"></div>
 
+      <!-- ITEMS -->
+      <div class="thermal-section-title">ITEMS</div>
+
+      ${
+        items.length
+          ? items
+              .map(
+                (item) => `
+        <div class="thermal-item">
+          <div class="thermal-bold">${escapeHtml(item.accommodation_name || "-")}</div>
+          <div class="thermal-small">${escapeHtml(item.slot_label || "-")}</div>
+          <div class="thermal-small">
+            ${formatDate(item.check_in_date)} ${formatTime(item.check_in_time)}
+          </div>
+
+          <div class="thermal-row">
+            <span>Price</span>
+            <span>₱${formatMoney(item.item_price)}</span>
+          </div>
+        </div>
+      `
+              )
+              .join("")
+          : `<div>No items found.</div>`
+      }
+
+      <div class="thermal-divider"></div>
+
+      <!-- ENTRANCE -->
+      <div class="thermal-section-title">ENTRANCE</div>
+
       <div class="thermal-row">
-        <span>Total Guests</span>
-        <span>${escapeHtml(totalGuests)}</span>
+        <span>Free Pax</span>
+        <span>${freeEntrancePax}</span>
       </div>
+
       <div class="thermal-row">
-        <span>Free Entrance</span>
-        <span>${escapeHtml(freeEntrancePax)} pax</span>
+        <span>Chargeable</span>
+        <span>${chargeableGuests}</span>
       </div>
-      <div class="thermal-row">
-        <span>Chargeable Guests</span>
-        <span>${escapeHtml(chargeableGuests)} pax</span>
-      </div>
-      <div class="thermal-row">
-        <span>Accommodation Total</span>
-        <span>₱${formatMoney(booking.accommodation_total)}</span>
-      </div>
-      <div class="thermal-row">
-        <span>Paid Amount</span>
-        <span>₱${formatMoney(booking.paid_amount)}</span>
-      </div>
-      <div class="thermal-row">
-        <span>Remaining Balance</span>
-        <span>₱${formatMoney(booking.remaining_balance)}</span>
-      </div>
+
       <div class="thermal-row">
         <span>Entrance Fee</span>
         <span>₱${formatMoney(booking.estimated_entrance_fee)}</span>
@@ -253,22 +268,46 @@ function renderThermalReceipt(booking) {
 
       <div class="thermal-divider"></div>
 
-      <div class="thermal-row thermal-bold">
-        <span>ONSITE TOTAL</span>
-        <span>₱${formatMoney(
-          Number(booking.remaining_balance || 0) + Number(booking.estimated_entrance_fee || 0)
-        )}</span>
+      <!-- PAYMENT -->
+      <div class="thermal-section-title">PAYMENT</div>
+
+      <div class="thermal-row">
+        <span>Accommodation</span>
+        <span>₱${formatMoney(booking.accommodation_total)}</span>
+      </div>
+
+      <div class="thermal-row">
+        <span>Paid</span>
+        <span>₱${formatMoney(booking.paid_amount)}</span>
+      </div>
+
+      <div class="thermal-row">
+        <span>Remaining</span>
+        <span>₱${formatMoney(booking.remaining_balance)}</span>
       </div>
 
       <div class="thermal-divider"></div>
 
-      <div>${escapeHtml(booking.note || "-")}</div>
+      <!-- ONSITE TOTAL -->
+      <div class="thermal-total-box">
+        <div class="thermal-total-label">ONSITE PAYMENT</div>
+        <div class="thermal-total-amount">₱${formatMoney(onsiteTotal)}</div>
+      </div>
 
       <div class="thermal-divider"></div>
 
-      <div class="thermal-center">
-        <div>Keep this receipt for resort reference.</div>
+      <!-- NOTE -->
+      <div class="thermal-note">
+        ${escapeHtml(booking.note || "Present this receipt at the front desk.")}
       </div>
+
+      <div class="thermal-divider"></div>
+
+      <div class="thermal-center thermal-small">
+        SmartResort System<br>
+        Keep this receipt for verification
+      </div>
+
     </div>
   `;
 }

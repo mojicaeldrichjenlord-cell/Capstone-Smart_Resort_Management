@@ -1,329 +1,380 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin Reports | SmartResort</title>
-  <link rel="stylesheet" href="css/style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Admin Reports | SmartResort</title>
+    <link rel="stylesheet" href="css/style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  <style>
-    .reports-shell {
-      width: 94%;
-      max-width: 1450px;
-      margin: 0 auto 38px;
-    }
-
-    .admin-top-link {
-      display: flex;
-      justify-content: flex-start;
-      margin: 10px 0 18px;
-    }
-
-    .back-btn {
-      display: inline-flex;
-      text-decoration: none;
-      background: rgba(255,255,255,0.96);
-      color: #0f172a;
-      padding: 11px 18px;
-      border-radius: 999px;
-      font-weight: 800;
-      transition: 0.2s ease;
-      box-shadow: 0 10px 20px rgba(15,23,42,0.06);
-      border: 1px solid rgba(219,231,239,0.92);
-    }
-
-    .back-btn:hover {
-      transform: translateY(-1px);
-    }
-
-    .reports-hero {
-      background:
-        linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(20, 184, 166, 0.82)),
-        linear-gradient(135deg, #0f172a, #14b8a6);
-      color: white;
-      border-radius: 30px;
-      padding: 34px 28px;
-      margin-bottom: 22px;
-      box-shadow: 0 20px 46px rgba(15, 23, 42, 0.16);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .reports-hero h1 {
-      margin: 0 0 10px;
-      font-size: 2.2rem;
-    }
-
-    .reports-hero p {
-      margin: 0;
-      max-width: 760px;
-      line-height: 1.7;
-      opacity: 0.96;
-    }
-
-    .reports-panel {
-      background: rgba(255,255,255,0.96);
-      border: 1px solid rgba(219,231,239,0.92);
-      border-radius: 28px;
-      padding: 24px;
-      box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08);
-      margin-bottom: 22px;
-    }
-
-    .reports-panel h2 {
-      margin: 0 0 8px;
-      color: #0f172a;
-      font-size: 1.35rem;
-    }
-
-    .reports-panel p {
-      margin: 0 0 18px;
-      color: #64748b;
-      line-height: 1.65;
-    }
-
-    .filter-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 18px;
-      margin-bottom: 16px;
-    }
-
-    .filter-grid label {
-      display: block;
-      margin-bottom: 8px;
-      font-weight: 800;
-      color: #0f172a;
-    }
-
-    .filter-grid input {
-      width: 100%;
-      padding: 13px 14px;
-      border: 1px solid #cbd5e1;
-      border-radius: 14px;
-      font-size: 0.95rem;
-      outline: none;
-      background: #fff;
-    }
-
-    .report-filter-actions {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(6, 1fr);
-      gap: 18px;
-      margin-bottom: 24px;
-    }
-
-    .stat-card {
-      background: rgba(255,255,255,0.98);
-      border: 1px solid rgba(219,231,239,0.92);
-      border-radius: 24px;
-      padding: 22px;
-      box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
-      text-align: center;
-    }
-
-    .stat-card h3 {
-      margin-bottom: 10px;
-      color: #64748b;
-      font-size: 0.92rem;
-    }
-
-    .stat-card p {
-      margin: 0;
-      font-size: 1.8rem;
-      font-weight: 800;
-      color: #14b8a6;
-    }
-
-    .chart-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-    }
-
-    .chart-box {
-      background: rgba(255,255,255,0.96);
-      border: 1px solid rgba(219,231,239,0.92);
-      border-radius: 26px;
-      padding: 20px;
-      box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08);
-      min-height: 430px;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .chart-box h2 {
-      margin-bottom: 14px;
-      color: #0f172a;
-      font-size: 1.12rem;
-    }
-
-    .chart-box canvas {
-      width: 100% !important;
-      height: 320px !important;
-    }
-
-    .report-error {
-      margin-bottom: 18px;
-      color: #dc2626;
-      font-weight: 700;
-    }
-
-    @media (max-width: 1200px) {
-      .stats-grid {
-        grid-template-columns: repeat(3, 1fr);
-      }
-    }
-
-    @media (max-width: 992px) {
-      .chart-grid,
-      .filter-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    @media (max-width: 700px) {
+    <style>
       .reports-shell {
-        width: 92%;
+        width: 94%;
+        max-width: 1450px;
+        margin: 0 auto 38px;
       }
 
-      .reports-hero,
-      .reports-panel,
-      .chart-box {
-        padding: 18px;
-        border-radius: 22px;
+      .admin-top-link {
+        display: flex;
+        justify-content: flex-start;
+        margin: 10px 0 18px;
+      }
+
+      .back-btn {
+        display: inline-flex;
+        text-decoration: none;
+        background: rgba(255, 255, 255, 0.96);
+        color: #0f172a;
+        padding: 11px 18px;
+        border-radius: 999px;
+        font-weight: 800;
+        transition: 0.2s ease;
+        box-shadow: 0 10px 20px rgba(15, 23, 42, 0.06);
+        border: 1px solid rgba(219, 231, 239, 0.92);
+      }
+
+      .reports-hero {
+        background:
+          linear-gradient(
+            135deg,
+            rgba(15, 23, 42, 0.95),
+            rgba(20, 184, 166, 0.82)
+          ),
+          linear-gradient(135deg, #0f172a, #14b8a6);
+        color: white;
+        border-radius: 30px;
+        padding: 34px 28px;
+        margin-bottom: 22px;
+        box-shadow: 0 20px 46px rgba(15, 23, 42, 0.16);
+      }
+
+      .reports-hero h1 {
+        margin: 0 0 10px;
+        font-size: 2.2rem;
+      }
+
+      .reports-hero p {
+        margin: 0;
+        max-width: 800px;
+        line-height: 1.7;
+        opacity: 0.96;
+      }
+
+      .reports-panel {
+        background: rgba(255, 255, 255, 0.96);
+        border: 1px solid rgba(219, 231, 239, 0.92);
+        border-radius: 28px;
+        padding: 24px;
+        box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08);
+        margin-bottom: 22px;
+      }
+
+      .reports-panel h2 {
+        margin: 0 0 8px;
+        color: #0f172a;
+        font-size: 1.35rem;
+      }
+
+      .reports-panel p {
+        margin: 0 0 18px;
+        color: #64748b;
+        line-height: 1.65;
+      }
+
+      .filter-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px;
+        margin-bottom: 16px;
+      }
+
+      .filter-grid label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 800;
+        color: #0f172a;
+      }
+
+      .filter-grid input {
+        width: 100%;
+        padding: 13px 14px;
+        border: 1px solid #cbd5e1;
+        border-radius: 14px;
+        font-size: 0.95rem;
+        outline: none;
+        background: #fff;
+      }
+
+      .report-filter-actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
       }
 
       .stats-grid {
-        grid-template-columns: 1fr;
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 18px;
+        margin-bottom: 24px;
       }
-    }
-  </style>
-</head>
-<body class="has-fixed-navbar">
-  <header class="navbar">
-    <div class="logo">SmartResort Admin</div>
-    <nav>
-      <a href="admin.html">Bookings</a>
-      <a href="admin-rooms.html">Accommodations</a>
-      <a href="admin-reports.html">Reports</a>
-      <a href="admin-profile.html">Profile</a>
-      <a href="#" id="logoutBtn">Logout</a>
-    </nav>
-  </header>
 
-  <main class="reports-shell">
-    <div class="admin-top-link">
-      <a href="admin.html" class="back-btn">← Back to Admin Dashboard</a>
-    </div>
+      .stat-card {
+        background: rgba(255, 255, 255, 0.98);
+        border: 1px solid rgba(219, 231, 239, 0.92);
+        border-radius: 24px;
+        padding: 20px 16px;
+        box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
+        text-align: center;
+      }
 
-    <section class="reports-hero">
-      <h1>Reservation Reports and Analytics</h1>
-      <p>
-        Track online and manual reservations, payment performance, source trends,
-        most booked accommodations, and slot usage in one analytics dashboard.
-      </p>
-    </section>
+      .stat-card h3 {
+        margin: 0 0 10px;
+        color: #64748b;
+        font-size: 0.9rem;
+        line-height: 1.3;
+      }
 
-    <section class="reports-panel">
-      <h2>Filter Report Range</h2>
-      <p>Select a date range to focus the analytics on a specific reporting period.</p>
+      .stat-card p {
+        margin: 0;
+        font-size: 1.55rem;
+        font-weight: 900;
+        color: #14b8a6;
+        word-break: break-word;
+      }
 
-      <div class="filter-grid">
-        <div>
-          <label for="reportStartDate">Start Date</label>
-          <input type="date" id="reportStartDate" />
+      .chart-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+
+      .chart-box {
+        background: rgba(255, 255, 255, 0.96);
+        border: 1px solid rgba(219, 231, 239, 0.92);
+        border-radius: 26px;
+        padding: 20px;
+        box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08);
+        min-height: 430px;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .chart-box h2 {
+        margin-bottom: 14px;
+        color: #0f172a;
+        font-size: 1.12rem;
+      }
+
+      .chart-box canvas {
+        width: 100% !important;
+        height: 320px !important;
+      }
+
+      .report-error {
+        margin-bottom: 18px;
+        color: #dc2626;
+        font-weight: 700;
+      }
+
+      @media print {
+        .navbar,
+        .admin-top-link,
+        .reports-panel,
+        .btn-primary,
+        .btn-secondary {
+          display: none !important;
+        }
+
+        body {
+          background: white !important;
+        }
+
+        .reports-shell {
+          width: 100%;
+          max-width: none;
+          margin: 0;
+        }
+
+        .reports-hero {
+          box-shadow: none;
+          border-radius: 0;
+          padding: 18px;
+        }
+
+        .stat-card,
+        .chart-box {
+          box-shadow: none;
+        }
+      }
+
+      @media (max-width: 1300px) {
+        .stats-grid {
+          grid-template-columns: repeat(4, 1fr);
+        }
+      }
+
+      @media (max-width: 992px) {
+        .chart-grid,
+        .filter-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .stats-grid {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+
+      @media (max-width: 700px) {
+        .reports-shell {
+          width: 92%;
+        }
+
+        .reports-hero,
+        .reports-panel,
+        .chart-box {
+          padding: 18px;
+          border-radius: 22px;
+        }
+
+        .stats-grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+
+  <body class="has-fixed-navbar">
+    <header class="navbar">
+      <div class="logo">SmartResort Admin</div>
+      <nav>
+        <a href="admin.html">Bookings</a>
+        <a href="admin-walkin.html">Manual Reservation</a>
+        <a href="admin-guests-inside.html">Guests Inside</a>
+        <a href="admin-rooms.html">Accommodations</a>
+        <a href="admin-map-editor.html">Map Editor</a>
+        <a href="admin-reports.html">Reports</a>
+        <a href="admin-profile.html">Profile</a>
+        <a href="#" id="logoutBtn">Logout</a>
+      </nav>
+    </header>
+
+    <main class="reports-shell">
+      <div class="admin-top-link">
+        <a href="admin.html" class="back-btn">← Back to Admin Dashboard</a>
+      </div>
+
+      <section class="reports-hero">
+        <h1>Reservation Reports</h1>
+        <p>
+          Easy-to-read report for total reservations, total guests, collected
+          money, online bookings, and walk-in/manual reservations.
+        </p>
+      </section>
+
+      <section class="reports-panel">
+        <h2>Filter Report</h2>
+        <p>
+          Select a start and end date. This report includes both online and
+          manual/walk-in reservations.
+        </p>
+
+        <div class="filter-grid">
+          <div>
+            <label for="reportStartDate">Start Date</label>
+            <input type="date" id="reportStartDate" />
+          </div>
+
+          <div>
+            <label for="reportEndDate">End Date</label>
+            <input type="date" id="reportEndDate" />
+          </div>
         </div>
 
-        <div>
-          <label for="reportEndDate">End Date</label>
-          <input type="date" id="reportEndDate" />
+        <div class="report-filter-actions">
+          <button id="applyReportFilterBtn" class="btn-primary">
+            View Report
+          </button>
+          <button id="clearReportFilterBtn" class="btn-secondary">
+            Reset Filter
+          </button>
+          <button id="printReportBtn" class="btn-primary">Print Report</button>
         </div>
-      </div>
+      </section>
 
-      <div class="report-filter-actions">
-        <button id="applyReportFilterBtn" class="btn-primary">Apply Filter</button>
-        <button id="clearReportFilterBtn" class="btn-secondary">Reset</button>
-        <button id="printReportBtn" class="btn-primary">Print Report</button>
-      </div>
-    </section>
+      <p id="reportErrorMessage" class="report-error" style="display: none"></p>
 
-    <p id="reportErrorMessage" class="report-error" style="display:none;"></p>
+      <section class="stats-grid">
+        <div class="stat-card">
+          <h3>Reservations</h3>
+          <p id="totalBookingsCount">0</p>
+        </div>
 
-    <section class="stats-grid">
-      <div class="stat-card">
-        <h3>Total Reservations</h3>
-        <p id="totalBookingsCount">0</p>
-      </div>
+        <div class="stat-card">
+          <h3>Total Guests</h3>
+          <p id="totalGuestsCount">0</p>
+        </div>
 
-      <div class="stat-card">
-        <h3>Online</h3>
-        <p id="onlineBookingsCount">0</p>
-      </div>
+        <div class="stat-card">
+          <h3>Online Bookings</h3>
+          <p id="onlineBookingsCount">0</p>
+        </div>
 
-      <div class="stat-card">
-        <h3>Manual</h3>
-        <p id="manualBookingsCount">0</p>
-      </div>
+        <div class="stat-card">
+          <h3>Walk-in / Manual</h3>
+          <p id="manualBookingsCount">0</p>
+        </div>
 
-      <div class="stat-card">
-        <h3>Approved</h3>
-        <p id="approvedBookingsCount">0</p>
-      </div>
+        <div class="stat-card">
+          <h3>Approved</h3>
+          <p id="approvedBookingsCount">0</p>
+        </div>
 
-      <div class="stat-card">
-        <h3>Pending</h3>
-        <p id="pendingBookingsCount">0</p>
-      </div>
+        <div class="stat-card">
+          <h3>Pending</h3>
+          <p id="pendingBookingsCount">0</p>
+        </div>
 
-      <div class="stat-card">
-        <h3>Total Revenue</h3>
-        <p id="totalRevenueAmount">₱0.00</p>
-      </div>
-    </section>
+        <div class="stat-card">
+          <h3>Money Collected</h3>
+          <p id="totalRevenueAmount">₱0.00</p>
+        </div>
+      </section>
 
-    <section class="chart-grid">
-      <div class="chart-box">
-        <h2>Reservations by Status</h2>
-        <canvas id="bookingStatusChart"></canvas>
-      </div>
+      <section class="chart-grid">
+        <div class="chart-box">
+          <h2>Reservations by Status</h2>
+          <canvas id="bookingStatusChart"></canvas>
+        </div>
 
-      <div class="chart-box">
-        <h2>Reservation Source Breakdown</h2>
-        <canvas id="bookingSourceChart"></canvas>
-      </div>
+        <div class="chart-box">
+          <h2>Online vs Walk-in / Manual</h2>
+          <canvas id="bookingSourceChart"></canvas>
+        </div>
 
-      <div class="chart-box">
-        <h2>Most Booked Accommodations</h2>
-        <canvas id="popularRoomsChart"></canvas>
-      </div>
+        <div class="chart-box">
+          <h2>Most Booked Accommodations</h2>
+          <canvas id="popularRoomsChart"></canvas>
+        </div>
 
-      <div class="chart-box">
-        <h2>Payment Method Summary</h2>
-        <canvas id="paymentMethodChart"></canvas>
-      </div>
+        <div class="chart-box">
+          <h2>Payment Method Summary</h2>
+          <canvas id="paymentMethodChart"></canvas>
+        </div>
 
-      <div class="chart-box">
-        <h2>Guests per Accommodation</h2>
-        <canvas id="guestsPerRoomChart"></canvas>
-      </div>
+        <div class="chart-box">
+          <h2>Guests per Accommodation</h2>
+          <canvas id="guestsPerRoomChart"></canvas>
+        </div>
 
-      <div class="chart-box">
-        <h2>Slot Usage</h2>
-        <canvas id="slotUsageChart"></canvas>
-      </div>
-    </section>
-  </main>
+        <div class="chart-box">
+          <h2>Slot Usage</h2>
+          <canvas id="slotUsageChart"></canvas>
+        </div>
+      </section>
+    </main>
 
-  <script src="js/toast.js"></script>
-  <script src="js/active-nav.js"></script>
-  <script src="js/admin-reports.js"></script>
-</body>
+    <script src="js/toast.js"></script>
+    <script src="js/active-nav.js"></script>
+    <script src="js/admin-reports.js"></script>
+  </body>
 </html>

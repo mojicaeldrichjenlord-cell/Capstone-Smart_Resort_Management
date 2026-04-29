@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Resort Map | Arvic Seaside</title>
+
+  <link rel="stylesheet" href="css/style.css" />
+
+  <style>
+    .resort-map-shell {
+      width: 94%;
+      max-width: 1450px;
+      margin: 0 auto 40px;
+    }
+
+    .map-hero {
+      background: linear-gradient(135deg, #0f172a, #14b8a6);
+      color: white;
+      border-radius: 30px;
+      padding: 34px 28px;
+      margin: 18px 0 22px;
+      box-shadow: 0 20px 46px rgba(15, 23, 42, 0.16);
+    }
+
+    .map-hero h1 {
+      margin: 0 0 10px;
+      font-size: 2.2rem;
+    }
+
+    .map-hero p {
+      margin: 0;
+      max-width: 900px;
+      line-height: 1.7;
+      opacity: 0.96;
+    }
+
+    .map-layout {
+      display: grid;
+      grid-template-columns: 1.65fr 0.85fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .map-card,
+    .map-info-card {
+      background: white;
+      border: 1px solid #dbe7ef;
+      border-radius: 28px;
+      padding: 18px;
+      box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08);
+    }
+
+    .map-image-wrap {
+      position: relative;
+      overflow: hidden;
+      border-radius: 22px;
+      border: 1px solid #dbe7ef;
+      background: #f1f5f9;
+    }
+
+    .map-image-wrap img {
+      width: 100%;
+      display: block;
+    }
+
+    .map-note {
+      margin-top: 16px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1e3a8a;
+      border-radius: 18px;
+      padding: 14px 16px;
+      line-height: 1.6;
+      font-weight: 700;
+    }
+
+    .map-info-card {
+      position: sticky;
+      top: 110px;
+    }
+
+    .map-info-image {
+      width: 100%;
+      height: 210px;
+      object-fit: cover;
+      border-radius: 20px;
+      border: 1px solid #dbe7ef;
+      background: #f1f5f9;
+      margin-bottom: 14px;
+    }
+
+    .map-info-card h2 {
+      margin: 0 0 8px;
+      color: #0f172a;
+      font-size: 1.35rem;
+    }
+
+    .map-info-card p {
+      color: #475569;
+      line-height: 1.6;
+      margin-bottom: 12px;
+    }
+
+    .info-row {
+      display: grid;
+      grid-template-columns: 1fr 1.2fr;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 0.92rem;
+    }
+
+    .info-row strong {
+      color: #0f172a;
+    }
+
+    .info-row span {
+      color: #475569;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      width: fit-content;
+      padding: 7px 11px;
+      border-radius: 999px;
+      font-weight: 900;
+      font-size: 0.78rem;
+    }
+
+    .status-available-pill {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .status-unavailable-pill {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .map-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    .map-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      border: none;
+      border-radius: 999px;
+      padding: 13px 20px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .map-btn.primary {
+      background: linear-gradient(135deg, #14b8a6, #0ea5e9);
+      color: white;
+      box-shadow: 0 10px 24px rgba(20, 184, 166, 0.22);
+    }
+
+    .map-btn.light {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+
+    .menu-toggle {
+      display: none;
+      color: white;
+      font-size: 1.7rem;
+      font-weight: 900;
+    }
+
+    @media (max-width: 1000px) {
+      .map-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .map-info-card {
+        position: static;
+      }
+    }
+
+    @media (max-width: 900px) {
+      .navbar {
+        position: relative !important;
+        padding: 10px 14px !important;
+        display: grid !important;
+        grid-template-columns: 1fr auto !important;
+        align-items: center !important;
+        gap: 10px !important;
+      }
+
+      .menu-toggle {
+        display: inline-flex !important;
+        width: 48px !important;
+        height: 48px !important;
+        border: none !important;
+        border-radius: 14px !important;
+        background: linear-gradient(135deg, #16c7d9, #0797b3) !important;
+        align-items: center !important;
+        justify-content: center !important;
+        cursor: pointer !important;
+        box-shadow: 0 10px 22px rgba(22, 199, 217, 0.25) !important;
+      }
+
+      .navbar nav {
+        grid-column: 1 / -1 !important;
+        width: 100% !important;
+        display: none !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+        background: #17243a !important;
+        border-radius: 14px !important;
+        padding: 12px !important;
+      }
+
+      .navbar nav.show {
+        display: flex !important;
+      }
+
+      .navbar nav a {
+        width: 100% !important;
+        display: block !important;
+        padding: 12px 14px !important;
+        border-radius: 10px !important;
+        text-align: left !important;
+        font-size: 0.95rem !important;
+      }
+    }
+
+    @media (max-width: 700px) {
+      body.has-fixed-navbar {
+        padding-top: 0 !important;
+      }
+
+      .resort-map-shell {
+        width: 92%;
+      }
+
+      .map-hero,
+      .map-card,
+      .map-info-card {
+        padding: 18px;
+        border-radius: 22px;
+      }
+
+      .map-hero h1 {
+        font-size: 1.8rem;
+      }
+
+      .map-btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body class="has-fixed-navbar">
+  <header class="navbar">
+    <div class="logo">Arvic Seaside</div>
+
+    <button id="menuToggle" class="menu-toggle" type="button">☰</button>
+
+    <nav id="mobileNav">
+      <a href="index.html">Home</a>
+      <a href="rooms.html">Accommodations</a>
+      <a href="resort-map.html" class="active-nav">Resort Map</a>
+      <a href="my-bookings.html">My Bookings</a>
+      <a href="profile.html">Profile</a>
+      <a href="#" id="logoutBtn">Logout</a>
+    </nav>
+  </header>
+
+  <main class="resort-map-shell">
+    <section class="map-hero">
+      <h1>Resort Map</h1>
+      <p>
+        View the resort layout and click the markers to see where rooms, shades,
+        pavilions, pool area, and beach front accommodations are located.
+      </p>
+    </section>
+
+    <section class="map-layout">
+      <div class="map-card">
+        <div class="map-image-wrap" id="mapImageWrap">
+          <img
+            src="images/resort-map-layout.jpg"
+            alt="Arvic Seaside layout map"
+            onerror="this.src='images/no-image.jpg'"
+          />
+
+          <div id="mapMarkers"></div>
+        </div>
+
+        <div class="map-note">
+          This map is for visual guidance only. Actual availability, prices, and booking details
+          are shown on the Accommodations page.
+        </div>
+
+        <div class="map-actions">
+          <a href="rooms.html" class="map-btn primary">View Accommodations</a>
+          <a href="index.html" class="map-btn light">Back to Home</a>
+        </div>
+      </div>
+
+      <aside class="map-info-card">
+        <img
+          id="infoImage"
+          class="map-info-image"
+          src="images/no-image.jpg"
+          alt="Accommodation preview"
+        />
+
+        <h2 id="infoName">Select a Marker</h2>
+        <p id="infoDescription">
+          Click a marker on the resort map to view accommodation details.
+        </p>
+
+        <div class="info-row">
+          <strong>Status</strong>
+          <span id="infoStatus">-</span>
+        </div>
+
+        <div class="info-row">
+          <strong>Location</strong>
+          <span id="infoLocation">-</span>
+        </div>
+
+        <div class="info-row">
+          <strong>Category</strong>
+          <span id="infoCategory">-</span>
+        </div>
+
+        <div class="info-row">
+          <strong>Capacity</strong>
+          <span id="infoCapacity">-</span>
+        </div>
+
+        <div class="info-row">
+          <strong>Day Tour</strong>
+          <span id="infoDayPrice">-</span>
+        </div>
+
+        <div class="info-row">
+          <strong>Overnight</strong>
+          <span id="infoOvernightPrice">-</span>
+        </div>
+
+        <div class="info-row">
+          <strong>Extended</strong>
+          <span id="infoExtendedPrice">-</span>
+        </div>
+
+        <div class="map-actions">
+          <a id="mapBookBtn" class="map-btn primary" href="#" style="display:none;">
+            View This Accommodation
+          </a>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <script src="js/active-nav.js"></script>
+  <script src="js/resort-map.js"></script>
+
+  <script>
+    const menuToggle = document.getElementById("menuToggle");
+    const mobileNav = document.getElementById("mobileNav");
+
+    menuToggle.addEventListener("click", () => {
+      mobileNav.classList.toggle("show");
+      menuToggle.textContent = mobileNav.classList.contains("show") ? "×" : "☰";
+    });
+  </script>
+</body>
+</html>

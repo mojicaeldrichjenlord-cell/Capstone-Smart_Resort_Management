@@ -1,6 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 
 const authRoutes = require("./routes/authRoutes");
 const roomRoutes = require("./routes/roomRoutes");
@@ -9,8 +10,10 @@ const adminBookingRoutes = require("./routes/adminBookingRoutes");
 const adminPaymentRoutes = require("./routes/adminPaymentRoutes");
 const aiRoutes = require("./routes/aiRoutes");
 
+// 🔥 NEW
+const mapMarkerRoutes = require("./routes/mapMarkerRoutes");
+
 const app = express();
-const path = require("path");
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use(cors());
@@ -26,6 +29,9 @@ app.use("/api/bookings", bookingRoutes);
 app.use("/api/admin/bookings", adminBookingRoutes);
 app.use("/api/admin/payments", adminPaymentRoutes);
 app.use("/api/ai", aiRoutes);
+
+// 🔥 NEW ROUTE
+app.use("/api/map-markers", mapMarkerRoutes);
 
 const PORT = process.env.PORT || 5000;
 
