@@ -46,6 +46,7 @@ function setupForm() {
   const roomForm = document.getElementById("roomForm");
   const clearFormBtn = document.getElementById("clearFormBtn");
   const roomImage = document.getElementById("roomImage");
+  const galleryImages = document.getElementById("galleryImages");
   const addCategoryBtn = document.getElementById("addCategoryBtn");
   const seedDefaultsBtn = document.getElementById("seedDefaultsBtn");
 
@@ -59,6 +60,10 @@ function setupForm() {
 
   if (roomImage) {
     roomImage.addEventListener("input", updateImagePreview);
+  }
+
+  if (galleryImages) {
+    galleryImages.addEventListener("input", updateGalleryPreview);
   }
 
   if (addCategoryBtn) {
@@ -105,7 +110,9 @@ async function loadCategories() {
 
 async function createCategory() {
   const name = document.getElementById("categoryName").value.trim();
-  const description = document.getElementById("categoryDescription").value.trim();
+  const description = document
+    .getElementById("categoryDescription")
+    .value.trim();
 
   if (!name) {
     showMessage("Category name is required.", "error");
@@ -149,11 +156,17 @@ async function seedDefaults() {
       throw new Error(data.message || "Failed to seed default accommodations.");
     }
 
-    showMessage(data.message || "Default accommodations seeded successfully.", "success");
+    showMessage(
+      data.message || "Default accommodations seeded successfully.",
+      "success"
+    );
     loadRooms();
   } catch (error) {
     console.error("seedDefaults error:", error);
-    showMessage(error.message || "Failed to seed default accommodations.", "error");
+    showMessage(
+      error.message || "Failed to seed default accommodations.",
+      "error"
+    );
   }
 }
 
@@ -168,6 +181,7 @@ async function handleRoomSubmit(e) {
     description: document.getElementById("roomDescription").value.trim(),
     max_capacity: document.getElementById("roomCapacity").value.trim(),
     image: document.getElementById("roomImage").value.trim(),
+    gallery_images: getGalleryImagesFromInput(),
     map_label: document.getElementById("mapLabel").value.trim(),
     status: document.getElementById("roomStatus").value.trim(),
 
@@ -177,9 +191,15 @@ async function handleRoomSubmit(e) {
 
     day_start_time: document.getElementById("dayStartTime").value.trim(),
     day_end_time: document.getElementById("dayEndTime").value.trim(),
-    overnight_start_time: document.getElementById("overnightStartTime").value.trim(),
-    overnight_end_time: document.getElementById("overnightEndTime").value.trim(),
-    extended_start_time: document.getElementById("extendedStartTime").value.trim(),
+    overnight_start_time: document
+      .getElementById("overnightStartTime")
+      .value.trim(),
+    overnight_end_time: document
+      .getElementById("overnightEndTime")
+      .value.trim(),
+    extended_start_time: document
+      .getElementById("extendedStartTime")
+      .value.trim(),
     extended_end_time: document.getElementById("extendedEndTime").value.trim(),
   };
 
@@ -287,6 +307,28 @@ async function loadRooms() {
     container.innerHTML = rooms
       .map((room) => {
         const roomStatus = String(room.status || "available").toLowerCase();
+        const galleryImages = Array.isArray(room.gallery_images)
+          ? room.gallery_images
+          : [];
+
+        const galleryStrip = galleryImages.length
+          ? `
+            <div class="room-gallery-strip">
+              ${galleryImages
+                .slice(0, 8)
+                .map(
+                  (img) => `
+                    <img
+                      src="${escapeHtml(img)}"
+                      alt="${escapeHtml(room.name || "Gallery image")}"
+                      onerror="this.src='images/no-image.jpg'"
+                    />
+                  `
+                )
+                .join("")}
+            </div>
+          `
+          : "";
 
         return `
           <div class="room-admin-card">
@@ -295,6 +337,8 @@ async function loadRooms() {
               alt="${escapeHtml(room.name || "Accommodation")}"
               onerror="this.src='images/no-image.jpg'"
             />
+
+            ${galleryStrip}
 
             <div class="room-admin-content">
               <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;margin-bottom:10px;">
@@ -307,6 +351,7 @@ async function loadRooms() {
               <p><strong>Category:</strong> ${escapeHtml(room.category_name || "N/A")}</p>
               <p><strong>Description:</strong> ${escapeHtml(room.description || "N/A")}</p>
               <p><strong>Map Label:</strong> ${escapeHtml(room.map_label || "Not set")}</p>
+              <p><strong>Gallery Photos:</strong> ${galleryImages.length}</p>
 
               <div class="room-meta">
                 <div><strong>Max Capacity</strong><br>${room.max_capacity || 0}</div>
@@ -381,20 +426,43 @@ async function editRoom(roomId) {
     document.getElementById("roomStatus").value = room.status || "available";
 
     document.getElementById("roomPrice").value = room.day_price || 0;
-    document.getElementById("overnightPrice").value = room.overnight_price || 0;
+    document.getElementById("overnightPrice").value =
+      room.overnight_price || 0;
     document.getElementById("extendedPrice").value = room.extended_price || 0;
 
-    document.getElementById("dayStartTime").value = formatTimeInput(room.day_start_time);
-    document.getElementById("dayEndTime").value = formatTimeInput(room.day_end_time);
-    document.getElementById("overnightStartTime").value = formatTimeInput(room.overnight_start_time);
-    document.getElementById("overnightEndTime").value = formatTimeInput(room.overnight_end_time);
-    document.getElementById("extendedStartTime").value = formatTimeInput(room.extended_start_time);
-    document.getElementById("extendedEndTime").value = formatTimeInput(room.extended_end_time);
+    document.getElementById("dayStartTime").value = formatTimeInput(
+      room.day_start_time
+    );
+    document.getElementById("dayEndTime").value = formatTimeInput(
+      room.day_end_time
+    );
+    document.getElementById("overnightStartTime").value = formatTimeInput(
+      room.overnight_start_time
+    );
+    document.getElementById("overnightEndTime").value = formatTimeInput(
+      room.overnight_end_time
+    );
+    document.getElementById("extendedStartTime").value = formatTimeInput(
+      room.extended_start_time
+    );
+    document.getElementById("extendedEndTime").value = formatTimeInput(
+      room.extended_end_time
+    );
+
+    const galleryImages = Array.isArray(room.gallery_images)
+      ? room.gallery_images
+      : [];
+
+    const galleryInput = document.getElementById("galleryImages");
+    if (galleryInput) {
+      galleryInput.value = galleryImages.join("\n");
+    }
 
     document.getElementById("formTitle").textContent = "Edit Accommodation";
     document.getElementById("saveRoomBtn").textContent = "Update Accommodation";
 
     updateImagePreview();
+    updateGalleryPreview();
     window.scrollTo({ top: 0, behavior: "smooth" });
   } catch (error) {
     console.error("editRoom error:", error);
@@ -419,7 +487,10 @@ async function deleteRoom(roomId) {
       throw new Error(data.message || "Failed to delete accommodation.");
     }
 
-    showMessage(data.message || "Accommodation deleted successfully.", "success");
+    showMessage(
+      data.message || "Accommodation deleted successfully.",
+      "success"
+    );
     loadRooms();
   } catch (error) {
     console.error("deleteRoom error:", error);
@@ -436,9 +507,25 @@ function clearForm() {
   const preview = document.getElementById("imagePreview");
   const previewText = document.getElementById("imagePreviewText");
 
-  preview.style.display = "none";
-  preview.src = "";
-  previewText.textContent = "No image selected.";
+  if (preview) {
+    preview.style.display = "none";
+    preview.src = "";
+  }
+
+  if (previewText) {
+    previewText.textContent = "No image selected.";
+  }
+
+  const galleryPreview = document.getElementById("galleryPreview");
+  const galleryPreviewText = document.getElementById("galleryPreviewText");
+
+  if (galleryPreview) {
+    galleryPreview.innerHTML = "";
+  }
+
+  if (galleryPreviewText) {
+    galleryPreviewText.textContent = "No gallery images added.";
+  }
 }
 
 function updateImagePreview() {
@@ -456,6 +543,47 @@ function updateImagePreview() {
   preview.src = value;
   preview.style.display = "block";
   previewText.textContent = value;
+}
+
+function updateGalleryPreview() {
+  const images = getGalleryImagesFromInput();
+  const galleryPreview = document.getElementById("galleryPreview");
+  const galleryPreviewText = document.getElementById("galleryPreviewText");
+
+  if (!galleryPreview || !galleryPreviewText) return;
+
+  if (!images.length) {
+    galleryPreview.innerHTML = "";
+    galleryPreviewText.textContent = "No gallery images added.";
+    return;
+  }
+
+  galleryPreviewText.textContent = `${images.length} gallery image(s) added.`;
+
+  galleryPreview.innerHTML = images
+    .map(
+      (imageUrl) => `
+        <div class="gallery-preview-item">
+          <img
+            src="${escapeHtml(imageUrl)}"
+            alt="Gallery preview"
+            onerror="this.src='images/no-image.jpg'"
+          />
+          <span>${escapeHtml(imageUrl)}</span>
+        </div>
+      `
+    )
+    .join("");
+}
+
+function getGalleryImagesFromInput() {
+  const input = document.getElementById("galleryImages");
+  if (!input) return [];
+
+  return input.value
+    .split(/\r?\n|,/)
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function formatMoney(value) {

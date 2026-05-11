@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Guests Inside | SmartResort</title>
+    <title>Guests Inside | Arvic Seaside</title>
     <link rel="stylesheet" href="css/style.css" />
 
     <style>
@@ -46,9 +46,7 @@
       }
 
       .guests-hero {
-        background:
-          linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(20, 184, 166, 0.82)),
-          linear-gradient(135deg, #0f172a, #14b8a6);
+        background: linear-gradient(135deg, #0f2f44 0%, #0f766e 62%, #14b8a6 100%);
         color: white;
         border-radius: 30px;
         padding: 34px 28px;
@@ -134,7 +132,7 @@
 
       .guests-table {
         width: 100%;
-        min-width: 1550px;
+        min-width: 1750px;
         border-collapse: collapse;
       }
 
@@ -201,14 +199,21 @@
         color: #166534;
       }
 
-      .guest-action-stack {
+      .table-message {
+        text-align: center;
+        padding: 30px !important;
+        color: #64748b;
+        font-weight: 800;
+      }
+
+      .action-buttons {
         display: flex;
         flex-direction: column;
         gap: 8px;
         min-width: 125px;
       }
 
-      .guest-action-btn {
+      .action-btn {
         border: none;
         border-radius: 999px;
         padding: 9px 12px;
@@ -220,27 +225,134 @@
         transition: 0.2s ease;
       }
 
-      .guest-action-btn:hover {
+      .action-btn:hover {
         transform: translateY(-1px);
         filter: brightness(1.03);
       }
 
-      .guest-action-btn.checkout {
-        background: linear-gradient(135deg, #14b8a6, #0ea5e9);
+      .save-payment-btn {
+        background: #16a34a;
         color: white;
-        box-shadow: 0 8px 18px rgba(20, 184, 166, 0.18);
       }
 
-      .guest-action-btn.receipt {
+      .save-booking-btn {
+        background: linear-gradient(135deg, #14b8a6, #0ea5e9);
+        color: white;
+      }
+
+      .receipt-btn {
         background: #fef3c7;
         color: #92400e;
       }
 
-      .table-message {
-        text-align: center;
-        padding: 30px !important;
+      .extra-bed-btn {
+        background: #7c3aed;
+        color: white;
+      }
+
+      .extra-bed-box {
+        font-weight: 900;
+        color: #0f172a;
+      }
+
+      .extra-bed-box small {
+        display: block;
+        margin-top: 4px;
         color: #64748b;
-        font-weight: 800;
+        font-weight: 700;
+      }
+
+      .extra-bed-modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.72);
+        z-index: 5000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 18px;
+      }
+
+      .extra-bed-modal.show {
+        display: flex;
+      }
+
+      .extra-bed-modal-box {
+        width: min(100%, 460px);
+        background: white;
+        border-radius: 24px;
+        padding: 24px;
+        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+        border: 1px solid #dbe7ef;
+      }
+
+      .extra-bed-modal-box h2 {
+        margin: 0 0 8px;
+        color: #0f172a;
+      }
+
+      .extra-bed-modal-box p {
+        margin: 0 0 16px;
+        color: #64748b;
+        line-height: 1.6;
+      }
+
+      .extra-bed-form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 14px;
+      }
+
+      .extra-bed-form-group label {
+        font-weight: 900;
+        color: #0f172a;
+      }
+
+      .extra-bed-form-group input {
+        padding: 13px 14px;
+        border: 1px solid #cbd5e1;
+        border-radius: 14px;
+        font-size: 1rem;
+        outline: none;
+      }
+
+      .extra-bed-preview {
+        background: #f8fafc;
+        border: 1px solid #dbe7ef;
+        border-radius: 16px;
+        padding: 14px;
+        margin-bottom: 16px;
+        color: #334155;
+        line-height: 1.7;
+      }
+
+      .extra-bed-preview strong {
+        color: #0f172a;
+      }
+
+      .extra-bed-modal-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      .modal-btn {
+        border: none;
+        border-radius: 999px;
+        padding: 12px 18px;
+        font-weight: 900;
+        cursor: pointer;
+      }
+
+      .modal-btn.save {
+        background: linear-gradient(135deg, #14b8a6, #0f9488);
+        color: white;
+      }
+
+      .modal-btn.cancel {
+        background: #e2e8f0;
+        color: #0f172a;
       }
 
       @media (max-width: 1100px) {
@@ -264,8 +376,13 @@
           grid-template-columns: 1fr;
         }
 
-        .page-btn {
+        .page-btn,
+        .modal-btn {
           width: 100%;
+        }
+
+        .extra-bed-modal-actions {
+          flex-direction: column;
         }
       }
     </style>
@@ -273,7 +390,7 @@
 
   <body class="has-fixed-navbar">
     <header class="navbar">
-      <div class="logo">SmartResort Admin</div>
+      <div class="logo">Arvic Seaside Admin</div>
       <nav>
         <a href="admin.html">Bookings</a>
         <a href="admin-walkin.html">Manual Reservation</a>
@@ -299,7 +416,7 @@
         <p>
           Shows approved guests currently scheduled inside the resort today. Use
           this for front-desk monitoring, payment reminders, check-out awareness,
-          and manual guest check-out.
+          extra bed charges, and manual guest check-out.
         </p>
       </section>
 
@@ -331,8 +448,8 @@
             <h2>Active Guests Today</h2>
             <p>
               Red means overdue, yellow means ending soon, and green means
-              currently active. Use the action buttons to check out guests or
-              view their receipt.
+              currently active. Use action buttons to add extra bed, check out
+              guests, or view receipts.
             </p>
           </div>
         </div>
@@ -352,6 +469,8 @@
                 <th>Payment</th>
                 <th>Remaining Balance</th>
                 <th>Entrance Fee Reminder</th>
+                <th>Extra Bed</th>
+                <th>Extra Bed Fee</th>
                 <th>Front Desk Note</th>
                 <th>Actions</th>
               </tr>
@@ -359,7 +478,7 @@
 
             <tbody id="guestsInsideTableBody">
               <tr>
-                <td colspan="13" class="table-message">
+                <td colspan="15" class="table-message">
                   Loading guests inside...
                 </td>
               </tr>
@@ -368,6 +487,34 @@
         </div>
       </section>
     </main>
+
+    <div class="extra-bed-modal" id="extraBedModal">
+      <div class="extra-bed-modal-box">
+        <h2>Update Extra Bed</h2>
+        <p id="extraBedGuestText">
+          Add or modify extra bed count for this guest. Rate is ₱200 per extra bed.
+        </p>
+
+        <div class="extra-bed-form-group">
+          <label for="extraBedCountInput">Extra Bed Count</label>
+          <input type="number" id="extraBedCountInput" min="0" step="1" value="0" />
+        </div>
+
+        <div class="extra-bed-preview">
+          <div>Rate: <strong>₱200.00 each</strong></div>
+          <div>Total Extra Bed Fee: <strong id="extraBedFeePreview">₱0.00</strong></div>
+        </div>
+
+        <div class="extra-bed-modal-actions">
+          <button type="button" class="modal-btn save" id="saveExtraBedBtn">
+            Save Extra Bed
+          </button>
+          <button type="button" class="modal-btn cancel" id="cancelExtraBedBtn">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
 
     <script src="js/toast.js"></script>
     <script src="js/active-nav.js"></script>

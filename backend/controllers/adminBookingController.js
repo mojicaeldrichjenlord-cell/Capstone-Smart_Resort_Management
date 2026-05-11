@@ -8,6 +8,8 @@ const VALID_BOOKING_STATUSES = [
   "completed",
 ];
 
+const EXTRA_BED_RATE = 200;
+
 const normalizeValue = (value) => {
   if (!value) return "";
   return String(value).trim().toLowerCase();
@@ -29,6 +31,8 @@ exports.getAllAdminBookings = async (req, res) => {
         b.created_at,
         b.payment_method,
         b.payment_status,
+        b.extra_bed_count,
+        b.extra_bed_fee,
         u.fullname,
         u.email,
         u.phone,
@@ -111,11 +115,69 @@ exports.updateAdminBookingStatus = async (req, res) => {
   }
 };
 
-/*
-  Used by Guests Inside page.
-  This is optional because updateAdminBookingStatus already supports "completed",
-  but this gives us a clearer dedicated function if we add a separate route later.
-*/
+exports.updateExtraBed = async (req, res) => {
+  try {
+    const bookingId = Number(req.params.id);
+    const extraBedCount = Number(req.body.extra_bed_count || 0);
+
+    if (!bookingId || Number.isNaN(bookingId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid booking ID.",
+      });
+    }
+
+    if (
+      Number.isNaN(extraBedCount) ||
+      extraBedCount < 0 ||
+      !Number.isInteger(extraBedCount)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Extra bed count must be a whole number and cannot be negative.",
+      });
+    }
+
+    const [existingRows] = await db.promise().query(
+      `SELECT id FROM bookings WHERE id = ?`,
+      [bookingId]
+    );
+
+    if (existingRows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Booking not found.",
+      });
+    }
+
+    const extraBedFee = extraBedCount * EXTRA_BED_RATE;
+
+    await db.promise().query(
+      `
+        UPDATE bookings
+        SET extra_bed_count = ?, extra_bed_fee = ?
+        WHERE id = ?
+      `,
+      [extraBedCount, extraBedFee, bookingId]
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Extra bed updated successfully.",
+      extra_bed_count: extraBedCount,
+      extra_bed_fee: extraBedFee,
+      extra_bed_rate: EXTRA_BED_RATE,
+    });
+  } catch (error) {
+    console.error("updateExtraBed error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update extra bed.",
+      error: error.message,
+    });
+  }
+};
+
 exports.markBookingAsCompleted = async (req, res) => {
   try {
     const bookingId = Number(req.params.id || req.params.booking_id);

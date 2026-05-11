@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Admin Accommodations | SmartResort</title>
+    <title>Admin Accommodations | Arvic Seaside</title>
     <link rel="stylesheet" href="css/style.css" />
 
     <style>
@@ -152,6 +152,11 @@
         resize: vertical;
       }
 
+      #galleryImages {
+        min-height: 135px;
+        font-family: Arial, sans-serif;
+      }
+
       .room-form-group input:focus,
       .room-form-group textarea:focus,
       .room-form-group select:focus {
@@ -180,6 +185,35 @@
         border-radius: 16px;
         border: 1px solid #cbd5e1;
         margin-top: 12px;
+      }
+
+      .gallery-preview-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 12px;
+        margin-top: 12px;
+      }
+
+      .gallery-preview-item {
+        background: #ffffff;
+        border: 1px solid #dbe7ef;
+        border-radius: 14px;
+        overflow: hidden;
+      }
+
+      .gallery-preview-item img {
+        width: 100%;
+        height: 95px;
+        object-fit: cover;
+        display: block;
+      }
+
+      .gallery-preview-item span {
+        display: block;
+        padding: 7px 8px;
+        color: #64748b;
+        font-size: 0.76rem;
+        word-break: break-all;
       }
 
       .room-form-actions {
@@ -256,6 +290,23 @@
         height: 220px;
         object-fit: cover;
         background: #f1f5f9;
+      }
+
+      .room-gallery-strip {
+        display: flex;
+        gap: 8px;
+        padding: 10px;
+        background: #f8fafc;
+        overflow-x: auto;
+      }
+
+      .room-gallery-strip img {
+        width: 70px;
+        height: 55px;
+        object-fit: cover;
+        border-radius: 10px;
+        border: 1px solid #dbe7ef;
+        flex: 0 0 auto;
       }
 
       .room-admin-content {
@@ -392,12 +443,12 @@
   </head>
   <body class="has-fixed-navbar">
     <header class="navbar">
-      <div class="logo">SmartResort Admin</div>
+      <div class="logo">Arvic Seaside Admin</div>
       <nav>
         <a href="admin.html">Bookings</a>
         <a href="admin-walkin.html">Manual Reservation</a>
         <a href="admin-guests-inside.html">Guests Inside</a>
-        <a href="admin-rooms.html">Accommodations</a>
+        <a href="admin-rooms.html" class="active-nav">Accommodations</a>
         <a href="admin-map-editor.html">Map Editor</a>
         <a href="admin-reports.html">Reports</a>
         <a href="admin-profile.html">Profile</a>
@@ -414,7 +465,8 @@
         <h1>Accommodation Management Console</h1>
         <p>
           Create and manage cottages, rooms, and function areas with flexible
-          slot pricing, capacity display, location label, and status control.
+          slot pricing, capacity display, location label, status control, and
+          multiple accommodation photos.
         </p>
 
         <div class="quick-actions">
@@ -547,12 +599,12 @@
                 placeholder="Example: images/cottage-a.jpg or https://..."
               />
               <small class="field-help">
-                You can keep this blank for now and update the image later.
+                This is the main photo shown first on accommodation cards.
               </small>
             </div>
 
             <div class="room-form-group full-width">
-              <label>Image Preview</label>
+              <label>Cover Image Preview</label>
               <div class="image-preview-box">
                 <div id="imagePreviewText">No image selected.</div>
                 <img
@@ -561,6 +613,28 @@
                   alt="Accommodation Preview"
                   style="display: none"
                 />
+              </div>
+            </div>
+
+            <div class="room-form-group full-width">
+              <label for="galleryImages">Gallery Images</label>
+              <textarea
+                id="galleryImages"
+                placeholder="Paste one image link per line. Example:
+images/family-room-a-1.jpg
+images/family-room-a-2.jpg
+images/family-room-a-3.jpg"
+              ></textarea>
+              <small class="field-help">
+                Add multiple photos here. Use one image path or URL per line.
+              </small>
+            </div>
+
+            <div class="room-form-group full-width">
+              <label>Gallery Preview</label>
+              <div class="image-preview-box">
+                <div id="galleryPreviewText">No gallery images added.</div>
+                <div id="galleryPreview" class="gallery-preview-grid"></div>
               </div>
             </div>
           </div>
@@ -580,7 +654,7 @@
         <h2>Current Accommodation Inventory</h2>
         <p>
           Review cottages, rooms, and function areas including category, pricing
-          per slot, capacity display, location label, and availability.
+          per slot, capacity display, location label, availability, and gallery photos.
         </p>
         <div class="room-list-grid" id="adminRoomsContainer"></div>
       </section>

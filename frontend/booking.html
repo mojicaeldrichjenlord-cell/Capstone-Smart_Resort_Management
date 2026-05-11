@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Reserve Accommodation - SmartResort</title>
+    <title>Reserve Accommodation | Arvic Seaside</title>
     <link rel="stylesheet" href="css/style.css" />
 
     <style>
@@ -13,7 +13,7 @@
         z-index: 2000;
         background: rgba(15, 23, 42, 0.9);
         backdrop-filter: blur(12px);
-        border-bottom: 1px solid rgba(255,255,255,0.08);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
       }
 
       .site-header-inner {
@@ -85,9 +85,17 @@
         transition: 0.25s ease;
       }
 
-      .menu-toggle span:nth-child(1) { top: 14px; }
-      .menu-toggle span:nth-child(2) { top: 22px; }
-      .menu-toggle span:nth-child(3) { top: 30px; }
+      .menu-toggle span:nth-child(1) {
+        top: 14px;
+      }
+
+      .menu-toggle span:nth-child(2) {
+        top: 22px;
+      }
+
+      .menu-toggle span:nth-child(3) {
+        top: 30px;
+      }
 
       .menu-toggle.active span:nth-child(1) {
         transform: rotate(45deg);
@@ -128,8 +136,7 @@
       .page-header {
         background:
           linear-gradient(rgba(15, 23, 42, 0.58), rgba(20, 184, 166, 0.52)),
-          url("https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1600&q=80")
-          center/cover no-repeat;
+          url("images/bg-resort.jpg") center/cover no-repeat;
         color: white;
         text-align: center;
         padding: 66px 18px;
@@ -161,26 +168,134 @@
       .back-btn {
         display: inline-flex;
         text-decoration: none;
-        background: rgba(255,255,255,0.96);
+        background: rgba(255, 255, 255, 0.96);
         color: #0f172a;
         padding: 11px 18px;
         border-radius: 999px;
         font-weight: 700;
         transition: 0.2s ease;
         box-shadow: 0 10px 20px rgba(15, 23, 42, 0.06);
-        border: 1px solid rgba(219,231,239,0.9);
+        border: 1px solid rgba(219, 231, 239, 0.9);
       }
 
       .back-btn:hover {
         transform: translateY(-1px);
       }
 
+      .pricing-guide-card {
+        background:
+          linear-gradient(135deg, rgba(8, 90, 130, 0.96), rgba(20, 184, 166, 0.9)),
+          url("images/bg-resort.jpg") center/cover no-repeat;
+        color: #ffffff;
+        border-radius: 26px;
+        padding: 24px;
+        margin: 0 auto 22px;
+        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.14);
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.16);
+      }
+
+      .pricing-guide-content {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+      }
+
+      .pricing-kicker {
+        margin: 0 0 6px;
+        font-size: 0.85rem;
+        font-weight: 900;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        opacity: 0.9;
+      }
+
+      .pricing-guide-card h2 {
+        margin: 0 0 8px;
+        font-size: 1.8rem;
+      }
+
+      .pricing-guide-card p {
+        margin: 0;
+        line-height: 1.6;
+        opacity: 0.95;
+      }
+
+      .pricing-guide-btn {
+        border: none;
+        border-radius: 999px;
+        padding: 13px 22px;
+        background: #ffffff;
+        color: #0f766e;
+        font-weight: 900;
+        cursor: pointer;
+        white-space: nowrap;
+        box-shadow: 0 12px 24px rgba(15, 23, 42, 0.16);
+      }
+
+      .pricing-guide-btn:hover {
+        transform: translateY(-1px);
+      }
+
+      .pricing-modal {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.86);
+        z-index: 6000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 18px;
+      }
+
+      .pricing-modal.show {
+        display: flex;
+      }
+
+      .pricing-modal-box {
+        width: min(100%, 1000px);
+        max-height: 92vh;
+        background: #ffffff;
+        border-radius: 24px;
+        padding: 14px;
+        position: relative;
+        overflow: auto;
+        box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+      }
+
+      .pricing-modal-close {
+        position: sticky;
+        top: 0;
+        margin-left: auto;
+        display: flex;
+        width: 44px;
+        height: 44px;
+        border: none;
+        border-radius: 999px;
+        background: #14b8a6;
+        color: #ffffff;
+        font-size: 1.8rem;
+        font-weight: 900;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 2;
+        box-shadow: 0 12px 24px rgba(20, 184, 166, 0.25);
+      }
+
+      .pricing-guide-img {
+        width: 100%;
+        display: block;
+        border-radius: 18px;
+      }
+
       .booking-card {
-        background: rgba(255,255,255,0.96);
+        background: rgba(255, 255, 255, 0.96);
         border-radius: 30px;
         padding: 30px;
         box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
-        border: 1px solid rgba(219,231,239,0.92);
+        border: 1px solid rgba(219, 231, 239, 0.92);
       }
 
       .section-box {
@@ -335,7 +450,7 @@
       .highlight-row:last-child {
         margin-bottom: 0;
         padding-top: 10px;
-        border-top: 1px solid rgba(255,255,255,0.14);
+        border-top: 1px solid rgba(255, 255, 255, 0.14);
         font-weight: 800;
       }
 
@@ -384,6 +499,16 @@
         .summary-grid {
           grid-template-columns: 1fr;
         }
+
+        .pricing-guide-content {
+          flex-direction: column;
+          align-items: stretch;
+          text-align: center;
+        }
+
+        .pricing-guide-btn {
+          width: 100%;
+        }
       }
 
       @media (max-width: 480px) {
@@ -402,6 +527,24 @@
         .booking-card {
           padding: 20px;
           border-radius: 22px;
+        }
+
+        .pricing-guide-card {
+          padding: 20px;
+          border-radius: 22px;
+        }
+
+        .pricing-guide-card h2 {
+          font-size: 1.5rem;
+        }
+
+        .pricing-modal {
+          padding: 10px;
+        }
+
+        .pricing-modal-box {
+          border-radius: 18px;
+          padding: 10px;
         }
 
         .back-btn,
@@ -424,14 +567,16 @@
       }
     </style>
   </head>
+
   <body>
     <header class="site-header">
       <div class="site-header-inner">
-        <a href="index.html" class="site-logo">SmartResort</a>
+        <a href="index.html" class="site-logo">Arvic Seaside</a>
 
         <nav class="desktop-nav">
           <a href="index.html">Home</a>
           <a href="rooms.html" class="active">Accommodations</a>
+          <a href="resort-map.html">Resort Map</a>
           <a href="my-bookings.html">My Bookings</a>
           <a href="profile.html">Profile</a>
           <a href="#" id="logoutBtn">Logout</a>
@@ -447,6 +592,7 @@
       <nav class="mobile-nav" id="mobileNav">
         <a href="index.html">Home</a>
         <a href="rooms.html" class="active">Accommodations</a>
+        <a href="resort-map.html">Resort Map</a>
         <a href="my-bookings.html">My Bookings</a>
         <a href="profile.html">Profile</a>
         <a href="#" id="mobileLogoutBtn">Logout</a>
@@ -455,12 +601,46 @@
 
     <section class="page-header">
       <h1>Create a Reservation</h1>
-      <p>Fill in your basic information and choose your accommodation before proceeding to payment.</p>
+      <p>
+        Fill in your basic information and choose your accommodation before proceeding to payment.
+      </p>
     </section>
 
     <main class="booking-page-wrapper">
       <div class="booking-top-actions">
         <a href="rooms.html" class="back-btn">← Back to Accommodations</a>
+      </div>
+
+      <section class="pricing-guide-card">
+        <div class="pricing-guide-content">
+          <div>
+            <p class="pricing-kicker">Arvic Seaside Rates</p>
+            <h2>Pricing Guide</h2>
+            <p>
+              Check the entrance fees, cottages, rooms, and function area rates before
+              completing your reservation.
+            </p>
+          </div>
+
+          <button type="button" class="pricing-guide-btn" id="openPricingGuideBtn">
+            View Pricing Guide
+          </button>
+        </div>
+      </section>
+
+      <div class="pricing-modal" id="pricingModal">
+        <div class="pricing-modal-box">
+          <button type="button" class="pricing-modal-close" id="closePricingGuideBtn">
+            &times;
+          </button>
+
+          <img
+            src="images/arvic-price-guide.png"
+            alt="Arvic Seaside Price Guide"
+            class="pricing-guide-img"
+            onerror="this.src='images/no-image.jpg'"
+          />
+        </div>
       </div>
 
       <div class="booking-card">
@@ -518,7 +698,9 @@
           <section class="section-box">
             <div class="booking-item-header">
               <div class="booking-item-title">Reservation Items</div>
-              <button type="button" class="btn-primary" id="addItemBtn">Add Another Accommodation</button>
+              <button type="button" class="btn-primary" id="addItemBtn">
+                Add Another Accommodation
+              </button>
             </div>
 
             <div id="bookingItemsWrap" class="booking-items-wrap"></div>
@@ -586,5 +768,37 @@
     <script src="js/toast.js"></script>
     <script src="js/mobile-nav.js"></script>
     <script src="js/booking.js"></script>
+
+    <script>
+      const openPricingGuideBtn = document.getElementById("openPricingGuideBtn");
+      const closePricingGuideBtn = document.getElementById("closePricingGuideBtn");
+      const pricingModal = document.getElementById("pricingModal");
+
+      if (openPricingGuideBtn && pricingModal) {
+        openPricingGuideBtn.addEventListener("click", () => {
+          pricingModal.classList.add("show");
+        });
+      }
+
+      if (closePricingGuideBtn && pricingModal) {
+        closePricingGuideBtn.addEventListener("click", () => {
+          pricingModal.classList.remove("show");
+        });
+      }
+
+      if (pricingModal) {
+        pricingModal.addEventListener("click", (e) => {
+          if (e.target === pricingModal) {
+            pricingModal.classList.remove("show");
+          }
+        });
+      }
+
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && pricingModal) {
+          pricingModal.classList.remove("show");
+        }
+      });
+    </script>
   </body>
 </html>

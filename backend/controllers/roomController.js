@@ -14,6 +14,70 @@ function toNumber(value, fallback = 0) {
   return Number.isFinite(num) ? num : fallback;
 }
 
+function normalizeGalleryImages(value) {
+  if (!value) return [];
+
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || "").trim()).filter(Boolean);
+  }
+
+  return String(value)
+    .split(/\r?\n|,/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+async function attachGalleryImages(rooms) {
+  if (!Array.isArray(rooms) || rooms.length === 0) return rooms;
+
+  const ids = rooms.map((room) => room.id).filter(Boolean);
+  if (!ids.length) return rooms;
+
+  const [galleryRows] = await db.promise().query(
+    `
+    SELECT room_id, image_url
+    FROM room_gallery
+    WHERE room_id IN (?)
+    ORDER BY id ASC
+    `,
+    [ids]
+  );
+
+  const galleryMap = {};
+
+  galleryRows.forEach((item) => {
+    if (!galleryMap[item.room_id]) {
+      galleryMap[item.room_id] = [];
+    }
+
+    galleryMap[item.room_id].push(item.image_url);
+  });
+
+  return rooms.map((room) => ({
+    ...room,
+    gallery_images: galleryMap[room.id] || [],
+  }));
+}
+
+async function replaceGalleryImages(roomId, galleryImages) {
+  await db.promise().query(`DELETE FROM room_gallery WHERE room_id = ?`, [
+    roomId,
+  ]);
+
+  const cleanedImages = normalizeGalleryImages(galleryImages);
+  if (!cleanedImages.length) return;
+
+  const values = cleanedImages.map((imageUrl) => [roomId, imageUrl]);
+
+  await db.promise().query(
+    `
+    INSERT INTO room_gallery (room_id, image_url)
+    VALUES ?
+    `,
+    [values]
+  );
+}
+
 async function getCategoryIdByName(categoryName) {
   const [rows] = await db.promise().query(
     `SELECT id FROM accommodation_categories WHERE name = ? LIMIT 1`,
@@ -121,9 +185,11 @@ exports.getAllRooms = async (req, res) => {
       ORDER BY a.id DESC
     `);
 
+    const rooms = await attachGalleryImages(rows);
+
     return res.status(200).json({
       success: true,
-      rooms: rows,
+      rooms,
     });
   } catch (error) {
     console.error("getAllRooms error:", error);
@@ -166,9 +232,11 @@ exports.getAvailableRooms = async (req, res) => {
       ORDER BY a.id DESC
     `);
 
+    const rooms = await attachGalleryImages(rows);
+
     return res.status(200).json({
       success: true,
-      rooms: rows,
+      rooms,
     });
   } catch (error) {
     console.error("getAvailableRooms error:", error);
@@ -223,9 +291,11 @@ exports.getRoomById = async (req, res) => {
       });
     }
 
+    const [roomWithGallery] = await attachGalleryImages(rows);
+
     return res.status(200).json({
       success: true,
-      room: rows[0],
+      room: roomWithGallery,
     });
   } catch (error) {
     console.error("getRoomById error:", error);
@@ -247,6 +317,7 @@ exports.createRoom = async (req, res) => {
     const image = normalizeNullableText(req.body.image);
     const map_label = normalizeNullableText(req.body.map_label);
     const status = normalizeText(req.body.status || "available");
+    const gallery_images = normalizeGalleryImages(req.body.gallery_images);
 
     const day_price = toNumber(req.body.day_price, 0);
     const overnight_price = toNumber(req.body.overnight_price, 0);
@@ -254,9 +325,15 @@ exports.createRoom = async (req, res) => {
 
     const day_start_time = normalizeNullableText(req.body.day_start_time);
     const day_end_time = normalizeNullableText(req.body.day_end_time);
-    const overnight_start_time = normalizeNullableText(req.body.overnight_start_time);
-    const overnight_end_time = normalizeNullableText(req.body.overnight_end_time);
-    const extended_start_time = normalizeNullableText(req.body.extended_start_time);
+    const overnight_start_time = normalizeNullableText(
+      req.body.overnight_start_time
+    );
+    const overnight_end_time = normalizeNullableText(
+      req.body.overnight_end_time
+    );
+    const extended_start_time = normalizeNullableText(
+      req.body.extended_start_time
+    );
     const extended_end_time = normalizeNullableText(req.body.extended_end_time);
 
     if (!category_id || !name || !status) {
@@ -322,6 +399,8 @@ exports.createRoom = async (req, res) => {
       ]
     );
 
+    await replaceGalleryImages(result.insertId, gallery_images);
+
     return res.status(201).json({
       success: true,
       message: "Accommodation added successfully.",
@@ -349,6 +428,7 @@ exports.updateRoom = async (req, res) => {
     const image = normalizeNullableText(req.body.image);
     const map_label = normalizeNullableText(req.body.map_label);
     const status = normalizeText(req.body.status || "available");
+    const gallery_images = normalizeGalleryImages(req.body.gallery_images);
 
     const day_price = toNumber(req.body.day_price, 0);
     const overnight_price = toNumber(req.body.overnight_price, 0);
@@ -356,9 +436,15 @@ exports.updateRoom = async (req, res) => {
 
     const day_start_time = normalizeNullableText(req.body.day_start_time);
     const day_end_time = normalizeNullableText(req.body.day_end_time);
-    const overnight_start_time = normalizeNullableText(req.body.overnight_start_time);
-    const overnight_end_time = normalizeNullableText(req.body.overnight_end_time);
-    const extended_start_time = normalizeNullableText(req.body.extended_start_time);
+    const overnight_start_time = normalizeNullableText(
+      req.body.overnight_start_time
+    );
+    const overnight_end_time = normalizeNullableText(
+      req.body.overnight_end_time
+    );
+    const extended_start_time = normalizeNullableText(
+      req.body.extended_start_time
+    );
     const extended_end_time = normalizeNullableText(req.body.extended_end_time);
 
     if (!category_id || !name || !status) {
@@ -437,6 +523,8 @@ exports.updateRoom = async (req, res) => {
       ]
     );
 
+    await replaceGalleryImages(accommodationId, gallery_images);
+
     return res.status(200).json({
       success: true,
       message: "Accommodation updated successfully.",
@@ -480,11 +568,18 @@ exports.deleteRoom = async (req, res) => {
 
       return res.status(200).json({
         success: true,
-        message: "Accommodation has reservation history, so it was set to unavailable instead of deleting.",
+        message:
+          "Accommodation has reservation history, so it was set to unavailable instead of deleting.",
       });
     }
 
-    await db.promise().query(`DELETE FROM accommodations WHERE id = ?`, [accommodationId]);
+    await db
+      .promise()
+      .query(`DELETE FROM room_gallery WHERE room_id = ?`, [accommodationId]);
+
+    await db
+      .promise()
+      .query(`DELETE FROM accommodations WHERE id = ?`, [accommodationId]);
 
     return res.status(200).json({
       success: true,
@@ -509,7 +604,8 @@ exports.seedDefaultAccommodations = async (req, res) => {
     if (!cottageId || !roomId || !functionAreaId) {
       return res.status(400).json({
         success: false,
-        message: "Default categories are missing. Please make sure the SQL inserts for categories were added.",
+        message:
+          "Default categories are missing. Please make sure the SQL inserts for categories were added.",
       });
     }
 

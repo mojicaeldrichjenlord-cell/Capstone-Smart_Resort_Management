@@ -1,6 +1,8 @@
 const API_BASE = "http://127.0.0.1:5000/api";
+const EXTRA_BED_RATE = 200;
 
 let allBookings = [];
+let selectedExtraBedBookingId = null;
 
 document.addEventListener("DOMContentLoaded", () => {
   checkAdminAccess();
@@ -17,8 +19,8 @@ function checkAdminAccess() {
     return;
   }
 
-  if (user.role !== "admin") {
-    alert("Access denied. Admin only.");
+  if (user.role !== "admin" && user.role !== "staff") {
+    alert("Access denied. Admin or staff only.");
     window.location.href = "index.html";
   }
 }
@@ -26,6 +28,10 @@ function checkAdminAccess() {
 function setupEvents() {
   const logoutBtn = document.getElementById("logoutBtn");
   const refreshBtn = document.getElementById("refreshBtn");
+  const extraBedInput = document.getElementById("extraBedCountInput");
+  const saveExtraBedBtn = document.getElementById("saveExtraBedBtn");
+  const cancelExtraBedBtn = document.getElementById("cancelExtraBedBtn");
+  const extraBedModal = document.getElementById("extraBedModal");
 
   if (logoutBtn) {
     logoutBtn.addEventListener("click", (e) => {
@@ -42,6 +48,32 @@ function setupEvents() {
   if (refreshBtn) {
     refreshBtn.addEventListener("click", loadGuestsInside);
   }
+
+  if (extraBedInput) {
+    extraBedInput.addEventListener("input", updateExtraBedPreview);
+  }
+
+  if (saveExtraBedBtn) {
+    saveExtraBedBtn.addEventListener("click", saveExtraBed);
+  }
+
+  if (cancelExtraBedBtn) {
+    cancelExtraBedBtn.addEventListener("click", closeExtraBedModal);
+  }
+
+  if (extraBedModal) {
+    extraBedModal.addEventListener("click", (e) => {
+      if (e.target === extraBedModal) {
+        closeExtraBedModal();
+      }
+    });
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      closeExtraBedModal();
+    }
+  });
 }
 
 async function loadGuestsInside() {
@@ -51,12 +83,12 @@ async function loadGuestsInside() {
     if (tbody) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="13" class="table-message">Loading guests inside...</td>
+          <td colspan="15" class="table-message">Loading guests inside...</td>
         </tr>
       `;
     }
 
-    const response = await fetch(`${API_BASE}/bookings`);
+    const response = await fetch(`${API_BASE}/admin/bookings`);
     const data = await response.json();
 
     if (!response.ok) {
@@ -75,7 +107,7 @@ async function loadGuestsInside() {
     if (tbody) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="13" class="table-message">Failed to load guests inside.</td>
+          <td colspan="15" class="table-message">Failed to load guests inside.</td>
         </tr>
       `;
     }
@@ -128,9 +160,10 @@ function updateSummary(bookings) {
 
     const remainingBalance = Number(booking.remaining_balance || 0);
     const entranceFee = Number(booking.estimated_entrance_fee || 0);
+    const extraBedFee = Number(booking.extra_bed_fee || 0);
     const timeInfo = getTimeStatus(booking);
 
-    if (remainingBalance > 0 || entranceFee > 0) {
+    if (remainingBalance > 0 || entranceFee > 0 || extraBedFee > 0) {
       needsPaymentCount++;
     }
 
@@ -152,7 +185,7 @@ function renderGuestsInside(bookings) {
   if (!bookings.length) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="13" class="table-message">
+        <td colspan="15" class="table-message">
           No active guests inside the resort today.
         </td>
       </tr>
@@ -167,10 +200,18 @@ function renderGuestsInside(bookings) {
 
       const remainingBalance = Number(booking.remaining_balance || 0);
       const entranceFee = Number(booking.estimated_entrance_fee || 0);
+      const extraBedCount = Number(booking.extra_bed_count || 0);
+      const extraBedFee = Number(booking.extra_bed_fee || 0);
 
       const timeInfo = getTimeStatus(booking);
       const paymentClass = getPaymentClass(paymentStatus);
-      const frontDeskNote = getFrontDeskNote(remainingBalance, entranceFee, timeInfo);
+      const frontDeskNote = getFrontDeskNote(
+        remainingBalance,
+        entranceFee,
+        extraBedFee,
+        timeInfo
+      );
+
       const accommodationHtml = formatAccommodationDisplay(
         booking.room_name || booking.accommodation_name || "-"
       );
@@ -189,7 +230,7 @@ function renderGuestsInside(bookings) {
           `;
 
       return `
-        <tr class="${getRowClass(timeInfo, remainingBalance, entranceFee)}">
+        <tr class="${getRowClass(timeInfo, remainingBalance, entranceFee, extraBedFee)}">
           <td><strong>${escapeHtml(booking.reservation_code || `#${booking.id}`)}</strong></td>
           <td>${escapeHtml(booking.fullname || "-")}</td>
           <td>${source === "manual" ? "Walk-in / Manual" : "Online"}</td>
@@ -230,11 +271,26 @@ function renderGuestsInside(bookings) {
           </td>
 
           <td>
+            <div class="extra-bed-box">
+              ${extraBedCount} bed(s)
+              <small>₱200 each</small>
+            </div>
+          </td>
+
+          <td class="${extraBedFee > 0 ? "money-warning" : "money-ok"}">
+            ₱${formatMoney(extraBedFee)}
+          </td>
+
+          <td>
             <strong>${escapeHtml(frontDeskNote)}</strong>
           </td>
 
           <td>
             <div class="action-buttons">
+              <button class="action-btn extra-bed-btn" onclick="openExtraBedModal(${Number(booking.id)})">
+                Extra Bed
+              </button>
+
               ${markPaidButton}
 
               <button class="action-btn save-booking-btn" onclick="markAsCheckedOut(${Number(booking.id)})">
@@ -250,6 +306,115 @@ function renderGuestsInside(bookings) {
       `;
     })
     .join("");
+}
+
+function openExtraBedModal(bookingId) {
+  const booking = allBookings.find((item) => Number(item.id) === Number(bookingId));
+  const modal = document.getElementById("extraBedModal");
+  const input = document.getElementById("extraBedCountInput");
+  const guestText = document.getElementById("extraBedGuestText");
+
+  if (!booking || !modal || !input) {
+    showMessage("Booking not found.", "error");
+    return;
+  }
+
+  selectedExtraBedBookingId = Number(bookingId);
+  input.value = Number(booking.extra_bed_count || 0);
+
+  if (guestText) {
+    guestText.textContent = `Add or modify extra bed count for ${booking.fullname || "this guest"}. Rate is ₱200 per extra bed.`;
+  }
+
+  updateExtraBedPreview();
+  modal.classList.add("show");
+}
+
+function closeExtraBedModal() {
+  const modal = document.getElementById("extraBedModal");
+  const input = document.getElementById("extraBedCountInput");
+
+  selectedExtraBedBookingId = null;
+
+  if (input) {
+    input.value = 0;
+  }
+
+  if (modal) {
+    modal.classList.remove("show");
+  }
+
+  updateExtraBedPreview();
+}
+
+function updateExtraBedPreview() {
+  const input = document.getElementById("extraBedCountInput");
+  const preview = document.getElementById("extraBedFeePreview");
+
+  const count = Math.max(0, Number(input?.value || 0));
+  const fee = count * EXTRA_BED_RATE;
+
+  if (preview) {
+    preview.textContent = `₱${formatMoney(fee)}`;
+  }
+}
+
+async function saveExtraBed() {
+  const input = document.getElementById("extraBedCountInput");
+  const count = Number(input?.value || 0);
+
+  if (!selectedExtraBedBookingId) {
+    showMessage("No selected booking.", "error");
+    return;
+  }
+
+  if (Number.isNaN(count) || count < 0 || !Number.isInteger(count)) {
+    showMessage("Extra bed count must be a whole number and cannot be negative.", "error");
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      `${API_BASE}/admin/bookings/${selectedExtraBedBookingId}/extra-bed`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          extra_bed_count: count,
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to update extra bed.");
+    }
+
+    allBookings = allBookings.map((booking) => {
+      if (Number(booking.id) === Number(selectedExtraBedBookingId)) {
+        return {
+          ...booking,
+          extra_bed_count: data.extra_bed_count,
+          extra_bed_fee: data.extra_bed_fee,
+        };
+      }
+
+      return booking;
+    });
+
+    const activeToday = getActiveGuestsToday(allBookings);
+    updateSummary(activeToday);
+    renderGuestsInside(activeToday);
+    closeExtraBedModal();
+
+    showMessage("Extra bed updated successfully.", "success");
+  } catch (error) {
+    console.error("saveExtraBed error:", error);
+    showMessage(error.message || "Failed to update extra bed.", "error");
+  }
 }
 
 async function markAsPaid(bookingId) {
@@ -410,21 +575,17 @@ function getTimeStatus(booking) {
   };
 }
 
-function getFrontDeskNote(remainingBalance, entranceFee, timeInfo) {
+function getFrontDeskNote(remainingBalance, entranceFee, extraBedFee, timeInfo) {
+  const totalToCollect = Number(remainingBalance || 0) + Number(entranceFee || 0) + Number(extraBedFee || 0);
+
   if (timeInfo.level === "danger") {
-    return "OVERDUE - check guest now";
+    return totalToCollect > 0
+      ? `OVERDUE - collect ₱${formatMoney(totalToCollect)}`
+      : "OVERDUE - check guest now";
   }
 
-  if (remainingBalance > 0 && entranceFee > 0) {
-    return `Collect ₱${formatMoney(remainingBalance + entranceFee)} onsite`;
-  }
-
-  if (remainingBalance > 0) {
-    return `Collect balance ₱${formatMoney(remainingBalance)}`;
-  }
-
-  if (entranceFee > 0) {
-    return `Collect entrance ₱${formatMoney(entranceFee)}`;
+  if (totalToCollect > 0) {
+    return `Collect ₱${formatMoney(totalToCollect)} onsite`;
   }
 
   if (timeInfo.level === "warning") {
@@ -434,10 +595,10 @@ function getFrontDeskNote(remainingBalance, entranceFee, timeInfo) {
   return "No urgent action";
 }
 
-function getRowClass(timeInfo, remainingBalance, entranceFee) {
+function getRowClass(timeInfo, remainingBalance, entranceFee, extraBedFee) {
   if (timeInfo.level === "danger") return "guest-row-danger";
   if (timeInfo.level === "warning") return "guest-row-warning";
-  if (remainingBalance > 0 || entranceFee > 0) return "guest-row-payment";
+  if (remainingBalance > 0 || entranceFee > 0 || extraBedFee > 0) return "guest-row-payment";
   return "";
 }
 

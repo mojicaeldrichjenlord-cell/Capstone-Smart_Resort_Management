@@ -1,6 +1,7 @@
 const API_BASE = "http://127.0.0.1:5000/api";
 
 let markers = [];
+let accommodations = [];
 let selectedMarkerId = null;
 let isAddMode = false;
 let draggedMarkerId = null;
@@ -25,7 +26,7 @@ document.addEventListener("DOMContentLoaded", () => {
   checkAdminAccess();
   setupLogout();
   setupEvents();
-  loadMarkersFromDB();
+  initMapEditor();
 });
 
 function checkAdminAccess() {
@@ -96,6 +97,8 @@ function setupEvents() {
   document.getElementById("markerX").addEventListener("input", updatePositionFromInputs);
   document.getElementById("markerY").addEventListener("input", updatePositionFromInputs);
 
+  document.getElementById("linkedAccommodation").addEventListener("change", handleLinkedAccommodationChange);
+
   const mapWrap = document.getElementById("mapEditorWrap");
 
   mapWrap.addEventListener("click", (e) => {
@@ -127,6 +130,57 @@ function setupEvents() {
   document.addEventListener("mouseup", () => {
     draggedMarkerId = null;
   });
+}
+
+async function initMapEditor() {
+  await loadAccommodations();
+  await loadMarkersFromDB();
+}
+
+async function loadAccommodations() {
+  try {
+    const response = await fetch(`${API_BASE}/rooms`);
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to load accommodations.");
+    }
+
+    accommodations = Array.isArray(data) ? data : data.rooms || [];
+    renderAccommodationDropdown();
+  } catch (error) {
+    console.error("loadAccommodations error:", error);
+    accommodations = [];
+    renderAccommodationDropdown();
+    alert("Failed to load accommodations for map linking.");
+  }
+}
+
+function renderAccommodationDropdown() {
+  const select = document.getElementById("linkedAccommodation");
+  if (!select) return;
+
+  const sorted = [...accommodations].sort((a, b) => {
+    const aName = String(a.name || a.room_name || "").toLowerCase();
+    const bName = String(b.name || b.room_name || "").toLowerCase();
+    return aName.localeCompare(bName);
+  });
+
+  select.innerHTML = `
+    <option value="">No linked accommodation</option>
+    ${sorted
+      .map((room) => {
+        const name = room.name || room.room_name || `Accommodation #${room.id}`;
+        const category = room.category_name || "Accommodation";
+
+        return `
+          <option value="${Number(room.id)}">
+            ${escapeHtml(name)} (${escapeHtml(category)})
+          </option>
+        `;
+      })
+      .join("")}
+  `;
 }
 
 async function loadMarkersFromDB() {
@@ -201,7 +255,7 @@ function buildMarkerPayload(marker) {
     info: marker.info || "",
     x: Number(marker.x || 0),
     y: Number(marker.y || 0),
-    room_id: marker.room_id || null,
+    room_id: marker.room_id ? Number(marker.room_id) : null,
   };
 }
 
@@ -246,10 +300,16 @@ function renderMarkers() {
           const activeClass =
             String(marker.id) === String(selectedMarkerId) ? "active" : "";
 
+          const linkedRoom = getAccommodationById(marker.room_id);
+          const linkedText = linkedRoom
+            ? `${linkedRoom.name || linkedRoom.room_name} (${linkedRoom.category_name || "Accommodation"})`
+            : "No linked accommodation";
+
           return `
             <div class="marker-list-item ${activeClass}" onclick="selectMarkerFromList('${escapeHtml(marker.id)}')">
               <strong>${escapeHtml(marker.name || "Map Marker")}</strong>
               <span>${escapeHtml(marker.type || "marker")} • X ${Number(marker.x).toFixed(1)}%, Y ${Number(marker.y).toFixed(1)}%</span>
+              <span class="linked-pill">${escapeHtml(linkedText)}</span>
             </div>
           `;
         })
@@ -313,6 +373,7 @@ function fillFormFromSelectedMarker() {
     return;
   }
 
+  document.getElementById("linkedAccommodation").value = marker.room_id || "";
   document.getElementById("markerName").value = marker.name || "";
   document.getElementById("markerType").value = marker.type || "room";
   document.getElementById("markerColor").value = marker.color || "#14b8a6";
@@ -322,6 +383,7 @@ function fillFormFromSelectedMarker() {
 }
 
 function clearForm() {
+  document.getElementById("linkedAccommodation").value = "";
   document.getElementById("markerName").value = "";
   document.getElementById("markerType").value = "room";
   document.getElementById("markerColor").value = "#14b8a6";
@@ -338,6 +400,7 @@ function updateSelectedMarker() {
     return;
   }
 
+  marker.room_id = getSelectedLinkedAccommodationId();
   marker.name = document.getElementById("markerName").value.trim() || "Unnamed Marker";
   marker.type = document.getElementById("markerType").value;
   marker.color = document.getElementById("markerColor").value;
@@ -347,6 +410,30 @@ function updateSelectedMarker() {
 
   renderMarkers();
   fillFormFromSelectedMarker();
+}
+
+function handleLinkedAccommodationChange() {
+  const marker = getSelectedMarker();
+  if (!marker) return;
+
+  const linkedId = getSelectedLinkedAccommodationId();
+  marker.room_id = linkedId;
+
+  const linkedRoom = getAccommodationById(linkedId);
+
+  if (linkedRoom) {
+    marker.name = linkedRoom.name || linkedRoom.room_name || marker.name;
+    marker.info = linkedRoom.description || linkedRoom.map_label || marker.info;
+    marker.type = guessMarkerTypeFromAccommodation(linkedRoom);
+    marker.color = getColorForType(marker.type);
+
+    document.getElementById("markerName").value = marker.name;
+    document.getElementById("markerInfo").value = marker.info || "";
+    document.getElementById("markerType").value = marker.type;
+    document.getElementById("markerColor").value = marker.color;
+  }
+
+  renderMarkers();
 }
 
 async function deleteSelectedMarker() {
@@ -387,15 +474,7 @@ function updateColorByType() {
   const type = document.getElementById("markerType").value;
   const colorInput = document.getElementById("markerColor");
 
-  const colors = {
-    room: "#0ea5e9",
-    shade: "#22c55e",
-    pavilion: "#a855f7",
-    kubo: "#ef4444",
-    service: "#64748b",
-  };
-
-  colorInput.value = colors[type] || "#14b8a6";
+  colorInput.value = getColorForType(type);
 }
 
 function updatePositionFromInputs() {
@@ -414,6 +493,40 @@ function updatePositionFromInputs() {
 
 function getSelectedMarker() {
   return markers.find((marker) => String(marker.id) === String(selectedMarkerId));
+}
+
+function getSelectedLinkedAccommodationId() {
+  const value = document.getElementById("linkedAccommodation").value;
+  return value ? Number(value) : null;
+}
+
+function getAccommodationById(id) {
+  if (!id) return null;
+
+  return accommodations.find((room) => String(room.id) === String(id));
+}
+
+function guessMarkerTypeFromAccommodation(room) {
+  const text = `${room.name || ""} ${room.room_name || ""} ${room.category_name || ""}`.toLowerCase();
+
+  if (text.includes("pavilion") || text.includes("function")) return "pavilion";
+  if (text.includes("room") || text.includes("villa")) return "room";
+  if (text.includes("kubo") || text.includes("nipa") || text.includes("hut")) return "kubo";
+  if (text.includes("shade") || text.includes("cottage")) return "shade";
+
+  return "room";
+}
+
+function getColorForType(type) {
+  const colors = {
+    room: "#0ea5e9",
+    shade: "#22c55e",
+    pavilion: "#a855f7",
+    kubo: "#ef4444",
+    service: "#64748b",
+  };
+
+  return colors[type] || "#14b8a6";
 }
 
 function getPercentPosition(event, container) {

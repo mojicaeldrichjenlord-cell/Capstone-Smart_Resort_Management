@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <title>Admin Map Editor | SmartResort</title>
+  <title>Admin Map Editor | Arvic Seaside</title>
   <link rel="stylesheet" href="css/style.css" />
 
   <style>
@@ -15,7 +15,7 @@
     }
 
     .map-editor-hero {
-      background: linear-gradient(135deg, #0f172a, #14b8a6);
+      background: linear-gradient(135deg, #0f2f44 0%, #0f766e 62%, #14b8a6 100%);
       color: white;
       border-radius: 30px;
       padding: 34px 28px;
@@ -178,6 +178,14 @@
       resize: vertical;
     }
 
+    .field-help {
+      display: block;
+      margin-top: 6px;
+      color: #64748b;
+      font-size: 0.82rem;
+      line-height: 1.45;
+    }
+
     .position-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -214,6 +222,8 @@
     .marker-list-item span {
       color: #64748b;
       font-size: 0.86rem;
+      line-height: 1.4;
+      display: block;
     }
 
     .editor-note {
@@ -226,6 +236,17 @@
       line-height: 1.6;
       font-weight: 700;
       font-size: 0.92rem;
+    }
+
+    .linked-pill {
+      display: inline-flex;
+      margin-top: 6px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: #dcfce7;
+      color: #166534;
+      font-size: 0.76rem;
+      font-weight: 900;
     }
 
     @media (max-width: 1000px) {
@@ -259,7 +280,7 @@
 
 <body class="has-fixed-navbar">
   <header class="navbar">
-    <div class="logo">SmartResort Admin</div>
+    <div class="logo">Arvic Seaside Admin</div>
     <nav>
       <a href="admin.html">Bookings</a>
       <a href="admin-walkin.html">Manual Reservation</a>
@@ -276,8 +297,8 @@
     <section class="map-editor-hero">
       <h1>Resort Map Editor</h1>
       <p>
-        Add, move, rename, and color-code map markers. These markers will later be displayed
-        on the customer Resort Map page.
+        Add, move, rename, and color-code map markers. Link each marker to the exact
+        accommodation so the customer map will show the correct details.
       </p>
     </section>
 
@@ -294,7 +315,7 @@
           <img
             id="resortMapImage"
             src="images/resort-map-layout.jpg"
-            alt="SmartResort Map Layout"
+            alt="Arvic Seaside Map Layout"
             onerror="this.src='images/no-image.jpg'"
           />
           <div id="mapMarkersLayer"></div>
@@ -302,7 +323,8 @@
 
         <div class="editor-note">
           Tip: Click <strong>Add Marker</strong>, then click the exact spot on the map.
-          Drag existing markers to move them. Edit details on the right panel.
+          Drag existing markers to move them. Use <strong>Linked Accommodation</strong>
+          so the marker opens the correct room/cottage/function area.
         </div>
       </div>
 
@@ -310,16 +332,26 @@
         <h2>Marker Details</h2>
 
         <div class="form-group">
+          <label for="linkedAccommodation">Linked Accommodation</label>
+          <select id="linkedAccommodation">
+            <option value="">No linked accommodation</option>
+          </select>
+          <small class="field-help">
+            This fixes wrong readings like Small Shade 1 showing Small Shade 12.
+          </small>
+        </div>
+
+        <div class="form-group">
           <label for="markerName">Marker Name</label>
-          <input type="text" id="markerName" placeholder="Example: Family Room-B" />
+          <input type="text" id="markerName" placeholder="Example: Small Shade 1" />
         </div>
 
         <div class="form-group">
           <label for="markerType">Marker Type</label>
           <select id="markerType">
             <option value="room">Room</option>
-            <option value="shade">Shade</option>
-            <option value="pavilion">Pavilion</option>
+            <option value="shade">Shade / Cottage</option>
+            <option value="pavilion">Function Area / Pavilion</option>
             <option value="kubo">Kubo / Nipa Hut</option>
             <option value="service">Service Area</option>
           </select>
@@ -332,7 +364,7 @@
 
         <div class="form-group">
           <label for="markerInfo">Short Info</label>
-          <textarea id="markerInfo" placeholder="Example: Near pool area / good for family guests"></textarea>
+          <textarea id="markerInfo" placeholder="Example: Cottage accommodation for 8-10 pax."></textarea>
         </div>
 
         <div class="position-grid">
