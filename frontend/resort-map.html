@@ -36,6 +36,74 @@
       opacity: 0.96;
     }
 
+    .map-filter-panel {
+      background: rgba(255, 255, 255, 0.96);
+      border: 1px solid #dbe7ef;
+      border-radius: 24px;
+      padding: 18px;
+      margin-bottom: 20px;
+      box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    .map-filter-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .map-filter-header h2 {
+      margin: 0 0 6px;
+      color: #0f172a;
+      font-size: 1.25rem;
+    }
+
+    .map-filter-header p {
+      margin: 0;
+      color: #64748b;
+      line-height: 1.55;
+    }
+
+    .map-filter-count {
+      background: #ecfeff;
+      color: #0f766e;
+      padding: 9px 13px;
+      border-radius: 999px;
+      font-weight: 900;
+      font-size: 0.86rem;
+      white-space: nowrap;
+    }
+
+    .map-filter-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .map-filter-btn {
+      border: none;
+      border-radius: 999px;
+      padding: 11px 17px;
+      font-weight: 900;
+      cursor: pointer;
+      background: #e2e8f0;
+      color: #0f172a;
+      transition: 0.2s ease;
+    }
+
+    .map-filter-btn:hover {
+      transform: translateY(-1px);
+      background: #cbd5e1;
+    }
+
+    .map-filter-btn.active {
+      background: linear-gradient(135deg, #14b8a6, #0f9488);
+      color: white;
+      box-shadow: 0 10px 20px rgba(20, 184, 166, 0.2);
+    }
+
     .map-layout {
       display: grid;
       grid-template-columns: 1.65fr 0.85fr;
@@ -63,6 +131,46 @@
     .map-image-wrap img {
       width: 100%;
       display: block;
+    }
+
+    .map-marker {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      padding: 0;
+      border-radius: 999px;
+      border: 3px solid white;
+      transform: translate(-50%, -50%);
+      cursor: pointer;
+      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
+      z-index: 10;
+    }
+
+    .map-marker.active {
+      outline: 4px solid rgba(20, 184, 166, 0.35);
+      transform: translate(-50%, -50%) scale(1.28);
+      z-index: 20;
+    }
+
+    .marker-tooltip {
+      position: absolute;
+      top: -34px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #0f172a;
+      color: white;
+      padding: 6px 10px;
+      font-size: 0.72rem;
+      border-radius: 8px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: 0.2s ease;
+    }
+
+    .map-marker:hover .marker-tooltip,
+    .map-marker.active .marker-tooltip {
+      opacity: 1;
     }
 
     .map-note {
@@ -137,6 +245,43 @@
     .status-unavailable-pill {
       background: #fee2e2;
       color: #991b1b;
+    }
+
+    .map-navigation {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 16px 0 4px;
+    }
+
+    .map-nav-btn {
+      border: none;
+      border-radius: 999px;
+      padding: 12px 16px;
+      font-weight: 900;
+      cursor: pointer;
+      background: #e2e8f0;
+      color: #0f172a;
+      transition: 0.2s ease;
+    }
+
+    .map-nav-btn:hover {
+      background: #cbd5e1;
+      transform: translateY(-1px);
+    }
+
+    .map-nav-btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .map-selected-counter {
+      margin: 6px 0 12px;
+      color: #64748b;
+      font-weight: 800;
+      text-align: center;
+      font-size: 0.9rem;
     }
 
     .map-actions {
@@ -245,7 +390,8 @@
 
       .map-hero,
       .map-card,
-      .map-info-card {
+      .map-info-card,
+      .map-filter-panel {
         padding: 18px;
         border-radius: 22px;
       }
@@ -254,8 +400,17 @@
         font-size: 1.8rem;
       }
 
-      .map-btn {
+      .map-btn,
+      .map-filter-btn {
         width: 100%;
+      }
+
+      .map-filter-buttons {
+        flex-direction: column;
+      }
+
+      .map-navigation {
+        grid-template-columns: 1fr;
       }
     }
   </style>
@@ -281,9 +436,35 @@
     <section class="map-hero">
       <h1>Resort Map</h1>
       <p>
-        View the resort layout and click the markers to see where rooms, shades,
-        pavilions, pool area, and beach front accommodations are located.
+        View the resort layout and use filters or arrows to explore rooms,
+        cottages, and function areas without clicking every marker manually.
       </p>
+    </section>
+
+    <section class="map-filter-panel">
+      <div class="map-filter-header">
+        <div>
+          <h2>Filter Map Markers</h2>
+          <p>Select a category to show only specific accommodations on the map.</p>
+        </div>
+
+        <div class="map-filter-count" id="mapFilterCount">Loading...</div>
+      </div>
+
+      <div class="map-filter-buttons">
+        <button type="button" class="map-filter-btn active" data-filter="all">
+          All
+        </button>
+        <button type="button" class="map-filter-btn" data-filter="rooms">
+          Rooms
+        </button>
+        <button type="button" class="map-filter-btn" data-filter="cottages">
+          Cottages
+        </button>
+        <button type="button" class="map-filter-btn" data-filter="function-areas">
+          Function Areas
+        </button>
+      </div>
     </section>
 
     <section class="map-layout">
@@ -299,8 +480,8 @@
         </div>
 
         <div class="map-note">
-          This map is for visual guidance only. Actual availability, prices, and booking details
-          are shown on the Accommodations page.
+          This map is for visual guidance only. Use the filters above or the
+          previous/next buttons to browse accommodations faster.
         </div>
 
         <div class="map-actions">
@@ -321,6 +502,19 @@
         <p id="infoDescription">
           Click a marker on the resort map to view accommodation details.
         </p>
+
+        <div class="map-navigation">
+          <button type="button" class="map-nav-btn" id="prevMarkerBtn">
+            ← Previous
+          </button>
+          <button type="button" class="map-nav-btn" id="nextMarkerBtn">
+            Next →
+          </button>
+        </div>
+
+        <div class="map-selected-counter" id="mapSelectedCounter">
+          -
+        </div>
 
         <div class="info-row">
           <strong>Status</strong>

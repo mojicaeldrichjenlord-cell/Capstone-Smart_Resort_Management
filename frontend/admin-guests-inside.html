@@ -46,7 +46,12 @@
       }
 
       .guests-hero {
-        background: linear-gradient(135deg, #0f2f44 0%, #0f766e 62%, #14b8a6 100%);
+        background: linear-gradient(
+          135deg,
+          #0f2f44 0%,
+          #0f766e 62%,
+          #14b8a6 100%
+        );
         color: white;
         border-radius: 30px;
         padding: 34px 28px;
@@ -415,8 +420,8 @@
         <h1>Guests Inside Resort</h1>
         <p>
           Shows approved guests currently scheduled inside the resort today. Use
-          this for front-desk monitoring, payment reminders, check-out awareness,
-          extra bed charges, and manual guest check-out.
+          this for front-desk monitoring, payment reminders, check-out
+          awareness, extra bed charges, and manual guest check-out.
         </p>
       </section>
 
@@ -453,7 +458,14 @@
             </p>
           </div>
         </div>
-
+        <div class="guest-search-box">
+          <label for="guestSearchInput">Search Guest / Reservation</label>
+          <input
+            type="text"
+            id="guestSearchInput"
+            placeholder="Search reservation code or guest name..."
+          />
+        </div>
         <div class="table-wrap">
           <table class="guests-table">
             <thead>
@@ -492,17 +504,26 @@
       <div class="extra-bed-modal-box">
         <h2>Update Extra Bed</h2>
         <p id="extraBedGuestText">
-          Add or modify extra bed count for this guest. Rate is ₱200 per extra bed.
+          Add or modify extra bed count for this guest. Rate is ₱200 per extra
+          bed.
         </p>
 
         <div class="extra-bed-form-group">
           <label for="extraBedCountInput">Extra Bed Count</label>
-          <input type="number" id="extraBedCountInput" min="0" step="1" value="0" />
+          <input
+            type="number"
+            id="extraBedCountInput"
+            min="0"
+            step="1"
+            value="0"
+          />
         </div>
 
         <div class="extra-bed-preview">
           <div>Rate: <strong>₱200.00 each</strong></div>
-          <div>Total Extra Bed Fee: <strong id="extraBedFeePreview">₱0.00</strong></div>
+          <div>
+            Total Extra Bed Fee: <strong id="extraBedFeePreview">₱0.00</strong>
+          </div>
         </div>
 
         <div class="extra-bed-modal-actions">

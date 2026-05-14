@@ -3265,3 +3265,38 @@ body:has(.auth-wrapper) .auth-left {
   backdrop-filter: blur(12px) !important;
   -webkit-backdrop-filter: blur(12px) !important;
 }
+.guest-search-box {
+  min-width: 280px;
+  flex: 1;
+  max-width: 420px;
+}
+
+.guest-search-box label {
+  display: block;
+  font-weight: 900;
+  color: #0f172a;
+  margin-bottom: 7px;
+  font-size: 0.9rem;
+}
+
+.guest-search-box input {
+  width: 100%;
+  padding: 13px 15px;
+  border: 1px solid #a8c0cd;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  outline: none;
+  background: rgba(255, 255, 255, 0.97);
+}
+
+.guest-search-box input:focus {
+  border-color: #14b8a6;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.16);
+}
+
+@media (max-width: 700px) {
+  .guest-search-box {
+    min-width: 100%;
+    max-width: none;
+  }
+}

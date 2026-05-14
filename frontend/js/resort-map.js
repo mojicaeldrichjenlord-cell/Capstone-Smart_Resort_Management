@@ -3,9 +3,11 @@ const API_BASE = "http://127.0.0.1:5000/api";
 let accommodations = [];
 let mapMarkers = [];
 let selectedMarkerId = null;
+let currentMapFilter = "all";
 
 document.addEventListener("DOMContentLoaded", () => {
   setupLogout();
+  setupMapControls();
   loadCustomerMap();
 });
 
@@ -18,6 +20,50 @@ function setupLogout() {
     e.preventDefault();
     localStorage.removeItem("user");
     window.location.href = "login.html";
+  });
+}
+
+function setupMapControls() {
+  const filterButtons = document.querySelectorAll(".map-filter-btn");
+  const prevBtn = document.getElementById("prevMarkerBtn");
+  const nextBtn = document.getElementById("nextMarkerBtn");
+
+  filterButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      currentMapFilter = button.dataset.filter || "all";
+
+      filterButtons.forEach((btn) => btn.classList.remove("active"));
+      button.classList.add("active");
+
+      const filteredMarkers = getFilteredMarkers();
+      selectedMarkerId = filteredMarkers[0]?.id || null;
+
+      renderMarkers();
+
+      if (selectedMarkerId) {
+        selectMarker(selectedMarkerId);
+      } else {
+        renderNoFilteredMarkersMessage();
+      }
+    });
+  });
+
+  if (prevBtn) {
+    prevBtn.addEventListener("click", showPreviousMarker);
+  }
+
+  if (nextBtn) {
+    nextBtn.addEventListener("click", showNextMarker);
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowLeft") {
+      showPreviousMarker();
+    }
+
+    if (e.key === "ArrowRight") {
+      showNextMarker();
+    }
   });
 }
 
@@ -46,19 +92,89 @@ async function loadCustomerMap() {
       return;
     }
 
+    const filteredMarkers = getFilteredMarkers();
+    selectedMarkerId = filteredMarkers[0]?.id || null;
+
     renderMarkers();
-    selectMarker(mapMarkers[0].id);
+
+    if (selectedMarkerId) {
+      selectMarker(selectedMarkerId);
+    } else {
+      renderNoFilteredMarkersMessage();
+    }
   } catch (error) {
     console.error("loadCustomerMap error:", error);
     renderFallbackMessage();
   }
 }
 
+function getFilteredMarkers() {
+  if (currentMapFilter === "all") return mapMarkers;
+
+  return mapMarkers.filter((marker) => {
+    const linkedAccommodation = findAccommodationForMarker(marker);
+    const group = getMarkerGroup(marker, linkedAccommodation);
+
+    return group === currentMapFilter;
+  });
+}
+
+function getMarkerGroup(marker, room = null) {
+  const text = [
+    marker?.name,
+    marker?.type,
+    marker?.info,
+    room?.name,
+    room?.room_name,
+    room?.category_name,
+    room?.map_label,
+  ]
+    .join(" ")
+    .toLowerCase();
+
+  if (
+    text.includes("function") ||
+    text.includes("pavilion") ||
+    text.includes("pavillion") ||
+    text.includes("event") ||
+    text.includes("hall")
+  ) {
+    return "function-areas";
+  }
+
+  if (
+    text.includes("room") ||
+    text.includes("villa") ||
+    text.includes("suite") ||
+    text.includes("hotel")
+  ) {
+    return "rooms";
+  }
+
+  if (
+    text.includes("cottage") ||
+    text.includes("shade") ||
+    text.includes("kubo") ||
+    text.includes("nipa") ||
+    text.includes("hut") ||
+    text.includes("cabana")
+  ) {
+    return "cottages";
+  }
+
+  return "cottages";
+}
+
 function renderMarkers() {
   const markersContainer = document.getElementById("mapMarkers");
   if (!markersContainer) return;
 
-  markersContainer.innerHTML = mapMarkers
+  const filteredMarkers = getFilteredMarkers();
+
+  updateMapFilterCount(filteredMarkers.length);
+  updateNavigationState(filteredMarkers);
+
+  markersContainer.innerHTML = filteredMarkers
     .map((marker) => {
       const isSelected = String(marker.id) === String(selectedMarkerId);
 
@@ -94,12 +210,98 @@ function selectMarker(markerId) {
   } else {
     showMarkerOnlyDetails(marker);
   }
+
+  updateSelectedCounter();
+}
+
+function showPreviousMarker() {
+  const filteredMarkers = getFilteredMarkers();
+  if (!filteredMarkers.length) return;
+
+  const currentIndex = filteredMarkers.findIndex(
+    (marker) => String(marker.id) === String(selectedMarkerId)
+  );
+
+  const previousIndex =
+    currentIndex <= 0 ? filteredMarkers.length - 1 : currentIndex - 1;
+
+  selectMarker(filteredMarkers[previousIndex].id);
+}
+
+function showNextMarker() {
+  const filteredMarkers = getFilteredMarkers();
+  if (!filteredMarkers.length) return;
+
+  const currentIndex = filteredMarkers.findIndex(
+    (marker) => String(marker.id) === String(selectedMarkerId)
+  );
+
+  const nextIndex =
+    currentIndex < 0 || currentIndex >= filteredMarkers.length - 1
+      ? 0
+      : currentIndex + 1;
+
+  selectMarker(filteredMarkers[nextIndex].id);
+}
+
+function updateMapFilterCount(count) {
+  const countEl = document.getElementById("mapFilterCount");
+  if (!countEl) return;
+
+  const label = getFilterLabel(currentMapFilter);
+  countEl.textContent = `${count} ${label} marker${count === 1 ? "" : "s"}`;
+}
+
+function updateSelectedCounter() {
+  const counter = document.getElementById("mapSelectedCounter");
+  if (!counter) return;
+
+  const filteredMarkers = getFilteredMarkers();
+
+  if (!filteredMarkers.length || !selectedMarkerId) {
+    counter.textContent = "No marker selected";
+    return;
+  }
+
+  const currentIndex = filteredMarkers.findIndex(
+    (marker) => String(marker.id) === String(selectedMarkerId)
+  );
+
+  counter.textContent = `${currentIndex + 1} of ${filteredMarkers.length}`;
+}
+
+function updateNavigationState(filteredMarkers = getFilteredMarkers()) {
+  const prevBtn = document.getElementById("prevMarkerBtn");
+  const nextBtn = document.getElementById("nextMarkerBtn");
+
+  const disabled = filteredMarkers.length <= 1;
+
+  if (prevBtn) {
+    prevBtn.disabled = filteredMarkers.length === 0;
+  }
+
+  if (nextBtn) {
+    nextBtn.disabled = filteredMarkers.length === 0;
+  }
+
+  if (disabled) {
+    updateSelectedCounter();
+  }
+}
+
+function getFilterLabel(filter) {
+  if (filter === "rooms") return "room";
+  if (filter === "cottages") return "cottage";
+  if (filter === "function-areas") return "function area";
+  return "map";
 }
 
 function findAccommodationForMarker(marker) {
-  if (marker.room_id) {
+  const linkedId = marker.room_id || marker.accommodation_id;
+
+  if (linkedId) {
     const roomById = accommodations.find(
-      (room) => String(room.id) === String(marker.room_id)
+      (room) => String(room.id) === String(linkedId)
     );
 
     if (roomById) return roomById;
@@ -109,20 +311,16 @@ function findAccommodationForMarker(marker) {
 
   if (!markerName) return null;
 
-  return accommodations.find((room) => {
-    const roomName = normalizeText(room.name);
+  const exactMatch = accommodations.find((room) => {
+    const roomName = normalizeText(room.name || room.room_name);
     const mapLabel = normalizeText(room.map_label);
-    const category = normalizeText(room.category_name);
 
-    return (
-      roomName === markerName ||
-      roomName.includes(markerName) ||
-      markerName.includes(roomName) ||
-      mapLabel.includes(markerName) ||
-      markerName.includes(mapLabel) ||
-      category.includes(markerName)
-    );
+    return roomName === markerName || mapLabel === markerName;
   });
+
+  if (exactMatch) return exactMatch;
+
+  return null;
 }
 
 function showAccommodationDetails(room, marker) {
@@ -130,16 +328,16 @@ function showAccommodationDetails(room, marker) {
   const isAvailable = status === "available";
 
   setImage("infoImage", room.image || "images/no-image.jpg");
-  setText("infoName", room.name || marker.name || "Accommodation");
+  setText("infoName", room.name || room.room_name || marker.name || "Accommodation");
   setText(
     "infoDescription",
     room.description || marker.info || "No description available."
   );
   setText("infoLocation", room.map_label || marker.info || "Not set");
-  setText("infoCategory", room.category_name || marker.type || "N/A");
-  setText("infoCapacity", `${room.max_capacity || 0} pax`);
-  setText("infoDayPrice", `₱${formatMoney(room.day_price)}`);
-  setText("infoOvernightPrice", `₱${formatMoney(room.overnight_price)}`);
+  setText("infoCategory", room.category_name || formatMarkerType(marker.type));
+  setText("infoCapacity", `${room.max_capacity || room.capacity || 0} pax`);
+  setText("infoDayPrice", `₱${formatMoney(room.day_price || room.price)}`);
+  setText("infoOvernightPrice", `₱${formatMoney(room.overnight_price || room.price)}`);
   setText("infoExtendedPrice", `₱${formatMoney(room.extended_price)}`);
 
   setStatus(isAvailable ? "Available" : "Unavailable", isAvailable);
@@ -172,12 +370,40 @@ function showMarkerOnlyDetails(marker) {
   hideBookButton();
 }
 
+function renderNoFilteredMarkersMessage() {
+  const markersContainer = document.getElementById("mapMarkers");
+
+  if (markersContainer) {
+    markersContainer.innerHTML = "";
+  }
+
+  updateMapFilterCount(0);
+
+  setImage("infoImage", "images/no-image.jpg");
+  setText("infoName", `No ${getFilterLabel(currentMapFilter)} markers found`);
+  setText(
+    "infoDescription",
+    "Try selecting All, or ask the admin to link markers to accommodations in the Map Editor."
+  );
+  setText("infoLocation", "-");
+  setText("infoCategory", "-");
+  setText("infoCapacity", "-");
+  setText("infoDayPrice", "-");
+  setText("infoOvernightPrice", "-");
+  setText("infoExtendedPrice", "-");
+  setStatus("-", true);
+  hideBookButton();
+  updateSelectedCounter();
+}
+
 function renderNoMarkersMessage() {
   const markersContainer = document.getElementById("mapMarkers");
 
   if (markersContainer) {
     markersContainer.innerHTML = "";
   }
+
+  updateMapFilterCount(0);
 
   setImage("infoImage", "images/no-image.jpg");
   setText("infoName", "No map markers yet");
@@ -193,6 +419,7 @@ function renderNoMarkersMessage() {
   setText("infoExtendedPrice", "-");
   setStatus("-", true);
   hideBookButton();
+  updateSelectedCounter();
 }
 
 function renderFallbackMessage() {
@@ -201,6 +428,8 @@ function renderFallbackMessage() {
   if (markersContainer) {
     markersContainer.innerHTML = "";
   }
+
+  updateMapFilterCount(0);
 
   setImage("infoImage", "images/no-image.jpg");
   setText("infoName", "Map details unavailable");
@@ -216,6 +445,7 @@ function renderFallbackMessage() {
   setText("infoExtendedPrice", "-");
   setStatus("-", true);
   hideBookButton();
+  updateSelectedCounter();
 }
 
 function hideBookButton() {
@@ -245,8 +475,8 @@ function formatMarkerType(type) {
   const value = String(type || "").toLowerCase();
 
   if (value === "room") return "Room";
-  if (value === "shade") return "Shade";
-  if (value === "pavilion") return "Pavilion";
+  if (value === "shade") return "Shade / Cottage";
+  if (value === "pavilion") return "Function Area / Pavilion";
   if (value === "kubo") return "Kubo / Nipa Hut";
   if (value === "service") return "Service Area";
 

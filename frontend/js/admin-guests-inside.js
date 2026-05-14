@@ -3,6 +3,7 @@ const EXTRA_BED_RATE = 200;
 
 let allBookings = [];
 let selectedExtraBedBookingId = null;
+let currentSearchTerm = "";
 
 document.addEventListener("DOMContentLoaded", () => {
   checkAdminAccess();
@@ -32,6 +33,7 @@ function setupEvents() {
   const saveExtraBedBtn = document.getElementById("saveExtraBedBtn");
   const cancelExtraBedBtn = document.getElementById("cancelExtraBedBtn");
   const extraBedModal = document.getElementById("extraBedModal");
+  const guestSearchInput = document.getElementById("guestSearchInput");
 
   if (logoutBtn) {
     logoutBtn.addEventListener("click", (e) => {
@@ -47,6 +49,13 @@ function setupEvents() {
 
   if (refreshBtn) {
     refreshBtn.addEventListener("click", loadGuestsInside);
+  }
+
+  if (guestSearchInput) {
+    guestSearchInput.addEventListener("input", () => {
+      currentSearchTerm = guestSearchInput.value.trim().toLowerCase();
+      refreshGuestsInsideView();
+    });
   }
 
   if (extraBedInput) {
@@ -97,10 +106,7 @@ async function loadGuestsInside() {
 
     allBookings = Array.isArray(data) ? data : data.bookings || [];
 
-    const activeToday = getActiveGuestsToday(allBookings);
-
-    updateSummary(activeToday);
-    renderGuestsInside(activeToday);
+    refreshGuestsInsideView();
   } catch (error) {
     console.error("loadGuestsInside error:", error);
 
@@ -116,6 +122,36 @@ async function loadGuestsInside() {
   }
 }
 
+function refreshGuestsInsideView() {
+  const activeToday = getActiveGuestsToday(allBookings);
+  const filteredGuests = filterGuestsInside(activeToday);
+
+  updateSummary(filteredGuests);
+  renderGuestsInside(filteredGuests);
+}
+
+function filterGuestsInside(bookings) {
+  if (!currentSearchTerm) return bookings;
+
+  return bookings.filter((booking) => {
+    const searchableText = [
+      booking.reservation_code,
+      booking.fullname,
+      booking.room_name,
+      booking.accommodation_name,
+      booking.email,
+      booking.phone,
+      booking.contact_no,
+      booking.booking_source,
+      booking.payment_status,
+    ]
+      .join(" ")
+      .toLowerCase();
+
+    return searchableText.includes(currentSearchTerm);
+  });
+}
+
 function getActiveGuestsToday(bookings) {
   const now = new Date();
   const todayOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -128,7 +164,9 @@ function getActiveGuestsToday(bookings) {
     }
 
     const checkInDate = normalizeDate(booking.check_in || booking.check_in_date);
-    const checkOutDate = normalizeDate(booking.check_out || booking.check_out_date);
+    const checkOutDate = normalizeDate(
+      booking.check_out || booking.check_out_date
+    );
 
     if (!checkInDate || !checkOutDate) {
       return false;
@@ -183,10 +221,14 @@ function renderGuestsInside(bookings) {
   if (!tbody) return;
 
   if (!bookings.length) {
+    const message = currentSearchTerm
+      ? `No active guest found for "${escapeHtml(currentSearchTerm)}".`
+      : "No active guests inside the resort today.";
+
     tbody.innerHTML = `
       <tr>
         <td colspan="15" class="table-message">
-          No active guests inside the resort today.
+          ${message}
         </td>
       </tr>
     `;
@@ -196,7 +238,9 @@ function renderGuestsInside(bookings) {
   tbody.innerHTML = bookings
     .map((booking) => {
       const source = String(booking.booking_source || "online").toLowerCase();
-      const paymentStatus = String(booking.payment_status || "pending").toLowerCase();
+      const paymentStatus = String(
+        booking.payment_status || "pending"
+      ).toLowerCase();
 
       const remainingBalance = Number(booking.remaining_balance || 0);
       const entranceFee = Number(booking.estimated_entrance_fee || 0);
@@ -219,7 +263,9 @@ function renderGuestsInside(bookings) {
       const markPaidButton =
         paymentStatus !== "paid"
           ? `
-            <button class="action-btn save-payment-btn" onclick="markAsPaid(${Number(booking.id)})">
+            <button class="action-btn save-payment-btn" onclick="markAsPaid(${Number(
+              booking.id
+            )})">
               Mark Paid
             </button>
           `
@@ -230,8 +276,15 @@ function renderGuestsInside(bookings) {
           `;
 
       return `
-        <tr class="${getRowClass(timeInfo, remainingBalance, entranceFee, extraBedFee)}">
-          <td><strong>${escapeHtml(booking.reservation_code || `#${booking.id}`)}</strong></td>
+        <tr class="${getRowClass(
+          timeInfo,
+          remainingBalance,
+          entranceFee,
+          extraBedFee
+        )}">
+          <td><strong>${escapeHtml(
+            booking.reservation_code || `#${booking.id}`
+          )}</strong></td>
           <td>${escapeHtml(booking.fullname || "-")}</td>
           <td>${source === "manual" ? "Walk-in / Manual" : "Online"}</td>
           <td>${accommodationHtml}</td>
@@ -248,7 +301,9 @@ function renderGuestsInside(bookings) {
             <small>${formatTime(booking.check_out_time)}</small>
           </td>
 
-          <td><strong>${Number(booking.guests || booking.guest_count || 0)}</strong></td>
+          <td><strong>${Number(
+            booking.guests || booking.guest_count || 0
+          )}</strong></td>
 
           <td>
             <span class="badge ${timeInfo.level}">
@@ -287,17 +342,23 @@ function renderGuestsInside(bookings) {
 
           <td>
             <div class="action-buttons">
-              <button class="action-btn extra-bed-btn" onclick="openExtraBedModal(${Number(booking.id)})">
+              <button class="action-btn extra-bed-btn" onclick="openExtraBedModal(${Number(
+                booking.id
+              )})">
                 Extra Bed
               </button>
 
               ${markPaidButton}
 
-              <button class="action-btn save-booking-btn" onclick="markAsCheckedOut(${Number(booking.id)})">
+              <button class="action-btn save-booking-btn" onclick="markAsCheckedOut(${Number(
+                booking.id
+              )})">
                 Check Out
               </button>
 
-              <button class="action-btn receipt-btn" onclick="viewReceipt(${Number(booking.id)})">
+              <button class="action-btn receipt-btn" onclick="viewReceipt(${Number(
+                booking.id
+              )})">
                 Receipt
               </button>
             </div>
@@ -309,7 +370,9 @@ function renderGuestsInside(bookings) {
 }
 
 function openExtraBedModal(bookingId) {
-  const booking = allBookings.find((item) => Number(item.id) === Number(bookingId));
+  const booking = allBookings.find(
+    (item) => Number(item.id) === Number(bookingId)
+  );
   const modal = document.getElementById("extraBedModal");
   const input = document.getElementById("extraBedCountInput");
   const guestText = document.getElementById("extraBedGuestText");
@@ -323,7 +386,9 @@ function openExtraBedModal(bookingId) {
   input.value = Number(booking.extra_bed_count || 0);
 
   if (guestText) {
-    guestText.textContent = `Add or modify extra bed count for ${booking.fullname || "this guest"}. Rate is ₱200 per extra bed.`;
+    guestText.textContent = `Add or modify extra bed count for ${
+      booking.fullname || "this guest"
+    }. Rate is ₱200 per extra bed.`;
   }
 
   updateExtraBedPreview();
@@ -369,7 +434,10 @@ async function saveExtraBed() {
   }
 
   if (Number.isNaN(count) || count < 0 || !Number.isInteger(count)) {
-    showMessage("Extra bed count must be a whole number and cannot be negative.", "error");
+    showMessage(
+      "Extra bed count must be a whole number and cannot be negative.",
+      "error"
+    );
     return;
   }
 
@@ -405,9 +473,7 @@ async function saveExtraBed() {
       return booking;
     });
 
-    const activeToday = getActiveGuestsToday(allBookings);
-    updateSummary(activeToday);
-    renderGuestsInside(activeToday);
+    refreshGuestsInsideView();
     closeExtraBedModal();
 
     showMessage("Extra bed updated successfully.", "success");
@@ -421,12 +487,15 @@ async function markAsPaid(bookingId) {
   if (!confirm("Mark this booking as fully paid?")) return;
 
   try {
-    const response = await fetch(`${API_BASE}/admin/payments/${bookingId}/mark-paid`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
+    const response = await fetch(
+      `${API_BASE}/admin/payments/${bookingId}/mark-paid`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
     const data = await response.json();
 
@@ -446,9 +515,7 @@ async function markAsPaid(bookingId) {
       return booking;
     });
 
-    const activeToday = getActiveGuestsToday(allBookings);
-    updateSummary(activeToday);
-    renderGuestsInside(activeToday);
+    refreshGuestsInsideView();
 
     showMessage("Booking marked as fully paid.", "success");
   } catch (error) {
@@ -495,9 +562,7 @@ async function markAsCheckedOut(bookingId) {
       return booking;
     });
 
-    const activeToday = getActiveGuestsToday(allBookings);
-    updateSummary(activeToday);
-    renderGuestsInside(activeToday);
+    refreshGuestsInsideView();
 
     showMessage("Guest checked out successfully.", "success");
   } catch (error) {
@@ -576,7 +641,10 @@ function getTimeStatus(booking) {
 }
 
 function getFrontDeskNote(remainingBalance, entranceFee, extraBedFee, timeInfo) {
-  const totalToCollect = Number(remainingBalance || 0) + Number(entranceFee || 0) + Number(extraBedFee || 0);
+  const totalToCollect =
+    Number(remainingBalance || 0) +
+    Number(entranceFee || 0) +
+    Number(extraBedFee || 0);
 
   if (timeInfo.level === "danger") {
     return totalToCollect > 0
@@ -598,7 +666,9 @@ function getFrontDeskNote(remainingBalance, entranceFee, extraBedFee, timeInfo) 
 function getRowClass(timeInfo, remainingBalance, entranceFee, extraBedFee) {
   if (timeInfo.level === "danger") return "guest-row-danger";
   if (timeInfo.level === "warning") return "guest-row-warning";
-  if (remainingBalance > 0 || entranceFee > 0 || extraBedFee > 0) return "guest-row-payment";
+  if (remainingBalance > 0 || entranceFee > 0 || extraBedFee > 0) {
+    return "guest-row-payment";
+  }
   return "";
 }
 
