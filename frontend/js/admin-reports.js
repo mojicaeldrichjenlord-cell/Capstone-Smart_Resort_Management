@@ -8,20 +8,57 @@ let paymentMethodChart = null;
 let guestsPerRoomChart = null;
 let slotUsageChart = null;
 
-const CHART_COLORS = [
-  "#14b8a6",
-  "#2563eb",
-  "#f59e0b",
-  "#8b5cf6",
-  "#ef4444",
-  "#22c55e",
-  "#06b6d4",
-  "#e11d48",
-  "#84cc16",
-  "#f97316",
-  "#6366f1",
-  "#0ea5e9"
+const REPORT_COLORS = {
+  navy: "#0F172A",
+  text: "#334155",
+  muted: "#64748B",
+  grid: "#E5EDF3",
+  teal: "#0F766E",
+  tealSoft: "#14B8A6",
+  blue: "#2563EB",
+  blueSoft: "#60A5FA",
+  green: "#22C55E",
+  greenSoft: "#86EFAC",
+  amber: "#F59E0B",
+  amberSoft: "#FCD34D",
+  red: "#EF4444",
+  redSoft: "#FCA5A5",
+  gray: "#94A3B8",
+  graySoft: "#CBD5E1",
+  purple: "#8B5CF6",
+  cyan: "#06B6D4",
+};
+
+const STATUS_COLORS = {
+  pending: REPORT_COLORS.amber,
+  approved: REPORT_COLORS.green,
+  rejected: REPORT_COLORS.red,
+  cancelled: REPORT_COLORS.gray,
+  completed: REPORT_COLORS.blue,
+};
+
+const MINIMAL_PALETTE = [
+  REPORT_COLORS.tealSoft,
+  REPORT_COLORS.blue,
+  REPORT_COLORS.amber,
+  REPORT_COLORS.green,
+  REPORT_COLORS.purple,
+  REPORT_COLORS.cyan,
+  REPORT_COLORS.red,
+  REPORT_COLORS.gray,
+  "#0EA5E9",
+  "#84CC16",
 ];
+
+Chart.defaults.font.family = "Arial, sans-serif";
+Chart.defaults.color = REPORT_COLORS.text;
+Chart.defaults.plugins.tooltip.backgroundColor = "#0F172A";
+Chart.defaults.plugins.tooltip.titleColor = "#FFFFFF";
+Chart.defaults.plugins.tooltip.bodyColor = "#E2E8F0";
+Chart.defaults.plugins.tooltip.borderColor = "rgba(255,255,255,0.12)";
+Chart.defaults.plugins.tooltip.borderWidth = 1;
+Chart.defaults.plugins.tooltip.padding = 12;
+Chart.defaults.plugins.tooltip.cornerRadius = 10;
 
 document.addEventListener("DOMContentLoaded", () => {
   checkAdminAccess();
@@ -84,7 +121,16 @@ function setupReportEvents() {
 
   if (printBtn) {
     printBtn.addEventListener("click", () => {
-      window.print();
+      updatePrintReportMeta();
+      document.body.classList.add("printing-report");
+
+      setTimeout(() => {
+        window.print();
+
+        setTimeout(() => {
+          document.body.classList.remove("printing-report");
+        }, 500);
+      }, 250);
     });
   }
 }
@@ -173,8 +219,6 @@ function updateStats(bookings) {
     return status === "pending";
   }).length;
 
-  // Money Collected = actual paid amount received.
-  // This is clearer for staff than using the full accommodation total.
   const moneyCollected = bookings.reduce((sum, booking) => {
     return sum + Number(booking.paid_amount || 0);
   }, 0);
@@ -199,6 +243,7 @@ function renderBookingStatusChart(bookings) {
 
   bookings.forEach((booking) => {
     const status = String(booking.status || "").toLowerCase();
+
     if (Object.prototype.hasOwnProperty.call(counts, status)) {
       counts[status]++;
     }
@@ -226,18 +271,19 @@ function renderBookingStatusChart(bookings) {
             counts.completed,
           ],
           backgroundColor: [
-            CHART_COLORS[2],
-            CHART_COLORS[5],
-            CHART_COLORS[4],
-            CHART_COLORS[7],
-            CHART_COLORS[1],
+            STATUS_COLORS.pending,
+            STATUS_COLORS.approved,
+            STATUS_COLORS.rejected,
+            STATUS_COLORS.cancelled,
+            STATUS_COLORS.completed,
           ],
-          borderRadius: 10,
-          maxBarThickness: 46,
+          borderRadius: 12,
+          borderSkipped: false,
+          maxBarThickness: 38,
         },
       ],
     },
-    options: getCommonChartOptions("Reservation count by status."),
+    options: getBarChartOptions(),
   });
 }
 
@@ -271,11 +317,14 @@ function renderBookingSourceChart(bookings) {
       datasets: [
         {
           data: [sourceCounts.Online, sourceCounts.Manual],
-          backgroundColor: [CHART_COLORS[1], CHART_COLORS[0]],
+          backgroundColor: [REPORT_COLORS.blue, REPORT_COLORS.tealSoft],
+          borderColor: "#FFFFFF",
+          borderWidth: 4,
+          hoverOffset: 8,
         },
       ],
     },
-    options: getPieChartOptions("Online and walk-in/manual reservation count."),
+    options: getDoughnutChartOptions(),
   });
 }
 
@@ -283,7 +332,11 @@ function renderPopularRoomsChart(bookings) {
   const itemCounts = {};
 
   bookings.forEach((booking) => {
-    const roomName = booking.room_name || "Unknown Accommodation";
+    const roomName =
+      booking.room_name ||
+      booking.accommodation_name ||
+      "Unknown Accommodation";
+
     itemCounts[roomName] = (itemCounts[roomName] || 0) + 1;
   });
 
@@ -309,15 +362,37 @@ function renderPopularRoomsChart(bookings) {
         {
           label: "Reservations",
           data: values,
-          backgroundColor: labels.map((_, index) => CHART_COLORS[index % CHART_COLORS.length]),
+          backgroundColor: labels.map(
+            (_, index) => MINIMAL_PALETTE[index % MINIMAL_PALETTE.length]
+          ),
           borderRadius: 10,
-          maxBarThickness: 34,
+          borderSkipped: false,
+          maxBarThickness: 28,
         },
       ],
     },
     options: {
-      ...getCommonChartOptions("Most booked accommodations."),
+      ...getBarChartOptions(),
       indexAxis: "y",
+      scales: {
+        x: {
+          beginAtZero: true,
+          grid: getGridStyle(),
+          ticks: getTickStyle(),
+        },
+        y: {
+          grid: {
+            display: false,
+          },
+          ticks: {
+            color: REPORT_COLORS.text,
+            font: {
+              size: 11,
+              weight: "600",
+            },
+          },
+        },
+      },
     },
   });
 }
@@ -341,7 +416,7 @@ function renderPaymentMethodChart(bookings) {
   }
 
   paymentMethodChart = new Chart(canvas, {
-    type: "pie",
+    type: "doughnut",
     data: {
       labels: labels.length ? labels : ["No data"],
       datasets: [
@@ -349,12 +424,15 @@ function renderPaymentMethodChart(bookings) {
           label: "Payment Methods",
           data: values.length ? values : [1],
           backgroundColor: (labels.length ? labels : ["No data"]).map(
-            (_, index) => CHART_COLORS[index % CHART_COLORS.length]
+            (_, index) => MINIMAL_PALETTE[index % MINIMAL_PALETTE.length]
           ),
+          borderColor: "#FFFFFF",
+          borderWidth: 4,
+          hoverOffset: 8,
         },
       ],
     },
-    options: getPieChartOptions("Payment method distribution."),
+    options: getDoughnutChartOptions(),
   });
 }
 
@@ -362,9 +440,14 @@ function renderGuestsPerRoomChart(bookings) {
   const guestTotals = {};
 
   bookings.forEach((booking) => {
-    const roomName = booking.room_name || "Unknown Accommodation";
+    const roomName =
+      booking.room_name ||
+      booking.accommodation_name ||
+      "Unknown Accommodation";
+
     guestTotals[roomName] =
-      (guestTotals[roomName] || 0) + Number(booking.guests || booking.guest_count || 0);
+      (guestTotals[roomName] || 0) +
+      Number(booking.guests || booking.guest_count || 0);
   });
 
   const entries = Object.entries(guestTotals)
@@ -389,31 +472,36 @@ function renderGuestsPerRoomChart(bookings) {
         {
           label: "Guests",
           data: values,
-          backgroundColor: labels.map((_, index) => CHART_COLORS[index % CHART_COLORS.length]),
-          borderRadius: 10,
-          maxBarThickness: 40,
+          backgroundColor: REPORT_COLORS.tealSoft,
+          borderRadius: 12,
+          borderSkipped: false,
+          maxBarThickness: 36,
         },
       ],
     },
-    options: getCommonChartOptions("Total guests grouped by accommodation."),
+    options: getBarChartOptions(),
   });
 }
 
 function renderSlotUsageChart(bookings) {
   const slotCounts = {
     "Day Tour": 0,
-    "Overnight": 0,
+    Overnight: 0,
     "22/23 Hours": 0,
   };
 
   bookings.forEach((booking) => {
-    const label = String(booking.slot_label || "").toLowerCase();
+    const label = String(booking.slot_label || booking.slot_type || "").toLowerCase();
 
     if (label.includes("day")) {
       slotCounts["Day Tour"] += 1;
     } else if (label.includes("overnight")) {
-      slotCounts["Overnight"] += 1;
-    } else if (label.includes("22") || label.includes("23") || label.includes("extended")) {
+      slotCounts.Overnight += 1;
+    } else if (
+      label.includes("22") ||
+      label.includes("23") ||
+      label.includes("extended")
+    ) {
       slotCounts["22/23 Hours"] += 1;
     }
   });
@@ -433,24 +521,48 @@ function renderSlotUsageChart(bookings) {
         {
           label: "Slot Usage",
           data: Object.values(slotCounts),
-          backgroundColor: [CHART_COLORS[0], CHART_COLORS[3], CHART_COLORS[9]],
-          borderRadius: 10,
-          maxBarThickness: 50,
+          backgroundColor: [
+            REPORT_COLORS.tealSoft,
+            REPORT_COLORS.blue,
+            REPORT_COLORS.amber,
+          ],
+          borderRadius: 12,
+          borderSkipped: false,
+          maxBarThickness: 42,
         },
       ],
     },
-    options: getCommonChartOptions("Reservation slot usage summary."),
+    options: getBarChartOptions(),
   });
 }
 
-function getCommonChartOptions(titleText) {
+function getBarChartOptions() {
   return {
     responsive: true,
     maintainAspectRatio: false,
+    animation: {
+      duration: 450,
+    },
+    layout: {
+      padding: {
+        top: 6,
+        right: 8,
+        bottom: 4,
+        left: 4,
+      },
+    },
     scales: {
+      x: {
+        grid: {
+          display: false,
+        },
+        ticks: getTickStyle(),
+      },
       y: {
         beginAtZero: true,
+        grid: getGridStyle(),
         ticks: {
+          ...getTickStyle(),
           precision: 0,
         },
       },
@@ -459,45 +571,139 @@ function getCommonChartOptions(titleText) {
       legend: {
         display: true,
         position: "bottom",
+        labels: getLegendStyle(),
       },
-      title: {
-        display: true,
-        text: titleText,
-        padding: {
-          top: 6,
-          bottom: 14,
-        },
-        font: {
-          size: 13,
-          weight: "bold",
+      tooltip: {
+        callbacks: {
+          label: (context) => {
+            const label = context.dataset.label || "Value";
+            return `${label}: ${context.parsed.y ?? context.parsed.x ?? context.raw}`;
+          },
         },
       },
     },
   };
 }
 
-function getPieChartOptions(titleText) {
+function getDoughnutChartOptions() {
   return {
     responsive: true,
     maintainAspectRatio: false,
+    cutout: "68%",
+    animation: {
+      duration: 450,
+    },
+    layout: {
+      padding: 8,
+    },
     plugins: {
       legend: {
-        position: "bottom",
-      },
-      title: {
         display: true,
-        text: titleText,
-        padding: {
-          top: 6,
-          bottom: 14,
-        },
-        font: {
-          size: 13,
-          weight: "bold",
+        position: "bottom",
+        labels: getLegendStyle(),
+      },
+      tooltip: {
+        callbacks: {
+          label: (context) => {
+            const total = context.dataset.data.reduce((sum, value) => {
+              return sum + Number(value || 0);
+            }, 0);
+
+            const value = Number(context.raw || 0);
+            const percent = total ? ((value / total) * 100).toFixed(1) : "0.0";
+
+            return `${context.label}: ${value} (${percent}%)`;
+          },
         },
       },
     },
   };
+}
+
+function getLegendStyle() {
+  return {
+    usePointStyle: true,
+    pointStyle: "circle",
+    boxWidth: 8,
+    boxHeight: 8,
+    padding: 14,
+    color: REPORT_COLORS.text,
+    font: {
+      size: 11,
+      weight: "700",
+    },
+  };
+}
+
+function getTickStyle() {
+  return {
+    color: REPORT_COLORS.muted,
+    font: {
+      size: 11,
+      weight: "600",
+    },
+  };
+}
+
+function getGridStyle() {
+  return {
+    color: REPORT_COLORS.grid,
+    drawBorder: false,
+    lineWidth: 1,
+  };
+}
+
+function updatePrintReportMeta() {
+  const generatedEl = document.getElementById("printReportDate");
+  const rangeEl = document.getElementById("printReportRange");
+
+  const now = new Date();
+
+  const generatedText = now.toLocaleString("en-PH", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+
+  const startDate = document.getElementById("reportStartDate")?.value;
+  const endDate = document.getElementById("reportEndDate")?.value;
+
+  let rangeText = "Date Range: All Records";
+
+  if (startDate && endDate) {
+    rangeText = `Date Range: ${formatReadableDate(startDate)} to ${formatReadableDate(endDate)}`;
+  } else if (startDate) {
+    rangeText = `Date Range: From ${formatReadableDate(startDate)}`;
+  } else if (endDate) {
+    rangeText = `Date Range: Until ${formatReadableDate(endDate)}`;
+  }
+
+  if (generatedEl) {
+    generatedEl.textContent = `Generated: ${generatedText}`;
+  }
+
+  if (rangeEl) {
+    rangeEl.textContent = rangeText;
+  }
+}
+
+function formatReadableDate(value) {
+  if (!value) return "-";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleDateString("en-PH", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 }
 
 function showReportError(message) {
@@ -518,6 +724,7 @@ function hideReportError() {
 
 function setText(id, value) {
   const el = document.getElementById(id);
+
   if (el) {
     el.textContent = value;
   }
@@ -535,16 +742,21 @@ function formatPaymentMethodLabel(method) {
 
   if (value === "gcash") return "GCash";
   if (value === "paymaya") return "PayMaya";
+  if (value === "maya") return "Maya";
   if (value === "cash") return "Cash";
   if (value === "bank_transfer") return "Bank Transfer";
+  if (value === "paypal") return "PayPal";
   if (value === "other") return "Other";
   if (value === "unknown") return "Unknown";
 
-  return capitalize(value);
+  return capitalize(value.replaceAll("_", " "));
 }
 
 function capitalize(text) {
   if (!text) return "";
-  const value = String(text);
-  return value.charAt(0).toUpperCase() + value.slice(1);
+
+  return String(text)
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 }

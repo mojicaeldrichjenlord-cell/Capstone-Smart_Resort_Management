@@ -11,11 +11,16 @@ exports.register = async (req, res) => {
         message: "Please fill in all required fields.",
       });
     }
+    if (password.length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: "Password must be at least 8 characters long.",
+      });
+    }
 
-    const [existingUsers] = await db.promise().query(
-      "SELECT id FROM users WHERE email = ?",
-      [email]
-    );
+    const [existingUsers] = await db
+      .promise()
+      .query("SELECT id FROM users WHERE email = ?", [email]);
 
     if (existingUsers.length > 0) {
       return res.status(400).json({
@@ -28,10 +33,10 @@ exports.register = async (req, res) => {
 
     await db.promise().query(
       `
-      INSERT INTO users (fullname, email, password, phone, address, role)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO users (fullname, email, password, phone, address, role, account_status)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
       `,
-      [fullname, email, hashedPassword, phone, address, "customer"]
+      [fullname, email, hashedPassword, phone, address, "customer", "active"],
     );
 
     return res.status(201).json({
@@ -61,11 +66,19 @@ exports.login = async (req, res) => {
 
     const [users] = await db.promise().query(
       `
-      SELECT id, fullname, email, password, role, phone, address
+      SELECT 
+        id, 
+        fullname, 
+        email, 
+        password, 
+        role, 
+        phone, 
+        address,
+        COALESCE(account_status, 'active') AS account_status
       FROM users
       WHERE email = ?
       `,
-      [email]
+      [email],
     );
 
     if (users.length === 0) {
@@ -76,6 +89,15 @@ exports.login = async (req, res) => {
     }
 
     const user = users[0];
+
+    if (String(user.account_status || "active").toLowerCase() === "disabled") {
+      return res.status(403).json({
+        success: false,
+        message:
+          "Your account has been disabled. Please contact the resort administrator.",
+      });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
@@ -95,6 +117,7 @@ exports.login = async (req, res) => {
         role: user.role,
         phone: user.phone || "",
         address: user.address || "",
+        account_status: user.account_status || "active",
       },
     });
   } catch (error) {
@@ -113,11 +136,18 @@ exports.getProfile = async (req, res) => {
 
     const [rows] = await db.promise().query(
       `
-      SELECT id, fullname, email, role, phone, address
+      SELECT 
+        id, 
+        fullname, 
+        email, 
+        role, 
+        phone, 
+        address,
+        COALESCE(account_status, 'active') AS account_status
       FROM users
       WHERE id = ?
       `,
-      [userId]
+      [userId],
     );
 
     if (rows.length === 0) {
@@ -159,7 +189,7 @@ exports.updateProfile = async (req, res) => {
       FROM users
       WHERE email = ? AND id != ?
       `,
-      [email, userId]
+      [email, userId],
     );
 
     if (existingEmail.length > 0) {
@@ -175,16 +205,23 @@ exports.updateProfile = async (req, res) => {
       SET fullname = ?, email = ?, phone = ?, address = ?
       WHERE id = ?
       `,
-      [fullname, email, phone, address, userId]
+      [fullname, email, phone, address, userId],
     );
 
     const [updatedRows] = await db.promise().query(
       `
-      SELECT id, fullname, email, role, phone, address
+      SELECT 
+        id, 
+        fullname, 
+        email, 
+        role, 
+        phone, 
+        address,
+        COALESCE(account_status, 'active') AS account_status
       FROM users
       WHERE id = ?
       `,
-      [userId]
+      [userId],
     );
 
     return res.status(200).json({
@@ -214,10 +251,9 @@ exports.changePassword = async (req, res) => {
       });
     }
 
-    const [rows] = await db.promise().query(
-      "SELECT password FROM users WHERE id = ?",
-      [userId]
-    );
+    const [rows] = await db
+      .promise()
+      .query("SELECT password FROM users WHERE id = ?", [userId]);
 
     if (rows.length === 0) {
       return res.status(404).json({
@@ -237,10 +273,12 @@ exports.changePassword = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    await db.promise().query(
-      "UPDATE users SET password = ? WHERE id = ?",
-      [hashedPassword, userId]
-    );
+    await db
+      .promise()
+      .query("UPDATE users SET password = ? WHERE id = ?", [
+        hashedPassword,
+        userId,
+      ]);
 
     return res.status(200).json({
       success: true,

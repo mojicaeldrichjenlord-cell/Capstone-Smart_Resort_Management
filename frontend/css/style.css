@@ -1540,268 +1540,6 @@ body.has-fixed-navbar {
   background: #d97706;
 }
 
-/* ===== ARVIC SEASIDE CLIENT THEME ===== */
-
-:root {
-  --navy: #073b63;
-  --navy-2: #0b4f7a;
-  --teal: #16c7d9;
-  --teal-dark: #0797b3;
-  --sand: #f7dfb7;
-  --seafoam: #e9fbff;
-  --sky: #f2fbff;
-}
-
-body {
-  background:
-    linear-gradient(rgba(242, 251, 255, 0.88), rgba(242, 251, 255, 0.94)),
-    url("../images/background.jpg") center / cover fixed no-repeat !important;
-}
-
-.navbar {
-  background: linear-gradient(90deg, rgba(7, 59, 99, 0.96), rgba(8, 132, 163, 0.94)) !important;
-}
-
-.logo {
-  font-size: 0 !important;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.logo::before {
-  content: "";
-  width: 52px;
-  height: 52px;
-  background: url("../images/arvic-logo.png") center / contain no-repeat;
-  display: inline-block;
-  border-radius: 12px;
-}
-
-.logo::after {
-  content: "Arvic Seaside";
-  font-size: 1.45rem;
-  font-weight: 900;
-  color: #ffffff;
-  letter-spacing: 0.2px;
-}
-
-.page-header,
-.admin-header-box,
-.map-hero,
-.guests-hero,
-.map-editor-hero {
-  background:
-    linear-gradient(135deg, rgba(7, 59, 99, 0.92), rgba(22, 199, 217, 0.78)),
-    url("../images/background.jpg") center / cover no-repeat !important;
-}
-
-.btn-primary,
-.page-btn.primary,
-.map-btn.primary,
-.print-btn,
-.refresh-btn,
-.map-link-btn,
-.navbar nav a.active-nav {
-  background: linear-gradient(135deg, #16c7d9, #0797b3) !important;
-}
-
-.btn-secondary,
-.back-btn,
-.page-btn.light,
-.map-btn.light {
-  background: rgba(255, 255, 255, 0.95) !important;
-}
-
-.admin-card,
-.room-card,
-.room-admin-card,
-.stat-card,
-.summary-card,
-.guests-panel,
-.map-card,
-.map-info-card,
-.editor-card,
-.editor-panel,
-.receipt-box,
-.filter-box,
-.room-form-box {
-  background: rgba(255, 255, 255, 0.94) !important;
-  backdrop-filter: blur(8px);
-}
-
-.summary-box {
-  border-left-color: #16c7d9 !important;
-}
-
-.stat-card p,
-.summary-card p {
-  color: #0797b3 !important;
-}
-
-/* ===== ARVIC SEASIDE GLOBAL THEME OVERRIDE ===== */
-
-:root {
-  --navy: #073b63;
-  --navy-2: #0b4f7a;
-  --teal: #16c7d9;
-  --teal-dark: #0797b3;
-  --sand: #f7dfb7;
-  --seafoam: #e9fbff;
-  --sky: #f2fbff;
-}
-
-body {
-  background:
-    linear-gradient(rgba(242, 251, 255, 0.88), rgba(242, 251, 255, 0.95)),
-    url("../images/background.jpg") center / cover fixed no-repeat !important;
-}
-
-/* Main navbar + older site headers */
-.navbar,
-.site-header {
-  background: linear-gradient(90deg,
-      rgba(7, 59, 99, 0.96),
-      rgba(8, 132, 163, 0.94)) !important;
-}
-
-/* Logo for navbar using .logo */
-.logo {
-  font-size: 0 !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 12px !important;
-}
-
-.logo::before {
-  content: "";
-  width: 54px;
-  height: 54px;
-  background: url("../images/arvic-logo.png") center / contain no-repeat;
-  display: inline-block;
-  border-radius: 12px;
-  background-color: rgba(255, 255, 255, 0.96);
-  padding: 4px;
-}
-
-.logo::after {
-  content: "Arvic Seaside";
-  font-size: 1.45rem;
-  font-weight: 900;
-  color: #ffffff;
-}
-
-/* Logo for pages using .site-logo */
-.site-logo {
-  font-size: 0 !important;
-  display: flex !important;
-  align-items: center !important;
-  gap: 12px !important;
-}
-
-.site-logo::before {
-  content: "";
-  width: 54px;
-  height: 54px;
-  background: url("../images/arvic-logo.png") center / contain no-repeat;
-  display: inline-block;
-  border-radius: 12px;
-  background-color: rgba(255, 255, 255, 0.96);
-  padding: 4px;
-}
-
-.site-logo::after {
-  content: "Arvic Seaside";
-  font-size: 1.45rem;
-  font-weight: 900;
-  color: #ffffff;
-}
-
-/* Hero / page headers */
-.page-header,
-.hero-section,
-.admin-header-box,
-.admin-hero,
-.map-hero,
-.guests-hero,
-.map-editor-hero {
-  background:
-    linear-gradient(135deg, rgba(7, 59, 99, 0.78), rgba(22, 199, 217, 0.58)),
-    url("../images/background.jpg") center / cover no-repeat !important;
-}
-
-/* Login/Register background */
-.auth-page {
-  background:
-    linear-gradient(rgba(7, 59, 99, 0.68), rgba(8, 132, 163, 0.45)),
-    url("../images/background.jpg") center / cover no-repeat !important;
-}
-
-/* Buttons */
-.btn-primary,
-.auth-submit,
-.register-submit,
-.page-btn.primary,
-.map-btn.primary,
-.print-btn,
-.refresh-btn,
-.map-link-btn,
-.book-now-btn,
-.ai-chat-toggle,
-.navbar nav a.active-nav,
-.desktop-nav a.active,
-.mobile-nav a.active {
-  background: linear-gradient(135deg, #16c7d9, #0797b3) !important;
-  color: #ffffff !important;
-}
-
-/* Cards */
-.auth-card,
-.register-card,
-.welcome-box,
-.home-card,
-.admin-card,
-.room-card,
-.room-ai-card,
-.room-admin-card,
-.stat-card,
-.summary-card,
-.guests-panel,
-.map-card,
-.map-info-card,
-.editor-card,
-.editor-panel,
-.receipt-box,
-.filter-box,
-.room-form-box,
-.booking-card,
-.bookings-shell,
-.profile-card {
-  background: rgba(255, 255, 255, 0.94) !important;
-  backdrop-filter: blur(8px);
-}
-
-/* Text accent */
-.stat-card p,
-.summary-card p,
-.overview-value {
-  color: #0797b3 !important;
-}
-
-/* Mobile logo size */
-@media (max-width: 700px) {
-
-  .logo::before,
-  .site-logo::before {
-    width: 42px;
-    height: 42px;
-  }
-
-  .logo::after,
-  .site-logo::after {
-    font-size: 1.05rem;
-  }
-}
 /* ===== FINAL MOBILE NAVBAR: LOGO + HAMBURGER ===== */
 
 @media (max-width: 900px) {
@@ -2127,612 +1865,471 @@ body {
     padding: 10px;
   }
 }
-/* ===== LOGIN PAGE LAYOUT FIX ===== */
 
-.auth-page,
-.login-page,
-.register-page {
-  min-height: 100vh;
-  background-position: center !important;
-  background-size: cover !important;
-  background-repeat: no-repeat !important;
+/* =========================================================
+   CLEAN FINAL THEME OVERRIDES
+   Purpose:
+   - No image background on normal customer/admin pages
+   - Keep image background only on login/register
+   - Keep Arvic logo/navbar theme
+   - Avoid old duplicated auth/mobile blocks
+========================================================= */
+
+:root {
+  --navy: #073b63;
+  --navy-2: #0b4f7a;
+  --teal: #16c7d9;
+  --teal-dark: #0797b3;
+  --sand: #f7dfb7;
+  --seafoam: #e9fbff;
+  --sky: #f2fbff;
+  --slate: #475569;
+  --text: #1e293b;
+  --white: #ffffff;
+  --line: #dbe7ef;
+  --shadow-soft: 0 12px 34px rgba(15, 23, 42, 0.08);
+  --shadow-card: 0 16px 42px rgba(15, 23, 42, 0.12);
+  --radius-lg: 24px;
+  --radius-md: 18px;
+  --radius-sm: 12px;
+  --container: 1200px;
 }
 
-.auth-wrapper,
-.login-wrapper,
-.register-wrapper,
-.auth-container {
-  width: min(92%, 980px) !important;
-  min-height: 620px !important;
-  margin: 40px auto !important;
-  display: grid !important;
-  grid-template-columns: 1.15fr 0.85fr !important;
-  align-items: stretch !important;
-  border-radius: 28px !important;
-  overflow: hidden !important;
+/* Normal pages: clean resort color background only */
+body:not(.auth-page) {
+  background:
+    radial-gradient(circle at top left, rgba(20, 184, 166, 0.16), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(14, 165, 233, 0.12), transparent 34%),
+    linear-gradient(135deg, #eaf8fb 0%, #f7fcff 48%, #e6f7f4 100%) !important;
+  background-attachment: fixed !important;
+  color: #0f172a !important;
 }
 
-.auth-info,
-.login-info,
-.auth-left,
-.login-left {
-  padding: 36px !important;
-  min-width: 0 !important;
+/* Keep login/register image background */
+body.auth-page {
+  background:
+    linear-gradient(rgba(8, 47, 73, 0.56), rgba(8, 47, 73, 0.62)),
+    url("../images/background.jpg") center / cover fixed no-repeat !important;
 }
 
+/* Subtle resort symbols for non-auth pages only */
+body:not(.auth-page)::before {
+  content: "🌴";
+  position: fixed;
+  top: 110px;
+  left: 24px;
+  font-size: 7rem;
+  opacity: 0.04;
+  z-index: -1;
+  pointer-events: none;
+  transform: rotate(-12deg);
+}
+
+body:not(.auth-page)::after {
+  content: "🌊";
+  position: fixed;
+  right: 34px;
+  bottom: 48px;
+  font-size: 6.5rem;
+  opacity: 0.045;
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Remove auth pseudo-icons */
+body.auth-page::before,
+body.auth-page::after {
+  content: none !important;
+  display: none !important;
+}
+
+/* Navbar */
+.navbar,
+.site-header {
+  background: linear-gradient(135deg, #0f4c68, #0f9488) !important;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12) !important;
+}
+
+/* Logo replacement */
+.logo,
+.site-logo {
+  font-size: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+.logo::before,
+.site-logo::before {
+  content: "";
+  width: 54px;
+  height: 54px;
+  background: url("../images/arvic-logo.png") center / contain no-repeat;
+  display: inline-block;
+  border-radius: 12px;
+  background-color: rgba(255, 255, 255, 0.96);
+  padding: 4px;
+  flex: 0 0 auto;
+}
+
+.logo::after,
+.site-logo::after {
+  content: "Arvic Seaside";
+  font-size: 1.45rem;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+}
+
+/* Hero sections: no photo background */
+.page-header,
+.hero,
+.hero-section,
+.home-hero,
+.customer-hero,
+.rooms-hero,
+.booking-hero,
+.profile-hero,
+.map-hero,
+.my-bookings-hero,
+.admin-header-box,
+.admin-hero,
+.dashboard-hero,
+.rooms-admin-hero,
+.guests-hero,
+.guests-inside-hero,
+.guests-inside-banner,
+.admin-guests-hero,
+.report-hero,
+.map-editor-hero,
+.page-hero {
+  background: linear-gradient(135deg, #0f4c68 0%, #0f9488 65%, #19b8c8 100%) !important;
+  background-image: linear-gradient(135deg, #0f4c68 0%, #0f9488 65%, #19b8c8 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.12) !important;
+}
+
+/* Remove possible hero overlays/images */
+.page-header::before,
+.page-header::after,
+.hero::before,
+.hero::after,
+.hero-section::before,
+.hero-section::after,
+.home-hero::before,
+.home-hero::after,
+.customer-hero::before,
+.customer-hero::after,
+.rooms-hero::before,
+.rooms-hero::after,
+.admin-hero::before,
+.admin-hero::after,
+.dashboard-hero::before,
+.dashboard-hero::after,
+.rooms-admin-hero::before,
+.rooms-admin-hero::after,
+.guests-hero::before,
+.guests-hero::after,
+.page-hero::before,
+.page-hero::after {
+  background-image: none !important;
+}
+
+/* Cards and panels */
 .auth-card,
 .login-card,
 .register-card,
 .auth-form,
-.login-form {
-  width: 100% !important;
-  min-width: 360px !important;
-  max-width: 430px !important;
-  padding: 42px 34px !important;
-  border-radius: 0 28px 28px 0 !important;
+.login-form,
+.welcome-box,
+.home-card,
+.admin-card,
+.room-card,
+.room-ai-card,
+.room-admin-card,
+.stat-card,
+.summary-card,
+.dashboard-card,
+.filter-card,
+.table-card,
+guests-panel,
+.guests-panel,
+.map-card,
+.map-info-card,
+.editor-card,
+.editor-panel,
+.receipt-box,
+.filter-box,
+.room-form-box,
+.booking-card,
+.bookings-shell,
+.profile-card,
+.category-filter-panel,
+.section-box,
+.rooms-list-panel,
+.resort-map-card,
+.my-bookings-card,
+.content-card {
+  background: rgba(255, 255, 255, 0.93) !important;
+  border: 1px solid rgba(203, 213, 225, 0.78) !important;
+  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08) !important;
+  backdrop-filter: blur(8px);
 }
 
-.auth-card h1,
-.login-card h1,
-.auth-form h1,
-.login-form h1 {
-  font-size: 2rem !important;
-  line-height: 1.15 !important;
-  margin-bottom: 12px !important;
-}
-
-.auth-card p,
-.login-card p,
-.auth-form p,
-.login-form p {
-  line-height: 1.6 !important;
-  word-break: normal !important;
-}
-
-.auth-card input,
-.login-card input,
-.register-card input,
-.auth-form input,
-.login-form input {
-  width: 100% !important;
-  min-width: 0 !important;
-  box-sizing: border-box !important;
-}
-
-/* Fix text being cut in left panel */
-.auth-info h1,
-.login-info h1,
-.auth-left h1,
-.login-left h1 {
-  font-size: clamp(2rem, 4vw, 3rem) !important;
-  line-height: 1.1 !important;
-  word-break: normal !important;
-  overflow-wrap: normal !important;
-}
-
-/* Mobile fix */
-@media (max-width: 850px) {
-  .auth-wrapper,
-  .login-wrapper,
-  .register-wrapper,
-  .auth-container {
-    width: min(92%, 520px) !important;
-    display: flex !important;
-    flex-direction: column !important;
-    min-height: auto !important;
-    margin: 24px auto !important;
-  }
-
-  .auth-card,
-  .login-card,
-  .register-card,
-  .auth-form,
-  .login-form {
-    min-width: 0 !important;
-    max-width: none !important;
-    border-radius: 0 0 28px 28px !important;
-    padding: 30px 24px !important;
-  }
-
-  .auth-info,
-  .login-info,
-  .auth-left,
-  .login-left {
-    padding: 30px 24px !important;
-  }
-}
-/* ===== LOGIN / REGISTER CARD OPACITY ADJUSTMENT ===== */
-
-/* Right white form card */
-.auth-card,
-.login-card,
-.register-card,
-.auth-form,
-.login-form {
-  background: rgba(255, 255, 255, 0.72)!important;
+/* Auth card opacity and glass effect */
+body.auth-page .auth-card,
+body.auth-page .login-card,
+body.auth-page .register-card,
+body.auth-page .auth-form,
+body.auth-page .login-form {
+  background: rgba(255, 255, 255, 0.88) !important;
   backdrop-filter: blur(14px) !important;
   -webkit-backdrop-filter: blur(14px) !important;
 }
 
-/* Left green/teal info card */
-.auth-info,
-.login-info,
-.register-info,
-.auth-left,
-.login-left,
-.register-left {
+/* Auth left panels */
+body.auth-page .auth-info,
+body.auth-page .login-info,
+body.auth-page .register-info,
+body.auth-page .auth-left,
+body.auth-page .login-left,
+body.auth-page .register-left,
+body.auth-page .register-showcase {
   background: linear-gradient(
     135deg,
-    rgba(15, 23, 42, 0.72),
-    rgba(20, 176, 184, 0.62)
+    rgba(15, 23, 42, 0.78),
+    rgba(20, 184, 166, 0.68)
   ) !important;
   backdrop-filter: blur(12px) !important;
   -webkit-backdrop-filter: blur(12px) !important;
 }
 
-/* Small feature boxes inside left card */
-.auth-info-card,
-.login-info-card,
-.register-info-card,
-.auth-feature,
-.login-feature,
-.register-feature {
-  background: rgba(255, 255, 255, 0.12) !important;
-  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+/* Buttons */
+.btn-primary,
+.auth-submit,
+.register-submit,
+.page-btn.primary,
+.map-btn.primary,
+.print-btn,
+.refresh-btn,
+.map-link-btn,
+.book-now-btn,
+.ai-chat-toggle,
+.pricing-guide-btn,
+.navbar nav a.active-nav,
+.desktop-nav a.active,
+.mobile-nav a.active,
+.category-filter-btn.active,
+button.btn-primary {
+  background: linear-gradient(135deg, #16c7d9, #0797b3) !important;
+  color: #ffffff !important;
 }
-/* ===== MOBILE LOGIN / REGISTER LAYOUT FIX ===== */
 
-@media (max-width: 768px) {
-  body {
-    overflow-x: hidden !important;
+.btn-secondary,
+.back-btn,
+.page-btn.light,
+.map-btn.light {
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: #0f172a !important;
+}
+
+/* Inputs */
+input,
+select,
+textarea {
+  border-color: #a8c0cd !important;
+}
+
+/* Tables */
+table {
+  background: rgba(255, 255, 255, 0.95) !important;
+}
+
+thead,
+table thead tr {
+  background: #0f4c68 !important;
+  color: #ffffff !important;
+}
+
+tbody tr:hover {
+  background: #e8fbff !important;
+}
+
+/* Text accents */
+.stat-card p,
+.summary-card p,
+.overview-value,
+.summary-box h3 {
+  color: #0797b3 !important;
+}
+
+.summary-box {
+  border-left-color: #16c7d9 !important;
+}
+
+/* Guests Inside row colors */
+.guest-row-danger {
+  background: #fff1f2 !important;
+}
+
+.guest-row-warning {
+  background: #fffbeb !important;
+}
+
+.guest-row-payment {
+  background: #f8fafc !important;
+}
+
+/* Guests Inside search */
+.guest-search-box {
+  min-width: 280px;
+  flex: 1;
+  max-width: 420px;
+}
+
+.guest-search-box label {
+  display: block;
+  font-weight: 900;
+  color: #0f172a;
+  margin-bottom: 7px;
+  font-size: 0.9rem;
+}
+
+.guest-search-box input {
+  width: 100%;
+  padding: 13px 15px;
+  border: 1px solid #a8c0cd;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  outline: none;
+  background: rgba(255, 255, 255, 0.97);
+}
+
+.guest-search-box input:focus {
+  border-color: #14b8a6;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.16);
+}
+
+/* Password eye buttons used by login/register */
+.password-field {
+  position: relative;
+  width: 100%;
+}
+
+.password-field input {
+  padding-right: 48px !important;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  width: 34px !important;
+  height: 34px !important;
+  padding: 0 !important;
+  border: none !important;
+  border-radius: 999px !important;
+  background: rgba(20, 184, 166, 0.12) !important;
+  color: #0f766e !important;
+  cursor: pointer;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: 0.2s ease;
+}
+
+.password-toggle:hover {
+  background: rgba(20, 184, 166, 0.22) !important;
+}
+
+.password-toggle svg {
+  width: 18px;
+  height: 18px;
+  pointer-events: none;
+}
+
+/* Mobile final adjustments */
+@media (max-width: 900px) {
+  body.has-fixed-navbar {
+    padding-top: 0 !important;
   }
 
-  .auth-page,
-  .login-page,
-  .register-page {
-    min-height: 100vh !important;
-    padding: 22px 14px !important;
-    display: flex !important;
+  .navbar,
+  .site-header {
+    min-height: 72px !important;
+  }
+
+  .navbar {
+    position: relative !important;
+    padding: 8px 14px !important;
+    display: grid !important;
+    grid-template-columns: 1fr auto !important;
     align-items: center !important;
-    justify-content: center !important;
-    background-size: cover !important;
-    background-position: center !important;
-  }
-
-  .auth-wrapper,
-  .login-wrapper,
-  .register-wrapper,
-  .auth-container {
-    width: 100% !important;
-    max-width: 430px !important;
-    min-height: auto !important;
-    margin: 0 auto !important;
-    display: flex !important;
-    flex-direction: column !important;
-    border-radius: 26px !important;
-    overflow: hidden !important;
-  }
-
-  .auth-info,
-  .login-info,
-  .register-info,
-  .auth-left,
-  .login-left,
-  .register-left {
-    width: 100% !important;
-    padding: 24px 20px !important;
-    border-radius: 26px 26px 0 0 !important;
-  }
-
-  .auth-info h1,
-  .login-info h1,
-  .register-info h1,
-  .auth-left h1,
-  .login-left h1,
-  .register-left h1 {
-    font-size: 1.85rem !important;
-    line-height: 1.15 !important;
-    margin-bottom: 14px !important;
-  }
-
-  .auth-info p,
-  .login-info p,
-  .register-info p,
-  .auth-left p,
-  .login-left p,
-  .register-left p {
-    font-size: 0.92rem !important;
-    line-height: 1.55 !important;
-  }
-
-  .auth-feature,
-  .login-feature,
-  .register-feature,
-  .auth-info-card,
-  .login-info-card,
-  .register-info-card {
-    padding: 12px 14px !important;
-    border-radius: 16px !important;
-    margin-top: 10px !important;
-  }
-
-  .auth-feature h3,
-  .login-feature h3,
-  .register-feature h3,
-  .auth-info-card h3,
-  .login-info-card h3,
-  .register-info-card h3 {
-    font-size: 0.92rem !important;
-    margin-bottom: 4px !important;
-  }
-
-  .auth-feature p,
-  .login-feature p,
-  .register-feature p,
-  .auth-info-card p,
-  .login-info-card p,
-  .register-info-card p {
-    font-size: 0.86rem !important;
-    line-height: 1.35 !important;
-  }
-
-  .auth-card,
-  .login-card,
-  .register-card,
-  .auth-form,
-  .login-form {
-    width: 100% !important;
-    min-width: 0 !important;
-    max-width: none !important;
-    padding: 26px 20px !important;
-    border-radius: 0 0 26px 26px !important;
-  }
-
-  .auth-card h1,
-  .login-card h1,
-  .register-card h1,
-  .auth-form h1,
-  .login-form h1 {
-    font-size: 1.7rem !important;
-    margin-bottom: 8px !important;
-  }
-
-  .auth-card p,
-  .login-card p,
-  .register-card p,
-  .auth-form p,
-  .login-form p {
-    font-size: 0.92rem !important;
-    line-height: 1.5 !important;
-  }
-
-  .form-row,
-  .register-form-row {
-    display: grid !important;
-    grid-template-columns: 1fr !important;
-    gap: 12px !important;
-  }
-
-  .auth-card input,
-  .login-card input,
-  .register-card input,
-  .auth-form input,
-  .login-form input,
-  .auth-card textarea,
-  .login-card textarea,
-  .register-card textarea,
-  .auth-form textarea,
-  .login-form textarea {
-    width: 100% !important;
-    box-sizing: border-box !important;
-    padding: 13px 14px !important;
-    font-size: 0.95rem !important;
-    border-radius: 14px !important;
-  }
-
-  .auth-card button,
-  .login-card button,
-  .register-card button,
-  .auth-form button,
-  .login-form button {
-    width: 100% !important;
-    padding: 13px 16px !important;
-    border-radius: 14px !important;
-    font-size: 0.95rem !important;
-  }
-}
-
-@media (max-width: 430px) {
-  .auth-page,
-  .login-page,
-  .register-page {
-    padding: 14px 10px !important;
-    align-items: flex-start !important;
-  }
-
-  .auth-wrapper,
-  .login-wrapper,
-  .register-wrapper,
-  .auth-container {
-    max-width: 100% !important;
-    border-radius: 22px !important;
-  }
-
-  .auth-info,
-  .login-info,
-  .register-info,
-  .auth-left,
-  .login-left,
-  .register-left {
-    padding: 20px 16px !important;
-    border-radius: 22px 22px 0 0 !important;
-  }
-
-  .auth-info h1,
-  .login-info h1,
-  .register-info h1,
-  .auth-left h1,
-  .login-left h1,
-  .register-left h1 {
-    font-size: 1.55rem !important;
-  }
-
-  .auth-card,
-  .login-card,
-  .register-card,
-  .auth-form,
-  .login-form {
-    padding: 22px 16px !important;
-    border-radius: 0 0 22px 22px !important;
-  }
-
-  .auth-card h1,
-  .login-card h1,
-  .register-card h1,
-  .auth-form h1,
-  .login-form h1 {
-    font-size: 1.5rem !important;
-  }
-}
-/* ===== CLEAN COMPACT MOBILE AUTH LAYOUT ===== */
-
-@media (max-width: 768px) {
-  body {
-    overflow-x: hidden !important;
-  }
-
-  .auth-page,
-  .login-page,
-  .register-page {
-    min-height: 100vh !important;
-    padding: 16px 12px !important;
-    display: flex !important;
-    align-items: flex-start !important;
-    justify-content: center !important;
-    background-size: cover !important;
-    background-position: center !important;
-  }
-
-  .auth-wrapper,
-  .login-wrapper,
-  .register-wrapper,
-  .auth-container {
-    width: 100% !important;
-    max-width: 390px !important;
-    margin: 12px auto 24px !important;
-    display: flex !important;
-    flex-direction: column !important;
-    border-radius: 24px !important;
-    overflow: hidden !important;
-  }
-
-  /* Make the left info panel compact */
-  .auth-info,
-  .login-info,
-  .register-info,
-  .auth-left,
-  .login-left,
-  .register-left {
-    width: 100% !important;
-    padding: 18px 18px !important;
-    border-radius: 24px 24px 0 0 !important;
-    min-height: auto !important;
-  }
-
-  .auth-info h1,
-  .login-info h1,
-  .register-info h1,
-  .auth-left h1,
-  .login-left h1,
-  .register-left h1 {
-    font-size: 1.45rem !important;
-    line-height: 1.15 !important;
-    margin: 8px 0 8px !important;
-  }
-
-  .auth-info p,
-  .login-info p,
-  .register-info p,
-  .auth-left p,
-  .login-left p,
-  .register-left p {
-    font-size: 0.86rem !important;
-    line-height: 1.45 !important;
-    margin-bottom: 8px !important;
-  }
-
-  /* Hide long feature cards on phone to avoid siksikan */
-  .auth-feature,
-  .login-feature,
-  .register-feature,
-  .auth-info-card,
-  .login-info-card,
-  .register-info-card {
-    display: none !important;
-  }
-
-  /* Small badge only */
-  .auth-info .badge,
-  .login-info .badge,
-  .register-info .badge,
-  .auth-left .badge,
-  .login-left .badge,
-  .register-left .badge {
-    font-size: 0.72rem !important;
-    padding: 7px 10px !important;
-    margin-bottom: 8px !important;
-  }
-
-  /* Form card */
-  .auth-card,
-  .login-card,
-  .register-card,
-  .auth-form,
-  .login-form {
-    width: 100% !important;
-    min-width: 0 !important;
-    max-width: none !important;
-    padding: 22px 18px !important;
-    border-radius: 0 0 24px 24px !important;
-  }
-
-  .auth-card h1,
-  .login-card h1,
-  .register-card h1,
-  .auth-form h1,
-  .login-form h1 {
-    font-size: 1.45rem !important;
-    line-height: 1.15 !important;
-    margin-bottom: 8px !important;
-  }
-
-  .auth-card p,
-  .login-card p,
-  .register-card p,
-  .auth-form p,
-  .login-form p {
-    font-size: 0.85rem !important;
-    line-height: 1.45 !important;
-    margin-bottom: 14px !important;
-  }
-
-  /* Force register fields to one column */
-  .form-row,
-  .register-form-row,
-  .input-row {
-    display: grid !important;
-    grid-template-columns: 1fr !important;
     gap: 10px !important;
   }
 
-  .auth-card label,
-  .login-card label,
-  .register-card label,
-  .auth-form label,
-  .login-form label {
-    font-size: 0.86rem !important;
-    margin-bottom: 5px !important;
+  .navbar .logo {
+    justify-content: flex-start !important;
   }
 
-  .auth-card input,
-  .login-card input,
-  .register-card input,
-  .auth-form input,
-  .login-form input,
-  .auth-card textarea,
-  .login-card textarea,
-  .register-card textarea,
-  .auth-form textarea,
-  .login-form textarea {
+  .logo::before,
+  .site-logo::before {
+    width: 48px !important;
+    height: 48px !important;
+    border-radius: 12px !important;
+  }
+
+  .logo::after,
+  .site-logo::after {
+    font-size: 1.2rem !important;
+  }
+
+  .navbar nav {
+    grid-column: 1 / -1 !important;
     width: 100% !important;
-    box-sizing: border-box !important;
-    padding: 11px 13px !important;
-    font-size: 0.9rem !important;
-    border-radius: 13px !important;
-  }
-
-  .auth-card textarea,
-  .login-card textarea,
-  .register-card textarea,
-  .auth-form textarea,
-  .login-form textarea {
-    min-height: 74px !important;
-  }
-
-  .auth-card button,
-  .login-card button,
-  .register-card button,
-  .auth-form button,
-  .login-form button {
-    width: 100% !important;
-    padding: 12px 14px !important;
+    display: none !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    background: #17243a !important;
     border-radius: 14px !important;
-    font-size: 0.92rem !important;
+    padding: 12px !important;
+    margin-top: 0 !important;
+  }
+
+  .navbar nav.show,
+  .navbar nav.open,
+  .navbar nav.active,
+  .navbar nav.mobile-open {
+    display: flex !important;
+  }
+
+  .navbar nav a {
+    width: 100% !important;
+    display: block !important;
+    padding: 12px 14px !important;
+    border-radius: 10px !important;
+    text-align: left !important;
+    font-size: 0.95rem !important;
+  }
+
+  .menu-toggle,
+  .mobile-menu-btn,
+  #menuToggle,
+  #mobileMenuBtn {
+    display: inline-flex !important;
+    width: 48px !important;
+    height: 48px !important;
+    border: none !important;
+    border-radius: 14px !important;
+    background: linear-gradient(135deg, #16c7d9, #0797b3) !important;
+    align-items: center !important;
+    justify-content: center !important;
+    cursor: pointer !important;
+    box-shadow: 0 10px 22px rgba(22, 199, 217, 0.25) !important;
   }
 }
-
-@media (max-width: 430px) {
-  .auth-page,
-  .login-page,
-  .register-page {
-    padding: 10px 8px !important;
-  }
-
-  .auth-wrapper,
-  .login-wrapper,
-  .register-wrapper,
-  .auth-container {
-    max-width: 360px !important;
-    margin-top: 8px !important;
-    border-radius: 20px !important;
-  }
-
-  .auth-info,
-  .login-info,
-  .register-info,
-  .auth-left,
-  .login-left,
-  .register-left {
-    padding: 15px 15px !important;
-    border-radius: 20px 20px 0 0 !important;
-  }
-
-  .auth-info h1,
-  .login-info h1,
-  .register-info h1,
-  .auth-left h1,
-  .login-left h1,
-  .register-left h1 {
-    font-size: 1.25rem !important;
-  }
-
-  .auth-info p,
-  .login-info p,
-  .register-info p,
-  .auth-left p,
-  .login-left p,
-  .register-left p {
-    font-size: 0.8rem !important;
-  }
-
-  .auth-card,
-  .login-card,
-  .register-card,
-  .auth-form,
-  .login-form {
-    padding: 18px 15px !important;
-    border-radius: 0 0 20px 20px !important;
-  }
-
-  .auth-card h1,
-  .login-card h1,
-  .register-card h1,
-  .auth-form h1,
-  .login-form h1 {
-    font-size: 1.3rem !important;
-  }
-}
-/* ===== FINAL MOBILE AUTH FIX: FORM ONLY ON PHONE ===== */
 
 @media (max-width: 768px) {
   html,
@@ -2740,6 +2337,23 @@ body {
     width: 100% !important;
     min-height: 100% !important;
     overflow-x: hidden !important;
+  }
+
+  body:not(.auth-page)::before {
+    font-size: 5rem;
+    top: 90px;
+    left: 8px;
+  }
+
+  body:not(.auth-page)::after {
+    font-size: 4.8rem;
+    right: 12px;
+    bottom: 24px;
+  }
+
+  .guest-search-box {
+    min-width: 100%;
+    max-width: none;
   }
 
   .auth-page,
@@ -2766,7 +2380,6 @@ body {
     overflow: visible !important;
   }
 
-  /* Hide left promo/info panel on phone */
   .auth-info,
   .login-info,
   .register-info,
@@ -2776,7 +2389,6 @@ body {
     display: none !important;
   }
 
-  /* Make form wider and cleaner */
   .auth-card,
   .login-card,
   .register-card,
@@ -2788,9 +2400,6 @@ body {
     margin: 0 auto !important;
     padding: 26px 20px !important;
     border-radius: 24px !important;
-    background: rgba(255, 255, 255, 0.86) !important;
-    backdrop-filter: blur(14px) !important;
-    -webkit-backdrop-filter: blur(14px) !important;
     box-sizing: border-box !important;
   }
 
@@ -2822,15 +2431,6 @@ body {
     gap: 12px !important;
   }
 
-  .auth-card label,
-  .login-card label,
-  .register-card label,
-  .auth-form label,
-  .login-form label {
-    font-size: 0.9rem !important;
-    margin-bottom: 5px !important;
-  }
-
   .auth-card input,
   .login-card input,
   .register-card input,
@@ -2855,17 +2455,6 @@ body {
   .login-form textarea {
     min-height: 78px !important;
   }
-
-  .auth-card button,
-  .login-card button,
-  .register-card button,
-  .auth-form button,
-  .login-form button {
-    width: 100% !important;
-    padding: 13px 16px !important;
-    border-radius: 14px !important;
-    font-size: 0.95rem !important;
-  }
 }
 
 @media (max-width: 430px) {
@@ -2889,414 +2478,5 @@ body {
   .login-form {
     padding: 24px 18px !important;
     border-radius: 22px !important;
-  }
-}
-/* ===== CLEAN RESORT ADMIN THEME - NO BACKGROUND IMAGE ===== */
-
-body {
-  background:
-    radial-gradient(circle at top left, rgba(20, 184, 166, 0.18), transparent 32%),
-    radial-gradient(circle at bottom right, rgba(14, 165, 233, 0.14), transparent 36%),
-    linear-gradient(135deg, #eaf8fb 0%, #f7fcff 45%, #e6f7f4 100%) !important;
-  background-attachment: fixed !important;
-  color: #0f172a !important;
-}
-
-/* Remove background image from main page sections */
-main,
-.admin-content,
-.page-content,
-.admin-page,
-.admin-main,
-.admin-dashboard,
-.admin-wrapper,
-.dashboard-wrapper {
-  background: transparent !important;
-}
-
-/* Add subtle resort/palm symbols on admin pages */
-body::before {
-  content: "🌴";
-  position: fixed;
-  top: 105px;
-  left: 28px;
-  font-size: 8rem;
-  opacity: 0.055;
-  z-index: -1;
-  pointer-events: none;
-  transform: rotate(-12deg);
-}
-
-body::after {
-  content: "🌊";
-  position: fixed;
-  bottom: 42px;
-  right: 38px;
-  font-size: 7rem;
-  opacity: 0.06;
-  z-index: -1;
-  pointer-events: none;
-}
-
-/* Navbar cleaner teal/navy */
-.navbar,
-.site-header {
-  background: linear-gradient(135deg, #0f4c68, #0f9488) !important;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12) !important;
-}
-
-/* Hero without image, soft gradient only */
-.admin-hero,
-.dashboard-hero,
-.rooms-admin-hero {
-  background: linear-gradient(135deg, #0f4c68 0%, #0f9488 58%, #18b7c9 100%) !important;
-  color: #ffffff !important;
-  box-shadow: 0 18px 34px rgba(15, 23, 42, 0.14) !important;
-}
-
-/* Soft cards, not too white */
-.stat-card,
-.summary-card,
-.dashboard-card,
-.filter-card,
-.table-card,
-.admin-card,
-.section-box,
-.rooms-list-panel,
-.room-form-box,
-.booking-card,
-.category-filter-panel {
-  background: rgba(255, 255, 255, 0.9) !important;
-  border: 1px solid rgba(203, 213, 225, 0.78) !important;
-  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.08) !important;
-  backdrop-filter: blur(8px) !important;
-}
-
-/* Inputs softer */
-input,
-select,
-textarea {
-  background: rgba(255, 255, 255, 0.96) !important;
-  border-color: #c7d7e2 !important;
-}
-
-/* Tables cleaner */
-table {
-  background: rgba(255, 255, 255, 0.95) !important;
-}
-
-thead,
-table thead tr {
-  background: #0f4c68 !important;
-  color: #ffffff !important;
-}
-
-tbody tr {
-  background: rgba(255, 255, 255, 0.95) !important;
-}
-
-tbody tr:hover {
-  background: #e8fbff !important;
-}
-
-/* Button theme */
-.btn-primary,
-button.btn-primary,
-.admin-btn,
-.action-btn {
-  background: linear-gradient(135deg, #14b8a6, #0f9488) !important;
-  color: #ffffff !important;
-  box-shadow: 0 10px 20px rgba(20, 184, 166, 0.2) !important;
-}
-
-/* Mobile */
-@media (max-width: 768px) {
-  body::before {
-    font-size: 5.8rem;
-    top: 90px;
-    left: 8px;
-    opacity: 0.045;
-  }
-
-  body::after {
-    font-size: 5.4rem;
-    right: 12px;
-    bottom: 22px;
-    opacity: 0.05;
-  }
-
-  .stat-card,
-  .summary-card,
-  .dashboard-card,
-  .filter-card,
-  .table-card,
-  .admin-card,
-  .section-box,
-  .rooms-list-panel,
-  .room-form-box {
-    background: rgba(255, 255, 255, 0.94) !important;
-  }
-}
-/* ===== REMOVE ADMIN HERO BACKGROUND IMAGES ===== */
-
-.admin-hero,
-.dashboard-hero,
-.rooms-admin-hero,
-.guests-hero,
-.report-hero,
-.map-editor-hero,
-.page-hero,
-.hero-section {
-  background: linear-gradient(135deg, #0f4c68 0%, #0f9488 65%, #19b8c8 100%) !important;
-  background-image: linear-gradient(135deg, #0f4c68 0%, #0f9488 65%, #19b8c8 100%) !important;
-}
-
-/* Specific fix for Guests Inside banner */
-.guests-inside-hero,
-.guests-inside-banner,
-.admin-guests-hero {
-  background: linear-gradient(135deg, #0f4c68 0%, #0f9488 65%, #19b8c8 100%) !important;
-  background-image: linear-gradient(135deg, #0f4c68 0%, #0f9488 65%, #19b8c8 100%) !important;
-}
-
-/* Remove pseudo image overlays if any */
-.admin-hero::before,
-.admin-hero::after,
-.dashboard-hero::before,
-.dashboard-hero::after,
-.rooms-admin-hero::before,
-.rooms-admin-hero::after,
-.guests-hero::before,
-.guests-hero::after,
-.page-hero::before,
-.page-hero::after {
-  background-image: none !important;
-}
-/* =========================================================
-   FINAL CUSTOMER THEME FIX - NO IMAGE BACKGROUNDS
-   Applies to customer pages: home, rooms, booking, profile, map, my bookings
-========================================================= */
-
-/* Customer page body background */
-body:not(:has(.navbar)) {
-  background:
-    radial-gradient(circle at top left, rgba(20, 184, 166, 0.16), transparent 30%),
-    radial-gradient(circle at bottom right, rgba(14, 165, 233, 0.14), transparent 34%),
-    linear-gradient(135deg, #eaf8fb 0%, #f7fcff 48%, #e6f7f4 100%) !important;
-  background-attachment: fixed !important;
-  color: #0f172a !important;
-}
-
-/* Customer navbar */
-.site-header {
-  background: linear-gradient(135deg, #0f4c68 0%, #0f9488 100%) !important;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12) !important;
-}
-
-/* Remove image backgrounds from customer hero sections */
-.page-header,
-.hero,
-.hero-section,
-.home-hero,
-.customer-hero,
-.rooms-hero,
-.booking-hero,
-.profile-hero,
-.map-hero,
-.my-bookings-hero {
-  background: linear-gradient(135deg, #0f4c68 0%, #0f9488 65%, #19b8c8 100%) !important;
-  background-image: linear-gradient(135deg, #0f4c68 0%, #0f9488 65%, #19b8c8 100%) !important;
-  color: #ffffff !important;
-  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.12) !important;
-}
-
-/* Remove pseudo image overlays */
-.page-header::before,
-.page-header::after,
-.hero::before,
-.hero::after,
-.hero-section::before,
-.hero-section::after,
-.home-hero::before,
-.home-hero::after,
-.customer-hero::before,
-.customer-hero::after,
-.rooms-hero::before,
-.rooms-hero::after {
-  background-image: none !important;
-}
-
-/* Customer cards softer */
-.room-ai-card,
-.category-filter-panel,
-.booking-card,
-.section-box,
-.profile-card,
-.map-card,
-.resort-map-card,
-.my-bookings-card,
-.dashboard-card,
-.summary-card,
-.content-card {
-  background: rgba(255, 255, 255, 0.92) !important;
-  border: 1px solid rgba(125, 160, 175, 0.5) !important;
-  box-shadow: 0 14px 28px rgba(15, 23, 42, 0.09) !important;
-}
-
-/* Buttons */
-.book-now-btn,
-.map-link-btn,
-.category-filter-btn.active,
-.btn-primary,
-button.btn-primary {
-  background: linear-gradient(135deg, #14b8a6, #0f9488) !important;
-  color: #ffffff !important;
-}
-
-/* Customer input outlines */
-input,
-select,
-textarea {
-  border-color: #a8c0cd !important;
-}
-
-/* Optional subtle resort icons */
-body:not(:has(.navbar))::before {
-  content: "🌴";
-  position: fixed;
-  top: 110px;
-  left: 24px;
-  font-size: 7rem;
-  opacity: 0.035;
-  z-index: -1;
-  pointer-events: none;
-}
-
-body:not(:has(.navbar))::after {
-  content: "🌊";
-  position: fixed;
-  right: 34px;
-  bottom: 48px;
-  font-size: 6.5rem;
-  opacity: 0.04;
-  z-index: -1;
-  pointer-events: none;
-}
-
-@media (max-width: 768px) {
-  body:not(:has(.navbar))::before {
-    font-size: 5rem;
-    top: 90px;
-    left: 8px;
-  }
-
-  body:not(:has(.navbar))::after {
-    font-size: 4.8rem;
-    right: 12px;
-    bottom: 24px;
-  }
-
-  .page-header,
-  .hero,
-  .hero-section,
-  .home-hero,
-  .customer-hero,
-  .rooms-hero {
-    padding: 48px 16px !important;
-  }
-}
-/* =========================================================
-   KEEP LOGIN / REGISTER IMAGE BACKGROUND
-   Override customer no-image background for auth pages only
-========================================================= */
-
-body:has(.auth-container),
-body:has(.auth-wrapper),
-body:has(.login-wrapper),
-body:has(.register-wrapper),
-body:has(.login-card),
-body:has(.register-card),
-body:has(.login-form),
-body:has(.register-form) {
-  background:
-    linear-gradient(rgba(8, 47, 73, 0.55), rgba(8, 47, 73, 0.62)),
-    url("../images/background.jpg") center/cover fixed no-repeat !important;
-}
-
-/* Remove palm/wave symbols on login/register */
-body:has(.auth-container)::before,
-body:has(.auth-container)::after,
-body:has(.auth-wrapper)::before,
-body:has(.auth-wrapper)::after,
-body:has(.login-wrapper)::before,
-body:has(.login-wrapper)::after,
-body:has(.register-wrapper)::before,
-body:has(.register-wrapper)::after,
-body:has(.login-card)::before,
-body:has(.login-card)::after,
-body:has(.register-card)::before,
-body:has(.register-card)::after {
-  content: none !important;
-  display: none !important;
-}
-
-/* Keep auth cards clean */
-body:has(.login-card) .login-card,
-body:has(.register-card) .register-card,
-body:has(.login-form) .login-form,
-body:has(.register-form) .register-form {
-  background: rgba(255, 255, 255, 0.86) !important;
-  backdrop-filter: blur(14px) !important;
-  -webkit-backdrop-filter: blur(14px) !important;
-}
-
-/* Keep left auth panel stylish */
-body:has(.login-wrapper) .login-info,
-body:has(.register-wrapper) .register-info,
-body:has(.auth-wrapper) .auth-info,
-body:has(.login-wrapper) .login-left,
-body:has(.register-wrapper) .register-left,
-body:has(.auth-wrapper) .auth-left {
-  background: linear-gradient(
-    135deg,
-    rgba(15, 23, 42, 0.78),
-    rgba(20, 184, 166, 0.68)
-  ) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-}
-.guest-search-box {
-  min-width: 280px;
-  flex: 1;
-  max-width: 420px;
-}
-
-.guest-search-box label {
-  display: block;
-  font-weight: 900;
-  color: #0f172a;
-  margin-bottom: 7px;
-  font-size: 0.9rem;
-}
-
-.guest-search-box input {
-  width: 100%;
-  padding: 13px 15px;
-  border: 1px solid #a8c0cd;
-  border-radius: 999px;
-  font-size: 0.95rem;
-  outline: none;
-  background: rgba(255, 255, 255, 0.97);
-}
-
-.guest-search-box input:focus {
-  border-color: #14b8a6;
-  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.16);
-}
-
-@media (max-width: 700px) {
-  .guest-search-box {
-    min-width: 100%;
-    max-width: none;
   }
 }

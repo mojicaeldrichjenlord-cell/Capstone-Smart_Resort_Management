@@ -3,85 +3,97 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Register | SmartResort</title>
+
+  <title>Register | Arvic Seaside</title>
   <link rel="stylesheet" href="css/style.css" />
 
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     .auth-page {
       min-height: 100vh;
       background:
-        linear-gradient(rgba(15, 23, 42, 0.62), rgba(15, 23, 42, 0.45)),
-        url("https://images.unsplash.com/photo-1499793983690-e29da59ef1c2?auto=format&fit=crop&w=1600&q=80")
-        center/cover no-repeat;
+        linear-gradient(rgba(15, 23, 42, 0.62), rgba(15, 23, 42, 0.48)),
+        url("images/bg-resort.jpg") center/cover no-repeat;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 30px 16px;
+      padding: 28px 16px;
+      color: #0f172a;
     }
 
     .register-container {
       width: 100%;
-      max-width: 1150px;
+      max-width: 1080px;
       display: grid;
-      grid-template-columns: 1fr 1.05fr;
-      gap: 24px;
+      grid-template-columns: 0.95fr 1fr;
+      gap: 22px;
       align-items: stretch;
     }
 
     .register-showcase {
-      background:
-        linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(20, 184, 166, 0.68));
+      background: linear-gradient(
+        135deg,
+        rgba(15, 23, 42, 0.86),
+        rgba(15, 118, 110, 0.68),
+        rgba(20, 184, 166, 0.58)
+      );
       color: white;
       border-radius: 30px;
-      padding: 38px 30px;
-      box-shadow: 0 24px 50px rgba(15, 23, 42, 0.18);
+      padding: 36px 30px;
+      box-shadow: 0 24px 50px rgba(15, 23, 42, 0.2);
       position: relative;
       overflow: hidden;
       display: flex;
       flex-direction: column;
       justify-content: center;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
     }
 
     .register-showcase::after {
       content: "";
       position: absolute;
-      top: -55px;
-      right: -55px;
-      width: 220px;
-      height: 220px;
+      top: -70px;
+      right: -70px;
+      width: 235px;
+      height: 235px;
       border-radius: 50%;
-      background: rgba(255,255,255,0.08);
-      filter: blur(6px);
+      background: rgba(255, 255, 255, 0.1);
+      filter: blur(8px);
     }
 
     .register-badge {
       display: inline-flex;
       align-items: center;
       width: fit-content;
-      padding: 10px 14px;
+      padding: 9px 13px;
       border-radius: 999px;
-      background: rgba(255,255,255,0.14);
-      border: 1px solid rgba(255,255,255,0.16);
-      font-size: 0.88rem;
-      font-weight: 700;
+      background: rgba(255, 255, 255, 0.14);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      font-size: 0.82rem;
+      font-weight: 800;
       margin-bottom: 18px;
       position: relative;
       z-index: 1;
     }
 
     .register-showcase h1 {
-      font-size: 2.35rem;
-      line-height: 1.1;
-      margin-bottom: 14px;
+      font-size: 2.25rem;
+      line-height: 1.12;
+      margin: 0 0 14px;
       position: relative;
       z-index: 1;
     }
 
     .register-showcase p {
-      font-size: 1rem;
-      line-height: 1.8;
+      font-size: 0.98rem;
+      line-height: 1.75;
       max-width: 470px;
       opacity: 0.96;
+      margin: 0;
       position: relative;
       z-index: 1;
     }
@@ -95,47 +107,62 @@
     }
 
     .register-point {
-      background: rgba(255,255,255,0.1);
-      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.13);
       border-radius: 16px;
-      padding: 14px 16px;
+      padding: 13px 15px;
     }
 
     .register-point strong {
       display: block;
       margin-bottom: 4px;
-      font-size: 0.96rem;
+      font-size: 0.93rem;
+    }
+
+    .register-point span {
+      display: block;
+      font-size: 0.88rem;
+      line-height: 1.35;
+      opacity: 0.95;
     }
 
     .register-card {
-      background: rgba(255,255,255,0.97);
+      background: rgba(255, 255, 255, 0.9);
       border-radius: 30px;
-      padding: 32px 28px;
-      box-shadow: 0 24px 50px rgba(15, 23, 42, 0.14);
-      border: 1px solid rgba(255,255,255,0.7);
+      padding: 30px 28px;
+      box-shadow: 0 24px 50px rgba(15, 23, 42, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.72);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      max-width: 500px;
+      width: 100%;
+      justify-self: start;
     }
 
     .register-card h2 {
       color: #0f172a;
-      font-size: 2rem;
-      margin-bottom: 8px;
+      font-size: 1.9rem;
+      margin: 0 0 8px;
+      letter-spacing: -0.03em;
     }
 
     .register-subtext {
       color: #64748b;
-      margin-bottom: 22px;
-      line-height: 1.65;
+      margin: 0 0 20px;
+      line-height: 1.6;
+      font-size: 0.95rem;
     }
 
     .register-form-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 14px 16px;
+      gap: 13px 14px;
     }
 
     .register-form-group {
       display: flex;
       flex-direction: column;
+      min-width: 0;
     }
 
     .register-form-group.full-width {
@@ -143,31 +170,77 @@
     }
 
     .register-form-group label {
-      font-weight: 800;
+      font-weight: 900;
       color: #0f172a;
       margin-bottom: 6px;
+      font-size: 0.9rem;
     }
 
     .register-form-group input,
     .register-form-group textarea {
       width: 100%;
-      padding: 14px 15px;
-      border: 1px solid #cbd5e1;
-      border-radius: 16px;
+      padding: 13px 14px;
+      border: 1px solid #b9c9d6;
+      border-radius: 15px;
       outline: none;
-      font-size: 1rem;
-      background: #fff;
+      font-size: 0.95rem;
+      background: rgba(255, 255, 255, 0.96);
+      color: #0f172a;
     }
 
     .register-form-group textarea {
-      min-height: 105px;
+      min-height: 88px;
       resize: vertical;
     }
 
     .register-form-group input:focus,
     .register-form-group textarea:focus {
       border-color: #14b8a6;
-      box-shadow: 0 0 0 3px rgba(20,184,166,0.15);
+      box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
+    }
+
+    .password-field {
+      position: relative;
+      width: 100%;
+    }
+
+    .password-field input {
+      padding-right: 48px !important;
+    }
+
+    .password-toggle {
+      position: absolute;
+      top: 50%;
+      right: 10px;
+      transform: translateY(-50%);
+      width: 34px;
+      height: 34px;
+      border: none;
+      border-radius: 999px;
+      background: rgba(20, 184, 166, 0.12);
+      color: #0f766e;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: 0.2s ease;
+    }
+
+    .password-toggle:hover {
+      background: rgba(20, 184, 166, 0.22);
+    }
+
+    .password-toggle svg {
+      width: 18px;
+      height: 18px;
+      pointer-events: none;
+    }
+
+    .field-help {
+      margin-top: 6px;
+      color: #64748b;
+      font-size: 0.78rem;
+      line-height: 1.35;
     }
 
     .register-submit {
@@ -178,38 +251,41 @@
       border-radius: 16px;
       background: linear-gradient(135deg, #14b8a6, #0f9488);
       color: white;
-      font-weight: 800;
+      font-weight: 900;
       font-size: 1rem;
       cursor: pointer;
       transition: 0.2s ease;
-      box-shadow: 0 14px 28px rgba(20,184,166,0.2);
+      box-shadow: 0 14px 28px rgba(20, 184, 166, 0.22);
     }
 
     .register-submit:hover {
       transform: translateY(-1px);
+      filter: brightness(1.03);
     }
 
     .auth-link {
-      margin-top: 18px;
+      margin-top: 16px;
       text-align: center;
       color: #475569;
       line-height: 1.6;
+      font-size: 0.92rem;
     }
 
     .auth-link a {
-      color: #14b8a6;
+      color: #0f9488;
       text-decoration: none;
-      font-weight: 800;
+      font-weight: 900;
     }
 
     .message {
       margin-top: 14px;
       text-align: center;
-      font-weight: 700;
+      font-weight: 800;
     }
 
     @media (max-width: 950px) {
       .register-container {
+        max-width: 520px;
         grid-template-columns: 1fr;
       }
 
@@ -219,6 +295,8 @@
 
       .register-card {
         order: 1;
+        max-width: none;
+        justify-self: stretch;
       }
 
       .register-showcase h1 {
@@ -227,19 +305,18 @@
     }
 
     @media (max-width: 700px) {
-      .register-form-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    @media (max-width: 480px) {
       .auth-page {
         padding: 18px 12px;
+        align-items: flex-start;
+      }
+
+      .register-form-grid {
+        grid-template-columns: 1fr;
       }
 
       .register-card,
       .register-showcase {
-        border-radius: 22px;
+        border-radius: 24px;
       }
 
       .register-card {
@@ -247,80 +324,158 @@
       }
 
       .register-showcase {
-        padding: 24px 18px;
+        display: none;
       }
 
       .register-card h2 {
         font-size: 1.6rem;
       }
 
-      .register-showcase h1 {
-        font-size: 1.7rem;
+      .register-subtext {
+        font-size: 0.9rem;
       }
     }
   </style>
 </head>
+
 <body class="auth-page">
   <div class="register-container">
     <section class="register-showcase">
-      <div class="register-badge">Create your SmartResort guest account</div>
+      <div class="register-badge">Create your Arvic Seaside guest account</div>
+
       <h1>Start your resort booking experience today</h1>
+
       <p>
-        Register your guest profile so you can browse rooms, reserve your stay,
+        Register your guest profile so you can browse accommodations, reserve your stay,
         track bookings, and access your receipt details anytime.
       </p>
 
       <div class="register-points">
         <div class="register-point">
-          <strong>Easy room booking</strong>
-          Reserve your preferred room with complete stay details and payment options.
+          <strong>Easy accommodation booking</strong>
+          <span>Reserve your preferred room, cottage, or function area with complete stay details.</span>
         </div>
+
         <div class="register-point">
           <strong>Organized guest profile</strong>
-          Save your contact details for a smoother reservation process.
+          <span>Save your contact details for a smoother reservation process.</span>
         </div>
+
         <div class="register-point">
-          <strong>Presentation-ready resort system</strong>
-          A cleaner and more premium interface built for a real resort client.
+          <strong>Client-ready resort system</strong>
+          <span>A cleaner and more premium interface built for Arvic Seaside Beach Resort and Hotel.</span>
         </div>
       </div>
     </section>
 
     <section class="register-card">
       <h2>Create Account</h2>
+
       <p class="register-subtext">
-        Fill in your details below to register your SmartResort guest account.
+        Fill in your basic information below to register your guest account.
       </p>
 
       <form id="registerForm">
         <div class="register-form-grid">
           <div class="register-form-group">
             <label for="fullname">Full Name</label>
-            <input type="text" id="fullname" placeholder="Enter full name" required />
+            <input
+              type="text"
+              id="fullname"
+              placeholder="Enter full name"
+              required
+            />
           </div>
 
           <div class="register-form-group">
             <label for="email">Email</label>
-            <input type="email" id="email" placeholder="Enter email" required />
+            <input
+              type="email"
+              id="email"
+              placeholder="Enter email"
+              required
+            />
           </div>
 
           <div class="register-form-group">
             <label for="phone">Phone Number</label>
-            <input type="text" id="phone" placeholder="Enter phone number" required />
+            <input
+              type="text"
+              id="phone"
+              placeholder="Enter phone number"
+              required
+            />
           </div>
 
           <div class="register-form-group">
             <label for="password">Password</label>
-            <input type="password" id="password" placeholder="Create password" required />
+
+            <div class="password-field">
+              <input
+                type="password"
+                id="password"
+                placeholder="At least 8 characters"
+                minlength="8"
+                required
+              />
+
+              <button
+                type="button"
+                class="password-toggle"
+                data-target="password"
+                aria-label="Show password"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
+
+            <small class="field-help">
+              Use at least 8 characters.
+            </small>
+          </div>
+
+          <div class="register-form-group">
+            <label for="confirmPassword">Confirm Password</label>
+
+            <div class="password-field">
+              <input
+                type="password"
+                id="confirmPassword"
+                placeholder="Re-enter password"
+                minlength="8"
+                required
+              />
+
+              <button
+                type="button"
+                class="password-toggle"
+                data-target="confirmPassword"
+                aria-label="Show confirm password"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+            </div>
           </div>
 
           <div class="register-form-group full-width">
             <label for="address">Home Address</label>
-            <textarea id="address" placeholder="Enter your home address" required></textarea>
+            <textarea
+              id="address"
+              placeholder="Enter your home address"
+              required
+            ></textarea>
           </div>
         </div>
 
-        <button type="submit" class="register-submit">Register Account</button>
+        <button type="submit" class="register-submit">
+          Register Account
+        </button>
       </form>
 
       <p id="registerMessage" class="message"></p>
@@ -333,6 +488,25 @@
   </div>
 
   <script src="js/toast.js"></script>
+
+  <script>
+    document.querySelectorAll(".password-toggle").forEach((button) => {
+      button.addEventListener("click", () => {
+        const targetId = button.dataset.target;
+        const input = document.getElementById(targetId);
+
+        if (!input) return;
+
+        const isPassword = input.type === "password";
+        input.type = isPassword ? "text" : "password";
+        button.setAttribute(
+          "aria-label",
+          isPassword ? "Hide password" : "Show password"
+        );
+      });
+    });
+  </script>
+
   <script src="js/register.js"></script>
 </body>
 </html>
