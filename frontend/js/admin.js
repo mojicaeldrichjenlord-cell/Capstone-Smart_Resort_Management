@@ -86,7 +86,7 @@ async function loadBookings() {
     if (tbody) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="19" class="table-message">Loading reservations...</td>
+          <td colspan="21" class="table-message">Loading reservations...</td>
         </tr>
       `;
     }
@@ -107,7 +107,7 @@ async function loadBookings() {
     if (tbody) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="19" class="table-message">Failed to load reservations.</td>
+          <td colspan="21" class="table-message">Failed to load reservations.</td>
         </tr>
       `;
     }
@@ -118,12 +118,15 @@ async function loadBookings() {
 
 function updateSummaryCards(bookings) {
   const totalBookings = bookings.length;
+
   const pendingCount = bookings.filter(
     (booking) => String(booking.status || "").toLowerCase() === "pending"
   ).length;
+
   const approvedCount = bookings.filter(
     (booking) => String(booking.status || "").toLowerCase() === "approved"
   ).length;
+
   const paidCount = bookings.filter(
     (booking) => String(booking.payment_status || "").toLowerCase() === "paid"
   ).length;
@@ -174,6 +177,8 @@ function applyFilters() {
         ${booking.email || ""}
         ${booking.room_name || ""}
         ${booking.booking_source || ""}
+        ${getPaymentReference(booking) || ""}
+        ${booking.proof_of_payment || ""}
       `.toLowerCase();
 
       return text.includes(searchValue);
@@ -210,7 +215,7 @@ function renderBookings(bookings) {
   if (!bookings.length) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="19" class="table-message">No reservations found.</td>
+        <td colspan="21" class="table-message">No reservations found.</td>
       </tr>
     `;
     return;
@@ -222,28 +227,37 @@ function renderBookings(bookings) {
       const paymentMethod = String(booking.payment_method || "cash").toLowerCase();
       const paymentStatus = String(booking.payment_status || "pending").toLowerCase();
       const bookingSource = String(booking.booking_source || "online").toLowerCase();
+      const paymentReference = getPaymentReference(booking);
+      const proofUrl = getProofUrl(booking.proof_of_payment);
 
       return `
         <tr>
           <td><strong>#${booking.id}</strong></td>
+
           <td><strong>${escapeHtml(booking.reservation_code || "-")}</strong></td>
+
           <td>
             <div class="source-badge source-${bookingSource}">
               ${formatBookingSource(bookingSource)}
             </div>
           </td>
+
           <td>
             <div style="font-weight:800;color:#0f172a;">
               ${escapeHtml(getBookingDisplayName(booking))}
             </div>
           </td>
+
           <td>${escapeHtml(booking.phone || "-")}</td>
+
           <td>${escapeHtml(booking.email || "-")}</td>
+
           <td>
             <div style="font-weight:700;color:#0f172a;">
               ${escapeHtml(booking.room_name || "N/A")}
             </div>
           </td>
+
           <td>${formatDate(booking.check_in)}</td>
           <td>${formatTime(booking.check_in_time)}</td>
           <td>${formatDate(booking.check_out)}</td>
@@ -251,10 +265,12 @@ function renderBookings(bookings) {
           <td>${booking.guests || 0}</td>
           <td>₱${formatMoney(booking.accommodation_total)}</td>
           <td>₱${formatMoney(booking.required_downpayment)}</td>
+
           <td>
             <div class="status-badge status-${bookingStatus}">
               ${capitalize(bookingStatus)}
             </div>
+
             <select id="bookingStatus-${booking.id}">
               ${BOOKING_STATUSES.map(
                 (status) => `
@@ -267,11 +283,18 @@ function renderBookings(bookings) {
               ).join("")}
             </select>
           </td>
+
           <td>${formatPaymentMethod(paymentMethod)}</td>
+
+          <td>${renderPaymentReference(paymentReference)}</td>
+
+          <td>${renderProofButton(proofUrl)}</td>
+
           <td>
             <div class="payment-badge payment-${paymentStatus}">
               ${formatPaymentStatus(paymentStatus)}
             </div>
+
             <select id="paymentStatus-${booking.id}">
               ${PAYMENT_STATUSES.map(
                 (status) => `
@@ -284,12 +307,15 @@ function renderBookings(bookings) {
               ).join("")}
             </select>
           </td>
+
           <td>${formatDateTime(booking.created_at)}</td>
+
           <td>
             <div class="action-buttons">
               <button class="action-btn save-booking-btn" onclick="saveAllStatus(${booking.id})">
                 Save Status
               </button>
+
               <button class="action-btn receipt-btn" onclick="viewReceipt(${booking.id})">
                 View Receipt
               </button>
@@ -299,6 +325,136 @@ function renderBookings(bookings) {
       `;
     })
     .join("");
+}
+
+function getPaymentReference(booking) {
+  const directReference =
+    booking.proof_reference ||
+    booking.payment_reference ||
+    booking.reference_number ||
+    booking.transaction_reference;
+
+  if (directReference) {
+    return String(directReference).trim();
+  }
+
+  const note = String(booking.note || "");
+  const match = note.match(/Reference Number:\s*([^|]+)/i);
+
+  if (match && match[1]) {
+    return match[1].trim();
+  }
+
+  return "";
+}
+
+function groupReferenceNumber(reference) {
+  const cleanReference = String(reference || "").replace(/\s+/g, "").trim();
+
+  if (!cleanReference) {
+    return [];
+  }
+
+  return cleanReference.match(/.{1,4}/g) || [cleanReference];
+}
+
+function renderPaymentReference(reference) {
+  if (!reference) {
+    return `<span class="no-proof-text">No reference</span>`;
+  }
+
+  const groups = groupReferenceNumber(reference);
+
+  return `
+    <div class="reference-box">
+      <div class="reference-label">Reference No.</div>
+
+      <div class="reference-chip-row">
+        ${groups
+          .map(
+            (group) => `
+              <span class="reference-chip">${escapeHtml(group)}</span>
+            `
+          )
+          .join("")}
+      </div>
+
+      <div class="reference-full">${escapeHtml(reference)}</div>
+
+      <button
+        type="button"
+        class="copy-ref-btn"
+        onclick="copyReferenceNumber('${escapeForInline(reference)}')"
+      >
+        Copy Reference
+      </button>
+    </div>
+  `;
+}
+
+function getProofUrl(proofPath) {
+  const value = String(proofPath || "").trim();
+
+  if (!value) {
+    return "";
+  }
+
+  if (value.startsWith("http://") || value.startsWith("https://")) {
+    return value;
+  }
+
+  if (value.startsWith("/uploads/")) {
+    return `http://127.0.0.1:5000${value}`;
+  }
+
+  if (value.startsWith("uploads/")) {
+    return `http://127.0.0.1:5000/${value}`;
+  }
+
+  return "";
+}
+
+function renderProofButton(proofUrl) {
+  if (!proofUrl) {
+    return `<span class="no-proof-text">No proof</span>`;
+  }
+
+  return `
+    <a
+      href="${escapeHtml(proofUrl)}"
+      target="_blank"
+      rel="noopener"
+      class="proof-link-btn"
+    >
+      View Screenshot
+    </a>
+  `;
+}
+
+async function copyReferenceNumber(reference) {
+  try {
+    await navigator.clipboard.writeText(reference);
+    showMessage("Reference number copied.", "success");
+  } catch (error) {
+    console.error("copyReferenceNumber error:", error);
+
+    const tempInput = document.createElement("input");
+    tempInput.value = reference;
+    document.body.appendChild(tempInput);
+    tempInput.select();
+    document.execCommand("copy");
+    tempInput.remove();
+
+    showMessage("Reference number copied.", "success");
+  }
+}
+
+function escapeForInline(value) {
+  return String(value || "")
+    .replace(/\\/g, "\\\\")
+    .replace(/'/g, "\\'")
+    .replace(/"/g, "&quot;")
+    .replace(/\n/g, " ");
 }
 
 async function saveAllStatus(bookingId) {
@@ -388,8 +544,13 @@ function formatBookingSource(source) {
 
 function formatDate(dateValue) {
   if (!dateValue) return "N/A";
+
   const date = new Date(dateValue);
-  if (Number.isNaN(date.getTime())) return "N/A";
+
+  if (Number.isNaN(date.getTime())) {
+    return "N/A";
+  }
+
   return date.toLocaleDateString();
 }
 
@@ -397,27 +558,43 @@ function formatTime(timeValue) {
   if (!timeValue) return "N/A";
 
   const timeText = String(timeValue).trim();
-  if (!timeText) return "N/A";
+
+  if (!timeText) {
+    return "N/A";
+  }
 
   const parts = timeText.split(":");
-  if (parts.length < 2) return timeText;
+
+  if (parts.length < 2) {
+    return timeText;
+  }
 
   let hours = Number(parts[0]);
   const minutes = parts[1];
 
-  if (Number.isNaN(hours)) return timeText;
+  if (Number.isNaN(hours)) {
+    return timeText;
+  }
 
   const suffix = hours >= 12 ? "PM" : "AM";
   hours = hours % 12;
-  if (hours === 0) hours = 12;
+
+  if (hours === 0) {
+    hours = 12;
+  }
 
   return `${hours}:${minutes} ${suffix}`;
 }
 
 function formatDateTime(dateValue) {
   if (!dateValue) return "N/A";
+
   const date = new Date(dateValue);
-  if (Number.isNaN(date.getTime())) return "N/A";
+
+  if (Number.isNaN(date.getTime())) {
+    return "N/A";
+  }
+
   return date.toLocaleString();
 }
 
@@ -426,6 +603,7 @@ function formatPaymentMethod(method) {
   if (method === "paymaya") return "PayMaya";
   if (method === "cash") return "Cash";
   if (method === "other") return "Other";
+
   return capitalize(method);
 }
 
@@ -435,11 +613,13 @@ function formatPaymentStatus(status) {
   if (status === "paid") return "Paid";
   if (status === "partially_paid") return "Partially Paid";
   if (status === "rejected") return "Rejected";
+
   return capitalize(status);
 }
 
 function formatMoney(value) {
   const num = Number(value || 0);
+
   return num.toLocaleString(undefined, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -448,6 +628,7 @@ function formatMoney(value) {
 
 function capitalize(text) {
   if (!text) return "";
+
   const value = String(text);
   return value.charAt(0).toUpperCase() + value.slice(1);
 }

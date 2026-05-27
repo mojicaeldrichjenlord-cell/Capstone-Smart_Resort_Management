@@ -13,6 +13,7 @@ const {
   getAllBookings,
   updateBookingStatus,
   updatePaymentStatus,
+  requestBookingModification,
 } = require("../controllers/bookingController");
 
 const uploadDir = path.join(__dirname, "..", "uploads", "payment-proofs");
@@ -22,21 +23,25 @@ const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, uploadDir);
   },
+
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname || "").toLowerCase() || ".jpg";
+
     const safeBase = path
       .basename(file.originalname || "proof", ext)
       .replace(/[^a-zA-Z0-9_-]/g, "_");
 
-    cb(cb ? null : null, `${Date.now()}-${safeBase}${ext}`);
+    cb(null, `${Date.now()}-${safeBase}${ext}`);
   },
 });
 
 const fileFilter = (req, file, cb) => {
   const allowed = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
+
   if (allowed.includes(file.mimetype)) {
     return cb(null, true);
   }
+
   return cb(new Error("Only JPG, PNG, and WEBP image files are allowed."));
 };
 
@@ -58,5 +63,7 @@ router.get("/:id/receipt", getBookingReceipt);
 router.put("/:id/cancel", cancelBooking);
 router.put("/:id/status", updateBookingStatus);
 router.put("/:id/payment-status", updatePaymentStatus);
+
+router.post("/:id/modification-request", requestBookingModification);
 
 module.exports = router;

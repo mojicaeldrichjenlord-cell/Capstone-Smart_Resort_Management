@@ -1,8 +1,24 @@
 const API_BASE = "http://127.0.0.1:5000/api";
 const BOOKING_DRAFT_KEY = "smartresort_booking_draft_v2";
 
+const PAYMENT_DETAILS = {
+  gcash: {
+    label: "GCash",
+    accountName: "Arvic Seaside Beach Resort and Hotel",
+    accountNumber: "09XX XXX XXXX",
+    qrImage: "images/payments/gcash-qr.png",
+  },
+  paymaya: {
+    label: "Maya / PayMaya",
+    accountName: "Arvic Seaside Beach Resort and Hotel",
+    accountNumber: "09XX XXX XXXX",
+    qrImage: "images/payments/maya-qr.png",
+  },
+};
+
 let bookingDraft = null;
 let availableAccommodations = [];
+let currentDownpaymentAmount = 0;
 
 document.addEventListener("DOMContentLoaded", async () => {
   const user = JSON.parse(localStorage.getItem("user"));
@@ -114,19 +130,6 @@ function getSlotOptions(accommodation) {
   ];
 }
 
-function getTotalFreeEntrancePax(items, guestCount) {
-  let total = 0;
-
-  items.forEach((item) => {
-    const accommodation = getAccommodationById(item.accommodation_id);
-    if (!accommodation) return;
-
-    total += Number(accommodation.free_entrance_pax || 0);
-  });
-
-  return Math.min(total, Number(guestCount || 0));
-}
-
 function renderDraftSummary() {
   if (!bookingDraft) return;
 
@@ -139,6 +142,7 @@ function renderDraftSummary() {
   summaryList.innerHTML = items
     .map((item, index) => {
       const accommodation = getAccommodationById(item.accommodation_id);
+
       if (!accommodation) {
         return `
           <div class="summary-item">
@@ -166,7 +170,6 @@ function renderDraftSummary() {
           Reservation Date: ${formatDateDisplay(item.check_in_date)}<br />
           Check-out Date: ${formatDateDisplay(checkOutDate)}<br />
           Max Capacity: ${accommodation.max_capacity || 0} guest(s)<br />
-          Free Entrance Included: ${Number(accommodation.free_entrance_pax || 0)} pax<br />
           Price: ₱${formatMoney(slotPrice)}
         </div>
       `;
@@ -176,6 +179,8 @@ function renderDraftSummary() {
   const entranceFee = getEstimatedEntranceFee();
   const downpayment = accommodationTotal * 0.5;
   const remaining = accommodationTotal - downpayment;
+
+  currentDownpaymentAmount = downpayment;
 
   document.getElementById("paymentAccommodationTotal").textContent = `₱${formatMoney(accommodationTotal)}`;
   document.getElementById("paymentDownpayment").textContent = `₱${formatMoney(downpayment)}`;
@@ -191,12 +196,9 @@ function getEstimatedEntranceFee() {
   const entranceType = bookingDraft.entrance_type || "pool_beach";
   const items = Array.isArray(bookingDraft.items) ? bookingDraft.items : [];
 
-  const hasOvernightStyle = items.some((item) =>
-    item.slot_type === "overnight" || item.slot_type === "extended"
-  );
-
-  const totalFreeEntrancePax = getTotalFreeEntrancePax(items, guestCount);
-  const chargeableGuests = Math.max(guestCount - totalFreeEntrancePax, 0);
+  const hasOvernightStyle = items.some((item) => {
+    return item.slot_type === "overnight" || item.slot_type === "extended";
+  });
 
   const rate =
     entranceType === "beach_only"
@@ -207,20 +209,20 @@ function getEstimatedEntranceFee() {
         ? 300
         : 250;
 
-  return chargeableGuests * rate;
+  return guestCount * rate;
 }
 
 function setupPaymentForm() {
   const paymentMethod = document.getElementById("paymentMethod");
-  const proofImage = document.getElementById("proofImage");
+  const paymentProof = document.getElementById("paymentProof");
   const paymentForm = document.getElementById("paymentForm");
 
   if (paymentMethod) {
     paymentMethod.addEventListener("change", updateQrPlaceholder);
   }
 
-  if (proofImage) {
-    proofImage.addEventListener("change", previewProofImage);
+  if (paymentProof) {
+    paymentProof.addEventListener("change", updateProofPreview);
   }
 
   if (paymentForm) {
@@ -228,37 +230,80 @@ function setupPaymentForm() {
   }
 }
 
-function previewProofImage() {
-  const input = document.getElementById("proofImage");
-  const previewBox = document.getElementById("proofPreviewBox");
-  const previewImage = document.getElementById("proofPreviewImage");
-
-  if (!input || !previewBox || !previewImage) return;
-
-  const file = input.files && input.files[0];
-  if (!file) {
-    previewBox.style.display = "none";
-    previewImage.src = "";
-    return;
-  }
-
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    previewImage.src = e.target.result;
-    previewBox.style.display = "block";
-  };
-  reader.readAsDataURL(file);
-}
-
 function updateQrPlaceholder() {
   const method = document.getElementById("paymentMethod")?.value || "gcash";
   const box = document.getElementById("qrPlaceholderBox");
+
   if (!box) return;
 
-  box.innerHTML =
-    method === "paymaya"
-      ? `PayMaya selected.<br />Future QR code area can be shown here.<br />For now, upload your payment screenshot below.`
-      : `GCash selected.<br />Future QR code area can be shown here.<br />For now, upload your payment screenshot below.`;
+  const details = PAYMENT_DETAILS[method] || PAYMENT_DETAILS.gcash;
+
+  box.innerHTML = `
+    <div class="qr-payment-badge">${escapeHtml(details.label)} Selected</div>
+
+    <img
+      src="${escapeHtml(details.qrImage)}"
+      alt="${escapeHtml(details.label)} QR Code"
+      onerror="this.src='images/no-image.jpg'"
+    />
+
+    <div class="qr-payment-title">${escapeHtml(details.label)} Payment</div>
+
+    <p class="qr-payment-detail">
+      <strong>Account Name:</strong><br />
+      ${escapeHtml(details.accountName)}
+    </p>
+
+    <p class="qr-payment-detail">
+      <strong>Account Number:</strong><br />
+      ${escapeHtml(details.accountNumber)}
+    </p>
+
+    <div class="qr-payment-amount">
+      Amount to Pay: ₱${formatMoney(currentDownpaymentAmount)}
+    </div>
+
+    <div class="qr-payment-reminder">
+      Scan the QR code using your selected payment app.
+      After payment, enter your reference number and upload the transaction screenshot.
+      Your reservation will remain pending until admin verifies your payment.
+    </div>
+  `;
+}
+
+function updateProofPreview() {
+  const input = document.getElementById("paymentProof");
+  const preview = document.getElementById("proofPreview");
+
+  if (!input || !preview) return;
+
+  const file = input.files && input.files[0];
+
+  if (!file) {
+    preview.classList.remove("show");
+    preview.textContent = "No screenshot selected yet.";
+    return;
+  }
+
+  const allowedTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
+  const maxSize = 5 * 1024 * 1024;
+
+  if (!allowedTypes.includes(file.type)) {
+    input.value = "";
+    preview.classList.add("show");
+    preview.textContent = "Invalid file type. Please upload PNG, JPG, JPEG, or WEBP only.";
+    return;
+  }
+
+  if (file.size > maxSize) {
+    input.value = "";
+    preview.classList.add("show");
+    preview.textContent = "File is too large. Please upload an image below 5MB.";
+    return;
+  }
+
+  preview.classList.add("show");
+  preview.textContent = `Selected proof: ${file.name}`;
 }
 
 async function submitReservation(e) {
@@ -269,31 +314,49 @@ async function submitReservation(e) {
     return;
   }
 
-  const payment_method = document.getElementById("paymentMethod").value;
+  const user = JSON.parse(localStorage.getItem("user"));
+  const paymentMethod = document.getElementById("paymentMethod").value;
   const paymentReference = document.getElementById("paymentReference").value.trim();
   const paymentReminderNote = document.getElementById("paymentReminderNote").value.trim();
-  const proofImage = document.getElementById("proofImage").files[0];
+  const paymentProofInput = document.getElementById("paymentProof");
+  const paymentProofFile = paymentProofInput?.files?.[0];
 
   if (!paymentReference) {
-    showMessage("Reference number is required.", "error");
+    showMessage("Payment reference number is required.", "error");
     return;
   }
 
-  if (!proofImage) {
-    showMessage("Please upload your payment screenshot.", "error");
+  if (!paymentProofFile) {
+    showMessage("Please upload your proof of transaction screenshot.", "error");
+    return;
+  }
+
+  const allowedTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
+  const maxSize = 5 * 1024 * 1024;
+
+  if (!allowedTypes.includes(paymentProofFile.type)) {
+    showMessage("Invalid proof image. Please upload PNG, JPG, JPEG, or WEBP only.", "error");
+    return;
+  }
+
+  if (paymentProofFile.size > maxSize) {
+    showMessage("Proof image is too large. Please upload an image below 5MB.", "error");
     return;
   }
 
   const payload = {
     ...bookingDraft,
-    payment_method,
+    user_id: bookingDraft.user_id || user?.id,
+    payment_method: paymentMethod,
+    payment_type: "downpayment",
     proof_reference: paymentReference,
+    proof_of_payment: paymentReference,
     note: [bookingDraft.note, paymentReminderNote].filter(Boolean).join(" | "),
   };
 
   const formData = new FormData();
   formData.append("payload", JSON.stringify(payload));
-  formData.append("proof_image", proofImage);
+  formData.append("payment_proof", paymentProofFile);
 
   const submitBtn = document.querySelector('#paymentForm button[type="submit"]');
   const originalText = submitBtn ? submitBtn.textContent : "Submit Reservation";
@@ -382,13 +445,17 @@ function formatTimeDisplay(timeValue) {
 
 function formatDateDisplay(dateValue) {
   if (!dateValue) return "N/A";
+
   const date = new Date(dateValue);
+
   if (Number.isNaN(date.getTime())) return dateValue;
+
   return date.toLocaleDateString();
 }
 
 function showMessage(message, type = "success") {
   const messageEl = document.getElementById("paymentMessage");
+
   if (messageEl) {
     messageEl.textContent = message;
     messageEl.style.color = type === "error" ? "red" : "green";

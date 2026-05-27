@@ -1048,3 +1048,178 @@ exports.updatePaymentStatus = async (req, res) => {
     });
   }
 };
+
+exports.requestBookingModification = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const {
+      user_id,
+      requested_check_in_date,
+      requested_slot_type,
+      requested_guest_count,
+      requested_note,
+    } = req.body;
+
+    const cleanUserId = Number(user_id);
+    const reservationId = Number(id);
+
+    if (!reservationId) {
+      return res.status(400).json({
+        message: "Reservation ID is required.",
+      });
+    }
+
+    if (!cleanUserId) {
+      return res.status(400).json({
+        message: "User ID is required.",
+      });
+    }
+
+    const [reservationRows] = await db.promise().query(
+      `
+      SELECT
+        r.id,
+        r.user_id,
+        r.reservation_status,
+        MIN(ri.check_in_date) AS check_in_date
+      FROM reservations r
+      LEFT JOIN reservation_items ri ON r.id = ri.reservation_id
+      WHERE r.id = ?
+        AND r.user_id = ?
+      GROUP BY r.id
+      LIMIT 1
+      `,
+      [reservationId, cleanUserId]
+    );
+
+    if (!reservationRows.length) {
+      return res.status(404).json({
+        message: "Reservation not found.",
+      });
+    }
+
+    const reservation = reservationRows[0];
+    const status = String(reservation.reservation_status || "").toLowerCase();
+
+    if (["cancelled", "rejected", "completed"].includes(status)) {
+      return res.status(400).json({
+        message: "This reservation can no longer be modified.",
+      });
+    }
+
+    if (!reservation.check_in_date) {
+      return res.status(400).json({
+        message: "This reservation has no valid check-in date.",
+      });
+    }
+
+    const checkInDate = new Date(reservation.check_in_date);
+    const today = new Date();
+
+    checkInDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+
+    const oneDayInMs = 24 * 60 * 60 * 1000;
+    const daysBeforeCheckIn = Math.floor(
+      (checkInDate.getTime() - today.getTime()) / oneDayInMs
+    );
+
+    if (daysBeforeCheckIn < 1) {
+      return res.status(400).json({
+        message:
+          "Modification requests must be made at least 1 day before check-in.",
+      });
+    }
+
+    const [pendingRows] = await db.promise().query(
+      `
+      SELECT id
+      FROM booking_modification_requests
+      WHERE reservation_id = ?
+        AND user_id = ?
+        AND request_status = 'pending'
+      LIMIT 1
+      `,
+      [reservationId, cleanUserId]
+    );
+
+    if (pendingRows.length) {
+      return res.status(400).json({
+        message:
+          "You already have a pending modification request for this reservation.",
+      });
+    }
+
+    const cleanRequestedDate = requested_check_in_date || null;
+    const cleanRequestedSlot = requested_slot_type || null;
+    const cleanRequestedGuestCount = requested_guest_count
+      ? Number(requested_guest_count)
+      : null;
+    const cleanRequestedNote = String(requested_note || "").trim();
+
+    if (
+      !cleanRequestedDate &&
+      !cleanRequestedSlot &&
+      !cleanRequestedGuestCount &&
+      !cleanRequestedNote
+    ) {
+      return res.status(400).json({
+        message: "Please enter at least one requested change.",
+      });
+    }
+
+    if (
+      cleanRequestedSlot &&
+      !["day_tour", "overnight", "extended"].includes(cleanRequestedSlot)
+    ) {
+      return res.status(400).json({
+        message: "Invalid requested slot type.",
+      });
+    }
+
+    if (
+      cleanRequestedGuestCount !== null &&
+      (!Number.isFinite(cleanRequestedGuestCount) || cleanRequestedGuestCount < 1)
+    ) {
+      return res.status(400).json({
+        message: "Guest count must be at least 1.",
+      });
+    }
+
+    await db.promise().query(
+      `
+      INSERT INTO booking_modification_requests (
+        reservation_id,
+        user_id,
+        requested_check_in_date,
+        requested_slot_type,
+        requested_guest_count,
+        requested_note,
+        request_status
+      )
+      VALUES (?, ?, ?, ?, ?, ?, 'pending')
+      `,
+      [
+        reservationId,
+        cleanUserId,
+        cleanRequestedDate,
+        cleanRequestedSlot,
+        cleanRequestedGuestCount,
+        cleanRequestedNote || null,
+      ]
+    );
+
+    return res.status(201).json({
+      message:
+        "Modification request submitted successfully. Please wait for admin review.",
+    });
+  } catch (error) {
+    console.error("requestBookingModification error:", error);
+
+    return res.status(500).json({
+      message: "Failed to submit modification request.",
+      error: error.message,
+    });
+  }
+};

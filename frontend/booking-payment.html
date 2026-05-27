@@ -7,168 +7,34 @@
     <link rel="stylesheet" href="css/style.css" />
 
     <style>
-      .site-header {
-        position: sticky;
-        top: 0;
-        z-index: 2000;
-        background: rgba(15, 23, 42, 0.9);
-        backdrop-filter: blur(12px);
-        border-bottom: 1px solid rgba(255,255,255,0.08);
-      }
-
-      .site-header-inner {
-        width: 94%;
-        max-width: 1300px;
-        margin: 0 auto;
-        min-height: 74px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-      }
-
-      .site-logo {
-        color: #ffffff;
-        font-size: 1.95rem;
-        font-weight: 800;
-        text-decoration: none;
-      }
-
-      .desktop-nav {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-
-      .desktop-nav a,
-      .mobile-nav a {
-        text-decoration: none;
-        color: #ffffff;
-        font-weight: 700;
-        padding: 10px 14px;
-        border-radius: 999px;
-        transition: 0.25s ease;
-        display: inline-block;
-      }
-
-      .desktop-nav a:hover,
-      .mobile-nav a:hover {
-        background: rgba(255, 255, 255, 0.1);
-      }
-
-      .desktop-nav a.active,
-      .mobile-nav a.active {
-        background: #14b8a6;
-        color: #ffffff;
-      }
-
-      .menu-toggle {
-        display: none;
-        width: 48px;
-        height: 48px;
-        border: none;
-        border-radius: 14px;
-        background: #14b8a6;
-        cursor: pointer;
-        position: relative;
-        flex-shrink: 0;
-        box-shadow: 0 10px 22px rgba(20, 184, 166, 0.25);
-      }
-
-      .menu-toggle span {
-        position: absolute;
-        left: 12px;
-        width: 24px;
-        height: 3px;
-        background: white;
-        border-radius: 999px;
-        transition: 0.25s ease;
-      }
-
-      .menu-toggle span:nth-child(1) { top: 14px; }
-      .menu-toggle span:nth-child(2) { top: 22px; }
-      .menu-toggle span:nth-child(3) { top: 30px; }
-
-      .menu-toggle.active span:nth-child(1) {
-        transform: rotate(45deg);
-        top: 22px;
-      }
-
-      .menu-toggle.active span:nth-child(2) {
-        opacity: 0;
-      }
-
-      .menu-toggle.active span:nth-child(3) {
-        transform: rotate(-45deg);
-        top: 22px;
-      }
-
-      .mobile-nav {
-        display: none;
-        width: 94%;
-        max-width: 1300px;
-        margin: 0 auto 14px;
-        background: rgba(30, 41, 59, 0.98);
-        border-radius: 18px;
-        padding: 10px;
-        flex-direction: column;
-        gap: 8px;
-        box-shadow: 0 18px 34px rgba(15, 23, 42, 0.18);
-      }
-
-      .mobile-nav.show {
-        display: flex;
-      }
-
-      .mobile-nav a {
-        width: 100%;
-        text-align: left;
-      }
-
-      .page-header {
-        background:
-          linear-gradient(rgba(15, 23, 42, 0.58), rgba(20, 184, 166, 0.52)),
-          url("https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1600&q=80")
-          center/cover no-repeat;
-        color: white;
-        text-align: center;
-        padding: 66px 18px;
-      }
-
-      .page-header h1 {
-        margin: 0 0 10px;
-        font-size: 2.6rem;
-      }
-
-      .page-header p {
-        margin: 0;
-        font-size: 1rem;
-        opacity: 0.96;
+      body {
+        background: linear-gradient(135deg, #eefafa 0%, #f8fbfc 55%, #e7f7f5 100%);
       }
 
       .payment-page-wrapper {
-        width: 92%;
-        max-width: 1100px;
-        margin: 30px auto 48px;
+        width: 94%;
+        max-width: 1180px;
+        margin: 16px auto 24px;
       }
 
       .payment-top-actions {
-        display: flex;
-        justify-content: flex-start;
-        margin-bottom: 16px;
+        margin-bottom: 10px;
       }
 
       .back-btn {
         display: inline-flex;
+        align-items: center;
+        justify-content: center;
         text-decoration: none;
-        background: rgba(255,255,255,0.96);
+        background: #ffffff;
         color: #0f172a;
-        padding: 11px 18px;
+        padding: 8px 15px;
         border-radius: 999px;
-        font-weight: 700;
+        font-weight: 800;
+        font-size: 0.9rem;
+        border: 1px solid #dbe7ef;
+        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.05);
         transition: 0.2s ease;
-        box-shadow: 0 10px 20px rgba(15, 23, 42, 0.06);
-        border: 1px solid rgba(219,231,239,0.9);
       }
 
       .back-btn:hover {
@@ -176,43 +42,93 @@
       }
 
       .payment-card {
-        background: rgba(255,255,255,0.96);
-        border-radius: 30px;
-        padding: 30px;
-        box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
-        border: 1px solid rgba(219,231,239,0.92);
-      }
-
-      .section-box {
-        background: linear-gradient(180deg, #fcfeff 0%, #f4fbfc 100%);
+        background: rgba(255, 255, 255, 0.97);
         border: 1px solid #dbe7ef;
-        border-radius: 22px;
-        padding: 20px;
-        margin-bottom: 20px;
+        border-radius: 24px;
+        padding: 18px;
+        box-shadow: 0 16px 34px rgba(15, 23, 42, 0.07);
       }
 
-      .section-box h2 {
-        margin: 0 0 14px;
+      .payment-title-block {
+        margin-bottom: 14px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #e2e8f0;
+      }
+
+      .payment-title-block h1 {
+        margin: 0 0 3px;
         color: #0f172a;
-        font-size: 1.35rem;
+        font-size: 1.45rem;
+        letter-spacing: -0.03em;
+      }
+
+      .payment-title-block p {
+        margin: 0;
+        color: #64748b;
+        line-height: 1.4;
+        font-size: 0.9rem;
       }
 
       .payment-grid {
         display: grid;
-        grid-template-columns: 1.2fr 0.8fr;
-        gap: 18px;
+        grid-template-columns: minmax(0, 1.25fr) minmax(310px, 0.75fr);
+        gap: 16px;
+        align-items: stretch;
+      }
+
+      .payment-left,
+      .payment-right {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .section-box {
+        background: #ffffff;
+        border: 1px solid #dbe7ef;
+        border-radius: 18px;
+        padding: 15px;
+      }
+
+      .section-box h2 {
+        margin: 0 0 10px;
+        color: #0f172a;
+        font-size: 1rem;
+        letter-spacing: -0.02em;
+      }
+
+      .summary-list {
+        display: grid;
+        gap: 8px;
+      }
+
+      .summary-item {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 11px 13px;
+        color: #475569;
+        line-height: 1.45;
+        font-size: 0.86rem;
+      }
+
+      .summary-item strong {
+        display: inline-block;
+        margin-bottom: 2px;
+        color: #0f172a;
+        font-size: 0.95rem;
       }
 
       .payment-form-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 18px;
+        gap: 11px;
       }
 
       .payment-form-group {
         display: flex;
         flex-direction: column;
-        gap: 8px;
+        gap: 5px;
       }
 
       .payment-form-group.full-width {
@@ -220,205 +136,276 @@
       }
 
       .payment-form-group label {
-        font-weight: 700;
         color: #0f172a;
-        font-size: 0.98rem;
+        font-weight: 800;
+        font-size: 0.82rem;
       }
 
       .payment-form-group input,
       .payment-form-group select,
       .payment-form-group textarea {
         width: 100%;
-        padding: 14px 15px;
         border: 1px solid #cbd5e1;
-        border-radius: 14px;
-        font-size: 1rem;
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 10px 12px;
         outline: none;
-        background: #fff;
+        font-size: 0.88rem;
+        transition: 0.18s ease;
       }
 
       .payment-form-group textarea {
-        min-height: 95px;
+        min-height: 58px;
         resize: vertical;
       }
 
-      .summary-list {
-        display: grid;
-        gap: 12px;
+      .payment-form-group input[type="file"] {
+        padding: 8px 10px;
       }
 
-      .summary-item {
-        background: white;
-        border: 1px solid #dbe7ef;
-        border-radius: 16px;
-        padding: 14px 16px;
-        color: #334155;
-        line-height: 1.6;
+      .payment-form-group input:focus,
+      .payment-form-group select:focus,
+      .payment-form-group textarea:focus {
+        border-color: #14b8a6;
+        box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.12);
       }
 
-      .summary-item strong {
-        color: #0f172a;
+      .proof-preview {
+        display: none;
+        background: #f8fafc;
+        border: 1px dashed #cbd5e1;
+        border-radius: 12px;
+        padding: 8px 10px;
+        color: #475569;
+        font-size: 0.8rem;
       }
 
-      .payment-breakdown {
-        background: linear-gradient(135deg, #0f172a, #16233b);
-        color: white;
-        border-radius: 20px;
-        padding: 18px;
-      }
-
-      .payment-row {
-        display: flex;
-        justify-content: space-between;
-        gap: 12px;
-        margin-bottom: 10px;
-      }
-
-      .payment-row:last-child {
-        margin-bottom: 0;
-        padding-top: 10px;
-        border-top: 1px solid rgba(255,255,255,0.14);
-        font-weight: 800;
-      }
-
-      .payment-note {
-        margin-top: 14px;
-        background: #fff7ed;
-        border: 1px solid #fdba74;
-        border-radius: 16px;
-        padding: 14px 16px;
-        color: #9a3412;
-        line-height: 1.6;
+      .proof-preview.show {
+        display: block;
       }
 
       .payment-actions {
         display: flex;
-        flex-direction: column;
         gap: 10px;
         margin-top: 12px;
       }
 
+      .payment-actions .btn-primary,
+      .payment-actions .back-btn-full {
+        flex: 1;
+      }
+
+      .btn-primary.full-btn {
+        border: none;
+        border-radius: 12px;
+        padding: 11px 14px;
+        background: linear-gradient(135deg, #0f766e, #14b8a6);
+        color: white;
+        font-weight: 900;
+        cursor: pointer;
+        box-shadow: 0 10px 20px rgba(20, 184, 166, 0.16);
+        font-size: 0.88rem;
+      }
+
       .back-btn-full {
         display: inline-flex;
+        align-items: center;
         justify-content: center;
-        text-align: center;
         text-decoration: none;
+        border-radius: 12px;
+        padding: 11px 14px;
         background: #e2e8f0;
         color: #0f172a;
-        padding: 13px 16px;
-        border-radius: 14px;
-        font-weight: 700;
+        font-weight: 800;
+        font-size: 0.88rem;
       }
 
-      .qr-placeholder {
-        background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-        border: 1px dashed #cbd5e1;
-        border-radius: 18px;
-        padding: 18px;
-        text-align: center;
-        color: #475569;
-        line-height: 1.7;
-      }
-
-      .proof-preview-box {
-        margin-top: 12px;
-        background: #fff;
-        border: 1px solid #dbe7ef;
+      .payment-breakdown {
+        background: #0f172a;
+        color: white;
         border-radius: 16px;
         padding: 14px;
       }
 
-      .proof-preview-box img {
-        width: 100%;
-        max-height: 260px;
+      .payment-row {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 14px;
+        padding: 7px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        font-size: 0.82rem;
+      }
+
+      .payment-row:first-child {
+        padding-top: 0;
+      }
+
+      .payment-row:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+        margin-top: 2px;
+        font-size: 0.88rem;
+      }
+
+      .payment-row span {
+        color: #cbd5e1;
+      }
+
+      .payment-row strong {
+        color: #ffffff;
+        text-align: right;
+        white-space: nowrap;
+      }
+
+      .payment-note {
+        margin-top: 10px;
+        background: #fff7ed;
+        border: 1px solid #fed7aa;
+        color: #9a3412;
+        border-radius: 14px;
+        padding: 10px 12px;
+        font-size: 0.8rem;
+        line-height: 1.4;
+      }
+
+      .qr-payment-card {
+        background: #ffffff;
+        border: 1px solid #dbe7ef;
+        border-radius: 18px;
+        padding: 14px;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .qr-payment-badge {
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        background: #ecfeff;
+        color: #0f766e;
+        border: 1px solid #ccfbf1;
+        padding: 5px 10px;
+        border-radius: 999px;
+        font-size: 0.72rem;
+        font-weight: 900;
+        margin-bottom: 10px;
+      }
+
+      .qr-payment-card img {
+        display: block;
+        margin: 0 auto;
+        width: 175px;
+        max-width: 100%;
+        aspect-ratio: 1 / 1;
         object-fit: contain;
-        border-radius: 12px;
-        border: 1px solid #e5e7eb;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 9px;
+        box-shadow: 0 10px 20px rgba(15, 23, 42, 0.07);
+      }
+
+      .qr-payment-title {
+        margin: 10px 0 4px;
+        color: #0f172a;
+        font-size: 0.95rem;
+        font-weight: 950;
+      }
+
+      .qr-payment-detail {
+        margin: 3px 0;
+        color: #475569;
+        font-size: 0.78rem;
+        line-height: 1.35;
+      }
+
+      .qr-payment-amount {
+        margin-top: 10px;
+        padding: 10px;
+        width: 100%;
+        border-radius: 13px;
+        background: linear-gradient(135deg, #0f766e, #14b8a6);
+        color: #ffffff;
+        font-weight: 950;
+        font-size: 0.86rem;
+      }
+
+      .qr-payment-reminder {
+        margin-top: 9px;
         background: #f8fafc;
+        border: 1px dashed #cbd5e1;
+        border-radius: 13px;
+        padding: 10px;
+        color: #64748b;
+        line-height: 1.4;
+        font-size: 0.76rem;
       }
 
-      @media (max-width: 900px) {
-        .payment-grid,
-        .payment-form-grid {
+      .message {
+        margin-top: 10px;
+        font-weight: 800;
+        font-size: 0.86rem;
+      }
+
+      @media (max-width: 980px) {
+        .payment-grid {
           grid-template-columns: 1fr;
-        }
-      }
-
-      @media (max-width: 768px) {
-        .desktop-nav {
-          display: none;
-        }
-
-        .menu-toggle {
-          display: inline-block;
-        }
-      }
-
-      @media (max-width: 480px) {
-        .site-header-inner {
-          min-height: 66px;
-        }
-
-        .site-logo {
-          font-size: 1.55rem;
-        }
-
-        .page-header h1 {
-          font-size: 1.8rem;
         }
 
         .payment-card {
-          padding: 20px;
-          border-radius: 22px;
+          padding: 16px;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .payment-page-wrapper {
+          width: 94%;
+          margin-top: 14px;
         }
 
-        .back-btn,
-        .back-btn-full,
-        .btn-primary.full-btn {
-          width: 100%;
-          text-align: center;
-          justify-content: center;
+        .payment-title-block h1 {
+          font-size: 1.3rem;
         }
 
-        .payment-top-actions {
-          display: block;
+        .payment-form-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .payment-actions {
+          flex-direction: column;
+        }
+
+        .section-box {
+          padding: 14px;
+          border-radius: 16px;
+        }
+
+        .payment-card {
+          border-radius: 20px;
+          padding: 14px;
+        }
+
+        .qr-payment-card img {
+          width: 165px;
         }
       }
     </style>
   </head>
-  <body>
-    <header class="site-header">
-      <div class="site-header-inner">
-        <a href="index.html" class="site-logo">SmartResort</a>
 
-        <nav class="desktop-nav">
-          <a href="index.html">Home</a>
-          <a href="rooms.html" class="active">Accommodations</a>
-          <a href="my-bookings.html">My Bookings</a>
-          <a href="profile.html">Profile</a>
-          <a href="#" id="logoutBtn">Logout</a>
-        </nav>
-
-        <button class="menu-toggle" id="menuToggle" aria-label="Open menu">
-          <span></span>
-          <span></span>
-          <span></span>
-        </button>
-      </div>
-
-      <nav class="mobile-nav" id="mobileNav">
+  <body class="has-fixed-navbar">
+    <header class="navbar">
+      <div class="logo">SmartResort</div>
+      <nav>
         <a href="index.html">Home</a>
         <a href="rooms.html" class="active">Accommodations</a>
         <a href="my-bookings.html">My Bookings</a>
         <a href="profile.html">Profile</a>
-        <a href="#" id="mobileLogoutBtn">Logout</a>
+        <a href="#" id="logoutBtn">Logout</a>
       </nav>
     </header>
-
-    <section class="page-header">
-      <h1>Reservation Payment</h1>
-      <p>Review your selected accommodations and complete the required down payment step.</p>
-    </section>
 
     <main class="payment-page-wrapper">
       <div class="payment-top-actions">
@@ -426,8 +413,16 @@
       </div>
 
       <div class="payment-card">
+        <div class="payment-title-block">
+          <h1>Reservation Payment</h1>
+          <p>
+            Review your reservation, scan the selected payment QR code, then upload
+            your proof of transaction for admin verification.
+          </p>
+        </div>
+
         <div class="payment-grid">
-          <div>
+          <div class="payment-left">
             <section class="section-box">
               <h2>Reservation Summary</h2>
               <div id="reservationSummaryList" class="summary-list"></div>
@@ -442,7 +437,7 @@
                     <label for="paymentMethod">Payment Method</label>
                     <select id="paymentMethod" required>
                       <option value="gcash">GCash</option>
-                      <option value="paymaya">PayMaya</option>
+                      <option value="paymaya">Maya / PayMaya</option>
                     </select>
                   </div>
 
@@ -451,24 +446,21 @@
                     <input
                       type="text"
                       id="paymentReference"
-                      placeholder="Transaction/reference number"
+                      placeholder="Enter reference number"
                       required
                     />
                   </div>
 
                   <div class="payment-form-group full-width">
-                    <label for="proofImage">Upload Payment Screenshot</label>
+                    <label for="paymentProof">Proof of Transaction</label>
                     <input
                       type="file"
-                      id="proofImage"
+                      id="paymentProof"
                       accept="image/png,image/jpeg,image/jpg,image/webp"
                       required
                     />
-                  </div>
-
-                  <div class="payment-form-group full-width">
-                    <div class="proof-preview-box" id="proofPreviewBox" style="display:none;">
-                      <img id="proofPreviewImage" src="" alt="Payment Proof Preview" />
+                    <div id="proofPreview" class="proof-preview">
+                      No screenshot selected yet.
                     </div>
                   </div>
 
@@ -476,14 +468,16 @@
                     <label for="paymentReminderNote">Optional Payment Note</label>
                     <textarea
                       id="paymentReminderNote"
-                      placeholder="Optional note about your payment or transaction"
+                      placeholder="Example: Payment sent under a different account name"
                     ></textarea>
                   </div>
                 </div>
 
                 <div class="payment-actions">
-                  <button type="submit" class="btn-primary full-btn">Submit Reservation</button>
-                  <a href="booking.html" class="back-btn-full">Back to Reservation Form</a>
+                  <button type="submit" class="btn-primary full-btn">
+                    Submit Reservation
+                  </button>
+                  <a href="booking.html" class="back-btn-full">Back</a>
                 </div>
               </form>
 
@@ -491,7 +485,7 @@
             </section>
           </div>
 
-          <div>
+          <aside class="payment-right">
             <section class="section-box">
               <h2>Payment Breakdown</h2>
 
@@ -500,18 +494,22 @@
                   <span>Accommodation Total</span>
                   <strong id="paymentAccommodationTotal">₱0.00</strong>
                 </div>
+
                 <div class="payment-row">
-                  <span>Required Down Payment (50%)</span>
+                  <span>Required Down Payment 50%</span>
                   <strong id="paymentDownpayment">₱0.00</strong>
                 </div>
+
                 <div class="payment-row">
                   <span>Remaining 50% Onsite</span>
                   <strong id="paymentRemaining">₱0.00</strong>
                 </div>
+
                 <div class="payment-row">
                   <span>Estimated Entrance Fee</span>
                   <strong id="paymentEntranceFee">₱0.00</strong>
                 </div>
+
                 <div class="payment-row">
                   <span>Total Reminder for Front Desk</span>
                   <strong id="paymentFrontDeskReminder">₱0.00</strong>
@@ -519,27 +517,21 @@
               </div>
 
               <div class="payment-note">
-                <strong>Important Reminder:</strong><br />
-                Your required down payment is based on the accommodation total only.
-                The remaining 50% and the estimated entrance fee will be paid at the front desk.
-                Senior, PWD, and kids discounts will be verified onsite.
+                <strong>Reminder:</strong> Down payment is based on the accommodation
+                total only. Entrance fee and remaining balance are paid onsite.
               </div>
             </section>
 
             <section class="section-box">
-              <h2>QR / Payment Area</h2>
-              <div class="qr-placeholder" id="qrPlaceholderBox">
-                QR payment integration can be placed here later.<br />
-                For now, upload your screenshot proof after sending the payment.
-              </div>
+              <h2>Scan to Pay</h2>
+              <div id="qrPlaceholderBox" class="qr-payment-card"></div>
             </section>
-          </div>
+          </aside>
         </div>
       </div>
     </main>
 
     <script src="js/toast.js"></script>
-    <script src="js/mobile-nav.js"></script>
     <script src="js/booking-payment.js"></script>
   </body>
 </html>
