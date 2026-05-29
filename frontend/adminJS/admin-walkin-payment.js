@@ -1,8 +1,21 @@
+// ============================================================
+// SMARTRESORT ADMIN WALK-IN PAYMENT SCRIPT
+// Purpose:
+// - Check admin access
+// - Load manual reservation draft from sessionStorage
+// - Render reservation summary
+// - Compute payment totals
+// - Handle proof/reference requirement
+// - Submit manual reservation to backend
+// - Works from frontend/adminHTML/admin-walkin-payment.html
+// ============================================================
+
 const API_BASE = "http://127.0.0.1:5000/api";
 const ADMIN_WALKIN_DRAFT_KEY = "smartresort_admin_walkin_draft_v2";
 
 let walkInDraft = null;
 let availableAccommodations = [];
+
 let computedTotals = {
   accommodationTotal: 0,
   requiredDownpayment: 0,
@@ -10,6 +23,11 @@ let computedTotals = {
   paidAmount: 0,
   remainingBalance: 0,
 };
+
+// ============================================================
+// SECTION 1: Page startup
+// Checks admin access, loads draft, rooms, and renders payment page.
+// ============================================================
 
 document.addEventListener("DOMContentLoaded", async () => {
   checkAdminAccess();
@@ -30,20 +48,30 @@ document.addEventListener("DOMContentLoaded", async () => {
   updatePaymentBreakdown();
 });
 
+// ============================================================
+// SECTION 2: Admin access checker
+// Redirects unauthenticated or non-admin users.
+// ============================================================
+
 function checkAdminAccess() {
   const user = JSON.parse(localStorage.getItem("user"));
 
   if (!user) {
     alert("Please login first.");
-    window.location.href = "login.html";
+    window.location.href = "../authHTML/login.html";
     return;
   }
 
   if (user.role !== "admin") {
     alert("Access denied. Admin only.");
-    window.location.href = "index.html";
+    window.location.href = "../index.html";
   }
 }
+
+// ============================================================
+// SECTION 3: Logout
+// Clears current user and returns to login page.
+// ============================================================
 
 function setupLogout() {
   const logoutBtn = document.getElementById("logoutBtn");
@@ -51,10 +79,23 @@ function setupLogout() {
 
   logoutBtn.addEventListener("click", (e) => {
     e.preventDefault();
+
     localStorage.removeItem("user");
-    window.location.href = "login.html";
+
+    if (typeof showToast === "function") {
+      showToast("Logged out successfully.", "success");
+    }
+
+    setTimeout(() => {
+      window.location.href = "../authHTML/login.html";
+    }, 700);
   });
 }
+
+// ============================================================
+// SECTION 4: Get walk-in draft
+// Reads manual reservation data from sessionStorage.
+// ============================================================
 
 function getWalkInDraft() {
   const raw = sessionStorage.getItem(ADMIN_WALKIN_DRAFT_KEY);
@@ -71,6 +112,11 @@ function getWalkInDraft() {
   }
 }
 
+// ============================================================
+// SECTION 5: Load available accommodations
+// Used to compute item labels, slot prices, and totals.
+// ============================================================
+
 async function loadAccommodations() {
   try {
     const response = await fetch(`${API_BASE}/rooms/available`);
@@ -86,6 +132,11 @@ async function loadAccommodations() {
     showMessage(error.message || "Failed to load accommodations.", "error");
   }
 }
+
+// ============================================================
+// SECTION 6: Setup payment form
+// Connects method/type changes, proof preview, and form submit.
+// ============================================================
 
 function setupPaymentForm() {
   const form = document.getElementById("adminPaymentForm");
@@ -113,11 +164,20 @@ function setupPaymentForm() {
   }
 }
 
+// ============================================================
+// SECTION 7: Render reservation summary
+// Shows guest info, entrance type, and selected accommodations.
+// ============================================================
+
 function renderReservationSummary() {
   const container = document.getElementById("reservationSummaryList");
   if (!container || !walkInDraft) return;
 
-  const fullName = [walkInDraft.first_name, walkInDraft.middle_name, walkInDraft.last_name]
+  const fullName = [
+    walkInDraft.first_name,
+    walkInDraft.middle_name,
+    walkInDraft.last_name,
+  ]
     .filter(Boolean)
     .join(" ");
 
@@ -127,14 +187,16 @@ function renderReservationSummary() {
 
   container.innerHTML = `
     <div class="summary-item">
-      <strong>Guest Name:</strong> ${escapeHtml(fullName || "N/A")}<br>
-      <strong>Contact No:</strong> ${escapeHtml(walkInDraft.contact_no || "N/A")}<br>
+      <strong>Guest Name:</strong> ${escapeHtml(fullName || "N/A")}<br />
+      <strong>Contact No:</strong> ${escapeHtml(walkInDraft.contact_no || "N/A")}<br />
       <strong>Guest Count:</strong> ${Number(walkInDraft.guest_count || 0)}
     </div>
 
     <div class="summary-item">
-      <strong>Entrance Type:</strong> ${formatEntranceType(walkInDraft.entrance_type)}<br>
-      <strong>Estimated Entrance Fee:</strong> ₱${formatMoney(computedTotals.estimatedEntranceFee)}
+      <strong>Entrance Type:</strong> ${formatEntranceType(walkInDraft.entrance_type)}<br />
+      <strong>Estimated Entrance Fee:</strong> ₱${formatMoney(
+        computedTotals.estimatedEntranceFee
+      )}
     </div>
 
     ${
@@ -149,8 +211,14 @@ function renderReservationSummary() {
   `;
 }
 
+// ============================================================
+// SECTION 8: Render one reservation item summary
+// Shows accommodation, slot, schedule, and price.
+// ============================================================
+
 function renderReservationItem(item, index) {
   const accommodation = getAccommodationById(item.accommodation_id);
+
   const slot = getSlotOptions(accommodation).find(
     (slotItem) => slotItem.value === item.slot_type
   );
@@ -163,16 +231,34 @@ function renderReservationItem(item, index) {
 
   return `
     <div class="summary-item">
-      <strong>Accommodation ${index + 1}:</strong> ${escapeHtml(accommodation?.name || "N/A")}<br>
-      <strong>Category:</strong> ${escapeHtml(accommodation?.category_name || "N/A")}<br>
-      <strong>Slot:</strong> ${escapeHtml(slot?.label || item.slot_type || "N/A")}<br>
-      <strong>Schedule:</strong> ${formatTimeDisplay(slot?.start)} - ${formatTimeDisplay(slot?.end)}<br>
-      <strong>Check-in:</strong> ${formatDateDisplay(item.check_in_date)}<br>
-      <strong>Check-out:</strong> ${formatDateDisplay(checkOutDate)}<br>
-      <strong>Price:</strong> ₱${formatMoney(slot?.price || 0)}
+      <strong>Accommodation ${index + 1}:</strong>
+      ${escapeHtml(accommodation?.name || "N/A")}<br />
+
+      <strong>Category:</strong>
+      ${escapeHtml(accommodation?.category_name || "N/A")}<br />
+
+      <strong>Slot:</strong>
+      ${escapeHtml(slot?.label || item.slot_type || "N/A")}<br />
+
+      <strong>Schedule:</strong>
+      ${formatTimeDisplay(slot?.start)} - ${formatTimeDisplay(slot?.end)}<br />
+
+      <strong>Check-in:</strong>
+      ${formatDateDisplay(item.check_in_date)}<br />
+
+      <strong>Check-out:</strong>
+      ${formatDateDisplay(checkOutDate)}<br />
+
+      <strong>Price:</strong>
+      ₱${formatMoney(slot?.price || 0)}
     </div>
   `;
 }
+
+// ============================================================
+// SECTION 9: Payment requirements UI
+// Makes proof/reference required for electronic payments.
+// ============================================================
 
 function updatePaymentRequirementUI() {
   const method = document.getElementById("paymentMethod")?.value || "cash";
@@ -212,38 +298,59 @@ function updatePaymentRequirementUI() {
   if (paymentRuleNote) {
     paymentRuleNote.innerHTML = requiresProof
       ? `
-        <strong>Payment Rule:</strong><br>
-        Since ${formatPaymentMethod(method)} is selected, the admin must enter the transaction reference number and upload the proof screenshot sent by the customer.
+        <strong>Payment Rule:</strong><br />
+        Since ${formatPaymentMethod(method)} is selected, the admin must enter
+        the transaction reference number and upload the proof screenshot sent by
+        the customer.
       `
       : `
-        <strong>Payment Rule:</strong><br>
-        Since Cash is selected, proof screenshot and reference number are optional because the payment is personally verified at the front desk.
+        <strong>Payment Rule:</strong><br />
+        Since Cash is selected, proof screenshot and reference number are
+        optional because the payment is personally verified at the front desk.
       `;
   }
 }
+
+// ============================================================
+// SECTION 10: Payment breakdown
+// Computes full/downpayment, remaining balance, and front desk reminder.
+// ============================================================
 
 function updatePaymentBreakdown() {
   computedTotals = computeTotals();
 
   const paymentType = document.getElementById("paymentType")?.value || "full";
+
   const paidAmount =
     paymentType === "full"
       ? computedTotals.accommodationTotal
       : computedTotals.requiredDownpayment;
 
-  const remainingBalance = Math.max(computedTotals.accommodationTotal - paidAmount, 0);
+  const remainingBalance = Math.max(
+    computedTotals.accommodationTotal - paidAmount,
+    0
+  );
+
   const frontDeskReminder = remainingBalance + computedTotals.estimatedEntranceFee;
 
   computedTotals.paidAmount = paidAmount;
   computedTotals.remainingBalance = remainingBalance;
 
-  setText("paymentAccommodationTotal", `₱${formatMoney(computedTotals.accommodationTotal)}`);
+  setText(
+    "paymentAccommodationTotal",
+    `₱${formatMoney(computedTotals.accommodationTotal)}`
+  );
   setText("paymentDownpayment", `₱${formatMoney(computedTotals.requiredDownpayment)}`);
   setText("paymentPaidAmount", `₱${formatMoney(paidAmount)}`);
   setText("paymentRemaining", `₱${formatMoney(remainingBalance)}`);
   setText("paymentEntranceFee", `₱${formatMoney(computedTotals.estimatedEntranceFee)}`);
   setText("paymentFrontDeskReminder", `₱${formatMoney(frontDeskReminder)}`);
 }
+
+// ============================================================
+// SECTION 11: Submit manual reservation
+// Sends draft + payment information to backend.
+// ============================================================
 
 async function submitManualReservation(e) {
   e.preventDefault();
@@ -261,12 +368,18 @@ async function submitManualReservation(e) {
   const requiresProof = isProofRequired(paymentMethod);
 
   if (requiresProof && !proofReference) {
-    showMessage("Reference number is required for GCash, PayMaya, or Bank Transfer.", "error");
+    showMessage(
+      "Reference number is required for GCash, PayMaya, or Bank Transfer.",
+      "error"
+    );
     return;
   }
 
   if (requiresProof && !proofImage) {
-    showMessage("Proof screenshot is required for GCash, PayMaya, or Bank Transfer.", "error");
+    showMessage(
+      "Proof screenshot is required for GCash, PayMaya, or Bank Transfer.",
+      "error"
+    );
     return;
   }
 
@@ -327,10 +440,20 @@ async function submitManualReservation(e) {
   }
 }
 
+// ============================================================
+// SECTION 12: Payment method rule
+// Returns true if transaction reference/proof is required.
+// ============================================================
+
 function isProofRequired(method) {
   const value = String(method || "").toLowerCase();
   return ["gcash", "paymaya", "bank_transfer"].includes(value);
 }
+
+// ============================================================
+// SECTION 13: Proof screenshot preview
+// Shows selected proof image before submit.
+// ============================================================
 
 function previewProofImage() {
   const input = document.getElementById("proofImage");
@@ -349,6 +472,11 @@ function previewProofImage() {
   preview.src = URL.createObjectURL(file);
   preview.style.display = "block";
 }
+
+// ============================================================
+// SECTION 14: Compute totals
+// Computes accommodation total, downpayment, entrance fee.
+// ============================================================
 
 function computeTotals() {
   const items = Array.isArray(walkInDraft?.items) ? walkInDraft.items : [];
@@ -399,6 +527,11 @@ function computeTotals() {
   };
 }
 
+// ============================================================
+// SECTION 15: Entrance fee free pax helper
+// Deducts free entrance pax from total guests.
+// ============================================================
+
 function getTotalFreeEntrancePax(items, guestCount) {
   let total = 0;
 
@@ -411,6 +544,11 @@ function getTotalFreeEntrancePax(items, guestCount) {
 
   return Math.min(total, Number(guestCount || 0));
 }
+
+// ============================================================
+// SECTION 16: Accommodation helpers
+// Gets accommodation data and slot options.
+// ============================================================
 
 function getAccommodationById(id) {
   return (
@@ -450,6 +588,11 @@ function getSlotOptions(accommodation) {
   ];
 }
 
+// ============================================================
+// SECTION 17: Checkout date helper
+// Handles overnight/extended schedules crossing midnight.
+// ============================================================
+
 function calculateCheckOutDate(checkInDate, startTime, endTime) {
   if (!checkInDate || !startTime || !endTime) {
     return checkInDate || "-";
@@ -474,6 +617,11 @@ function calculateCheckOutDate(checkInDate, startTime, endTime) {
   return checkInDate;
 }
 
+// ============================================================
+// SECTION 18: Combine notes
+// Combines guest note and admin payment note.
+// ============================================================
+
 function combineNotes(originalNote, paymentNote) {
   const parts = [];
 
@@ -488,12 +636,23 @@ function combineNotes(originalNote, paymentNote) {
   return parts.join(" | ");
 }
 
+// ============================================================
+// SECTION 19: Text setter
+// Safely updates text content by ID.
+// ============================================================
+
 function setText(id, value) {
   const element = document.getElementById(id);
+
   if (element) {
     element.textContent = value;
   }
 }
+
+// ============================================================
+// SECTION 20: Format helpers
+// Formats payment method, entrance type, money, time, date, text.
+// ============================================================
 
 function formatPaymentMethod(method) {
   if (method === "gcash") return "GCash";
@@ -501,6 +660,7 @@ function formatPaymentMethod(method) {
   if (method === "bank_transfer") return "Bank Transfer";
   if (method === "cash") return "Cash";
   if (method === "other") return "Other";
+
   return capitalize(method);
 }
 
@@ -530,6 +690,7 @@ function formatTimeDisplay(timeValue) {
   if (Number.isNaN(hours)) return timeText;
 
   const suffix = hours >= 12 ? "PM" : "AM";
+
   hours = hours % 12;
 
   if (hours === 0) {

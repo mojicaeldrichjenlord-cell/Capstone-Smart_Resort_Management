@@ -179,7 +179,7 @@ function goToPaymentScreen(e) {
 
   sessionStorage.setItem(ADMIN_WALKIN_DRAFT_KEY, JSON.stringify(draft));
 
-  window.location.href = "../admin-walkin-payment.html";
+  window.location.href = "admin-walkin-payment.html";
 }
 
 // ============================================================
