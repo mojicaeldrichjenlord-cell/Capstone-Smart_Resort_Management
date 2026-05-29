@@ -224,7 +224,7 @@ function renderBookingCard(booking) {
 
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <a
-            href="../booking-receipt.html?id=${booking.id}"
+            href="booking-receipt.html?id=${booking.id}"
             class="btn-primary"
             style="flex:1;text-align:center;"
           >

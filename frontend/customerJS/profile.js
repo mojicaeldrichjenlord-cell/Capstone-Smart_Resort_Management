@@ -6,6 +6,7 @@
 // - Load customer profile details
 // - Change password
 // - Handle logout
+// - Show/hide password fields
 // - Works from frontend/customerHTML/profile.html
 // ============================================================
 
@@ -26,6 +27,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   setupLogout();
+  setupPasswordToggles();
   loadProfile(user.id);
   setupPasswordForm(user.id);
 });
@@ -55,7 +57,32 @@ function setupLogout() {
 }
 
 // ============================================================
-// SECTION 2: Load profile
+// SECTION 2: Show / hide password buttons
+// ============================================================
+
+function setupPasswordToggles() {
+  const toggleButtons = document.querySelectorAll(".toggle-password");
+
+  toggleButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const targetId = button.getAttribute("data-target");
+      const input = document.getElementById(targetId);
+
+      if (!input) return;
+
+      if (input.type === "password") {
+        input.type = "text";
+        button.textContent = "Hide";
+      } else {
+        input.type = "password";
+        button.textContent = "Show";
+      }
+    });
+  });
+}
+
+// ============================================================
+// SECTION 3: Load profile
 // ============================================================
 
 async function loadProfile(userId) {
@@ -87,7 +114,7 @@ async function loadProfile(userId) {
 }
 
 // ============================================================
-// SECTION 3: Change password form
+// SECTION 4: Change password form
 // ============================================================
 
 function setupPasswordForm(userId) {
@@ -147,6 +174,17 @@ function setupPasswordForm(userId) {
 
       showMessage(data.message || "Password changed successfully.", "success");
       changePasswordForm.reset();
+
+      document.querySelectorAll(".toggle-password").forEach((button) => {
+        const targetId = button.getAttribute("data-target");
+        const input = document.getElementById(targetId);
+
+        if (input) {
+          input.type = "password";
+        }
+
+        button.textContent = "Show";
+      });
     } catch (error) {
       console.error("changePassword error:", error);
       showMessage(error.message || "Failed to change password.", "error");
@@ -162,7 +200,7 @@ function setupPasswordForm(userId) {
 }
 
 // ============================================================
-// SECTION 4: Message helper
+// SECTION 5: Message helper
 // ============================================================
 
 function showMessage(message, type = "success") {

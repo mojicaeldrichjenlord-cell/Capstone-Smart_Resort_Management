@@ -1,140 +1,15 @@
 /* ======================================================
    CUSTOMER BOOKING PAYMENT CSS
    File: frontend/customerCSS/booking-payment.css
+
+   NOTE:
+   - Navbar CSS removed from this file.
+   - Navbar style is handled by:
+     frontend/sharedCSS/customer-navbar.css
 ====================================================== */
 
 body {
   background: linear-gradient(135deg, #eefafa 0%, #f8fbfc 55%, #e7f7f5 100%);
-}
-
-/* ======================================================
-   CUSTOMER NAVBAR
-====================================================== */
-
-.site-header {
-  position: sticky;
-  top: 0;
-  z-index: 2000;
-  background: rgba(15, 23, 42, 0.9);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-.site-header-inner {
-  width: 94%;
-  max-width: 1300px;
-  margin: 0 auto;
-  min-height: 74px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.site-logo {
-  color: #ffffff;
-  font-size: 1.95rem;
-  font-weight: 800;
-  text-decoration: none;
-}
-
-.desktop-nav {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.desktop-nav a,
-.mobile-nav a {
-  text-decoration: none;
-  color: #ffffff;
-  font-weight: 700;
-  padding: 10px 14px;
-  border-radius: 999px;
-  transition: 0.25s ease;
-  display: inline-block;
-}
-
-.desktop-nav a:hover,
-.mobile-nav a:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.desktop-nav a.active,
-.mobile-nav a.active {
-  background: #14b8a6;
-  color: #ffffff;
-}
-
-.menu-toggle {
-  display: none;
-  width: 48px;
-  height: 48px;
-  border: none;
-  border-radius: 14px;
-  background: #14b8a6;
-  cursor: pointer;
-  position: relative;
-  flex-shrink: 0;
-  box-shadow: 0 10px 22px rgba(20, 184, 166, 0.25);
-}
-
-.menu-toggle span {
-  position: absolute;
-  left: 12px;
-  width: 24px;
-  height: 3px;
-  background: white;
-  border-radius: 999px;
-  transition: 0.25s ease;
-}
-
-.menu-toggle span:nth-child(1) {
-  top: 14px;
-}
-
-.menu-toggle span:nth-child(2) {
-  top: 22px;
-}
-
-.menu-toggle span:nth-child(3) {
-  top: 30px;
-}
-
-.menu-toggle.active span:nth-child(1) {
-  transform: rotate(45deg);
-  top: 22px;
-}
-
-.menu-toggle.active span:nth-child(2) {
-  opacity: 0;
-}
-
-.menu-toggle.active span:nth-child(3) {
-  transform: rotate(-45deg);
-  top: 22px;
-}
-
-.mobile-nav {
-  display: none;
-  width: 94%;
-  max-width: 1300px;
-  margin: 0 auto 14px;
-  background: rgba(30, 41, 59, 0.98);
-  border-radius: 18px;
-  padding: 10px;
-  flex-direction: column;
-  gap: 8px;
-  box-shadow: 0 18px 34px rgba(15, 23, 42, 0.18);
-}
-
-.mobile-nav.show {
-  display: flex;
-}
-
-.mobile-nav a {
-  width: 100%;
-  text-align: left;
 }
 
 /* ======================================================
@@ -337,6 +212,10 @@ body {
   font-size: 0.88rem;
 }
 
+.btn-primary.full-btn:hover {
+  transform: translateY(-1px);
+}
+
 .back-btn-full {
   display: inline-flex;
   align-items: center;
@@ -348,6 +227,10 @@ body {
   color: #0f172a;
   font-weight: 800;
   font-size: 0.88rem;
+}
+
+.back-btn-full:hover {
+  background: #cbd5e1;
 }
 
 .payment-breakdown {
@@ -491,16 +374,6 @@ body {
 
   .payment-card {
     padding: 16px;
-  }
-}
-
-@media (max-width: 768px) {
-  .desktop-nav {
-    display: none;
-  }
-
-  .menu-toggle {
-    display: inline-block;
   }
 }
 

@@ -16,6 +16,7 @@
   <link rel="stylesheet" href="../sharedCSS/global.css" />
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../customerCSS/booking-receipt.css" />
+  <link rel="stylesheet" href="../sharedCSS/customer-navbar.css" />
 
   <!-- Receipt image download library -->
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -24,35 +25,20 @@
 <body>
   <!-- ======================================================
      CUSTOMER NAVBAR
-     Same-folder customer pages do not use ../
+     Same customer navbar style.
   ======================================================= -->
-  <header class="site-header">
-    <div class="site-header-inner">
-      <a href="index.html" class="site-logo">Arvic Seaside</a>
+  <header class="navbar">
+    <div class="logo">Arvic Seaside</div>
 
-      <nav class="desktop-nav">
-        <a href="index.html">Home</a>
-        <a href="rooms.html">Accommodations</a>
-        <a href="resort-map.html">Resort Map</a>
-        <a href="my-bookings.html" class="active">My Bookings</a>
-        <a href="profile.html">Profile</a>
-        <a href="#" id="logoutBtn">Logout</a>
-      </nav>
+    <button id="menuToggle" class="menu-toggle" type="button">☰</button>
 
-      <button class="menu-toggle" id="menuToggle" aria-label="Open menu">
-        <span></span>
-        <span></span>
-        <span></span>
-      </button>
-    </div>
-
-    <nav class="mobile-nav" id="mobileNav">
+    <nav id="mobileNav">
       <a href="index.html">Home</a>
       <a href="rooms.html">Accommodations</a>
       <a href="resort-map.html">Resort Map</a>
-      <a href="my-bookings.html" class="active">My Bookings</a>
+      <a href="my-bookings.html" class="active-nav">My Bookings</a>
       <a href="profile.html">Profile</a>
-      <a href="#" id="mobileLogoutBtn">Logout</a>
+      <a href="#" id="logoutBtn">Logout</a>
     </nav>
   </header>
 
@@ -101,7 +87,20 @@
      PAGE SCRIPTS
   ======================================================= -->
   <script src="../sharedJS/toast.js"></script>
-  <script src="../js/mobile-nav.js"></script>
   <script src="../customerJS/booking-receipt.js"></script>
+
+  <script>
+    const menuToggle = document.getElementById("menuToggle");
+    const mobileNav = document.getElementById("mobileNav");
+
+    if (menuToggle && mobileNav) {
+      menuToggle.addEventListener("click", () => {
+        mobileNav.classList.toggle("show");
+        menuToggle.textContent = mobileNav.classList.contains("show")
+          ? "×"
+          : "☰";
+      });
+    }
+  </script>
 </body>
 </html>

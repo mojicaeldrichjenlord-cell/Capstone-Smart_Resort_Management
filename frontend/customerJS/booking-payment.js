@@ -93,7 +93,7 @@ function setupLogout() {
 async function loadAccommodations() {
   try {
     const response = await fetch(`${API_BASE}/rooms/available`);
-    const data = await response.json();
+    const data = await safeReadJson(response);
 
     if (!response.ok) {
       throw new Error(data.message || "Failed to load accommodations.");
@@ -247,7 +247,6 @@ function renderDraftSummary() {
 
 // ============================================================
 // SECTION 7: Entrance fee estimate
-// Same logic as booking.js.
 // ============================================================
 
 function getEstimatedEntranceFee() {
@@ -398,7 +397,6 @@ function updateProofPreview() {
 
 // ============================================================
 // SECTION 11: Submit reservation
-// Sends booking draft + payment proof to backend.
 // ============================================================
 
 async function submitReservation(e) {
@@ -454,13 +452,15 @@ async function submitReservation(e) {
     payment_method: paymentMethod,
     payment_type: "downpayment",
     proof_reference: paymentReference,
-    proof_of_payment: paymentReference,
     note: [bookingDraft.note, paymentReminderNote].filter(Boolean).join(" | "),
   };
 
   const formData = new FormData();
   formData.append("payload", JSON.stringify(payload));
-  formData.append("payment_proof", paymentProofFile);
+
+  // Backend route uses upload.single("proof_image"),
+  // so the field name must be proof_image.
+  formData.append("proof_image", paymentProofFile);
 
   const submitBtn = document.querySelector('#paymentForm button[type="submit"]');
   const originalText = submitBtn ? submitBtn.textContent : "Submit Reservation";
@@ -476,7 +476,7 @@ async function submitReservation(e) {
       body: formData,
     });
 
-    const data = await response.json();
+    const data = await safeReadJson(response);
 
     if (!response.ok) {
       throw new Error(data.message || "Reservation failed.");
@@ -485,9 +485,9 @@ async function submitReservation(e) {
     sessionStorage.removeItem(BOOKING_DRAFT_KEY);
 
     if (data.bookingId) {
-      window.location.href = `../booking-receipt.html?id=${data.bookingId}`;
+      window.location.href = `booking-receipt.html?id=${data.bookingId}`;
     } else {
-      window.location.href = "../my-bookings.html";
+      window.location.href = "my-bookings.html";
     }
   } catch (error) {
     console.error("submitReservation error:", error);
@@ -504,7 +504,26 @@ async function submitReservation(e) {
 }
 
 // ============================================================
-// SECTION 12: Date and format helpers
+// SECTION 12: Safer JSON reader
+// Helps show a clearer error if backend returns HTML instead of JSON.
+// ============================================================
+
+async function safeReadJson(response) {
+  const text = await response.text();
+
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    console.error("Non-JSON response from server:", text);
+
+    throw new Error(
+      "Server returned HTML instead of JSON. Check if backend route /api/bookings is running correctly."
+    );
+  }
+}
+
+// ============================================================
+// SECTION 13: Date and format helpers
 // ============================================================
 
 function calculateCheckOutDate(checkInDate, startTime, endTime) {

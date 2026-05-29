@@ -1,0 +1,134 @@
+/* ======================================================
+   CUSTOMER NAVBAR - RESORT MAP STYLE
+   File: frontend/sharedCSS/customer-navbar.css
+   Purpose: Makes all customer pages use the same navbar style
+   as the Resort Map page.
+====================================================== */
+
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 2000;
+  width: 100%;
+  min-height: 86px;
+  padding: 0 52px;
+  background: linear-gradient(90deg, #07566c, #078872);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
+}
+
+.navbar .logo {
+  color: #ffffff;
+  font-size: 1.75rem;
+  font-weight: 900;
+  letter-spacing: 0.6px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.navbar nav {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 18px;
+}
+
+.navbar nav a {
+  text-decoration: none;
+  color: #ffffff;
+  font-weight: 800;
+  padding: 12px 17px;
+  border-radius: 999px;
+  transition: 0.22s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.navbar nav a:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.navbar nav a.active,
+.navbar nav a.active-nav {
+  background: #12b8d4;
+  color: #ffffff;
+  box-shadow: 0 10px 22px rgba(18, 184, 212, 0.22);
+}
+
+.navbar .menu-toggle {
+  display: none;
+  color: #ffffff;
+  font-size: 1.7rem;
+  font-weight: 900;
+  width: 48px;
+  height: 48px;
+  border: none;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #16c7d9, #0797b3);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 10px 22px rgba(22, 199, 217, 0.25);
+}
+
+@media (max-width: 900px) {
+  .navbar {
+    position: relative;
+    min-height: auto;
+    padding: 10px 14px;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .navbar .logo {
+    font-size: 1.45rem;
+  }
+
+  .navbar .menu-toggle {
+    display: inline-flex;
+  }
+
+  .navbar nav {
+    grid-column: 1 / -1;
+    width: 100%;
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    background: #17243a;
+    border-radius: 14px;
+    padding: 12px;
+  }
+
+  .navbar nav.show {
+    display: flex;
+  }
+
+  .navbar nav a {
+    width: 100%;
+    display: flex;
+    padding: 12px 14px;
+    border-radius: 10px;
+    justify-content: flex-start;
+    text-align: left;
+    font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .navbar {
+    padding: 9px 12px;
+  }
+
+  .navbar .logo {
+    font-size: 1.25rem;
+  }
+}
