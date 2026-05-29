@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <!-- ======================================================
+       RESPONSIVE VIEWPORT
+    ======================================================= -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>My Profile | Arvic Seaside</title>
+
+    <!-- ======================================================
+       PAGE CSS FILES
+    ======================================================= -->
+    <link rel="stylesheet" href="../sharedCSS/global.css" />
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../customerCSS/profile.css" />
+  </head>
+
+  <body>
+    <!-- ======================================================
+       CUSTOMER NAVBAR
+       Same-folder customer pages do not use ../
+    ======================================================= -->
+    <header class="site-header">
+      <div class="site-header-inner">
+        <a href="index.html" class="site-logo">Arvic Seaside</a>
+
+        <nav class="desktop-nav">
+          <a href="index.html">Home</a>
+          <a href="rooms.html">Accommodations</a>
+          <a href="resort-map.html">Resort Map</a>
+          <a href="my-bookings.html">My Bookings</a>
+          <a href="profile.html" class="active">Profile</a>
+          <a href="#" id="logoutBtn">Logout</a>
+        </nav>
+
+        <button class="menu-toggle" id="menuToggle" aria-label="Open menu">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+
+      <nav class="mobile-nav" id="mobileNav">
+        <a href="index.html">Home</a>
+        <a href="rooms.html">Accommodations</a>
+        <a href="resort-map.html">Resort Map</a>
+        <a href="my-bookings.html">My Bookings</a>
+        <a href="profile.html" class="active">Profile</a>
+        <a href="#" id="mobileLogoutBtn">Logout</a>
+      </nav>
+    </header>
+
+    <!-- ======================================================
+       PAGE HEADER
+    ======================================================= -->
+    <section class="page-header">
+      <h1>My Profile</h1>
+      <p>View your account details and manage your password.</p>
+    </section>
+
+    <!-- ======================================================
+       MAIN PROFILE CONTENT
+    ======================================================= -->
+    <main class="profile-wrapper">
+      <div class="top-page-actions">
+        <a href="index.html" class="back-btn">← Back to Home</a>
+      </div>
+
+      <section class="profile-card">
+        <h2>Profile Information</h2>
+
+        <div class="profile-form-grid">
+          <div class="profile-form-group">
+            <label>Full Name</label>
+            <div class="profile-readonly" id="profileFullname">Loading...</div>
+          </div>
+
+          <div class="profile-form-group">
+            <label>Email</label>
+            <div class="profile-readonly" id="profileEmail">Loading...</div>
+          </div>
+
+          <div class="profile-form-group">
+            <label>Phone Number</label>
+            <div class="profile-readonly" id="profilePhone">Loading...</div>
+          </div>
+
+          <div class="profile-form-group full-width">
+            <label>Home Address</label>
+            <div class="profile-readonly" id="profileAddress">Loading...</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="profile-card">
+        <h2>Change Password</h2>
+
+        <form id="changePasswordForm" class="password-form">
+          <div class="profile-form-group">
+            <label for="currentPassword">Current Password</label>
+
+            <div class="password-group">
+              <input type="password" id="currentPassword" required />
+
+              <button
+                type="button"
+                class="toggle-password"
+                data-target="currentPassword"
+              >
+                Show
+              </button>
+            </div>
+          </div>
+
+          <div class="profile-form-group">
+            <label for="newPassword">New Password</label>
+
+            <div class="password-group">
+              <input type="password" id="newPassword" required />
+
+              <button
+                type="button"
+                class="toggle-password"
+                data-target="newPassword"
+              >
+                Show
+              </button>
+            </div>
+          </div>
+
+          <div class="profile-form-group">
+            <label for="confirmNewPassword">Confirm New Password</label>
+
+            <div class="password-group">
+              <input type="password" id="confirmNewPassword" required />
+
+              <button
+                type="button"
+                class="toggle-password"
+                data-target="confirmNewPassword"
+              >
+                Show
+              </button>
+            </div>
+          </div>
+
+          <button type="submit" class="profile-submit-btn">
+            Change Password
+          </button>
+        </form>
+      </section>
+    </main>
+
+    <!-- ======================================================
+       PAGE SCRIPTS
+    ======================================================= -->
+    <script src="../sharedJS/toast.js"></script>
+    <script src="../sharedJS/password-toggle.js"></script>
+    <script src="../js/mobile-nav.js"></script>
+    <script src="../customerJS/profile.js"></script>
+  </body>
+</html>
