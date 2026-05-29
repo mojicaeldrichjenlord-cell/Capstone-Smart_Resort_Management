@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <!-- ======================================================
+       RESPONSIVE VIEWPORT
+       Makes accommodations page mobile-friendly.
+    ======================================================= -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Accommodations | Arvic Seaside</title>
+
+    <!-- ======================================================
+       PAGE CSS FILES
+    ======================================================= -->
+    <link rel="stylesheet" href="../sharedCSS/global.css" />
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../customerCSS/rooms.css" />
+  </head>
+
+  <body>
+    <!-- ======================================================
+       CUSTOMER NAVBAR
+       This page is inside customerHTML.
+       Pages not yet moved still use ../ links.
+    ======================================================= -->
+    <header class="site-header">
+      <div class="site-header-inner">
+        <a href="index.html" class="site-logo">Arvic Seaside</a>
+
+        <nav class="desktop-nav">
+          <a href="index.html">Home</a>
+          <a href="rooms.html" class="active">Accommodations</a>
+          <a href="resort-map.html">Resort Map</a>
+          <a href="my-bookings.html">My Bookings</a>
+          <a href="profile.html">Profile</a>
+          <a href="#" id="logoutBtn">Logout</a>
+        </nav>
+
+        <button class="menu-toggle" id="menuToggle" aria-label="Open menu">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+
+      <nav class="mobile-nav" id="mobileNav">
+        <a href="index.html">Home</a>
+        <a href="rooms.html" class="active">Accommodations</a>
+        <a href="../resort-map.html">Resort Map</a>
+        <a href="../my-bookings.html">My Bookings</a>
+        <a href="../profile.html">Profile</a>
+        <a href="#" id="mobileLogoutBtn">Logout</a>
+      </nav>
+    </header>
+
+    <!-- ======================================================
+       PAGE HEADER
+    ======================================================= -->
+    <section class="page-header">
+      <h1>Choose Your Accommodation</h1>
+
+      <p>
+        Browse cottages, rooms, and function areas. Compare morning, evening,
+        and extended rates before you reserve.
+      </p>
+    </section>
+
+    <!-- ======================================================
+       ROOMS CONTENT
+    ======================================================= -->
+    <main class="rooms-wrapper">
+      <div class="rooms-top-actions">
+        <a href="index.html" class="back-btn">← Back to Home</a>
+
+        <div class="map-cta">
+          <p>Not sure where to stay?</p>
+          <a href="resort-map.html" class="map-link-btn">View Resort Map</a>
+        </div>
+      </div>
+
+      <section class="category-filter-panel">
+        <div class="category-filter-header">
+          <div>
+            <h2>Select Accommodation Type</h2>
+            <p>
+              Choose a specific type to quickly find cottages, rooms, or
+              function areas.
+            </p>
+          </div>
+
+          <div class="category-count" id="categoryCount">Loading...</div>
+        </div>
+
+        <div class="category-filter-buttons">
+          <button
+            type="button"
+            class="category-filter-btn active"
+            data-filter="all"
+          >
+            All
+          </button>
+
+          <button
+            type="button"
+            class="category-filter-btn"
+            data-filter="cottages"
+          >
+            Cottages
+          </button>
+
+          <button type="button" class="category-filter-btn" data-filter="rooms">
+            Rooms
+          </button>
+
+          <button
+            type="button"
+            class="category-filter-btn"
+            data-filter="function-areas"
+          >
+            Function Areas
+          </button>
+        </div>
+      </section>
+
+      <div class="room-ai-grid" id="roomsContainer"></div>
+    </main>
+
+    <!-- ======================================================
+       IMAGE VIEWER MODAL
+    ======================================================= -->
+    <div id="imageViewerModal" class="image-viewer-modal">
+      <div class="image-viewer-box">
+        <button id="imageViewerClose" class="image-viewer-close">&times;</button>
+
+        <button
+          id="imageViewerPrev"
+          class="image-viewer-arrow image-viewer-prev"
+        >
+          &#10094;
+        </button>
+
+        <img id="imageViewerImg" src="" alt="Accommodation Photo" />
+
+        <button
+          id="imageViewerNext"
+          class="image-viewer-arrow image-viewer-next"
+        >
+          &#10095;
+        </button>
+
+        <p id="imageViewerCaption"></p>
+        <p id="imageViewerCounter"></p>
+      </div>
+    </div>
+
+    <!-- ======================================================
+       AI CHAT WIDGET
+    ======================================================= -->
+    <button id="aiChatToggle" class="ai-chat-toggle">Ask AI Assistant</button>
+
+    <div id="aiChatWindow" class="ai-chat-window">
+      <div class="ai-chat-header">
+        <h3>Arvic Seaside AI Assistant</h3>
+
+        <div class="ai-chat-header-actions">
+          <button id="aiNewChatBtn" class="ai-chat-header-btn" title="New Chat">
+            New
+          </button>
+
+          <button
+            id="aiChatMaximize"
+            class="ai-chat-header-btn"
+            title="Maximize"
+          >
+            ▢
+          </button>
+
+          <button id="aiChatClose" class="ai-chat-header-btn" title="Close">
+            &times;
+          </button>
+        </div>
+      </div>
+
+      <div id="aiChatMessages" class="ai-chat-messages"></div>
+
+      <div class="ai-chat-input-area">
+        <input
+          type="text"
+          id="aiChatInput"
+          placeholder="Ask about accommodation recommendations, dates, or payment..."
+        />
+
+        <button
+          id="aiMicBtn"
+          class="ai-chat-mic-btn"
+          title="Voice input"
+          aria-label="Voice input"
+        >
+          🎤
+        </button>
+
+        <button id="aiSendBtn" class="ai-chat-send">Send</button>
+      </div>
+    </div>
+
+    <!-- ======================================================
+       PAGE SCRIPTS
+    ======================================================= -->
+    <script src="../sharedJS/toast.js"></script>
+    <script src="../js/mobile-nav.js"></script>
+    <script src="../customerJS/rooms.js"></script>
+    <script src="../js/ai-chat.js"></script>
+  </body>
+</html>

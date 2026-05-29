@@ -1,3 +1,15 @@
+// ============================================================
+// CUSTOMER ROOMS SCRIPT
+// File: frontend/customerJS/rooms.js
+// Purpose:
+// - Check customer access
+// - Load accommodations
+// - Filter rooms/cottages/function areas
+// - Handle image viewer
+// - Handle logout
+// - Works from frontend/customerHTML/rooms.html
+// ============================================================
+
 const API_BASE = "http://127.0.0.1:5000/api";
 
 let allRooms = [];
@@ -7,12 +19,40 @@ let currentViewerImages = [];
 let currentViewerIndex = 0;
 let currentViewerCaption = "Accommodation Photo";
 
+// ============================================================
+// SECTION 1: Page startup
+// ============================================================
+
 document.addEventListener("DOMContentLoaded", () => {
+  checkCustomerAccess();
   setupLogout();
   setupCategoryFilters();
   setupImageViewerControls();
   loadRooms();
 });
+
+// ============================================================
+// SECTION 2: Customer access checker
+// Redirects admin to admin dashboard and unauthenticated users to login.
+// ============================================================
+
+function checkCustomerAccess() {
+  const user = JSON.parse(localStorage.getItem("user"));
+
+  if (!user) {
+    window.location.href = "../authHTML/login.html";
+    return;
+  }
+
+  if (user.role === "admin" || user.role === "staff") {
+    window.location.href = "../adminHTML/admin.html";
+  }
+}
+
+// ============================================================
+// SECTION 3: Logout
+// Handles desktop and mobile logout.
+// ============================================================
 
 function setupLogout() {
   const logoutBtns = [
@@ -23,6 +63,7 @@ function setupLogout() {
   logoutBtns.forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.preventDefault();
+
       localStorage.removeItem("user");
 
       if (typeof showToast === "function") {
@@ -32,11 +73,15 @@ function setupLogout() {
       }
 
       setTimeout(() => {
-        window.location.href = "login.html";
+        window.location.href = "../authHTML/login.html";
       }, 700);
     });
   });
 }
+
+// ============================================================
+// SECTION 4: Category filters
+// ============================================================
 
 function setupCategoryFilters() {
   const filterButtons = document.querySelectorAll(".category-filter-btn");
@@ -53,26 +98,20 @@ function setupCategoryFilters() {
   });
 }
 
+// ============================================================
+// SECTION 5: Load accommodations from backend
+// ============================================================
+
 async function loadRooms() {
   const container = document.getElementById("roomsContainer");
   if (!container) return;
 
   try {
-    container.innerHTML = `
-      <div style="grid-column: 1 / -1;">
-        <div style="
-          background: rgba(255,255,255,0.95);
-          border: 1px solid rgba(219,231,239,0.92);
-          border-radius: 24px;
-          padding: 22px;
-          text-align: center;
-          color: #475569;
-          box-shadow: 0 12px 28px rgba(15,23,42,0.08);
-        ">
-          Loading available accommodations...
-        </div>
-      </div>
-    `;
+    container.innerHTML = renderRoomMessage(
+      "Loading available accommodations...",
+      "#475569",
+      "rgba(219,231,239,0.92)"
+    );
 
     updateCategoryCount("Loading...");
 
@@ -88,25 +127,20 @@ async function loadRooms() {
     renderRooms(getFilteredRooms());
   } catch (error) {
     console.error("loadRooms error:", error);
-    container.innerHTML = `
-      <div style="grid-column: 1 / -1;">
-        <div style="
-          background: rgba(255,255,255,0.95);
-          border: 1px solid #fecaca;
-          border-radius: 24px;
-          padding: 24px;
-          text-align: center;
-          color: #991b1b;
-          box-shadow: 0 12px 28px rgba(15,23,42,0.08);
-        ">
-          Failed to load accommodations.
-        </div>
-      </div>
-    `;
+
+    container.innerHTML = renderRoomMessage(
+      "Failed to load accommodations.",
+      "#991b1b",
+      "#fecaca"
+    );
 
     updateCategoryCount("0 shown");
   }
 }
+
+// ============================================================
+// SECTION 6: Filter helpers
+// ============================================================
 
 function getFilteredRooms() {
   if (currentFilter === "all") return allRooms;
@@ -155,6 +189,10 @@ function getAccommodationGroup(categoryName, roomName = "") {
   return "cottages";
 }
 
+// ============================================================
+// SECTION 7: Render accommodation cards
+// ============================================================
+
 function renderRooms(rooms) {
   const container = document.getElementById("roomsContainer");
   if (!container) return;
@@ -162,54 +200,39 @@ function renderRooms(rooms) {
   updateCategoryCount(`${rooms.length} shown`);
 
   if (!allRooms.length) {
-    container.innerHTML = `
-      <div style="grid-column: 1 / -1;">
-        <div style="
-          background: rgba(255,255,255,0.95);
-          border: 1px solid rgba(219,231,239,0.92);
-          border-radius: 24px;
-          padding: 28px;
-          text-align: center;
-          color: #475569;
-          box-shadow: 0 12px 28px rgba(15,23,42,0.08);
-        ">
-          No available accommodations found right now.
-        </div>
-      </div>
-    `;
+    container.innerHTML = renderRoomMessage(
+      "No available accommodations found right now.",
+      "#475569",
+      "rgba(219,231,239,0.92)"
+    );
     return;
   }
 
   if (!rooms.length) {
-    container.innerHTML = `
-      <div style="grid-column: 1 / -1;">
-        <div style="
-          background: rgba(255,255,255,0.95);
-          border: 1px solid rgba(219,231,239,0.92);
-          border-radius: 24px;
-          padding: 28px;
-          text-align: center;
-          color: #475569;
-          box-shadow: 0 12px 28px rgba(15,23,42,0.08);
-        ">
-          No accommodations found for this category.
-        </div>
-      </div>
-    `;
+    container.innerHTML = renderRoomMessage(
+      "No accommodations found for this category.",
+      "#475569",
+      "rgba(219,231,239,0.92)"
+    );
     return;
   }
 
   container.innerHTML = rooms
     .map((room) => {
-      const imageSrc = escapeHtml(room.image || "images/no-image.jpg");
+      const rawImage = room.image || "images/no-image.jpg";
+      const imageSrc = escapeHtml(resolveImagePath(rawImage));
       const itemName = escapeHtml(room.name || "N/A");
+
       const itemDescription = escapeHtml(
         room.description || "No description available."
       );
+
       const categoryName = escapeHtml(room.category_name || "Accommodation");
+
       const displayGroup = getGroupLabel(
         getAccommodationGroup(room.category_name, room.name)
       );
+
       const mapLabel = escapeHtml(room.map_label || "Not set");
       const dayPrice = formatMoney(room.day_price);
       const overnightPrice = formatMoney(room.overnight_price);
@@ -217,6 +240,7 @@ function renderRooms(rooms) {
       const maxCapacity = room.max_capacity || 0;
       const status = capitalize(room.status || "available");
       const extendedSlotLabel = getExtendedLabel(room.category_name, true);
+
       const galleryImages = Array.isArray(room.gallery_images)
         ? room.gallery_images
         : [];
@@ -226,17 +250,19 @@ function renderRooms(rooms) {
           <div class="room-gallery-strip">
             ${galleryImages
               .slice(0, 8)
-              .map(
-                (img) => `
+              .map((img) => {
+                const resolvedImage = resolveImagePath(img);
+
+                return `
                   <img
-                    src="${escapeHtml(img)}"
+                    src="${escapeHtml(resolvedImage)}"
                     alt="${itemName} photo"
                     onclick="openImageViewerFromRoom(${room.id}, '${escapeForJs(img)}', '${escapeForJs(room.name || "Accommodation")}')"
                     style="cursor:pointer;"
-                    onerror="this.src='images/no-image.jpg'"
+                    onerror="this.src='../images/no-image.jpg'"
                   />
-                `
-              )
+                `;
+              })
               .join("")}
           </div>
         `
@@ -248,9 +274,9 @@ function renderRooms(rooms) {
             <img
               src="${imageSrc}"
               alt="${itemName}"
-              onclick="openImageViewerFromRoom(${room.id}, '${escapeForJs(room.image || "images/no-image.jpg")}', '${escapeForJs(room.name || "Accommodation")}')"
+              onclick="openImageViewerFromRoom(${room.id}, '${escapeForJs(rawImage)}', '${escapeForJs(room.name || "Accommodation")}')"
               style="cursor:pointer;"
-              onerror="this.src='images/no-image.jpg'"
+              onerror="this.src='../images/no-image.jpg'"
             />
 
             <div style="
@@ -317,7 +343,9 @@ function renderRooms(rooms) {
             </div>
 
             <div class="room-ai-actions">
-              <a href="booking.html?room_id=${room.id}" class="book-now-btn">Reserve This</a>
+              <a href="../booking.html?room_id=${room.id}" class="book-now-btn">
+                Reserve This
+              </a>
 
               <button
                 type="button"
@@ -334,12 +362,40 @@ function renderRooms(rooms) {
     .join("");
 }
 
+// ============================================================
+// SECTION 8: Simple message renderer
+// ============================================================
+
+function renderRoomMessage(message, textColor, borderColor) {
+  return `
+    <div style="grid-column: 1 / -1;">
+      <div style="
+        background: rgba(255,255,255,0.95);
+        border: 1px solid ${borderColor};
+        border-radius: 24px;
+        padding: 24px;
+        text-align: center;
+        color: ${textColor};
+        box-shadow: 0 12px 28px rgba(15,23,42,0.08);
+        font-weight: 700;
+      ">
+        ${message}
+      </div>
+    </div>
+  `;
+}
+
 function updateCategoryCount(text) {
   const categoryCount = document.getElementById("categoryCount");
+
   if (categoryCount) {
     categoryCount.textContent = text;
   }
 }
+
+// ============================================================
+// SECTION 9: Labels and AI helper
+// ============================================================
 
 function getGroupLabel(group) {
   if (group === "rooms") return "Rooms";
@@ -387,6 +443,10 @@ function openAiForRoom(roomName, roomId) {
   }
 }
 
+// ============================================================
+// SECTION 10: Image viewer
+// ============================================================
+
 function openImageViewerFromRoom(
   roomId,
   selectedImage,
@@ -432,7 +492,11 @@ function showCurrentViewerImage() {
   const currentImage =
     currentViewerImages[currentViewerIndex] || "images/no-image.jpg";
 
-  image.src = currentImage;
+  image.src = resolveImagePath(currentImage);
+  image.onerror = () => {
+    image.src = "../images/no-image.jpg";
+  };
+
   caption.textContent = currentViewerCaption;
 
   if (counter) {
@@ -519,8 +583,49 @@ function setupImageViewerControls() {
   });
 }
 
+// ============================================================
+// SECTION 11: Image path resolver
+// Fixes image paths because rooms.html is now inside customerHTML.
+// ============================================================
+
+function resolveImagePath(value) {
+  const imagePath = String(value || "").trim();
+
+  if (!imagePath) {
+    return "../images/no-image.jpg";
+  }
+
+  if (
+    imagePath.startsWith("http://") ||
+    imagePath.startsWith("https://") ||
+    imagePath.startsWith("data:") ||
+    imagePath.startsWith("blob:")
+  ) {
+    return imagePath;
+  }
+
+  if (imagePath.startsWith("../")) {
+    return imagePath;
+  }
+
+  if (imagePath.startsWith("/uploads/")) {
+    return `http://127.0.0.1:5000${imagePath}`;
+  }
+
+  if (imagePath.startsWith("uploads/")) {
+    return `http://127.0.0.1:5000/${imagePath}`;
+  }
+
+  return `../${imagePath}`;
+}
+
+// ============================================================
+// SECTION 12: Format and escape helpers
+// ============================================================
+
 function formatMoney(value) {
   const num = Number(value || 0);
+
   return num.toLocaleString(undefined, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
@@ -545,8 +650,12 @@ function formatTimeDisplay(value) {
   if (Number.isNaN(hours)) return timeText;
 
   const suffix = hours >= 12 ? "PM" : "AM";
+
   hours = hours % 12;
-  if (hours === 0) hours = 12;
+
+  if (hours === 0) {
+    hours = 12;
+  }
 
   return `${hours}:${minutes} ${suffix}`;
 }
