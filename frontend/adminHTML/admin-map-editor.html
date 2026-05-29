@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <!-- ======================================================
+       RESPONSIVE VIEWPORT
+       Makes map editor responsive on smaller screens.
+    ======================================================= -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Admin Map Editor | Arvic Seaside</title>
+
+    <!-- ======================================================
+       PAGE CSS FILES
+       global.css = shared base styles
+       style.css = old navbar/button styles for now
+       admin-map-editor.css = map editor page only
+    ======================================================= -->
+    <link rel="stylesheet" href="../sharedCSS/global.css" />
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../adminCSS/admin-map-editor.css" />
+  </head>
+
+  <body class="has-fixed-navbar">
+    <!-- ======================================================
+       ADMIN NAVBAR
+       This page is inside adminHTML.
+       Pages not yet moved still use ../ links.
+    ======================================================= -->
+    <header class="navbar">
+      <div class="logo">Arvic Seaside Admin</div>
+
+      <nav>
+        <a href="admin.html">Bookings</a>
+        <a href="admin-walkin.html">Manual Reservation</a>
+        <a href="admin-guests-inside.html">Guests Inside</a>
+        <a href="admin-rooms.html">Accommodations</a>
+        <a href="admin-map-editor.html" class="active-nav">Map Editor</a>
+        <a href="admin-reports.html">Reports</a>
+        <a href="admin-profile.html">Profile</a>
+        <a href="#" id="logoutBtn">Logout</a>
+      </nav>
+    </header>
+
+    <!-- ======================================================
+       MAIN MAP EDITOR
+       Allows admin to place and link map markers.
+    ======================================================= -->
+    <main class="map-editor-shell">
+      <section class="map-editor-hero">
+        <h1>Resort Map Editor</h1>
+
+        <p>
+          Add, move, rename, and color-code map markers. Link each marker to the
+          exact accommodation so the customer map will show the correct details.
+        </p>
+      </section>
+
+      <section class="editor-layout">
+        <!-- ======================================================
+           LEFT SIDE: MAP CANVAS
+        ======================================================= -->
+        <div class="editor-card">
+          <div class="editor-toolbar">
+            <button type="button" class="editor-btn primary" id="addMarkerBtn">
+              + Add Marker
+            </button>
+
+            <button type="button" class="editor-btn primary" id="saveLayoutBtn">
+              Save Layout
+            </button>
+
+            <button type="button" class="editor-btn light" id="loadDefaultBtn">
+              Load Default Markers
+            </button>
+
+            <button type="button" class="editor-btn danger" id="clearMarkersBtn">
+              Clear Markers
+            </button>
+          </div>
+
+          <div class="map-editor-wrap" id="mapEditorWrap">
+            <img
+              id="resortMapImage"
+              src="../images/resort-map-layout.jpg"
+              alt="Arvic Seaside Map Layout"
+              onerror="this.src='../images/no-image.jpg'"
+            />
+
+            <div id="mapMarkersLayer"></div>
+          </div>
+
+          <div class="editor-note">
+            Tip: Click <strong>Add Marker</strong>, then click the exact spot on
+            the map. Drag existing markers to move them. Use
+            <strong>Linked Accommodation</strong> so the marker opens the correct
+            room/cottage/function area.
+          </div>
+        </div>
+
+        <!-- ======================================================
+           RIGHT SIDE: MARKER DETAILS PANEL
+        ======================================================= -->
+        <aside class="editor-panel">
+          <h2>Marker Details</h2>
+
+          <div class="form-group">
+            <label for="linkedAccommodation">Linked Accommodation</label>
+
+            <select id="linkedAccommodation">
+              <option value="">No linked accommodation</option>
+            </select>
+
+            <small class="field-help">
+              This fixes wrong readings like Small Shade 1 showing Small Shade
+              12.
+            </small>
+          </div>
+
+          <div class="form-group">
+            <label for="markerName">Marker Name</label>
+            <input
+              type="text"
+              id="markerName"
+              placeholder="Example: Small Shade 1"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="markerType">Marker Type</label>
+
+            <select id="markerType">
+              <option value="room">Room</option>
+              <option value="shade">Shade / Cottage</option>
+              <option value="pavilion">Function Area / Pavilion</option>
+              <option value="kubo">Kubo / Nipa Hut</option>
+              <option value="service">Service Area</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="markerColor">Marker Color</label>
+            <input type="color" id="markerColor" value="#14b8a6" />
+          </div>
+
+          <div class="form-group">
+            <label for="markerInfo">Short Info</label>
+
+            <textarea
+              id="markerInfo"
+              placeholder="Example: Cottage accommodation for 8-10 pax."
+            ></textarea>
+          </div>
+
+          <div class="position-grid">
+            <div class="form-group">
+              <label for="markerX">X Position (%)</label>
+              <input type="number" id="markerX" min="0" max="100" step="0.1" />
+            </div>
+
+            <div class="form-group">
+              <label for="markerY">Y Position (%)</label>
+              <input type="number" id="markerY" min="0" max="100" step="0.1" />
+            </div>
+          </div>
+
+          <div class="editor-toolbar">
+            <button type="button" class="editor-btn primary" id="updateMarkerBtn">
+              Update Marker
+            </button>
+
+            <button type="button" class="editor-btn danger" id="deleteMarkerBtn">
+              Delete Marker
+            </button>
+          </div>
+
+          <div class="marker-list" id="markerList"></div>
+        </aside>
+      </section>
+    </main>
+
+    <!-- ======================================================
+       PAGE SCRIPTS
+    ======================================================= -->
+    <script src="../sharedJS/toast.js"></script>
+    <script src="../js/active-nav.js"></script>
+    <script src="../adminJS/admin-map-editor.js"></script>
+  </body>
+</html>

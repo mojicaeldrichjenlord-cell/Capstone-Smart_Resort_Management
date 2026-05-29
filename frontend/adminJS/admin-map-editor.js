@@ -1,3 +1,12 @@
+// ============================================================
+// SMARTRESORT ADMIN MAP EDITOR SCRIPT
+// Purpose:
+// - Check admin access
+// - Load accommodations for marker linking
+// - Load, add, move, edit, save, and delete map markers
+// - Works from frontend/adminHTML/admin-map-editor.html
+// ============================================================
+
 const API_BASE = "http://127.0.0.1:5000/api";
 
 let markers = [];
@@ -22,6 +31,11 @@ const DEFAULT_MARKERS = [
   { name: "Small Nipa Hut", type: "kubo", color: "#ef4444", info: "Small nipa hut near beach side.", x: 72, y: 84, room_id: null },
 ];
 
+// ============================================================
+// SECTION 1: Page startup
+// Checks admin access, connects events, and initializes editor.
+// ============================================================
+
 document.addEventListener("DOMContentLoaded", () => {
   checkAdminAccess();
   setupLogout();
@@ -29,20 +43,30 @@ document.addEventListener("DOMContentLoaded", () => {
   initMapEditor();
 });
 
+// ============================================================
+// SECTION 2: Admin access checker
+// Redirects unauthenticated or non-admin users.
+// ============================================================
+
 function checkAdminAccess() {
   const user = JSON.parse(localStorage.getItem("user"));
 
   if (!user) {
     alert("Please login first.");
-    window.location.href = "login.html";
+    window.location.href = "../authHTML/login.html";
     return;
   }
 
   if (user.role !== "admin") {
     alert("Access denied. Admin only.");
-    window.location.href = "index.html";
+    window.location.href = "../index.html";
   }
 }
+
+// ============================================================
+// SECTION 3: Logout
+// Clears current user and returns to login page.
+// ============================================================
 
 function setupLogout() {
   const logoutBtn = document.getElementById("logoutBtn");
@@ -51,10 +75,23 @@ function setupLogout() {
 
   logoutBtn.addEventListener("click", (e) => {
     e.preventDefault();
+
     localStorage.removeItem("user");
-    window.location.href = "login.html";
+
+    if (typeof showToast === "function") {
+      showToast("Logged out successfully.", "success");
+    }
+
+    setTimeout(() => {
+      window.location.href = "../authHTML/login.html";
+    }, 700);
   });
 }
+
+// ============================================================
+// SECTION 4: Setup events
+// Connects map editor buttons and form controls.
+// ============================================================
 
 function setupEvents() {
   document.getElementById("addMarkerBtn").addEventListener("click", () => {
@@ -62,10 +99,18 @@ function setupEvents() {
     alert("Click on the map where you want to add the marker.");
   });
 
-  document.getElementById("saveLayoutBtn").addEventListener("click", saveMarkersToDB);
+  document
+    .getElementById("saveLayoutBtn")
+    .addEventListener("click", saveMarkersToDB);
 
   document.getElementById("loadDefaultBtn").addEventListener("click", () => {
-    if (!confirm("Load default markers? This will replace current unsaved markers on screen.")) return;
+    if (
+      !confirm(
+        "Load default markers? This will replace current unsaved markers on screen."
+      )
+    ) {
+      return;
+    }
 
     markers = DEFAULT_MARKERS.map((marker) => ({
       ...marker,
@@ -78,26 +123,38 @@ function setupEvents() {
     fillFormFromSelectedMarker();
   });
 
-  document.getElementById("clearMarkersBtn").addEventListener("click", async () => {
-    if (!confirm("Clear all markers from database?")) return;
+  document
+    .getElementById("clearMarkersBtn")
+    .addEventListener("click", async () => {
+      if (!confirm("Clear all markers from database?")) return;
 
-    await deleteAllMarkers();
-    markers = [];
-    selectedMarkerId = null;
-    renderMarkers();
-    clearForm();
-    alert("All markers cleared.");
-  });
+      await deleteAllMarkers();
 
-  document.getElementById("updateMarkerBtn").addEventListener("click", updateSelectedMarker);
-  document.getElementById("deleteMarkerBtn").addEventListener("click", deleteSelectedMarker);
+      markers = [];
+      selectedMarkerId = null;
+
+      renderMarkers();
+      clearForm();
+
+      alert("All markers cleared.");
+    });
+
+  document
+    .getElementById("updateMarkerBtn")
+    .addEventListener("click", updateSelectedMarker);
+
+  document
+    .getElementById("deleteMarkerBtn")
+    .addEventListener("click", deleteSelectedMarker);
 
   document.getElementById("markerType").addEventListener("change", updateColorByType);
 
   document.getElementById("markerX").addEventListener("input", updatePositionFromInputs);
   document.getElementById("markerY").addEventListener("input", updatePositionFromInputs);
 
-  document.getElementById("linkedAccommodation").addEventListener("change", handleLinkedAccommodationChange);
+  document
+    .getElementById("linkedAccommodation")
+    .addEventListener("change", handleLinkedAccommodationChange);
 
   const mapWrap = document.getElementById("mapEditorWrap");
 
@@ -127,15 +184,26 @@ function setupEvents() {
   });
 
   document.addEventListener("mousemove", handleDragMove);
+
   document.addEventListener("mouseup", () => {
     draggedMarkerId = null;
   });
 }
 
+// ============================================================
+// SECTION 5: Initialize editor
+// Loads accommodation list and saved markers.
+// ============================================================
+
 async function initMapEditor() {
   await loadAccommodations();
   await loadMarkersFromDB();
 }
+
+// ============================================================
+// SECTION 6: Load accommodations
+// Used for linked accommodation dropdown.
+// ============================================================
 
 async function loadAccommodations() {
   try {
@@ -150,11 +218,18 @@ async function loadAccommodations() {
     renderAccommodationDropdown();
   } catch (error) {
     console.error("loadAccommodations error:", error);
+
     accommodations = [];
     renderAccommodationDropdown();
+
     alert("Failed to load accommodations for map linking.");
   }
 }
+
+// ============================================================
+// SECTION 7: Render accommodation dropdown
+// Sorts accommodations alphabetically.
+// ============================================================
 
 function renderAccommodationDropdown() {
   const select = document.getElementById("linkedAccommodation");
@@ -163,11 +238,13 @@ function renderAccommodationDropdown() {
   const sorted = [...accommodations].sort((a, b) => {
     const aName = String(a.name || a.room_name || "").toLowerCase();
     const bName = String(b.name || b.room_name || "").toLowerCase();
+
     return aName.localeCompare(bName);
   });
 
   select.innerHTML = `
     <option value="">No linked accommodation</option>
+
     ${sorted
       .map((room) => {
         const name = room.name || room.room_name || `Accommodation #${room.id}`;
@@ -182,6 +259,11 @@ function renderAccommodationDropdown() {
       .join("")}
   `;
 }
+
+// ============================================================
+// SECTION 8: Load markers from database
+// Gets saved resort map markers.
+// ============================================================
 
 async function loadMarkersFromDB() {
   try {
@@ -202,6 +284,11 @@ async function loadMarkersFromDB() {
     alert("Failed to load map markers from database.");
   }
 }
+
+// ============================================================
+// SECTION 9: Save markers to database
+// Creates new markers or updates existing markers.
+// ============================================================
 
 async function saveMarkersToDB() {
   try {
@@ -247,6 +334,11 @@ async function saveMarkersToDB() {
   }
 }
 
+// ============================================================
+// SECTION 10: Build marker payload
+// Converts marker object to backend payload.
+// ============================================================
+
 function buildMarkerPayload(marker) {
   return {
     name: marker.name || "Unnamed Marker",
@@ -259,6 +351,11 @@ function buildMarkerPayload(marker) {
   };
 }
 
+// ============================================================
+// SECTION 11: Delete all markers
+// Removes saved markers from backend.
+// ============================================================
+
 async function deleteAllMarkers() {
   for (const marker of markers) {
     if (!marker.isNew && !String(marker.id).startsWith("temp_")) {
@@ -269,6 +366,11 @@ async function deleteAllMarkers() {
   }
 }
 
+// ============================================================
+// SECTION 12: Render markers and marker list
+// Draws marker buttons over map and side list.
+// ============================================================
+
 function renderMarkers() {
   const layer = document.getElementById("mapMarkersLayer");
   const list = document.getElementById("markerList");
@@ -277,18 +379,23 @@ function renderMarkers() {
 
   layer.innerHTML = markers
     .map((marker) => {
-      const activeClass = String(marker.id) === String(selectedMarkerId) ? "active" : "";
+      const activeClass =
+        String(marker.id) === String(selectedMarkerId) ? "active" : "";
 
       return `
         <button
           type="button"
           class="admin-map-marker ${activeClass}"
-          style="left:${Number(marker.x)}%; top:${Number(marker.y)}%; background:${escapeHtml(marker.color || "#14b8a6")};"
-          onmousedown="startMarkerDrag(event, '${escapeHtml(marker.id)}')"
-          onclick="selectMarker(event, '${escapeHtml(marker.id)}')"
+          style="left:${Number(marker.x)}%; top:${Number(marker.y)}%; background:${escapeHtml(
+            marker.color || "#14b8a6"
+          )};"
+          onmousedown="startMarkerDrag(event, '${escapeForInline(marker.id)}')"
+          onclick="selectMarker(event, '${escapeForInline(marker.id)}')"
           title="${escapeHtml(marker.name || "Map Marker")}"
         >
-          <span class="marker-name-tag">${escapeHtml(marker.name || "Map Marker")}</span>
+          <span class="marker-name-tag">
+            ${escapeHtml(marker.name || "Map Marker")}
+          </span>
         </button>
       `;
     })
@@ -301,14 +408,26 @@ function renderMarkers() {
             String(marker.id) === String(selectedMarkerId) ? "active" : "";
 
           const linkedRoom = getAccommodationById(marker.room_id);
+
           const linkedText = linkedRoom
-            ? `${linkedRoom.name || linkedRoom.room_name} (${linkedRoom.category_name || "Accommodation"})`
+            ? `${linkedRoom.name || linkedRoom.room_name} (${
+                linkedRoom.category_name || "Accommodation"
+              })`
             : "No linked accommodation";
 
           return `
-            <div class="marker-list-item ${activeClass}" onclick="selectMarkerFromList('${escapeHtml(marker.id)}')">
+            <div
+              class="marker-list-item ${activeClass}"
+              onclick="selectMarkerFromList('${escapeForInline(marker.id)}')"
+            >
               <strong>${escapeHtml(marker.name || "Map Marker")}</strong>
-              <span>${escapeHtml(marker.type || "marker")} • X ${Number(marker.x).toFixed(1)}%, Y ${Number(marker.y).toFixed(1)}%</span>
+
+              <span>
+                ${escapeHtml(marker.type || "marker")} •
+                X ${Number(marker.x).toFixed(1)}%,
+                Y ${Number(marker.y).toFixed(1)}%
+              </span>
+
               <span class="linked-pill">${escapeHtml(linkedText)}</span>
             </div>
           `;
@@ -321,6 +440,11 @@ function renderMarkers() {
       </div>
     `;
 }
+
+// ============================================================
+// SECTION 13: Marker selection and dragging
+// Selects, drags, and updates marker coordinates.
+// ============================================================
 
 function startMarkerDrag(event, id) {
   event.preventDefault();
@@ -337,7 +461,10 @@ function handleDragMove(e) {
   if (!draggedMarkerId) return;
 
   const mapWrap = document.getElementById("mapEditorWrap");
-  const marker = markers.find((item) => String(item.id) === String(draggedMarkerId));
+
+  const marker = markers.find(
+    (item) => String(item.id) === String(draggedMarkerId)
+  );
 
   if (!mapWrap || !marker) return;
 
@@ -355,15 +482,22 @@ function selectMarker(event, id) {
   event.stopPropagation();
 
   selectedMarkerId = id;
+
   renderMarkers();
   fillFormFromSelectedMarker();
 }
 
 function selectMarkerFromList(id) {
   selectedMarkerId = id;
+
   renderMarkers();
   fillFormFromSelectedMarker();
 }
+
+// ============================================================
+// SECTION 14: Form fill and clear
+// Syncs selected marker data with panel fields.
+// ============================================================
 
 function fillFormFromSelectedMarker() {
   const marker = getSelectedMarker();
@@ -392,6 +526,11 @@ function clearForm() {
   document.getElementById("markerY").value = "";
 }
 
+// ============================================================
+// SECTION 15: Update selected marker
+// Applies form values to selected marker.
+// ============================================================
+
 function updateSelectedMarker() {
   const marker = getSelectedMarker();
 
@@ -412,8 +551,14 @@ function updateSelectedMarker() {
   fillFormFromSelectedMarker();
 }
 
+// ============================================================
+// SECTION 16: Linked accommodation change
+// Auto-fills marker name, info, type, and color from accommodation.
+// ============================================================
+
 function handleLinkedAccommodationChange() {
   const marker = getSelectedMarker();
+
   if (!marker) return;
 
   const linkedId = getSelectedLinkedAccommodationId();
@@ -435,6 +580,11 @@ function handleLinkedAccommodationChange() {
 
   renderMarkers();
 }
+
+// ============================================================
+// SECTION 17: Delete selected marker
+// Deletes selected marker from DB if saved.
+// ============================================================
 
 async function deleteSelectedMarker() {
   const marker = getSelectedMarker();
@@ -470,6 +620,11 @@ async function deleteSelectedMarker() {
   }
 }
 
+// ============================================================
+// SECTION 18: Type, color, and position updates
+// Updates marker color and coordinates from input fields.
+// ============================================================
+
 function updateColorByType() {
   const type = document.getElementById("markerType").value;
   const colorInput = document.getElementById("markerColor");
@@ -491,6 +646,11 @@ function updatePositionFromInputs() {
   renderMarkers();
 }
 
+// ============================================================
+// SECTION 19: Selection helpers
+// Gets selected marker and linked accommodation.
+// ============================================================
+
 function getSelectedMarker() {
   return markers.find((marker) => String(marker.id) === String(selectedMarkerId));
 }
@@ -506,12 +666,21 @@ function getAccommodationById(id) {
   return accommodations.find((room) => String(room.id) === String(id));
 }
 
+// ============================================================
+// SECTION 20: Marker type helpers
+// Guesses type and color based on accommodation text.
+// ============================================================
+
 function guessMarkerTypeFromAccommodation(room) {
-  const text = `${room.name || ""} ${room.room_name || ""} ${room.category_name || ""}`.toLowerCase();
+  const text = `${room.name || ""} ${room.room_name || ""} ${
+    room.category_name || ""
+  }`.toLowerCase();
 
   if (text.includes("pavilion") || text.includes("function")) return "pavilion";
   if (text.includes("room") || text.includes("villa")) return "room";
-  if (text.includes("kubo") || text.includes("nipa") || text.includes("hut")) return "kubo";
+  if (text.includes("kubo") || text.includes("nipa") || text.includes("hut")) {
+    return "kubo";
+  }
   if (text.includes("shade") || text.includes("cottage")) return "shade";
 
   return "room";
@@ -529,6 +698,11 @@ function getColorForType(type) {
   return colors[type] || "#14b8a6";
 }
 
+// ============================================================
+// SECTION 21: Map position helpers
+// Converts mouse position into percentage x/y.
+// ============================================================
+
 function getPercentPosition(event, container) {
   const rect = container.getBoundingClientRect();
 
@@ -544,6 +718,19 @@ function createTempId() {
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
+}
+
+// ============================================================
+// SECTION 22: Escape helpers
+// Prevents unsafe text from breaking HTML / inline events.
+// ============================================================
+
+function escapeForInline(value) {
+  return String(value || "")
+    .replace(/\\/g, "\\\\")
+    .replace(/'/g, "\\'")
+    .replace(/"/g, "&quot;")
+    .replace(/\n/g, " ");
 }
 
 function escapeHtml(value) {
