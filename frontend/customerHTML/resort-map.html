@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+
+  <!-- ======================================================
+     RESPONSIVE VIEWPORT
+  ======================================================= -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Resort Map | Arvic Seaside</title>
+
+  <!-- ======================================================
+     PAGE CSS FILES
+  ======================================================= -->
+  <link rel="stylesheet" href="../sharedCSS/global.css" />
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../customerCSS/resort-map.css" />
+</head>
+
+<body class="has-fixed-navbar">
+  <!-- ======================================================
+     CUSTOMER NAVBAR
+     Same-folder customer pages do not use ../
+  ======================================================= -->
+  <header class="navbar">
+    <div class="logo">Arvic Seaside</div>
+
+    <button id="menuToggle" class="menu-toggle" type="button">☰</button>
+
+    <nav id="mobileNav">
+      <a href="index.html">Home</a>
+      <a href="rooms.html">Accommodations</a>
+      <a href="resort-map.html" class="active-nav">Resort Map</a>
+      <a href="my-bookings.html">My Bookings</a>
+      <a href="profile.html">Profile</a>
+      <a href="#" id="logoutBtn">Logout</a>
+    </nav>
+  </header>
+
+  <!-- ======================================================
+     MAIN MAP PAGE
+  ======================================================= -->
+  <main class="resort-map-shell">
+    <section class="map-hero">
+      <h1>Resort Map</h1>
+
+      <p>
+        View the resort layout and use filters or arrows to explore rooms,
+        cottages, and function areas without clicking every marker manually.
+      </p>
+    </section>
+
+    <section class="map-filter-panel">
+      <div class="map-filter-header">
+        <div>
+          <h2>Filter Map Markers</h2>
+          <p>Select a category to show only specific accommodations on the map.</p>
+        </div>
+
+        <div class="map-filter-count" id="mapFilterCount">Loading...</div>
+      </div>
+
+      <div class="map-filter-buttons">
+        <button type="button" class="map-filter-btn active" data-filter="all">
+          All
+        </button>
+
+        <button type="button" class="map-filter-btn" data-filter="rooms">
+          Rooms
+        </button>
+
+        <button type="button" class="map-filter-btn" data-filter="cottages">
+          Cottages
+        </button>
+
+        <button type="button" class="map-filter-btn" data-filter="function-areas">
+          Function Areas
+        </button>
+      </div>
+    </section>
+
+    <section class="map-layout">
+      <div class="map-card">
+        <div class="map-image-wrap" id="mapImageWrap">
+          <img
+            src="../images/resort-map-layout.jpg"
+            alt="Arvic Seaside layout map"
+            onerror="this.src='../images/no-image.jpg'"
+          />
+
+          <div id="mapMarkers"></div>
+        </div>
+
+        <div class="map-note">
+          This map is for visual guidance only. Use the filters above or the
+          previous/next buttons to browse accommodations faster.
+        </div>
+
+        <div class="map-actions">
+          <a href="rooms.html" class="map-btn primary">View Accommodations</a>
+          <a href="index.html" class="map-btn light">Back to Home</a>
+        </div>
+      </div>
+
+      <aside class="map-info-card">
+        <img
+          id="infoImage"
+          class="map-info-image"
+          src="../images/no-image.jpg"
+          alt="Accommodation preview"
+        />
+
+        <h2 id="infoName">Select a Marker</h2>
+
+        <p id="infoDescription">
+          Click a marker on the resort map to view accommodation details.
+        </p>
+
+        <div class="map-navigation">
+          <button type="button" class="map-nav-btn" id="prevMarkerBtn">
+            ← Previous
+          </button>
+
+          <button type="button" class="map-nav-btn" id="nextMarkerBtn">
+            Next →
+          </button>
+        </div>
+
+        <div class="map-selected-counter" id="mapSelectedCounter">
+          -
+        </div>
+
+        <div class="info-row">
+          <strong>Status</strong>
+          <span id="infoStatus">-</span>
+        </div>
+
+        <div class="info-row">
+          <strong>Location</strong>
+          <span id="infoLocation">-</span>
+        </div>
+
+        <div class="info-row">
+          <strong>Category</strong>
+          <span id="infoCategory">-</span>
+        </div>
+
+        <div class="info-row">
+          <strong>Capacity</strong>
+          <span id="infoCapacity">-</span>
+        </div>
+
+        <div class="info-row">
+          <strong>Day Tour</strong>
+          <span id="infoDayPrice">-</span>
+        </div>
+
+        <div class="info-row">
+          <strong>Overnight</strong>
+          <span id="infoOvernightPrice">-</span>
+        </div>
+
+        <div class="info-row">
+          <strong>Extended</strong>
+          <span id="infoExtendedPrice">-</span>
+        </div>
+
+        <div class="map-actions">
+          <a id="mapBookBtn" class="map-btn primary" href="#" style="display:none;">
+            View This Accommodation
+          </a>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <!-- ======================================================
+     PAGE SCRIPTS
+  ======================================================= -->
+  <script src="../js/active-nav.js"></script>
+  <script src="../customerJS/resort-map.js"></script>
+</body>
+</html>

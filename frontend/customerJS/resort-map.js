@@ -1,3 +1,15 @@
+// ============================================================
+// CUSTOMER RESORT MAP SCRIPT
+// File: frontend/customerJS/resort-map.js
+// Purpose:
+// - Check customer access
+// - Load map markers and accommodations
+// - Filter markers
+// - Show accommodation details
+// - Handle logout and mobile menu
+// - Works from frontend/customerHTML/resort-map.html
+// ============================================================
+
 const API_BASE = "http://127.0.0.1:5000/api";
 
 let accommodations = [];
@@ -5,11 +17,38 @@ let mapMarkers = [];
 let selectedMarkerId = null;
 let currentMapFilter = "all";
 
+// ============================================================
+// SECTION 1: Page startup
+// ============================================================
+
 document.addEventListener("DOMContentLoaded", () => {
+  checkCustomerAccess();
   setupLogout();
+  setupMobileMenu();
   setupMapControls();
   loadCustomerMap();
 });
+
+// ============================================================
+// SECTION 2: Customer access checker
+// ============================================================
+
+function checkCustomerAccess() {
+  const user = JSON.parse(localStorage.getItem("user"));
+
+  if (!user) {
+    window.location.href = "../authHTML/login.html";
+    return;
+  }
+
+  if (user.role === "admin" || user.role === "staff") {
+    window.location.href = "../adminHTML/admin.html";
+  }
+}
+
+// ============================================================
+// SECTION 3: Logout
+// ============================================================
 
 function setupLogout() {
   const logoutBtn = document.getElementById("logoutBtn");
@@ -19,9 +58,30 @@ function setupLogout() {
   logoutBtn.addEventListener("click", (e) => {
     e.preventDefault();
     localStorage.removeItem("user");
-    window.location.href = "login.html";
+    window.location.href = "../authHTML/login.html";
   });
 }
+
+// ============================================================
+// SECTION 4: Mobile menu
+// Moved from inline HTML script.
+// ============================================================
+
+function setupMobileMenu() {
+  const menuToggle = document.getElementById("menuToggle");
+  const mobileNav = document.getElementById("mobileNav");
+
+  if (!menuToggle || !mobileNav) return;
+
+  menuToggle.addEventListener("click", () => {
+    mobileNav.classList.toggle("show");
+    menuToggle.textContent = mobileNav.classList.contains("show") ? "×" : "☰";
+  });
+}
+
+// ============================================================
+// SECTION 5: Map controls
+// ============================================================
 
 function setupMapControls() {
   const filterButtons = document.querySelectorAll(".map-filter-btn");
@@ -67,6 +127,10 @@ function setupMapControls() {
   });
 }
 
+// ============================================================
+// SECTION 6: Load map and accommodation data
+// ============================================================
+
 async function loadCustomerMap() {
   try {
     const markerResponse = await fetch(`${API_BASE}/map-markers`);
@@ -107,6 +171,10 @@ async function loadCustomerMap() {
     renderFallbackMessage();
   }
 }
+
+// ============================================================
+// SECTION 7: Filter helpers
+// ============================================================
 
 function getFilteredMarkers() {
   if (currentMapFilter === "all") return mapMarkers;
@@ -165,6 +233,10 @@ function getMarkerGroup(marker, room = null) {
   return "cottages";
 }
 
+// ============================================================
+// SECTION 8: Render and select markers
+// ============================================================
+
 function renderMarkers() {
   const markersContainer = document.getElementById("mapMarkers");
   if (!markersContainer) return;
@@ -218,9 +290,9 @@ function showPreviousMarker() {
   const filteredMarkers = getFilteredMarkers();
   if (!filteredMarkers.length) return;
 
-  const currentIndex = filteredMarkers.findIndex(
-    (marker) => String(marker.id) === String(selectedMarkerId)
-  );
+  const currentIndex = filteredMarkers.findIndex((marker) => {
+    return String(marker.id) === String(selectedMarkerId);
+  });
 
   const previousIndex =
     currentIndex <= 0 ? filteredMarkers.length - 1 : currentIndex - 1;
@@ -232,9 +304,9 @@ function showNextMarker() {
   const filteredMarkers = getFilteredMarkers();
   if (!filteredMarkers.length) return;
 
-  const currentIndex = filteredMarkers.findIndex(
-    (marker) => String(marker.id) === String(selectedMarkerId)
-  );
+  const currentIndex = filteredMarkers.findIndex((marker) => {
+    return String(marker.id) === String(selectedMarkerId);
+  });
 
   const nextIndex =
     currentIndex < 0 || currentIndex >= filteredMarkers.length - 1
@@ -243,6 +315,10 @@ function showNextMarker() {
 
   selectMarker(filteredMarkers[nextIndex].id);
 }
+
+// ============================================================
+// SECTION 9: Counter and navigation
+// ============================================================
 
 function updateMapFilterCount(count) {
   const countEl = document.getElementById("mapFilterCount");
@@ -263,9 +339,9 @@ function updateSelectedCounter() {
     return;
   }
 
-  const currentIndex = filteredMarkers.findIndex(
-    (marker) => String(marker.id) === String(selectedMarkerId)
-  );
+  const currentIndex = filteredMarkers.findIndex((marker) => {
+    return String(marker.id) === String(selectedMarkerId);
+  });
 
   counter.textContent = `${currentIndex + 1} of ${filteredMarkers.length}`;
 }
@@ -296,13 +372,17 @@ function getFilterLabel(filter) {
   return "map";
 }
 
+// ============================================================
+// SECTION 10: Find linked accommodation
+// ============================================================
+
 function findAccommodationForMarker(marker) {
   const linkedId = marker.room_id || marker.accommodation_id;
 
   if (linkedId) {
-    const roomById = accommodations.find(
-      (room) => String(room.id) === String(linkedId)
-    );
+    const roomById = accommodations.find((room) => {
+      return String(room.id) === String(linkedId);
+    });
 
     if (roomById) return roomById;
   }
@@ -323,16 +403,26 @@ function findAccommodationForMarker(marker) {
   return null;
 }
 
+// ============================================================
+// SECTION 11: Show details
+// ============================================================
+
 function showAccommodationDetails(room, marker) {
   const status = String(room.status || "available").toLowerCase();
   const isAvailable = status === "available";
 
   setImage("infoImage", room.image || "images/no-image.jpg");
-  setText("infoName", room.name || room.room_name || marker.name || "Accommodation");
+
+  setText(
+    "infoName",
+    room.name || room.room_name || marker.name || "Accommodation"
+  );
+
   setText(
     "infoDescription",
     room.description || marker.info || "No description available."
   );
+
   setText("infoLocation", room.map_label || marker.info || "Not set");
   setText("infoCategory", room.category_name || formatMarkerType(marker.type));
   setText("infoCapacity", `${room.max_capacity || room.capacity || 0} pax`);
@@ -355,10 +445,12 @@ function showAccommodationDetails(room, marker) {
 function showMarkerOnlyDetails(marker) {
   setImage("infoImage", "images/no-image.jpg");
   setText("infoName", marker.name || "Map Marker");
+
   setText(
     "infoDescription",
     marker.info || "This marker shows a location inside the resort."
   );
+
   setText("infoLocation", marker.info || "Map location");
   setText("infoCategory", formatMarkerType(marker.type));
   setText("infoCapacity", "-");
@@ -369,6 +461,10 @@ function showMarkerOnlyDetails(marker) {
   setStatus("Map Guide", true);
   hideBookButton();
 }
+
+// ============================================================
+// SECTION 12: Empty/fallback states
+// ============================================================
 
 function renderNoFilteredMarkersMessage() {
   const markersContainer = document.getElementById("mapMarkers");
@@ -381,16 +477,19 @@ function renderNoFilteredMarkersMessage() {
 
   setImage("infoImage", "images/no-image.jpg");
   setText("infoName", `No ${getFilterLabel(currentMapFilter)} markers found`);
+
   setText(
     "infoDescription",
     "Try selecting All, or ask the admin to link markers to accommodations in the Map Editor."
   );
+
   setText("infoLocation", "-");
   setText("infoCategory", "-");
   setText("infoCapacity", "-");
   setText("infoDayPrice", "-");
   setText("infoOvernightPrice", "-");
   setText("infoExtendedPrice", "-");
+
   setStatus("-", true);
   hideBookButton();
   updateSelectedCounter();
@@ -407,16 +506,19 @@ function renderNoMarkersMessage() {
 
   setImage("infoImage", "images/no-image.jpg");
   setText("infoName", "No map markers yet");
+
   setText(
     "infoDescription",
     "Please add and save markers from the Admin Map Editor first."
   );
+
   setText("infoLocation", "-");
   setText("infoCategory", "-");
   setText("infoCapacity", "-");
   setText("infoDayPrice", "-");
   setText("infoOvernightPrice", "-");
   setText("infoExtendedPrice", "-");
+
   setStatus("-", true);
   hideBookButton();
   updateSelectedCounter();
@@ -433,20 +535,27 @@ function renderFallbackMessage() {
 
   setImage("infoImage", "images/no-image.jpg");
   setText("infoName", "Map details unavailable");
+
   setText(
     "infoDescription",
     "The map image is still visible, but marker data could not be loaded."
   );
+
   setText("infoLocation", "-");
   setText("infoCategory", "-");
   setText("infoCapacity", "-");
   setText("infoDayPrice", "-");
   setText("infoOvernightPrice", "-");
   setText("infoExtendedPrice", "-");
+
   setStatus("-", true);
   hideBookButton();
   updateSelectedCounter();
 }
+
+// ============================================================
+// SECTION 13: Small helpers
+// ============================================================
 
 function hideBookButton() {
   const bookBtn = document.getElementById("mapBookBtn");
@@ -499,16 +608,52 @@ function setText(id, value) {
   }
 }
 
+// ============================================================
+// SECTION 14: Image resolver
+// Fixes image paths because resort-map.html is now inside customerHTML.
+// ============================================================
+
 function setImage(id, src) {
   const img = document.getElementById(id);
 
   if (!img) return;
 
-  img.src = src || "images/no-image.jpg";
+  img.src = resolveImagePath(src || "images/no-image.jpg");
 
   img.onerror = () => {
-    img.src = "images/no-image.jpg";
+    img.src = "../images/no-image.jpg";
   };
+}
+
+function resolveImagePath(value) {
+  const imagePath = String(value || "").trim();
+
+  if (!imagePath) {
+    return "../images/no-image.jpg";
+  }
+
+  if (
+    imagePath.startsWith("http://") ||
+    imagePath.startsWith("https://") ||
+    imagePath.startsWith("data:") ||
+    imagePath.startsWith("blob:")
+  ) {
+    return imagePath;
+  }
+
+  if (imagePath.startsWith("../")) {
+    return imagePath;
+  }
+
+  if (imagePath.startsWith("/uploads/")) {
+    return `http://127.0.0.1:5000${imagePath}`;
+  }
+
+  if (imagePath.startsWith("uploads/")) {
+    return `http://127.0.0.1:5000/${imagePath}`;
+  }
+
+  return `../${imagePath}`;
 }
 
 function formatMoney(value) {
