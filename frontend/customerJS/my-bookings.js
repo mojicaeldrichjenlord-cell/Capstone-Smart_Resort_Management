@@ -1,20 +1,45 @@
+// ============================================================
+// CUSTOMER MY BOOKINGS SCRIPT
+// File: frontend/customerJS/my-bookings.js
+// Purpose:
+// - Check customer access
+// - Load customer bookings
+// - View receipt
+// - Cancel pending booking
+// - Submit modification request
+// - Works from frontend/customerHTML/my-bookings.html
+// ============================================================
+
 const API_BASE = "http://127.0.0.1:5000/api";
 
 let currentUser = null;
 let selectedModifyBookingId = null;
+
+// ============================================================
+// SECTION 1: Page startup
+// ============================================================
 
 document.addEventListener("DOMContentLoaded", () => {
   currentUser = JSON.parse(localStorage.getItem("user"));
 
   if (!currentUser) {
     alert("Please login first.");
-    window.location.href = "login.html";
+    window.location.href = "../authHTML/login.html";
+    return;
+  }
+
+  if (currentUser.role === "admin" || currentUser.role === "staff") {
+    window.location.href = "../adminHTML/admin.html";
     return;
   }
 
   setupLogout();
   loadMyBookings(currentUser.id);
 });
+
+// ============================================================
+// SECTION 2: Logout
+// ============================================================
 
 function setupLogout() {
   const logoutBtns = [
@@ -25,6 +50,7 @@ function setupLogout() {
   logoutBtns.forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.preventDefault();
+
       localStorage.removeItem("user");
 
       if (typeof showToast === "function") {
@@ -34,11 +60,15 @@ function setupLogout() {
       }
 
       setTimeout(() => {
-        window.location.href = "login.html";
+        window.location.href = "../authHTML/login.html";
       }, 700);
     });
   });
 }
+
+// ============================================================
+// SECTION 3: Load bookings
+// ============================================================
 
 async function loadMyBookings(userId) {
   const container = document.getElementById("myBookingsContainer");
@@ -82,11 +112,19 @@ async function loadMyBookings(userId) {
   }
 }
 
+// ============================================================
+// SECTION 4: Render booking card
+// ============================================================
+
 function renderBookingCard(booking) {
   const status = String(booking.status || "pending").toLowerCase();
   const paymentMethod = String(booking.payment_method || "gcash").toLowerCase();
   const paymentStatus = String(booking.payment_status || "pending").toLowerCase();
-  const coverImage = escapeHtml(booking.image || "images/no-image.jpg");
+
+  const coverImage = escapeHtml(
+    resolveImagePath(booking.image || "images/no-image.jpg")
+  );
+
   const canRequestModification = isModificationAllowed(booking);
 
   return `
@@ -102,7 +140,7 @@ function renderBookingCard(booking) {
           src="${coverImage}"
           alt="${escapeHtml(booking.room_name || "Accommodation")}"
           style="width:100%;height:200px;object-fit:cover;background:#f1f5f9;"
-          onerror="this.src='images/no-image.jpg'"
+          onerror="this.src='../images/no-image.jpg'"
         />
 
         <div style="
@@ -186,7 +224,7 @@ function renderBookingCard(booking) {
 
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <a
-            href="booking-receipt.html?id=${booking.id}"
+            href="../booking-receipt.html?id=${booking.id}"
             class="btn-primary"
             style="flex:1;text-align:center;"
           >
@@ -241,6 +279,10 @@ function renderBookingCard(booking) {
   `;
 }
 
+// ============================================================
+// SECTION 5: Modification modal
+// ============================================================
+
 function getModificationModal() {
   return `
     <div
@@ -270,6 +312,7 @@ function getModificationModal() {
             <h2 style="margin:0 0 4px;color:#0f172a;font-size:1.35rem;">
               Request Modification
             </h2>
+
             <p style="margin:0;color:#64748b;line-height:1.5;font-size:0.92rem;">
               Send your requested changes. Admin/staff will review it first.
             </p>
@@ -299,6 +342,7 @@ function getModificationModal() {
               <label style="${modalLabelStyle()}" for="requestedCheckInDate">
                 New Check-in Date
               </label>
+
               <input
                 type="date"
                 id="requestedCheckInDate"
@@ -310,6 +354,7 @@ function getModificationModal() {
               <label style="${modalLabelStyle()}" for="requestedGuestCount">
                 New Guest Count
               </label>
+
               <input
                 type="number"
                 min="1"
@@ -323,6 +368,7 @@ function getModificationModal() {
               <label style="${modalLabelStyle()}" for="requestedSlotType">
                 New Slot
               </label>
+
               <select id="requestedSlotType" style="${modalInputStyle()}">
                 <option value="">No slot change</option>
                 <option value="day_tour">Day Tour</option>
@@ -335,6 +381,7 @@ function getModificationModal() {
               <label style="${modalLabelStyle()}" for="requestedNote">
                 Other Request / Reason
               </label>
+
               <textarea
                 id="requestedNote"
                 placeholder="Example: I want to change date, slot, guest count, or accommodation."
@@ -379,6 +426,7 @@ function getModificationModal() {
 
 function setupModificationModalEvents() {
   const form = document.getElementById("modificationForm");
+
   if (!form) return;
 
   form.addEventListener("submit", submitModificationRequest);
@@ -388,11 +436,13 @@ function openModificationModal(bookingId) {
   selectedModifyBookingId = bookingId;
 
   const modal = document.getElementById("modificationModal");
+
   if (modal) {
     modal.style.display = "flex";
   }
 
   const form = document.getElementById("modificationForm");
+
   if (form) {
     form.reset();
   }
@@ -402,10 +452,15 @@ function closeModificationModal() {
   selectedModifyBookingId = null;
 
   const modal = document.getElementById("modificationModal");
+
   if (modal) {
     modal.style.display = "none";
   }
 }
+
+// ============================================================
+// SECTION 6: Submit modification request
+// ============================================================
 
 async function submitModificationRequest(e) {
   e.preventDefault();
@@ -466,17 +521,24 @@ async function submitModificationRequest(e) {
     console.error("submitModificationRequest error:", error);
 
     if (typeof showToast === "function") {
-      showToast(error.message || "Failed to submit modification request.", "error");
+      showToast(
+        error.message || "Failed to submit modification request.",
+        "error"
+      );
     } else {
       alert(error.message || "Failed to submit modification request.");
     }
   }
 }
 
+// ============================================================
+// SECTION 7: Cancel booking
+// ============================================================
+
 async function cancelBooking(bookingId) {
   if (!currentUser) {
     alert("Please login first.");
-    window.location.href = "login.html";
+    window.location.href = "../authHTML/login.html";
     return;
   }
 
@@ -515,6 +577,10 @@ async function cancelBooking(bookingId) {
   }
 }
 
+// ============================================================
+// SECTION 8: Booking rules
+// ============================================================
+
 function isModificationAllowed(booking) {
   const status = String(booking.status || "").toLowerCase();
 
@@ -538,6 +604,10 @@ function isModificationAllowed(booking) {
 
   return daysBeforeCheckIn >= 1;
 }
+
+// ============================================================
+// SECTION 9: Style helpers for dynamic cards
+// ============================================================
 
 function detailBoxStyle() {
   return `
@@ -592,6 +662,10 @@ function getStatusBadgeStyles(status) {
   return "background:#fef3c7;color:#92400e;border:1px solid #fde68a;";
 }
 
+// ============================================================
+// SECTION 10: Message box helpers
+// ============================================================
+
 function getLoadingBox() {
   return `
     <div style="
@@ -639,6 +713,46 @@ function getErrorBox(message) {
     </div>
   `;
 }
+
+// ============================================================
+// SECTION 11: Image path resolver
+// Fixes image paths because my-bookings.html is now inside customerHTML.
+// ============================================================
+
+function resolveImagePath(value) {
+  const imagePath = String(value || "").trim();
+
+  if (!imagePath) {
+    return "../images/no-image.jpg";
+  }
+
+  if (
+    imagePath.startsWith("http://") ||
+    imagePath.startsWith("https://") ||
+    imagePath.startsWith("data:") ||
+    imagePath.startsWith("blob:")
+  ) {
+    return imagePath;
+  }
+
+  if (imagePath.startsWith("../")) {
+    return imagePath;
+  }
+
+  if (imagePath.startsWith("/uploads/")) {
+    return `http://127.0.0.1:5000${imagePath}`;
+  }
+
+  if (imagePath.startsWith("uploads/")) {
+    return `http://127.0.0.1:5000/${imagePath}`;
+  }
+
+  return `../${imagePath}`;
+}
+
+// ============================================================
+// SECTION 12: Format helpers
+// ============================================================
 
 function formatDate(dateValue) {
   if (!dateValue) return "N/A";

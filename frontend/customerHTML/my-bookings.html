@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <!-- ======================================================
+       RESPONSIVE VIEWPORT
+    ======================================================= -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>My Bookings | Arvic Seaside</title>
+
+    <!-- ======================================================
+       PAGE CSS FILES
+    ======================================================= -->
+    <link rel="stylesheet" href="../sharedCSS/global.css" />
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../customerCSS/my-bookings.css" />
+  </head>
+
+  <body>
+    <!-- ======================================================
+       CUSTOMER NAVBAR
+       This page is inside customerHTML.
+    ======================================================= -->
+    <header class="site-header">
+      <div class="site-header-inner">
+        <a href="index.html" class="site-logo">Arvic Seaside</a>
+
+        <nav class="desktop-nav">
+          <a href="index.html">Home</a>
+          <a href="rooms.html">Accommodations</a>
+          <a href="../resort-map.html">Resort Map</a>
+          <a href="my-bookings.html" class="active">My Bookings</a>
+          <a href="../profile.html">Profile</a>
+          <a href="#" id="logoutBtn">Logout</a>
+        </nav>
+
+        <button class="menu-toggle" id="menuToggle" aria-label="Open menu">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+
+      <nav class="mobile-nav" id="mobileNav">
+        <a href="index.html">Home</a>
+        <a href="rooms.html">Accommodations</a>
+        <a href="../resort-map.html">Resort Map</a>
+        <a href="my-bookings.html" class="active">My Bookings</a>
+        <a href="../profile.html">Profile</a>
+        <a href="#" id="mobileLogoutBtn">Logout</a>
+      </nav>
+    </header>
+
+    <!-- ======================================================
+       PAGE HEADER
+    ======================================================= -->
+    <section class="page-header">
+      <h1>My Bookings</h1>
+
+      <p>
+        Review your reservation history, receipt access, and current booking
+        status.
+      </p>
+    </section>
+
+    <!-- ======================================================
+       MAIN CONTENT
+    ======================================================= -->
+    <main class="my-bookings-wrapper">
+      <div class="top-page-actions">
+        <a href="index.html" class="back-btn">← Back to Home</a>
+      </div>
+
+      <section class="bookings-shell">
+        <h2>Your Reservation History</h2>
+
+        <p class="subtext">
+          Keep track of your booked accommodations, stay schedule, payment
+          method, and latest reservation updates.
+        </p>
+
+        <div id="myBookingsContainer"></div>
+      </section>
+    </main>
+
+    <!-- ======================================================
+       PAGE SCRIPTS
+    ======================================================= -->
+    <script src="../sharedJS/toast.js"></script>
+    <script src="../js/mobile-nav.js"></script>
+    <script src="../customerJS/my-bookings.js"></script>
+  </body>
+</html>
