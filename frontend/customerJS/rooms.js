@@ -343,7 +343,7 @@ function renderRooms(rooms) {
             </div>
 
             <div class="room-ai-actions">
-              <a href="../booking.html?room_id=${room.id}" class="book-now-btn">
+              <a href="booking.html?room_id=${room.id}" class="book-now-btn">
                 Reserve This
               </a>
 

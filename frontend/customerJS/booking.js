@@ -1,3 +1,15 @@
+// ============================================================
+// CUSTOMER BOOKING SCRIPT
+// File: frontend/customerJS/booking.js
+// Purpose:
+// - Check customer access
+// - Load accommodations
+// - Build multi-accommodation booking draft
+// - Calculate entrance estimate and 50% downpayment
+// - Move user to payment page
+// - Works from frontend/customerHTML/booking.html
+// ============================================================
+
 const API_BASE = "http://127.0.0.1:5000/api";
 const BOOKING_DRAFT_KEY = "smartresort_booking_draft_v2";
 
@@ -12,16 +24,26 @@ const addItemBtn = document.getElementById("addItemBtn");
 const params = new URLSearchParams(window.location.search);
 const selectedRoomIdFromUrl = Number(params.get("room_id")) || null;
 
+// ============================================================
+// SECTION 1: Page startup
+// ============================================================
+
 document.addEventListener("DOMContentLoaded", async () => {
   const user = JSON.parse(localStorage.getItem("user"));
 
   if (!user) {
     alert("Please login first.");
-    window.location.href = "login.html";
+    window.location.href = "../authHTML/login.html";
+    return;
+  }
+
+  if (user.role === "admin" || user.role === "staff") {
+    window.location.href = "../adminHTML/admin.html";
     return;
   }
 
   setupLogout();
+  setupPricingGuideModal();
   await loadAccommodations();
   prefillUserInfo(user);
   setupBookingForm(user);
@@ -33,6 +55,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 });
 
+// ============================================================
+// SECTION 2: Logout
+// ============================================================
+
 function setupLogout() {
   const logoutBtns = [
     document.getElementById("logoutBtn"),
@@ -42,6 +68,7 @@ function setupLogout() {
   logoutBtns.forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.preventDefault();
+
       localStorage.removeItem("user");
 
       if (typeof showToast === "function") {
@@ -51,19 +78,67 @@ function setupLogout() {
       }
 
       setTimeout(() => {
-        window.location.href = "login.html";
+        window.location.href = "../authHTML/login.html";
       }, 700);
     });
   });
 }
+
+// ============================================================
+// SECTION 3: Pricing guide modal
+// ============================================================
+
+function setupPricingGuideModal() {
+  const openPricingGuideBtn = document.getElementById("openPricingGuideBtn");
+  const closePricingGuideBtn = document.getElementById("closePricingGuideBtn");
+  const pricingModal = document.getElementById("pricingModal");
+
+  if (openPricingGuideBtn && pricingModal) {
+    openPricingGuideBtn.addEventListener("click", () => {
+      pricingModal.classList.add("show");
+    });
+  }
+
+  if (closePricingGuideBtn && pricingModal) {
+    closePricingGuideBtn.addEventListener("click", () => {
+      pricingModal.classList.remove("show");
+    });
+  }
+
+  if (pricingModal) {
+    pricingModal.addEventListener("click", (e) => {
+      if (e.target === pricingModal) {
+        pricingModal.classList.remove("show");
+      }
+    });
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && pricingModal) {
+      pricingModal.classList.remove("show");
+    }
+  });
+}
+
+// ============================================================
+// SECTION 4: Prefill user information
+// ============================================================
 
 function prefillUserInfo(user) {
   const fullname = String(user.fullname || "").trim();
 
   if (fullname) {
     const parts = fullname.split(" ");
-    if (parts.length >= 1) document.getElementById("firstName").value = parts[0] || "";
-    if (parts.length >= 2) document.getElementById("lastName").value = parts[parts.length - 1] || "";
+
+    if (parts.length >= 1) {
+      document.getElementById("firstName").value = parts[0] || "";
+    }
+
+    if (parts.length >= 2) {
+      document.getElementById("lastName").value =
+        parts[parts.length - 1] || "";
+    }
+
     if (parts.length > 2) {
       document.getElementById("middleName").value = parts.slice(1, -1).join(" ");
     }
@@ -73,6 +148,10 @@ function prefillUserInfo(user) {
     document.getElementById("contactNo").value = user.phone;
   }
 }
+
+// ============================================================
+// SECTION 5: Load accommodations
+// ============================================================
 
 async function loadAccommodations() {
   try {
@@ -97,6 +176,10 @@ async function loadAccommodations() {
     showMessage(error.message || "Failed to load accommodations.", "error");
   }
 }
+
+// ============================================================
+// SECTION 6: Booking form setup
+// ============================================================
 
 function setupBookingForm(user) {
   if (addItemBtn) {
@@ -157,14 +240,21 @@ function setupBookingForm(user) {
     };
 
     sessionStorage.setItem(BOOKING_DRAFT_KEY, JSON.stringify(draft));
-    window.location.href = "booking-payment.html";
+
+    // booking-payment.html is not moved yet, so keep ../ for now.
+    window.location.href = "../booking-payment.html";
   });
 }
+
+// ============================================================
+// SECTION 7: Add booking item card
+// ============================================================
 
 function addBookingItem(preselectedId = null) {
   if (!bookingItemsWrap) return;
 
   bookingItemCounter += 1;
+
   const itemId = bookingItemCounter;
   const today = new Date().toISOString().split("T")[0];
 
@@ -190,7 +280,9 @@ function addBookingItem(preselectedId = null) {
           ${availableAccommodations
             .map(
               (item) => `
-                <option value="${item.id}" ${Number(item.id) === Number(preselectedId) ? "selected" : ""}>
+                <option value="${item.id}" ${
+                  Number(item.id) === Number(preselectedId) ? "selected" : ""
+                }>
                   ${escapeHtml(item.name)} (${escapeHtml(item.category_name)})
                 </option>
               `
@@ -208,12 +300,24 @@ function addBookingItem(preselectedId = null) {
 
       <div class="booking-form-group">
         <label>Reservation Date</label>
-        <input type="date" class="date-input" data-item-id="${itemId}" min="${today}" value="${today}" />
+        <input
+          type="date"
+          class="date-input"
+          data-item-id="${itemId}"
+          min="${today}"
+          value="${today}"
+        />
       </div>
 
       <div class="booking-form-group">
         <label>Maximum Capacity (display only)</label>
-        <input type="text" class="capacity-display" data-item-id="${itemId}" value="-" readonly />
+        <input
+          type="text"
+          class="capacity-display"
+          data-item-id="${itemId}"
+          value="-"
+          readonly
+        />
       </div>
     </div>
 
@@ -258,6 +362,10 @@ function addBookingItem(preselectedId = null) {
   refreshTitles();
 }
 
+// ============================================================
+// SECTION 8: Restore booking draft
+// ============================================================
+
 function restoreDraftIfAny() {
   const raw = sessionStorage.getItem(BOOKING_DRAFT_KEY);
   if (!raw) return;
@@ -301,15 +409,22 @@ function restoreDraftIfAny() {
   }
 }
 
+// ============================================================
+// SECTION 9: Item helpers
+// ============================================================
+
 function refreshTitles() {
   const cards = [...document.querySelectorAll(".booking-item-card")];
 
   cards.forEach((card, index) => {
     const title = card.querySelector(".booking-item-title");
+
     if (title) {
       title.textContent = `Accommodation Item ${index + 1}`;
       card.dataset.itemId = String(index + 1);
+
       const preview = card.querySelector(".slot-preview");
+
       if (preview) {
         preview.id = `slotPreview-${index + 1}`;
       }
@@ -318,14 +433,17 @@ function refreshTitles() {
 }
 
 function getAccommodationById(id) {
-  return availableAccommodations.find((item) => Number(item.id) === Number(id)) || null;
+  return (
+    availableAccommodations.find((item) => Number(item.id) === Number(id)) ||
+    null
+  );
 }
 
 function getSlotOptions(accommodation) {
   if (!accommodation) return [];
 
   const category = String(accommodation.category_name || "").toLowerCase();
-  const isRoom = category === "room";
+  const isRoom = category === "room" || category.includes("room");
 
   return [
     {
@@ -353,7 +471,10 @@ function getSlotOptions(accommodation) {
 }
 
 function populateSlotOptions(itemId) {
-  const card = document.querySelector(`.booking-item-card[data-item-id="${itemId}"]`);
+  const card = document.querySelector(
+    `.booking-item-card[data-item-id="${itemId}"]`
+  );
+
   if (!card) return;
 
   const accommodationSelect = card.querySelector(".accommodation-select");
@@ -374,6 +495,7 @@ function populateSlotOptions(itemId) {
 
   slotSelect.innerHTML = `
     <option value="">Select slot</option>
+
     ${options
       .map(
         (slot) => `
@@ -387,7 +509,10 @@ function populateSlotOptions(itemId) {
 }
 
 function updateItemPreview(itemId) {
-  const card = document.querySelector(`.booking-item-card[data-item-id="${itemId}"]`);
+  const card = document.querySelector(
+    `.booking-item-card[data-item-id="${itemId}"]`
+  );
+
   if (!card) return;
 
   const accommodationSelect = card.querySelector(".accommodation-select");
@@ -399,7 +524,9 @@ function updateItemPreview(itemId) {
 
   if (!accommodation || !preview) return;
 
-  const slot = getSlotOptions(accommodation).find((item) => item.value === slotSelect.value);
+  const slot = getSlotOptions(accommodation).find(
+    (item) => item.value === slotSelect.value
+  );
 
   if (!slot) {
     preview.innerHTML = `
@@ -411,7 +538,11 @@ function updateItemPreview(itemId) {
     return;
   }
 
-  const checkOutDate = calculateCheckOutDate(dateInput.value, slot.start, slot.end);
+  const checkOutDate = calculateCheckOutDate(
+    dateInput.value,
+    slot.start,
+    slot.end
+  );
 
   preview.innerHTML = `
     <strong>${escapeHtml(accommodation.name)}</strong><br>
@@ -446,6 +577,10 @@ function collectBookingItems() {
 
   return items;
 }
+
+// ============================================================
+// SECTION 10: Date and entrance fee calculations
+// ============================================================
 
 function calculateCheckOutDate(checkInDate, startTime, endTime) {
   if (!checkInDate || !startTime || !endTime) return checkInDate || "-";
@@ -485,9 +620,10 @@ function getEstimatedEntranceFee() {
   const entranceType = document.getElementById("entranceType").value;
 
   const items = collectBookingItems();
-  const hasOvernightStyle = items.some((item) =>
-    item.slot_type === "overnight" || item.slot_type === "extended"
-  );
+
+  const hasOvernightStyle = items.some((item) => {
+    return item.slot_type === "overnight" || item.slot_type === "extended";
+  });
 
   const totalFreeEntrancePax = getTotalFreeEntrancePax(items, guestCount);
   const chargeableGuests = Math.max(guestCount - totalFreeEntrancePax, 0);
@@ -513,7 +649,10 @@ function updateSummary() {
     const accommodation = getAccommodationById(item.accommodation_id);
     if (!accommodation) return;
 
-    const slot = getSlotOptions(accommodation).find((s) => s.value === item.slot_type);
+    const slot = getSlotOptions(accommodation).find((s) => {
+      return s.value === item.slot_type;
+    });
+
     if (!slot) return;
 
     accommodationTotal += Number(slot.price || 0);
@@ -533,6 +672,10 @@ function updateSummary() {
   document.getElementById("highlightRemainingBalance").textContent = `₱${formatMoney(remainingBalance)}`;
   document.getElementById("highlightEntranceFee").textContent = `₱${formatMoney(estimatedEntranceFee)}`;
 }
+
+// ============================================================
+// SECTION 11: Format and message helpers
+// ============================================================
 
 function formatMoney(value) {
   return Number(value || 0).toLocaleString(undefined, {
@@ -555,22 +698,31 @@ function formatTimeDisplay(timeValue) {
   if (Number.isNaN(hours)) return timeText;
 
   const suffix = hours >= 12 ? "PM" : "AM";
+
   hours = hours % 12;
-  if (hours === 0) hours = 12;
+
+  if (hours === 0) {
+    hours = 12;
+  }
 
   return `${hours}:${minutes} ${suffix}`;
 }
 
 function formatDateDisplay(dateValue) {
   if (!dateValue) return "N/A";
+
   const date = new Date(dateValue);
+
   if (Number.isNaN(date.getTime())) return dateValue;
+
   return date.toLocaleDateString();
 }
 
 function showMessage(message, type = "success") {
-  bookingMessage.textContent = message;
-  bookingMessage.style.color = type === "error" ? "red" : "green";
+  if (bookingMessage) {
+    bookingMessage.textContent = message;
+    bookingMessage.style.color = type === "error" ? "red" : "green";
+  }
 
   if (typeof showToast === "function") {
     showToast(message, type);

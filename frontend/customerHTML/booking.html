@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <!-- ======================================================
+       RESPONSIVE VIEWPORT
+    ======================================================= -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Reserve Accommodation | Arvic Seaside</title>
+
+    <!-- ======================================================
+       PAGE CSS FILES
+    ======================================================= -->
+    <link rel="stylesheet" href="../sharedCSS/global.css" />
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../customerCSS/booking.css" />
+  </head>
+
+  <body>
+    <!-- ======================================================
+       CUSTOMER NAVBAR
+       This page is inside customerHTML.
+    ======================================================= -->
+    <header class="site-header">
+      <div class="site-header-inner">
+        <a href="index.html" class="site-logo">Arvic Seaside</a>
+
+        <nav class="desktop-nav">
+          <a href="index.html">Home</a>
+          <a href="rooms.html" class="active">Accommodations</a>
+          <a href="resort-map.html">Resort Map</a>
+          <a href="my-bookings.html">My Bookings</a>
+          <a href="profile.html">Profile</a>
+          <a href="#" id="logoutBtn">Logout</a>
+        </nav>
+
+        <button class="menu-toggle" id="menuToggle" aria-label="Open menu">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+
+      <nav class="mobile-nav" id="mobileNav">
+        <a href="index.html">Home</a>
+        <a href="rooms.html" class="active">Accommodations</a>
+        <a href="resort-map.html">Resort Map</a>
+        <a href="my-bookings.html">My Bookings</a>
+        <a href="profile.html">Profile</a>
+        <a href="#" id="mobileLogoutBtn">Logout</a>
+      </nav>
+    </header>
+
+    <!-- ======================================================
+       PAGE HEADER
+    ======================================================= -->
+    <section class="page-header">
+      <h1>Create a Reservation</h1>
+      <p>
+        Fill in your basic information and choose your accommodation before
+        proceeding to payment.
+      </p>
+    </section>
+
+    <!-- ======================================================
+       BOOKING CONTENT
+    ======================================================= -->
+    <main class="booking-page-wrapper">
+      <div class="booking-top-actions">
+        <a href="rooms.html" class="back-btn">← Back to Accommodations</a>
+      </div>
+
+      <!-- ======================================================
+         PRICING GUIDE CARD
+      ======================================================= -->
+      <section class="pricing-guide-card">
+        <div class="pricing-guide-content">
+          <div>
+            <p class="pricing-kicker">Arvic Seaside Rates</p>
+            <h2>Pricing Guide</h2>
+            <p>
+              Check the entrance fees, cottages, rooms, and function area rates
+              before completing your reservation.
+            </p>
+          </div>
+
+          <button type="button" class="pricing-guide-btn" id="openPricingGuideBtn">
+            View Pricing Guide
+          </button>
+        </div>
+      </section>
+
+      <!-- ======================================================
+         PRICING GUIDE MODAL
+      ======================================================= -->
+      <div class="pricing-modal" id="pricingModal">
+        <div class="pricing-modal-box">
+          <button type="button" class="pricing-modal-close" id="closePricingGuideBtn">
+            &times;
+          </button>
+
+          <img
+            src="../images/arvic-price-guide.png"
+            alt="Arvic Seaside Price Guide"
+            class="pricing-guide-img"
+            onerror="this.src='../images/no-image.jpg'"
+          />
+        </div>
+      </div>
+
+      <!-- ======================================================
+         BOOKING FORM
+      ======================================================= -->
+      <div class="booking-card">
+        <form id="bookingForm">
+          <section class="section-box">
+            <h2>Guest Information</h2>
+
+            <div class="booking-form-grid">
+              <div class="booking-form-group">
+                <label for="firstName">First Name</label>
+                <input type="text" id="firstName" required />
+              </div>
+
+              <div class="booking-form-group">
+                <label for="middleName">Middle Name (Optional)</label>
+                <input type="text" id="middleName" />
+              </div>
+
+              <div class="booking-form-group">
+                <label for="lastName">Last Name</label>
+                <input type="text" id="lastName" required />
+              </div>
+
+              <div class="booking-form-group">
+                <label for="contactNo">Contact Number</label>
+                <input type="text" id="contactNo" required />
+              </div>
+
+              <div class="booking-form-group">
+                <label for="guestCount">Guest Count</label>
+                <input type="number" id="guestCount" min="1" required />
+              </div>
+
+              <div class="booking-form-group">
+                <label for="entranceType">Entrance Type</label>
+                <select id="entranceType" required>
+                  <option value="pool_beach">Pool &amp; Beach Entrance</option>
+                  <option value="beach_only">Beach Entrance Only</option>
+                </select>
+                <small class="field-help">
+                  Entrance fee is estimated only and will be finalized at the
+                  front desk.
+                </small>
+              </div>
+
+              <div class="booking-form-group full-width">
+                <label for="customerNote">Note / Concern</label>
+                <textarea
+                  id="customerNote"
+                  placeholder="Kung may gusto kayong ihabilin or concern, ilagay dito. If you have kids, senior, or PWD guests, please mention it here for front-desk verification."
+                ></textarea>
+              </div>
+            </div>
+          </section>
+
+          <!-- ======================================================
+             RESERVATION ITEMS
+          ======================================================= -->
+          <section class="section-box">
+            <div class="booking-item-header">
+              <div class="booking-item-title">Reservation Items</div>
+
+              <button type="button" class="btn-primary" id="addItemBtn">
+                Add Another Accommodation
+              </button>
+            </div>
+
+            <div id="bookingItemsWrap" class="booking-items-wrap"></div>
+          </section>
+
+          <!-- ======================================================
+             RESERVATION PREVIEW
+          ======================================================= -->
+          <section class="section-box">
+            <h2>Reservation Preview</h2>
+
+            <div class="summary-grid">
+              <div class="summary-box">
+                <strong>Total Selected Accommodations</strong>
+                <span id="summaryItemCount">0 item(s)</span>
+              </div>
+
+              <div class="summary-box">
+                <strong>Estimated Entrance Fee</strong>
+                <span id="estimatedEntranceFee">₱0.00</span>
+              </div>
+
+              <div class="summary-box">
+                <strong>Accommodation Total</strong>
+                <span id="accommodationTotal">₱0.00</span>
+              </div>
+
+              <div class="summary-box">
+                <strong>Required Down Payment</strong>
+                <span id="requiredDownpayment">₱0.00</span>
+              </div>
+            </div>
+
+            <div class="highlight-box">
+              <div class="highlight-row">
+                <span>Accommodation Total</span>
+                <strong id="highlightAccommodationTotal">₱0.00</strong>
+              </div>
+
+              <div class="highlight-row">
+                <span>Down Payment Now (50%)</span>
+                <strong id="highlightDownpayment">₱0.00</strong>
+              </div>
+
+              <div class="highlight-row">
+                <span>Remaining Balance Onsite</span>
+                <strong id="highlightRemainingBalance">₱0.00</strong>
+              </div>
+
+              <div class="highlight-row">
+                <span>Entrance Fee Estimate</span>
+                <strong id="highlightEntranceFee">₱0.00</strong>
+              </div>
+            </div>
+
+            <p class="field-help" style="margin-top: 14px">
+              On the next screen, you will review your payment details and
+              submit your reservation.
+            </p>
+          </section>
+
+          <div class="booking-form-actions">
+            <button type="submit" class="btn-primary full-btn">
+              Next to Payment
+            </button>
+
+            <a href="rooms.html" class="back-btn-full">Back to Accommodations</a>
+          </div>
+        </form>
+
+        <p id="bookingMessage" class="message"></p>
+      </div>
+    </main>
+
+    <!-- ======================================================
+       PAGE SCRIPTS
+    ======================================================= -->
+    <script src="../sharedJS/toast.js"></script>
+    <script src="../js/mobile-nav.js"></script>
+    <script src="../customerJS/booking.js"></script>
+  </body>
+</html>
