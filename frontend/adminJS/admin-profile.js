@@ -1,17 +1,32 @@
+// ============================================================
+// SMARTRESORT ADMIN PROFILE SCRIPT
+// Purpose:
+// - Check admin access
+// - Load admin profile details
+// - Handle logout
+// - Change admin password
+// - Works from frontend/adminHTML/admin-profile.html
+// ============================================================
+
 const API_BASE = "http://127.0.0.1:5000/api";
+
+// ============================================================
+// SECTION 1: Page startup
+// Checks admin access, loads profile, and sets password form.
+// ============================================================
 
 document.addEventListener("DOMContentLoaded", () => {
   const user = JSON.parse(localStorage.getItem("user"));
 
   if (!user) {
     alert("Please login first.");
-    window.location.href = "login.html";
+    window.location.href = "../authHTML/login.html";
     return;
   }
 
   if (user.role !== "admin") {
     alert("Access denied. Admin only.");
-    window.location.href = "index.html";
+    window.location.href = "../index.html";
     return;
   }
 
@@ -20,21 +35,32 @@ document.addEventListener("DOMContentLoaded", () => {
   setupPasswordForm(user.id);
 });
 
+// ============================================================
+// SECTION 2: Logout
+// Clears current user and returns to login page.
+// ============================================================
+
 function setupLogout() {
   const logoutBtn = document.getElementById("logoutBtn");
 
   if (logoutBtn) {
     logoutBtn.addEventListener("click", (e) => {
       e.preventDefault();
+
       localStorage.removeItem("user");
       showMessage("Logged out successfully.", "success");
 
       setTimeout(() => {
-        window.location.href = "login.html";
+        window.location.href = "../authHTML/login.html";
       }, 700);
     });
   }
 }
+
+// ============================================================
+// SECTION 3: Load profile
+// Gets admin profile details from backend.
+// ============================================================
 
 async function loadProfile(userId) {
   try {
@@ -47,15 +73,27 @@ async function loadProfile(userId) {
 
     const user = data.user || {};
 
-    document.getElementById("profileFullname").textContent = user.fullname || "N/A";
-    document.getElementById("profileEmail").textContent = user.email || "N/A";
-    document.getElementById("profilePhone").textContent = user.phone || "N/A";
-    document.getElementById("profileAddress").textContent = user.address || "N/A";
+    document.getElementById("profileFullname").textContent =
+      user.fullname || "N/A";
+
+    document.getElementById("profileEmail").textContent =
+      user.email || "N/A";
+
+    document.getElementById("profilePhone").textContent =
+      user.phone || "N/A";
+
+    document.getElementById("profileAddress").textContent =
+      user.address || "N/A";
   } catch (error) {
     console.error("loadProfile error:", error);
     showMessage(error.message || "Failed to load profile.", "error");
   }
 }
+
+// ============================================================
+// SECTION 4: Password form setup
+// Validates and submits change password request.
+// ============================================================
 
 function setupPasswordForm(userId) {
   const changePasswordForm = document.getElementById("changePasswordForm");
@@ -64,17 +102,23 @@ function setupPasswordForm(userId) {
   changePasswordForm.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const currentPassword = document.getElementById("currentPassword").value.trim();
+    const currentPassword = document
+      .getElementById("currentPassword")
+      .value.trim();
+
     const newPassword = document.getElementById("newPassword").value.trim();
-    const confirmNewPassword = document.getElementById("confirmNewPassword").value.trim();
+
+    const confirmNewPassword = document
+      .getElementById("confirmNewPassword")
+      .value.trim();
 
     if (!currentPassword || !newPassword || !confirmNewPassword) {
       showMessage("Please fill in all password fields.", "error");
       return;
     }
 
-    if (newPassword.length < 6) {
-      showMessage("New password must be at least 6 characters.", "error");
+    if (newPassword.length < 8) {
+      showMessage("New password must be at least 8 characters.", "error");
       return;
     }
 
@@ -84,7 +128,9 @@ function setupPasswordForm(userId) {
     }
 
     const submitBtn = changePasswordForm.querySelector('button[type="submit"]');
-    const originalBtnText = submitBtn ? submitBtn.textContent : "Change Password";
+    const originalBtnText = submitBtn
+      ? submitBtn.textContent
+      : "Change Password";
 
     try {
       if (submitBtn) {
@@ -126,6 +172,11 @@ function setupPasswordForm(userId) {
     }
   });
 }
+
+// ============================================================
+// SECTION 5: Message helper
+// Uses toast if available, otherwise alert.
+// ============================================================
 
 function showMessage(message, type = "success") {
   if (typeof showToast === "function") {

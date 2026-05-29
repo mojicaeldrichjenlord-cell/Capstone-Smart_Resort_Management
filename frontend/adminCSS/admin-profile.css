@@ -1,0 +1,219 @@
+/* ======================================================
+   ADMIN PROFILE CSS
+   File: frontend/adminCSS/admin-profile.css
+   Purpose:
+   - Styles only adminHTML/admin-profile.html
+====================================================== */
+
+.profile-admin-shell {
+  width: 92%;
+  max-width: 1100px;
+  margin: 0 auto 40px;
+}
+
+.admin-top-link {
+  display: flex;
+  justify-content: flex-start;
+  margin: 10px 0 18px;
+}
+
+.back-btn {
+  display: inline-flex;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.96);
+  color: #0f172a;
+  padding: 11px 18px;
+  border-radius: 999px;
+  font-weight: 800;
+  transition: 0.2s ease;
+  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.06);
+  border: 1px solid rgba(219, 231, 239, 0.92);
+}
+
+.back-btn:hover {
+  transform: translateY(-1px);
+}
+
+.profile-hero {
+  background:
+    linear-gradient(
+      135deg,
+      rgba(15, 23, 42, 0.95),
+      rgba(20, 184, 166, 0.82)
+    ),
+    linear-gradient(135deg, #0f172a, #14b8a6);
+  color: white;
+  border-radius: 30px;
+  padding: 34px 28px;
+  margin-bottom: 22px;
+  box-shadow: 0 20px 46px rgba(15, 23, 42, 0.16);
+  position: relative;
+  overflow: hidden;
+}
+
+.profile-hero::after {
+  content: "";
+  position: absolute;
+  top: -55px;
+  right: -55px;
+  width: 220px;
+  height: 220px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 50%;
+  filter: blur(6px);
+}
+
+.profile-hero h1 {
+  margin: 0 0 10px;
+  font-size: 2.1rem;
+  position: relative;
+  z-index: 1;
+}
+
+.profile-hero p {
+  margin: 0;
+  max-width: 720px;
+  line-height: 1.7;
+  opacity: 0.96;
+  position: relative;
+  z-index: 1;
+}
+
+.profile-card {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(219, 231, 239, 0.92);
+  border-radius: 28px;
+  padding: 28px;
+  box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08);
+  margin-bottom: 22px;
+}
+
+.profile-card h2 {
+  margin-bottom: 22px;
+  color: #0f172a;
+  font-size: 1.55rem;
+}
+
+.profile-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px 20px;
+}
+
+.profile-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.profile-form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.profile-form-group label {
+  font-weight: 800;
+  color: #0f172a;
+  font-size: 0.96rem;
+}
+
+.profile-readonly {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid #dbe7ef;
+  border-radius: 16px;
+  font-size: 0.98rem;
+  background: linear-gradient(180deg, #fcfeff 0%, #f4fbfc 100%);
+  color: #334155;
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  word-break: break-word;
+  line-height: 1.55;
+}
+
+.password-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.password-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-group input {
+  width: 100%;
+  padding: 14px 72px 14px 16px;
+  border: 1px solid #cbd5e1;
+  border-radius: 16px;
+  font-size: 1rem;
+  outline: none;
+  background: #fff;
+}
+
+.password-group input:focus {
+  border-color: #14b8a6;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
+}
+
+.toggle-password {
+  position: absolute;
+  right: 14px;
+  border: none;
+  background: transparent;
+  color: #14b8a6;
+  font-weight: 800;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.profile-submit-btn {
+  margin-top: 8px;
+  width: 100%;
+  padding: 14px 16px;
+  border: none;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #14b8a6, #0f9488);
+  color: #fff;
+  font-weight: 800;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: 0.2s ease;
+  box-shadow: 0 14px 28px rgba(20, 184, 166, 0.2);
+}
+
+.profile-submit-btn:hover {
+  transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+  .profile-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .profile-admin-shell {
+    width: 92%;
+  }
+
+  .profile-hero {
+    padding: 24px 18px;
+    border-radius: 22px;
+  }
+
+  .profile-hero h1 {
+    font-size: 1.7rem;
+  }
+
+  .profile-card {
+    padding: 18px;
+    border-radius: 22px;
+  }
+
+  .profile-card h2 {
+    font-size: 1.35rem;
+  }
+}
