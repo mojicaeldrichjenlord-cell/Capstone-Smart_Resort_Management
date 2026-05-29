@@ -176,15 +176,15 @@ function updateSummaryCards(bookings) {
   const totalBookings = bookings.length;
 
   const pendingCount = bookings.filter(
-    (booking) => String(booking.status || "").toLowerCase() === "pending"
+    (booking) => String(booking.status || "").toLowerCase() === "pending",
   ).length;
 
   const approvedCount = bookings.filter(
-    (booking) => String(booking.status || "").toLowerCase() === "approved"
+    (booking) => String(booking.status || "").toLowerCase() === "approved",
   ).length;
 
   const paidCount = bookings.filter(
-    (booking) => String(booking.payment_status || "").toLowerCase() === "paid"
+    (booking) => String(booking.payment_status || "").toLowerCase() === "paid",
   ).length;
 
   const todayBookings = bookings.filter((booking) => {
@@ -217,7 +217,9 @@ function updateSummaryCards(bookings) {
       const paymentStatus = String(booking.payment_status || "").toLowerCase();
 
       if (paymentStatus === "paid" || paymentStatus === "partially_paid") {
-        return sum + Number(booking.paid_amount || booking.required_downpayment || 0);
+        return (
+          sum + Number(booking.paid_amount || booking.required_downpayment || 0)
+        );
       }
 
       return sum;
@@ -239,7 +241,8 @@ function updateSummaryCards(bookings) {
   if (todayBookingsEl) todayBookingsEl.textContent = todayBookings;
   if (walkinTodayEl) walkinTodayEl.textContent = walkinToday;
   if (guestsInsideEl) guestsInsideEl.textContent = guestsInside;
-  if (todayRevenueEl) todayRevenueEl.textContent = `₱${formatMoney(todayRevenue)}`;
+  if (todayRevenueEl)
+    todayRevenueEl.textContent = `₱${formatMoney(todayRevenue)}`;
 }
 
 // ============================================================
@@ -293,21 +296,23 @@ function applyFilters() {
 
   if (statusValue) {
     filtered = filtered.filter(
-      (booking) => String(booking.status || "").toLowerCase() === statusValue
+      (booking) => String(booking.status || "").toLowerCase() === statusValue,
     );
   }
 
   if (paymentStatusValue) {
     filtered = filtered.filter(
       (booking) =>
-        String(booking.payment_status || "").toLowerCase() === paymentStatusValue
+        String(booking.payment_status || "").toLowerCase() ===
+        paymentStatusValue,
     );
   }
 
   if (paymentMethodValue) {
     filtered = filtered.filter(
       (booking) =>
-        String(booking.payment_method || "").toLowerCase() === paymentMethodValue
+        String(booking.payment_method || "").toLowerCase() ===
+        paymentMethodValue,
     );
   }
 
@@ -335,9 +340,15 @@ function renderBookings(bookings) {
   tbody.innerHTML = bookings
     .map((booking) => {
       const bookingStatus = String(booking.status || "pending").toLowerCase();
-      const paymentMethod = String(booking.payment_method || "cash").toLowerCase();
-      const paymentStatus = String(booking.payment_status || "pending").toLowerCase();
-      const bookingSource = String(booking.booking_source || "online").toLowerCase();
+      const paymentMethod = String(
+        booking.payment_method || "cash",
+      ).toLowerCase();
+      const paymentStatus = String(
+        booking.payment_status || "pending",
+      ).toLowerCase();
+      const bookingSource = String(
+        booking.booking_source || "online",
+      ).toLowerCase();
       const paymentReference = getPaymentReference(booking);
       const proofUrl = getProofUrl(booking.proof_of_payment);
 
@@ -390,7 +401,7 @@ function renderBookings(bookings) {
                   }>
                     ${capitalize(status)}
                   </option>
-                `
+                `,
               ).join("")}
             </select>
           </td>
@@ -414,7 +425,7 @@ function renderBookings(bookings) {
                   }>
                     ${formatPaymentStatus(status)}
                   </option>
-                `
+                `,
               ).join("")}
             </select>
           </td>
@@ -447,8 +458,12 @@ function renderBookings(bookings) {
 
 function setupStatusDropdownSync(bookings) {
   bookings.forEach((booking) => {
-    const bookingSelect = document.getElementById(`bookingStatus-${booking.id}`);
-    const paymentSelect = document.getElementById(`paymentStatus-${booking.id}`);
+    const bookingSelect = document.getElementById(
+      `bookingStatus-${booking.id}`,
+    );
+    const paymentSelect = document.getElementById(
+      `paymentStatus-${booking.id}`,
+    );
 
     if (!bookingSelect || !paymentSelect) return;
 
@@ -517,7 +532,9 @@ function getPaymentReference(booking) {
 // ============================================================
 
 function groupReferenceNumber(reference) {
-  const cleanReference = String(reference || "").replace(/\s+/g, "").trim();
+  const cleanReference = String(reference || "")
+    .replace(/\s+/g, "")
+    .trim();
 
   if (!cleanReference) {
     return [];
@@ -547,7 +564,7 @@ function renderPaymentReference(reference) {
           .map(
             (group) => `
               <span class="reference-chip">${escapeHtml(group)}</span>
-            `
+            `,
           )
           .join("")}
       </div>
@@ -893,10 +910,12 @@ async function saveAllStatus(bookingId) {
   const newPaymentStatus = paymentSelect.value;
 
   const saveButton = document.querySelector(
-    `button[onclick="saveAllStatus(${bookingId})"]`
+    `button[onclick="saveAllStatus(${bookingId})"]`,
   );
 
-  const originalButtonText = saveButton ? saveButton.textContent : "Save Status";
+  const originalButtonText = saveButton
+    ? saveButton.textContent
+    : "Save Status";
 
   try {
     if (saveButton) {
@@ -906,18 +925,23 @@ async function saveAllStatus(bookingId) {
       saveButton.style.cursor = "not-allowed";
     }
 
-    const bookingResponse = await fetch(`${API_BASE}/bookings/${bookingId}/status`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
+    const bookingResponse = await fetch(
+      `${API_BASE}/bookings/${bookingId}/status`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: newBookingStatus }),
       },
-      body: JSON.stringify({ status: newBookingStatus }),
-    });
+    );
 
     const bookingData = await bookingResponse.json();
 
     if (!bookingResponse.ok) {
-      throw new Error(bookingData.message || "Failed to update reservation status.");
+      throw new Error(
+        bookingData.message || "Failed to update reservation status.",
+      );
     }
 
     const paymentResponse = await fetch(
@@ -928,16 +952,21 @@ async function saveAllStatus(bookingId) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ payment_status: newPaymentStatus }),
-      }
+      },
     );
 
     const paymentData = await paymentResponse.json();
 
     if (!paymentResponse.ok) {
-      throw new Error(paymentData.message || "Failed to update payment status.");
+      throw new Error(
+        paymentData.message || "Failed to update payment status.",
+      );
     }
 
-    showMessage("Reservation and payment status updated successfully.", "success");
+    showMessage(
+      "Reservation and payment status updated successfully.",
+      "success",
+    );
     await loadBookings();
   } catch (error) {
     console.error("saveAllStatus error:", error);
@@ -959,7 +988,7 @@ async function saveAllStatus(bookingId) {
 // ============================================================
 
 function viewReceipt(bookingId) {
-  window.location.href = `../admin-booking-receipt.html?id=${bookingId}`;
+  window.location.href = `admin-booking-receipt.html?id=${bookingId}`;
 }
 
 // ============================================================
