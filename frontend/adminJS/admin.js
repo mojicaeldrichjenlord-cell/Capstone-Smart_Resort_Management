@@ -6,6 +6,7 @@
 // - Update booking/payment status
 // - Show payment reference number
 // - View proof screenshot using popup modal
+// - Works from frontend/adminHTML/admin.html
 // ============================================================
 
 const API_BASE = "http://127.0.0.1:5000/api";
@@ -54,6 +55,7 @@ document.addEventListener("DOMContentLoaded", () => {
 // ============================================================
 // SECTION 4: Admin access checker
 // This prevents normal customers from opening the admin dashboard.
+// Since admin.html is now inside adminHTML, login/index paths need ../
 // ============================================================
 
 function checkAdminAccess() {
@@ -61,13 +63,13 @@ function checkAdminAccess() {
 
   if (!user) {
     alert("Please login first.");
-    window.location.href = "login.html";
+    window.location.href = "../authHTML/login.html";
     return;
   }
 
   if (user.role !== "admin") {
     alert("Access denied. Admin only.");
-    window.location.href = "index.html";
+    window.location.href = "../index.html";
   }
 }
 
@@ -88,11 +90,12 @@ function setupEvents() {
   if (logoutBtn) {
     logoutBtn.addEventListener("click", (e) => {
       e.preventDefault();
+
       localStorage.removeItem("user");
       showMessage("Logged out successfully.", "success");
 
       setTimeout(() => {
-        window.location.href = "login.html";
+        window.location.href = "../authHTML/login.html";
       }, 700);
     });
   }
@@ -168,10 +171,13 @@ async function loadBookings() {
 
 // ============================================================
 // SECTION 7: Update dashboard summary cards
-// Counts total, pending, approved, and paid reservations.
+// Counts total, pending, approved, paid, today, walk-ins,
+// guests inside, and today revenue.
 // ============================================================
 
 function updateSummaryCards(bookings) {
+  const today = new Date().toISOString().slice(0, 10);
+
   const totalBookings = bookings.length;
 
   const pendingCount = bookings.filter(
@@ -186,15 +192,63 @@ function updateSummaryCards(bookings) {
     (booking) => String(booking.payment_status || "").toLowerCase() === "paid"
   ).length;
 
+  const todayBookings = bookings.filter((booking) => {
+    const createdDate = String(booking.created_at || "").slice(0, 10);
+    return createdDate === today;
+  }).length;
+
+  const walkinToday = bookings.filter((booking) => {
+    const createdDate = String(booking.created_at || "").slice(0, 10);
+    const source = String(booking.booking_source || "").toLowerCase();
+    return createdDate === today && source === "manual";
+  }).length;
+
+  const guestsInside = bookings
+    .filter((booking) => {
+      const status = String(booking.status || "").toLowerCase();
+      const checkIn = String(booking.check_in || "").slice(0, 10);
+      const checkOut = String(booking.check_out || "").slice(0, 10);
+
+      return (
+        status === "approved" &&
+        checkIn <= today &&
+        checkOut >= today
+      );
+    })
+    .reduce((sum, booking) => sum + Number(booking.guests || 0), 0);
+
+  const todayRevenue = bookings
+    .filter((booking) => {
+      const createdDate = String(booking.created_at || "").slice(0, 10);
+      return createdDate === today;
+    })
+    .reduce((sum, booking) => {
+      const paymentStatus = String(booking.payment_status || "").toLowerCase();
+
+      if (paymentStatus === "paid" || paymentStatus === "partially_paid") {
+        return sum + Number(booking.paid_amount || booking.required_downpayment || 0);
+      }
+
+      return sum;
+    }, 0);
+
   const totalBookingsEl = document.getElementById("totalBookings");
   const pendingCountEl = document.getElementById("pendingCount");
   const approvedCountEl = document.getElementById("approvedCount");
   const paidCountEl = document.getElementById("paidCount");
+  const todayBookingsEl = document.getElementById("todayBookings");
+  const walkinTodayEl = document.getElementById("walkinToday");
+  const guestsInsideEl = document.getElementById("guestsInside");
+  const todayRevenueEl = document.getElementById("todayRevenue");
 
   if (totalBookingsEl) totalBookingsEl.textContent = totalBookings;
   if (pendingCountEl) pendingCountEl.textContent = pendingCount;
   if (approvedCountEl) approvedCountEl.textContent = approvedCount;
   if (paidCountEl) paidCountEl.textContent = paidCount;
+  if (todayBookingsEl) todayBookingsEl.textContent = todayBookings;
+  if (walkinTodayEl) walkinTodayEl.textContent = walkinToday;
+  if (guestsInsideEl) guestsInsideEl.textContent = guestsInside;
+  if (todayRevenueEl) todayRevenueEl.textContent = `₱${formatMoney(todayRevenue)}`;
 }
 
 // ============================================================
@@ -817,11 +871,12 @@ async function saveAllStatus(bookingId) {
 
 // ============================================================
 // SECTION 20: Open admin receipt page
-// Redirects admin to the booking receipt page.
+// Redirects admin to the old root receipt page for now.
+// Later, when receipt page is moved into adminHTML, change this path.
 // ============================================================
 
 function viewReceipt(bookingId) {
-  window.location.href = `admin-booking-receipt.html?id=${bookingId}`;
+  window.location.href = `../admin-booking-receipt.html?id=${bookingId}`;
 }
 
 // ============================================================
