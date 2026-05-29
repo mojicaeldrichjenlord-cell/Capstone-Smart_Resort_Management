@@ -1,8 +1,25 @@
+// ============================================================
+// SMARTRESORT ADMIN WALK-IN SCRIPT
+// Purpose:
+// - Check admin access
+// - Load available accommodations
+// - Build manual reservation items
+// - Compute estimated entrance fee and down payment
+// - Save draft to sessionStorage
+// - Continue to manual payment screen
+// - Works from frontend/adminHTML/admin-walkin.html
+// ============================================================
+
 const API_BASE = "http://127.0.0.1:5000/api";
 const ADMIN_WALKIN_DRAFT_KEY = "smartresort_admin_walkin_draft_v2";
 
 let availableAccommodations = [];
 let bookingItemCounter = 0;
+
+// ============================================================
+// SECTION 1: Page startup
+// Checks admin access, loads rooms, sets events, and restores draft.
+// ============================================================
 
 document.addEventListener("DOMContentLoaded", async () => {
   checkAdminAccess();
@@ -12,20 +29,30 @@ document.addEventListener("DOMContentLoaded", async () => {
   restoreDraftIfAny();
 });
 
+// ============================================================
+// SECTION 2: Admin access checker
+// Redirects unauthenticated or non-admin users.
+// ============================================================
+
 function checkAdminAccess() {
   const user = JSON.parse(localStorage.getItem("user"));
 
   if (!user) {
     alert("Please login first.");
-    window.location.href = "login.html";
+    window.location.href = "../authHTML/login.html";
     return;
   }
 
   if (user.role !== "admin") {
     alert("Access denied. Admin only.");
-    window.location.href = "index.html";
+    window.location.href = "../index.html";
   }
 }
+
+// ============================================================
+// SECTION 3: Logout
+// Clears localStorage user and returns to auth login page.
+// ============================================================
 
 function setupLogout() {
   const logoutBtn = document.getElementById("logoutBtn");
@@ -33,10 +60,23 @@ function setupLogout() {
 
   logoutBtn.addEventListener("click", (e) => {
     e.preventDefault();
+
     localStorage.removeItem("user");
-    window.location.href = "login.html";
+
+    if (typeof showToast === "function") {
+      showToast("Logged out successfully.", "success");
+    }
+
+    setTimeout(() => {
+      window.location.href = "../authHTML/login.html";
+    }, 700);
   });
 }
+
+// ============================================================
+// SECTION 4: Load available accommodations
+// Gets accommodation records from backend.
+// ============================================================
 
 async function loadAccommodations() {
   try {
@@ -61,6 +101,11 @@ async function loadAccommodations() {
     showMessage(error.message || "Failed to load accommodations.", "error");
   }
 }
+
+// ============================================================
+// SECTION 5: Setup manual reservation form
+// Connects add item, input changes, and form submit.
+// ============================================================
 
 function setupManualForm() {
   const addItemBtn = document.getElementById("addItemBtn");
@@ -91,6 +136,12 @@ function setupManualForm() {
     form.addEventListener("submit", goToPaymentScreen);
   }
 }
+
+// ============================================================
+// SECTION 6: Continue to payment screen
+// Saves walk-in reservation draft and redirects to payment page.
+// Payment page is still in old frontend root for now.
+// ============================================================
 
 function goToPaymentScreen(e) {
   e.preventDefault();
@@ -127,14 +178,21 @@ function goToPaymentScreen(e) {
   };
 
   sessionStorage.setItem(ADMIN_WALKIN_DRAFT_KEY, JSON.stringify(draft));
-  window.location.href = "admin-walkin-payment.html";
+
+  window.location.href = "../admin-walkin-payment.html";
 }
+
+// ============================================================
+// SECTION 7: Add booking item card
+// Creates one accommodation selector card.
+// ============================================================
 
 function addBookingItem(preselectedId = null) {
   const wrap = document.getElementById("bookingItemsWrap");
   if (!wrap) return;
 
   bookingItemCounter += 1;
+
   const itemId = bookingItemCounter;
   const today = new Date().toISOString().split("T")[0];
 
@@ -145,6 +203,7 @@ function addBookingItem(preselectedId = null) {
   card.innerHTML = `
     <div class="booking-item-header">
       <div class="booking-item-title">Accommodation Item ${itemId}</div>
+
       ${
         bookingItemCounter > 1
           ? `<button type="button" class="remove-item-btn" data-remove-id="${itemId}">Remove</button>`
@@ -155,12 +214,16 @@ function addBookingItem(preselectedId = null) {
     <div class="walkin-grid">
       <div class="walkin-group">
         <label>Accommodation</label>
+
         <select class="accommodation-select" data-item-id="${itemId}">
           <option value="">Select accommodation</option>
+
           ${availableAccommodations
             .map(
               (item) => `
-                <option value="${item.id}" ${Number(item.id) === Number(preselectedId) ? "selected" : ""}>
+                <option value="${item.id}" ${
+                  Number(item.id) === Number(preselectedId) ? "selected" : ""
+                }>
                   ${escapeHtml(item.name)} (${escapeHtml(item.category_name)})
                 </option>
               `
@@ -171,6 +234,7 @@ function addBookingItem(preselectedId = null) {
 
       <div class="walkin-group">
         <label>Slot Type</label>
+
         <select class="slot-select" data-item-id="${itemId}">
           <option value="">Select slot</option>
         </select>
@@ -178,12 +242,24 @@ function addBookingItem(preselectedId = null) {
 
       <div class="walkin-group">
         <label>Reservation Date</label>
-        <input type="date" class="date-input" data-item-id="${itemId}" min="${today}" value="${today}" />
+        <input
+          type="date"
+          class="date-input"
+          data-item-id="${itemId}"
+          min="${today}"
+          value="${today}"
+        />
       </div>
 
       <div class="walkin-group">
         <label>Maximum Capacity (display only)</label>
-        <input type="text" class="capacity-display" data-item-id="${itemId}" value="-" readonly />
+        <input
+          type="text"
+          class="capacity-display"
+          data-item-id="${itemId}"
+          value="-"
+          readonly
+        />
       </div>
     </div>
 
@@ -228,6 +304,11 @@ function addBookingItem(preselectedId = null) {
   refreshTitles();
 }
 
+// ============================================================
+// SECTION 8: Restore draft
+// Restores data when returning from payment screen.
+// ============================================================
+
 function restoreDraftIfAny() {
   const raw = sessionStorage.getItem(ADMIN_WALKIN_DRAFT_KEY);
   if (!raw) return;
@@ -260,8 +341,10 @@ function restoreDraftIfAny() {
 
         accommodationSelect.value = item.accommodation_id || "";
         populateSlotOptions(index + 1);
+
         slotSelect.value = item.slot_type || "";
         dateInput.value = item.check_in_date || dateInput.value;
+
         updateItemPreview(index + 1);
       });
     }
@@ -272,21 +355,34 @@ function restoreDraftIfAny() {
   }
 }
 
+// ============================================================
+// SECTION 9: Refresh item titles after remove
+// Keeps item numbering readable.
+// ============================================================
+
 function refreshTitles() {
   const cards = [...document.querySelectorAll(".booking-item-card")];
 
   cards.forEach((card, index) => {
     const title = card.querySelector(".booking-item-title");
+
     if (title) {
       title.textContent = `Accommodation Item ${index + 1}`;
       card.dataset.itemId = String(index + 1);
+
       const preview = card.querySelector(".slot-preview");
+
       if (preview) {
         preview.id = `slotPreview-${index + 1}`;
       }
     }
   });
 }
+
+// ============================================================
+// SECTION 10: Accommodation helpers
+// Gets selected accommodation and available slot options.
+// ============================================================
 
 function getAccommodationById(id) {
   return availableAccommodations.find((item) => Number(item.id) === Number(id)) || null;
@@ -323,6 +419,11 @@ function getSlotOptions(accommodation) {
   ];
 }
 
+// ============================================================
+// SECTION 11: Populate slot dropdown
+// Updates slot options based on selected accommodation.
+// ============================================================
+
 function populateSlotOptions(itemId) {
   const card = document.querySelector(`.booking-item-card[data-item-id="${itemId}"]`);
   if (!card) return;
@@ -345,6 +446,7 @@ function populateSlotOptions(itemId) {
 
   slotSelect.innerHTML = `
     <option value="">Select slot</option>
+
     ${options
       .map(
         (slot) => `
@@ -356,6 +458,11 @@ function populateSlotOptions(itemId) {
       .join("")}
   `;
 }
+
+// ============================================================
+// SECTION 12: Update item preview
+// Shows selected accommodation schedule, price, and map label.
+// ============================================================
 
 function updateItemPreview(itemId) {
   const card = document.querySelector(`.booking-item-card[data-item-id="${itemId}"]`);
@@ -370,7 +477,9 @@ function updateItemPreview(itemId) {
 
   if (!accommodation || !preview) return;
 
-  const slot = getSlotOptions(accommodation).find((item) => item.value === slotSelect.value);
+  const slot = getSlotOptions(accommodation).find(
+    (item) => item.value === slotSelect.value
+  );
 
   if (!slot) {
     preview.innerHTML = `
@@ -395,6 +504,11 @@ function updateItemPreview(itemId) {
   `;
 }
 
+// ============================================================
+// SECTION 13: Collect booking items
+// Gets selected accommodation, slot, and date from all cards.
+// ============================================================
+
 function collectBookingItems() {
   const cards = [...document.querySelectorAll(".booking-item-card")];
   const items = [];
@@ -418,6 +532,11 @@ function collectBookingItems() {
   return items;
 }
 
+// ============================================================
+// SECTION 14: Calculate checkout date
+// Handles overnight slots where checkout date becomes next day.
+// ============================================================
+
 function calculateCheckOutDate(checkInDate, startTime, endTime) {
   if (!checkInDate || !startTime || !endTime) return checkInDate || "-";
 
@@ -432,11 +551,17 @@ function calculateCheckOutDate(checkInDate, startTime, endTime) {
   if (endMinutes <= startMinutes) {
     const date = new Date(checkInDate);
     date.setDate(date.getDate() + 1);
+
     return date.toISOString().split("T")[0];
   }
 
   return checkInDate;
 }
+
+// ============================================================
+// SECTION 15: Entrance fee calculation
+// Estimates entrance fee after free entrance pax deduction.
+// ============================================================
 
 function getTotalFreeEntrancePax(items, guestCount) {
   let total = 0;
@@ -456,8 +581,9 @@ function getEstimatedEntranceFee() {
   const entranceType = document.getElementById("entranceType").value;
 
   const items = collectBookingItems();
-  const hasOvernightStyle = items.some((item) =>
-    item.slot_type === "overnight" || item.slot_type === "extended"
+
+  const hasOvernightStyle = items.some(
+    (item) => item.slot_type === "overnight" || item.slot_type === "extended"
   );
 
   const totalFreeEntrancePax = getTotalFreeEntrancePax(items, guestCount);
@@ -475,6 +601,11 @@ function getEstimatedEntranceFee() {
   return chargeableGuests * rate;
 }
 
+// ============================================================
+// SECTION 16: Update summary
+// Updates all amount preview boxes.
+// ============================================================
+
 function updateSummary() {
   const items = collectBookingItems();
 
@@ -484,7 +615,10 @@ function updateSummary() {
     const accommodation = getAccommodationById(item.accommodation_id);
     if (!accommodation) return;
 
-    const slot = getSlotOptions(accommodation).find((s) => s.value === item.slot_type);
+    const slot = getSlotOptions(accommodation).find(
+      (s) => s.value === item.slot_type
+    );
+
     if (!slot) return;
 
     accommodationTotal += Number(slot.price || 0);
@@ -504,6 +638,11 @@ function updateSummary() {
   document.getElementById("highlightRemainingBalance").textContent = `₱${formatMoney(remainingBalance)}`;
   document.getElementById("highlightEntranceFee").textContent = `₱${formatMoney(estimatedEntranceFee)}`;
 }
+
+// ============================================================
+// SECTION 17: Format helpers
+// Formats money, time, dates, messages, and safe HTML.
+// ============================================================
 
 function formatMoney(value) {
   return Number(value || 0).toLocaleString(undefined, {
@@ -526,21 +665,29 @@ function formatTimeDisplay(timeValue) {
   if (Number.isNaN(hours)) return timeText;
 
   const suffix = hours >= 12 ? "PM" : "AM";
+
   hours = hours % 12;
-  if (hours === 0) hours = 12;
+
+  if (hours === 0) {
+    hours = 12;
+  }
 
   return `${hours}:${minutes} ${suffix}`;
 }
 
 function formatDateDisplay(dateValue) {
   if (!dateValue) return "N/A";
+
   const date = new Date(dateValue);
+
   if (Number.isNaN(date.getTime())) return dateValue;
+
   return date.toLocaleDateString();
 }
 
 function showMessage(message, type = "success") {
   const messageEl = document.getElementById("walkInMessage");
+
   if (messageEl) {
     messageEl.textContent = message;
     messageEl.style.color = type === "error" ? "red" : "green";
