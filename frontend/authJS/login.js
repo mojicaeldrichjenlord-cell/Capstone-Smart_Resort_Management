@@ -75,7 +75,7 @@ if (loginForm) {
       if (data.user?.account_status === "disabled") {
         showMessage(
           "Your account has been disabled. Please contact the resort administrator.",
-          "error"
+          "error",
         );
         return;
       }
@@ -87,14 +87,17 @@ if (loginForm) {
         const role = String(data.user.role || "").toLowerCase();
 
         if (role === "admin" || role === "staff") {
-          window.location.href = "admin.html";
+          window.location.href = "../admin.html";
         } else {
-          window.location.href = "index.html";
+          window.location.href = "../index.html";
         }
       }, 900);
     } catch (error) {
       console.error("login error:", error);
-      showMessage(error.message || "Something went wrong. Please try again.", "error");
+      showMessage(
+        error.message || "Something went wrong. Please try again.",
+        "error",
+      );
     }
   });
 }

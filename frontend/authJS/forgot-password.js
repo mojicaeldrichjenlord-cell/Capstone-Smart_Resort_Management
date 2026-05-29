@@ -4,6 +4,8 @@
 // - Send email OTP
 // - Show OTP reset form
 // - Reset password using OTP
+// - Hide Send OTP after first successful send
+// - Add resend OTP cooldown timer
 // ============================================================
 
 const API_BASE = "http://127.0.0.1:5000/api";
@@ -23,27 +25,40 @@ const sendOtpBtn = document.getElementById("sendOtpBtn");
 const resendOtpBtn = document.getElementById("resendOtpBtn");
 const resetPasswordBtn = document.getElementById("resetPasswordBtn");
 const forgotMessage = document.getElementById("forgotMessage");
+const resendTimerText = document.getElementById("resendTimerText");
 
 // ============================================================
-// SECTION 2: Send OTP button event
-// User enters email and clicks Send OTP.
+// SECTION 2: Cooldown settings
+// User must wait before requesting another OTP.
+// ============================================================
+
+let resendCooldownInterval = null;
+const RESEND_COOLDOWN_SECONDS = 60;
+
+// ============================================================
+// SECTION 3: Send OTP button event
+// First OTP request.
 // ============================================================
 
 if (sendOtpBtn) {
-  sendOtpBtn.addEventListener("click", sendOtpToEmail);
+  sendOtpBtn.addEventListener("click", () => {
+    sendOtpToEmail("send");
+  });
 }
 
 // ============================================================
-// SECTION 3: Resend OTP button event
-// Reuses the same sendOtpToEmail function.
+// SECTION 4: Resend OTP button event
+// Reuses the same backend endpoint but starts cooldown again.
 // ============================================================
 
 if (resendOtpBtn) {
-  resendOtpBtn.addEventListener("click", sendOtpToEmail);
+  resendOtpBtn.addEventListener("click", () => {
+    sendOtpToEmail("resend");
+  });
 }
 
 // ============================================================
-// SECTION 4: Reset password form submit event
+// SECTION 5: Reset password form submit event
 // Sends email, OTP, and new password to backend.
 // ============================================================
 
@@ -52,11 +67,12 @@ if (forgotPasswordForm) {
 }
 
 // ============================================================
-// SECTION 5: Send OTP to email
+// SECTION 6: Send OTP to email
 // Calls POST /api/auth/forgot-password/send-otp.
+// type can be "send" or "resend".
 // ============================================================
 
-async function sendOtpToEmail() {
+async function sendOtpToEmail(type = "send") {
   const email = emailInput.value.trim();
 
   if (!email) {
@@ -64,11 +80,12 @@ async function sendOtpToEmail() {
     return;
   }
 
-  const originalText = sendOtpBtn.textContent;
+  const isResend = type === "resend";
+  const activeButton = isResend ? resendOtpBtn : sendOtpBtn;
+  const originalText = isResend ? "Resend OTP" : "Send OTP";
 
   try {
-    setButtonLoading(sendOtpBtn, "Sending OTP...");
-    setButtonLoading(resendOtpBtn, "Sending OTP...");
+    setButtonLoading(activeButton, "Sending OTP...");
 
     const response = await fetch(`${API_BASE}/auth/forgot-password/send-otp`, {
       method: "POST",
@@ -84,21 +101,85 @@ async function sendOtpToEmail() {
       throw new Error(data.message || "Failed to send OTP.");
     }
 
-    otpSection.classList.add("show");
-    showMessage(data.message || "OTP has been sent to your email.", "success");
+    if (otpSection) {
+      otpSection.classList.add("show");
+    }
+
+    if (sendOtpBtn) {
+      sendOtpBtn.style.display = "none";
+    }
 
     localStorage.setItem("resetEmail", email);
+
+    showMessage(data.message || "OTP has been sent to your email.", "success");
+
+    startResendCooldown(RESEND_COOLDOWN_SECONDS);
   } catch (error) {
     console.error("sendOtpToEmail error:", error);
+
     showMessage(error.message || "Failed to send OTP.", "error");
-  } finally {
-    resetButton(sendOtpBtn, originalText || "Send OTP");
-    resetButton(resendOtpBtn, "Resend OTP");
+
+    resetButton(activeButton, originalText);
   }
 }
 
 // ============================================================
-// SECTION 6: Reset password using OTP
+// SECTION 7: Start resend OTP cooldown
+// Disables Resend OTP button and shows countdown.
+// ============================================================
+
+function startResendCooldown(seconds) {
+  let remainingSeconds = seconds;
+
+  if (resendCooldownInterval) {
+    clearInterval(resendCooldownInterval);
+  }
+
+  if (resendOtpBtn) {
+    resendOtpBtn.disabled = true;
+    resendOtpBtn.textContent = `Resend OTP (${remainingSeconds}s)`;
+  }
+
+  updateResendTimerText(remainingSeconds);
+
+  resendCooldownInterval = setInterval(() => {
+    remainingSeconds -= 1;
+
+    updateResendTimerText(remainingSeconds);
+
+    if (resendOtpBtn) {
+      resendOtpBtn.textContent = `Resend OTP (${remainingSeconds}s)`;
+    }
+
+    if (remainingSeconds <= 0) {
+      clearInterval(resendCooldownInterval);
+      resendCooldownInterval = null;
+
+      if (resendOtpBtn) {
+        resendOtpBtn.disabled = false;
+        resendOtpBtn.textContent = "Resend OTP";
+      }
+
+      if (resendTimerText) {
+        resendTimerText.textContent = "You can request a new OTP now.";
+      }
+    }
+  }, 1000);
+}
+
+// ============================================================
+// SECTION 8: Update resend timer text
+// Shows countdown below the Resend OTP button.
+// ============================================================
+
+function updateResendTimerText(seconds) {
+  if (resendTimerText) {
+    resendTimerText.textContent = `Please wait ${seconds} seconds before requesting another OTP.`;
+  }
+}
+
+// ============================================================
+// SECTION 9: Reset password using OTP
 // Calls POST /api/auth/forgot-password/reset.
 // ============================================================
 
@@ -130,7 +211,9 @@ async function resetPassword(e) {
     return;
   }
 
-  const originalText = resetPasswordBtn.textContent;
+  const originalText = resetPasswordBtn
+    ? resetPasswordBtn.textContent
+    : "Reset Password";
 
   try {
     setButtonLoading(resetPasswordBtn, "Resetting...");
@@ -162,6 +245,7 @@ async function resetPassword(e) {
     }, 1200);
   } catch (error) {
     console.error("resetPassword error:", error);
+
     showMessage(error.message || "Failed to reset password.", "error");
   } finally {
     resetButton(resetPasswordBtn, originalText || "Reset Password");
@@ -169,7 +253,7 @@ async function resetPassword(e) {
 }
 
 // ============================================================
-// SECTION 7: Button loading helper
+// SECTION 10: Button loading helper
 // Disables button while request is running.
 // ============================================================
 
@@ -178,12 +262,10 @@ function setButtonLoading(button, text) {
 
   button.disabled = true;
   button.textContent = text;
-  button.style.opacity = "0.7";
-  button.style.cursor = "not-allowed";
 }
 
 // ============================================================
-// SECTION 8: Reset button helper
+// SECTION 11: Reset button helper
 // Returns button to normal state.
 // ============================================================
 
@@ -192,22 +274,17 @@ function resetButton(button, text) {
 
   button.disabled = false;
   button.textContent = text;
-  button.style.opacity = "1";
-  button.style.cursor = "pointer";
 }
 
 // ============================================================
-// SECTION 9: Message helper
-// Uses toast notification if available, otherwise alert.
+// SECTION 12: Message helper
+// Shows message inside the forgot password card only.
+// We do not call showToast here to avoid duplicate messages.
 // ============================================================
 
 function showMessage(message, type = "success") {
   if (forgotMessage) {
     forgotMessage.textContent = message;
     forgotMessage.style.color = type === "error" ? "#dc2626" : "#047857";
-  }
-
-  if (typeof showToast === "function") {
-    showToast(message, type);
   }
 }

@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <!-- ======================================================
+       RESPONSIVE VIEWPORT
+       Makes the login page mobile-friendly.
+    ======================================================= -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Login | SmartResort</title>
+
+    <!-- ======================================================
+       PAGE CSS FILES
+       global.css = shared reusable styles
+       login.css = login page only
+    ======================================================= -->
+    <link rel="stylesheet" href="../sharedCSS/global.css" />
+    <link rel="stylesheet" href="../authCSS/login.css" />
+  </head>
+
+  <body class="auth-page">
+    <div class="auth-container">
+      <!-- ======================================================
+         LEFT PANEL
+         System introduction for users.
+      ======================================================= -->
+      <section class="auth-showcase">
+        <div class="auth-badge">Smart resort reservation platform</div>
+
+        <h1>Welcome back to SmartResort</h1>
+
+        <p>
+          Sign in to manage bookings, explore available rooms, view receipts,
+          and continue your resort reservation journey in one place.
+        </p>
+
+        <div class="auth-highlights">
+          <div class="auth-highlight">
+            <strong>Faster reservation access</strong>
+            View your booking records and receipt details anytime.
+          </div>
+
+          <div class="auth-highlight">
+            <strong>Smarter room selection</strong>
+            Explore room details, prices, amenities, and view types.
+          </div>
+
+          <div class="auth-highlight">
+            <strong>Client-ready resort experience</strong>
+            Designed for a modern and premium booking presentation.
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================
+         RIGHT PANEL
+         Login form and forgot password link.
+      ======================================================= -->
+      <section class="auth-card">
+        <h2>Login</h2>
+
+        <p class="auth-subtext">
+          Enter your account details to continue to your SmartResort dashboard.
+        </p>
+
+        <form id="loginForm">
+          <div>
+            <label for="email">Email</label>
+            <input
+              type="email"
+              id="email"
+              placeholder="Enter your email"
+              required
+            />
+          </div>
+
+          <div>
+            <label for="password">Password</label>
+            <input
+              type="password"
+              id="password"
+              placeholder="Enter your password"
+              required
+            />
+          </div>
+
+          <div class="forgot-link">
+            <a href="forgot-password.html">Forgot password?</a>
+          </div>
+
+          <button type="submit" class="auth-submit">Login</button>
+        </form>
+
+        <p id="loginMessage" class="message"></p>
+
+        <div class="auth-link">
+          Don’t have an account yet?
+          <a href="register.html">Create one here</a>
+        </div>
+      </section>
+    </div>
+
+    <!-- ======================================================
+       PAGE SCRIPTS
+       toast.js shows messages.
+       login.js handles login submission.
+    ======================================================= -->
+    <script src="../sharedJS/toast.js"></script>
+    <script src="../authJS/login.js"></script>
+  </body>
+</html>
