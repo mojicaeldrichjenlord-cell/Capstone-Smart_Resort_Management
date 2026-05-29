@@ -1,3 +1,14 @@
+// ============================================================
+// CUSTOMER BOOKING PAYMENT SCRIPT
+// File: frontend/customerJS/booking-payment.js
+// Purpose:
+// - Read booking draft from sessionStorage
+// - Show reservation summary and payment breakdown
+// - Show GCash/Maya QR details
+// - Submit reservation with payment proof
+// - Works from frontend/customerHTML/booking-payment.html
+// ============================================================
+
 const API_BASE = "http://127.0.0.1:5000/api";
 const BOOKING_DRAFT_KEY = "smartresort_booking_draft_v2";
 
@@ -6,13 +17,13 @@ const PAYMENT_DETAILS = {
     label: "GCash",
     accountName: "Arvic Seaside Beach Resort and Hotel",
     accountNumber: "09XX XXX XXXX",
-    qrImage: "images/payments/gcash-qr.png",
+    qrImage: "../images/payments/gcash-qr.png",
   },
   paymaya: {
     label: "Maya / PayMaya",
     accountName: "Arvic Seaside Beach Resort and Hotel",
     accountNumber: "09XX XXX XXXX",
-    qrImage: "images/payments/maya-qr.png",
+    qrImage: "../images/payments/maya-qr.png",
   },
 };
 
@@ -20,12 +31,21 @@ let bookingDraft = null;
 let availableAccommodations = [];
 let currentDownpaymentAmount = 0;
 
+// ============================================================
+// SECTION 1: Page startup
+// ============================================================
+
 document.addEventListener("DOMContentLoaded", async () => {
   const user = JSON.parse(localStorage.getItem("user"));
 
   if (!user) {
     alert("Please login first.");
-    window.location.href = "login.html";
+    window.location.href = "../authHTML/login.html";
+    return;
+  }
+
+  if (user.role === "admin" || user.role === "staff") {
+    window.location.href = "../adminHTML/admin.html";
     return;
   }
 
@@ -37,6 +57,10 @@ document.addEventListener("DOMContentLoaded", async () => {
   updateQrPlaceholder();
 });
 
+// ============================================================
+// SECTION 2: Logout
+// ============================================================
+
 function setupLogout() {
   const logoutBtns = [
     document.getElementById("logoutBtn"),
@@ -46,6 +70,7 @@ function setupLogout() {
   logoutBtns.forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.preventDefault();
+
       localStorage.removeItem("user");
 
       if (typeof showToast === "function") {
@@ -55,11 +80,15 @@ function setupLogout() {
       }
 
       setTimeout(() => {
-        window.location.href = "login.html";
+        window.location.href = "../authHTML/login.html";
       }, 700);
     });
   });
 }
+
+// ============================================================
+// SECTION 3: Load accommodations
+// ============================================================
 
 async function loadAccommodations() {
   try {
@@ -76,6 +105,10 @@ async function loadAccommodations() {
     showMessage(error.message || "Failed to load accommodations.", "error");
   }
 }
+
+// ============================================================
+// SECTION 4: Load booking draft
+// ============================================================
 
 function loadDraft() {
   const raw = sessionStorage.getItem(BOOKING_DRAFT_KEY);
@@ -95,15 +128,22 @@ function loadDraft() {
   }
 }
 
+// ============================================================
+// SECTION 5: Accommodation helpers
+// ============================================================
+
 function getAccommodationById(id) {
-  return availableAccommodations.find((item) => Number(item.id) === Number(id)) || null;
+  return (
+    availableAccommodations.find((item) => Number(item.id) === Number(id)) ||
+    null
+  );
 }
 
 function getSlotOptions(accommodation) {
   if (!accommodation) return [];
 
   const category = String(accommodation.category_name || "").toLowerCase();
-  const isRoom = category === "room";
+  const isRoom = category === "room" || category.includes("room");
 
   return [
     {
@@ -130,6 +170,10 @@ function getSlotOptions(accommodation) {
   ];
 }
 
+// ============================================================
+// SECTION 6: Render draft summary and payment breakdown
+// ============================================================
+
 function renderDraftSummary() {
   if (!bookingDraft) return;
 
@@ -152,7 +196,10 @@ function renderDraftSummary() {
         `;
       }
 
-      const slot = getSlotOptions(accommodation).find((s) => s.value === item.slot_type);
+      const slot = getSlotOptions(accommodation).find((s) => {
+        return s.value === item.slot_type;
+      });
+
       const slotPrice = Number(slot?.price || 0);
       accommodationTotal += slotPrice;
 
@@ -182,12 +229,26 @@ function renderDraftSummary() {
 
   currentDownpaymentAmount = downpayment;
 
-  document.getElementById("paymentAccommodationTotal").textContent = `₱${formatMoney(accommodationTotal)}`;
-  document.getElementById("paymentDownpayment").textContent = `₱${formatMoney(downpayment)}`;
-  document.getElementById("paymentRemaining").textContent = `₱${formatMoney(remaining)}`;
-  document.getElementById("paymentEntranceFee").textContent = `₱${formatMoney(entranceFee)}`;
-  document.getElementById("paymentFrontDeskReminder").textContent = `₱${formatMoney(remaining + entranceFee)}`;
+  document.getElementById("paymentAccommodationTotal").textContent =
+    `₱${formatMoney(accommodationTotal)}`;
+
+  document.getElementById("paymentDownpayment").textContent =
+    `₱${formatMoney(downpayment)}`;
+
+  document.getElementById("paymentRemaining").textContent =
+    `₱${formatMoney(remaining)}`;
+
+  document.getElementById("paymentEntranceFee").textContent =
+    `₱${formatMoney(entranceFee)}`;
+
+  document.getElementById("paymentFrontDeskReminder").textContent =
+    `₱${formatMoney(remaining + entranceFee)}`;
 }
+
+// ============================================================
+// SECTION 7: Entrance fee estimate
+// Same logic as booking.js.
+// ============================================================
 
 function getEstimatedEntranceFee() {
   if (!bookingDraft) return 0;
@@ -200,6 +261,9 @@ function getEstimatedEntranceFee() {
     return item.slot_type === "overnight" || item.slot_type === "extended";
   });
 
+  const totalFreeEntrancePax = getTotalFreeEntrancePax(items, guestCount);
+  const chargeableGuests = Math.max(guestCount - totalFreeEntrancePax, 0);
+
   const rate =
     entranceType === "beach_only"
       ? hasOvernightStyle
@@ -209,8 +273,25 @@ function getEstimatedEntranceFee() {
         ? 300
         : 250;
 
-  return guestCount * rate;
+  return chargeableGuests * rate;
 }
+
+function getTotalFreeEntrancePax(items, guestCount) {
+  let total = 0;
+
+  items.forEach((item) => {
+    const accommodation = getAccommodationById(item.accommodation_id);
+    if (!accommodation) return;
+
+    total += Number(accommodation.free_entrance_pax || 0);
+  });
+
+  return Math.min(total, Number(guestCount || 0));
+}
+
+// ============================================================
+// SECTION 8: Payment form setup
+// ============================================================
 
 function setupPaymentForm() {
   const paymentMethod = document.getElementById("paymentMethod");
@@ -230,6 +311,10 @@ function setupPaymentForm() {
   }
 }
 
+// ============================================================
+// SECTION 9: QR payment box
+// ============================================================
+
 function updateQrPlaceholder() {
   const method = document.getElementById("paymentMethod")?.value || "gcash";
   const box = document.getElementById("qrPlaceholderBox");
@@ -244,7 +329,7 @@ function updateQrPlaceholder() {
     <img
       src="${escapeHtml(details.qrImage)}"
       alt="${escapeHtml(details.label)} QR Code"
-      onerror="this.src='images/no-image.jpg'"
+      onerror="this.src='../images/no-image.jpg'"
     />
 
     <div class="qr-payment-title">${escapeHtml(details.label)} Payment</div>
@@ -271,6 +356,10 @@ function updateQrPlaceholder() {
   `;
 }
 
+// ============================================================
+// SECTION 10: Proof preview and validation
+// ============================================================
+
 function updateProofPreview() {
   const input = document.getElementById("paymentProof");
   const preview = document.getElementById("proofPreview");
@@ -291,7 +380,8 @@ function updateProofPreview() {
   if (!allowedTypes.includes(file.type)) {
     input.value = "";
     preview.classList.add("show");
-    preview.textContent = "Invalid file type. Please upload PNG, JPG, JPEG, or WEBP only.";
+    preview.textContent =
+      "Invalid file type. Please upload PNG, JPG, JPEG, or WEBP only.";
     return;
   }
 
@@ -306,6 +396,11 @@ function updateProofPreview() {
   preview.textContent = `Selected proof: ${file.name}`;
 }
 
+// ============================================================
+// SECTION 11: Submit reservation
+// Sends booking draft + payment proof to backend.
+// ============================================================
+
 async function submitReservation(e) {
   e.preventDefault();
 
@@ -316,8 +411,14 @@ async function submitReservation(e) {
 
   const user = JSON.parse(localStorage.getItem("user"));
   const paymentMethod = document.getElementById("paymentMethod").value;
-  const paymentReference = document.getElementById("paymentReference").value.trim();
-  const paymentReminderNote = document.getElementById("paymentReminderNote").value.trim();
+  const paymentReference = document
+    .getElementById("paymentReference")
+    .value.trim();
+
+  const paymentReminderNote = document
+    .getElementById("paymentReminderNote")
+    .value.trim();
+
   const paymentProofInput = document.getElementById("paymentProof");
   const paymentProofFile = paymentProofInput?.files?.[0];
 
@@ -335,7 +436,10 @@ async function submitReservation(e) {
   const maxSize = 5 * 1024 * 1024;
 
   if (!allowedTypes.includes(paymentProofFile.type)) {
-    showMessage("Invalid proof image. Please upload PNG, JPG, JPEG, or WEBP only.", "error");
+    showMessage(
+      "Invalid proof image. Please upload PNG, JPG, JPEG, or WEBP only.",
+      "error"
+    );
     return;
   }
 
@@ -381,13 +485,16 @@ async function submitReservation(e) {
     sessionStorage.removeItem(BOOKING_DRAFT_KEY);
 
     if (data.bookingId) {
-      window.location.href = `booking-receipt.html?id=${data.bookingId}`;
+      window.location.href = `../booking-receipt.html?id=${data.bookingId}`;
     } else {
-      window.location.href = "my-bookings.html";
+      window.location.href = "../my-bookings.html";
     }
   } catch (error) {
     console.error("submitReservation error:", error);
-    showMessage(error.message || "Something went wrong. Please try again.", "error");
+    showMessage(
+      error.message || "Something went wrong. Please try again.",
+      "error"
+    );
   } finally {
     if (submitBtn) {
       submitBtn.disabled = false;
@@ -395,6 +502,10 @@ async function submitReservation(e) {
     }
   }
 }
+
+// ============================================================
+// SECTION 12: Date and format helpers
+// ============================================================
 
 function calculateCheckOutDate(checkInDate, startTime, endTime) {
   if (!checkInDate || !startTime || !endTime) return checkInDate || "-";
@@ -437,8 +548,12 @@ function formatTimeDisplay(timeValue) {
   if (Number.isNaN(hours)) return timeText;
 
   const suffix = hours >= 12 ? "PM" : "AM";
+
   hours = hours % 12;
-  if (hours === 0) hours = 12;
+
+  if (hours === 0) {
+    hours = 12;
+  }
 
   return `${hours}:${minutes} ${suffix}`;
 }

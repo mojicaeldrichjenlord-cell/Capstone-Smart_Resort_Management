@@ -242,7 +242,7 @@ function setupBookingForm(user) {
     sessionStorage.setItem(BOOKING_DRAFT_KEY, JSON.stringify(draft));
 
     // booking-payment.html is not moved yet, so keep ../ for now.
-    window.location.href = "../booking-payment.html";
+    window.location.href = "booking-payment.html";
   });
 }
 

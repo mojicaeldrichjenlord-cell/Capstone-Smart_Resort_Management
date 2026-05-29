@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <!-- ======================================================
+       RESPONSIVE VIEWPORT
+    ======================================================= -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Reservation Payment | Arvic Seaside</title>
+
+    <!-- ======================================================
+       PAGE CSS FILES
+    ======================================================= -->
+    <link rel="stylesheet" href="../sharedCSS/global.css" />
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../customerCSS/booking-payment.css" />
+  </head>
+
+  <body>
+    <!-- ======================================================
+       CUSTOMER NAVBAR
+       This page is inside customerHTML.
+    ======================================================= -->
+    <header class="site-header">
+      <div class="site-header-inner">
+        <a href="index.html" class="site-logo">Arvic Seaside</a>
+
+        <nav class="desktop-nav">
+          <a href="index.html">Home</a>
+          <a href="rooms.html" class="active">Accommodations</a>
+          <a href="resort-map.html">Resort Map</a>
+          <a href="my-bookings.html">My Bookings</a>
+          <a href="profile.html">Profile</a>
+          <a href="#" id="logoutBtn">Logout</a>
+        </nav>
+
+        <button class="menu-toggle" id="menuToggle" aria-label="Open menu">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+
+      <nav class="mobile-nav" id="mobileNav">
+        <a href="index.html">Home</a>
+        <a href="rooms.html" class="active">Accommodations</a>
+        <a href="resort-map.html">Resort Map</a>
+        <a href="my-bookings.html">My Bookings</a>
+        <a href="profile.html">Profile</a>
+        <a href="#" id="mobileLogoutBtn">Logout</a>
+      </nav>
+    </header>
+
+    <!-- ======================================================
+       MAIN PAYMENT PAGE
+    ======================================================= -->
+    <main class="payment-page-wrapper">
+      <div class="payment-top-actions">
+        <a href="booking.html" class="back-btn">← Back to Reservation Form</a>
+      </div>
+
+      <div class="payment-card">
+        <div class="payment-title-block">
+          <h1>Reservation Payment</h1>
+
+          <p>
+            Review your reservation, scan the selected payment QR code, then
+            upload your proof of transaction for admin verification.
+          </p>
+        </div>
+
+        <div class="payment-grid">
+          <div class="payment-left">
+            <!-- ======================================================
+               RESERVATION SUMMARY
+            ======================================================= -->
+            <section class="section-box">
+              <h2>Reservation Summary</h2>
+              <div id="reservationSummaryList" class="summary-list"></div>
+            </section>
+
+            <!-- ======================================================
+               PAYMENT FORM
+            ======================================================= -->
+            <section class="section-box">
+              <h2>Payment Details</h2>
+
+              <form id="paymentForm" enctype="multipart/form-data">
+                <div class="payment-form-grid">
+                  <div class="payment-form-group">
+                    <label for="paymentMethod">Payment Method</label>
+
+                    <select id="paymentMethod" required>
+                      <option value="gcash">GCash</option>
+                      <option value="paymaya">Maya / PayMaya</option>
+                    </select>
+                  </div>
+
+                  <div class="payment-form-group">
+                    <label for="paymentReference">Reference Number</label>
+
+                    <input
+                      type="text"
+                      id="paymentReference"
+                      placeholder="Enter reference number"
+                      required
+                    />
+                  </div>
+
+                  <div class="payment-form-group full-width">
+                    <label for="paymentProof">Proof of Transaction</label>
+
+                    <input
+                      type="file"
+                      id="paymentProof"
+                      accept="image/png,image/jpeg,image/jpg,image/webp"
+                      required
+                    />
+
+                    <div id="proofPreview" class="proof-preview">
+                      No screenshot selected yet.
+                    </div>
+                  </div>
+
+                  <div class="payment-form-group full-width">
+                    <label for="paymentReminderNote">Optional Payment Note</label>
+
+                    <textarea
+                      id="paymentReminderNote"
+                      placeholder="Example: Payment sent under a different account name"
+                    ></textarea>
+                  </div>
+                </div>
+
+                <div class="payment-actions">
+                  <button type="submit" class="btn-primary full-btn">
+                    Submit Reservation
+                  </button>
+
+                  <a href="booking.html" class="back-btn-full">Back</a>
+                </div>
+              </form>
+
+              <p id="paymentMessage" class="message"></p>
+            </section>
+          </div>
+
+          <aside class="payment-right">
+            <!-- ======================================================
+               PAYMENT BREAKDOWN
+            ======================================================= -->
+            <section class="section-box">
+              <h2>Payment Breakdown</h2>
+
+              <div class="payment-breakdown">
+                <div class="payment-row">
+                  <span>Accommodation Total</span>
+                  <strong id="paymentAccommodationTotal">₱0.00</strong>
+                </div>
+
+                <div class="payment-row">
+                  <span>Required Down Payment 50%</span>
+                  <strong id="paymentDownpayment">₱0.00</strong>
+                </div>
+
+                <div class="payment-row">
+                  <span>Remaining 50% Onsite</span>
+                  <strong id="paymentRemaining">₱0.00</strong>
+                </div>
+
+                <div class="payment-row">
+                  <span>Estimated Entrance Fee</span>
+                  <strong id="paymentEntranceFee">₱0.00</strong>
+                </div>
+
+                <div class="payment-row">
+                  <span>Total Reminder for Front Desk</span>
+                  <strong id="paymentFrontDeskReminder">₱0.00</strong>
+                </div>
+              </div>
+
+              <div class="payment-note">
+                <strong>Reminder:</strong> Down payment is based on the
+                accommodation total only. Entrance fee and remaining balance are
+                paid onsite.
+              </div>
+            </section>
+
+            <!-- ======================================================
+               QR PAYMENT BOX
+            ======================================================= -->
+            <section class="section-box">
+              <h2>Scan to Pay</h2>
+              <div id="qrPlaceholderBox" class="qr-payment-card"></div>
+            </section>
+          </aside>
+        </div>
+      </div>
+    </main>
+
+    <!-- ======================================================
+       PAGE SCRIPTS
+    ======================================================= -->
+    <script src="../sharedJS/toast.js"></script>
+    <script src="../js/mobile-nav.js"></script>
+    <script src="../customerJS/booking-payment.js"></script>
+  </body>
+</html>
