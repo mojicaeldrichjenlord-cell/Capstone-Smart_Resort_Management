@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <!-- ======================================================
+       RESPONSIVE VIEWPORT
+       Makes reports page mobile-friendly.
+    ======================================================= -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Admin Reports | Arvic Seaside</title>
+
+    <!-- ======================================================
+       PAGE CSS FILES
+       global.css = shared base styles
+       style.css = old navbar/button styles for now
+       admin-reports.css = reports page only
+    ======================================================= -->
+    <link rel="stylesheet" href="../sharedCSS/global.css" />
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../adminCSS/admin-reports.css" />
+
+    <!-- ======================================================
+       CHART.JS
+       Required for reports charts.
+    ======================================================= -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  </head>
+
+  <body class="has-fixed-navbar">
+    <!-- ======================================================
+       ADMIN NAVBAR
+       This page is inside adminHTML.
+       Profile is not moved yet, so it still uses ../admin-profile.html.
+    ======================================================= -->
+    <header class="navbar">
+      <div class="logo">Arvic Seaside Admin</div>
+
+      <nav>
+        <a href="admin.html">Bookings</a>
+        <a href="admin-walkin.html">Manual Reservation</a>
+        <a href="admin-guests-inside.html">Guests Inside</a>
+        <a href="admin-rooms.html">Accommodations</a>
+        <a href="admin-map-editor.html">Map Editor</a>
+        <a href="admin-reports.html" class="active-nav">Reports</a>
+        <a href="admin-profile.html">Profile</a>
+        <a href="#" id="logoutBtn">Logout</a>
+      </nav>
+    </header>
+
+    <!-- ======================================================
+       MAIN REPORTS PAGE
+    ======================================================= -->
+    <main class="reports-shell">
+      <div class="admin-top-link">
+        <a href="admin.html" class="reports-back-btn">
+          ← Back to Admin Dashboard
+        </a>
+      </div>
+
+      <section class="reports-hero">
+        <h1>Reservation Reports</h1>
+
+        <p>
+          Minimal and easy-to-read analytics for reservations, guests, collected
+          money, online bookings, walk-in/manual reservations, payments, and
+          accommodation usage.
+        </p>
+
+        <div class="print-report-meta">
+          <strong id="printReportDate">Generated: -</strong>
+          <span id="printReportRange">Date Range: All Records</span>
+        </div>
+      </section>
+
+      <!-- ======================================================
+         DATE FILTER PANEL
+      ======================================================= -->
+      <section class="reports-panel">
+        <h2>Filter Report</h2>
+
+        <p>
+          Select a start and end date. This report includes both online and
+          manual/walk-in reservations.
+        </p>
+
+        <div class="filter-grid">
+          <div>
+            <label for="reportStartDate">Start Date</label>
+            <input type="date" id="reportStartDate" />
+          </div>
+
+          <div>
+            <label for="reportEndDate">End Date</label>
+            <input type="date" id="reportEndDate" />
+          </div>
+        </div>
+
+        <div class="report-filter-actions">
+          <button id="applyReportFilterBtn" class="btn-primary">
+            View Report
+          </button>
+
+          <button id="clearReportFilterBtn" class="btn-secondary">
+            Reset Filter
+          </button>
+
+          <button id="printReportBtn" class="btn-primary">
+            Print Report
+          </button>
+        </div>
+      </section>
+
+      <p id="reportErrorMessage" class="report-error" style="display: none"></p>
+
+      <!-- ======================================================
+         SUMMARY CARDS
+      ======================================================= -->
+      <section class="stats-grid">
+        <div class="stat-card">
+          <h3>Reservations</h3>
+          <p id="totalBookingsCount">0</p>
+        </div>
+
+        <div class="stat-card">
+          <h3>Total Guests</h3>
+          <p id="totalGuestsCount">0</p>
+        </div>
+
+        <div class="stat-card">
+          <h3>Online Bookings</h3>
+          <p id="onlineBookingsCount">0</p>
+        </div>
+
+        <div class="stat-card">
+          <h3>Walk-in / Manual</h3>
+          <p id="manualBookingsCount">0</p>
+        </div>
+
+        <div class="stat-card">
+          <h3>Approved</h3>
+          <p id="approvedBookingsCount">0</p>
+        </div>
+
+        <div class="stat-card">
+          <h3>Pending</h3>
+          <p id="pendingBookingsCount">0</p>
+        </div>
+
+        <div class="stat-card">
+          <h3>Money Collected</h3>
+          <p id="totalRevenueAmount">₱0.00</p>
+        </div>
+      </section>
+
+      <!-- ======================================================
+         REPORT CHARTS
+      ======================================================= -->
+      <section class="chart-grid">
+        <div class="chart-box">
+          <div class="chart-header">
+            <h2>Reservations by Status</h2>
+            <p>
+              Shows pending, approved, rejected, cancelled, and completed
+              reservations.
+            </p>
+          </div>
+
+          <div class="chart-canvas-wrap">
+            <canvas id="bookingStatusChart"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-box">
+          <div class="chart-header">
+            <h2>Online vs Walk-in / Manual</h2>
+            <p>
+              Compares customer online reservations and admin manual
+              reservations.
+            </p>
+          </div>
+
+          <div class="chart-canvas-wrap">
+            <canvas id="bookingSourceChart"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-box">
+          <div class="chart-header">
+            <h2>Most Booked Accommodations</h2>
+            <p>Top accommodations based on reservation count.</p>
+          </div>
+
+          <div class="chart-canvas-wrap">
+            <canvas id="popularRoomsChart"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-box">
+          <div class="chart-header">
+            <h2>Payment Method Summary</h2>
+            <p>Displays how customers paid or submitted payment details.</p>
+          </div>
+
+          <div class="chart-canvas-wrap">
+            <canvas id="paymentMethodChart"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-box">
+          <div class="chart-header">
+            <h2>Guests per Accommodation</h2>
+            <p>Total guest count grouped by accommodation.</p>
+          </div>
+
+          <div class="chart-canvas-wrap">
+            <canvas id="guestsPerRoomChart"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-box">
+          <div class="chart-header">
+            <h2>Slot Usage</h2>
+            <p>Shows usage for day tour, overnight, and 22/23-hour slots.</p>
+          </div>
+
+          <div class="chart-canvas-wrap">
+            <canvas id="slotUsageChart"></canvas>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ======================================================
+       PAGE SCRIPTS
+    ======================================================= -->
+    <script src="../sharedJS/toast.js"></script>
+    <script src="../js/active-nav.js"></script>
+    <script src="../adminJS/admin-reports.js"></script>
+  </body>
+</html>

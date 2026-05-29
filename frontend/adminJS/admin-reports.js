@@ -1,3 +1,14 @@
+// ============================================================
+// SMARTRESORT ADMIN REPORTS SCRIPT
+// Purpose:
+// - Check admin access
+// - Load booking data
+// - Render report summary cards
+// - Render charts using Chart.js
+// - Filter and print reports
+// - Works from frontend/adminHTML/admin-reports.html
+// ============================================================
+
 const API_BASE = "http://127.0.0.1:5000/api";
 
 let allBookings = [];
@@ -7,6 +18,11 @@ let popularRoomsChart = null;
 let paymentMethodChart = null;
 let guestsPerRoomChart = null;
 let slotUsageChart = null;
+
+// ============================================================
+// SECTION 1: Chart colors
+// Keeps report colors clean and readable.
+// ============================================================
 
 const REPORT_COLORS = {
   navy: "#0F172A",
@@ -50,6 +66,11 @@ const MINIMAL_PALETTE = [
   "#84CC16",
 ];
 
+// ============================================================
+// SECTION 2: Chart.js default styling
+// Makes charts consistent across reports.
+// ============================================================
+
 Chart.defaults.font.family = "Arial, sans-serif";
 Chart.defaults.color = REPORT_COLORS.text;
 Chart.defaults.plugins.tooltip.backgroundColor = "#0F172A";
@@ -60,6 +81,11 @@ Chart.defaults.plugins.tooltip.borderWidth = 1;
 Chart.defaults.plugins.tooltip.padding = 12;
 Chart.defaults.plugins.tooltip.cornerRadius = 10;
 
+// ============================================================
+// SECTION 3: Page startup
+// Checks admin access, sets events, and loads reports.
+// ============================================================
+
 document.addEventListener("DOMContentLoaded", () => {
   checkAdminAccess();
   setupLogout();
@@ -67,27 +93,39 @@ document.addEventListener("DOMContentLoaded", () => {
   loadReports();
 });
 
+// ============================================================
+// SECTION 4: Admin access checker
+// Allows admin users only.
+// ============================================================
+
 function checkAdminAccess() {
   const user = JSON.parse(localStorage.getItem("user"));
 
   if (!user) {
     alert("Please login first.");
-    window.location.href = "login.html";
+    window.location.href = "../authHTML/login.html";
     return;
   }
 
   if (user.role !== "admin") {
     alert("Access denied. Admin only.");
-    window.location.href = "index.html";
+    window.location.href = "../index.html";
   }
 }
 
+// ============================================================
+// SECTION 5: Logout
+// Clears user and returns to login page.
+// ============================================================
+
 function setupLogout() {
   const logoutBtn = document.getElementById("logoutBtn");
+
   if (!logoutBtn) return;
 
   logoutBtn.addEventListener("click", (e) => {
     e.preventDefault();
+
     localStorage.removeItem("user");
 
     if (typeof showToast === "function") {
@@ -97,10 +135,15 @@ function setupLogout() {
     }
 
     setTimeout(() => {
-      window.location.href = "login.html";
+      window.location.href = "../authHTML/login.html";
     }, 700);
   });
 }
+
+// ============================================================
+// SECTION 6: Report button events
+// Connects filter, reset, and print buttons.
+// ============================================================
 
 function setupReportEvents() {
   const applyBtn = document.getElementById("applyReportFilterBtn");
@@ -135,6 +178,11 @@ function setupReportEvents() {
   }
 }
 
+// ============================================================
+// SECTION 7: Load reports
+// Gets bookings data from backend.
+// ============================================================
+
 async function loadReports() {
   try {
     hideReportError();
@@ -150,10 +198,16 @@ async function loadReports() {
     renderReports(allBookings);
   } catch (error) {
     console.error("loadReports error:", error);
+
     showReportError("Something went wrong while loading the report dashboard.");
     renderReports([]);
   }
 }
+
+// ============================================================
+// SECTION 8: Apply report filters
+// Filters bookings by created/reserved date.
+// ============================================================
 
 function applyReportFilters() {
   const startDate = document.getElementById("reportStartDate").value;
@@ -184,6 +238,11 @@ function applyReportFilters() {
   renderReports(filtered);
 }
 
+// ============================================================
+// SECTION 9: Render all report sections
+// Updates cards and charts.
+// ============================================================
+
 function renderReports(bookings) {
   updateStats(bookings);
   renderBookingStatusChart(bookings);
@@ -193,6 +252,11 @@ function renderReports(bookings) {
   renderGuestsPerRoomChart(bookings);
   renderSlotUsageChart(bookings);
 }
+
+// ============================================================
+// SECTION 10: Update stat cards
+// Counts reservations, guests, source, status, and money.
+// ============================================================
 
 function updateStats(bookings) {
   const totalBookings = bookings.length;
@@ -231,6 +295,10 @@ function updateStats(bookings) {
   setText("pendingBookingsCount", pendingBookings);
   setText("totalRevenueAmount", `₱${formatMoney(moneyCollected)}`);
 }
+
+// ============================================================
+// SECTION 11: Chart - Reservations by status
+// ============================================================
 
 function renderBookingStatusChart(bookings) {
   const counts = {
@@ -287,6 +355,10 @@ function renderBookingStatusChart(bookings) {
   });
 }
 
+// ============================================================
+// SECTION 12: Chart - Online vs walk-in/manual
+// ============================================================
+
 function renderBookingSourceChart(bookings) {
   const sourceCounts = {
     Online: 0,
@@ -328,6 +400,10 @@ function renderBookingSourceChart(bookings) {
   });
 }
 
+// ============================================================
+// SECTION 13: Chart - Most booked accommodations
+// ============================================================
+
 function renderPopularRoomsChart(bookings) {
   const itemCounts = {};
 
@@ -351,7 +427,10 @@ function renderPopularRoomsChart(bookings) {
     popularRoomsChart.destroy();
   }
 
-  const labels = sortedItems.length ? sortedItems.map((item) => item[0]) : ["No data"];
+  const labels = sortedItems.length
+    ? sortedItems.map((item) => item[0])
+    : ["No data"];
+
   const values = sortedItems.length ? sortedItems.map((item) => item[1]) : [0];
 
   popularRoomsChart = new Chart(canvas, {
@@ -397,6 +476,10 @@ function renderPopularRoomsChart(bookings) {
   });
 }
 
+// ============================================================
+// SECTION 14: Chart - Payment method summary
+// ============================================================
+
 function renderPaymentMethodChart(bookings) {
   const paymentCounts = {};
 
@@ -435,6 +518,10 @@ function renderPaymentMethodChart(bookings) {
     options: getDoughnutChartOptions(),
   });
 }
+
+// ============================================================
+// SECTION 15: Chart - Guests per accommodation
+// ============================================================
 
 function renderGuestsPerRoomChart(bookings) {
   const guestTotals = {};
@@ -483,6 +570,10 @@ function renderGuestsPerRoomChart(bookings) {
   });
 }
 
+// ============================================================
+// SECTION 16: Chart - Slot usage
+// ============================================================
+
 function renderSlotUsageChart(bookings) {
   const slotCounts = {
     "Day Tour": 0,
@@ -491,7 +582,9 @@ function renderSlotUsageChart(bookings) {
   };
 
   bookings.forEach((booking) => {
-    const label = String(booking.slot_label || booking.slot_type || "").toLowerCase();
+    const label = String(
+      booking.slot_label || booking.slot_type || ""
+    ).toLowerCase();
 
     if (label.includes("day")) {
       slotCounts["Day Tour"] += 1;
@@ -536,6 +629,11 @@ function renderSlotUsageChart(bookings) {
   });
 }
 
+// ============================================================
+// SECTION 17: Chart option helpers
+// Shared chart configurations.
+// ============================================================
+
 function getBarChartOptions() {
   return {
     responsive: true,
@@ -577,7 +675,9 @@ function getBarChartOptions() {
         callbacks: {
           label: (context) => {
             const label = context.dataset.label || "Value";
-            return `${label}: ${context.parsed.y ?? context.parsed.x ?? context.raw}`;
+            return `${label}: ${
+              context.parsed.y ?? context.parsed.x ?? context.raw
+            }`;
           },
         },
       },
@@ -653,6 +753,11 @@ function getGridStyle() {
   };
 }
 
+// ============================================================
+// SECTION 18: Print report meta
+// Updates generated date and selected date range before printing.
+// ============================================================
+
 function updatePrintReportMeta() {
   const generatedEl = document.getElementById("printReportDate");
   const rangeEl = document.getElementById("printReportRange");
@@ -674,7 +779,9 @@ function updatePrintReportMeta() {
   let rangeText = "Date Range: All Records";
 
   if (startDate && endDate) {
-    rangeText = `Date Range: ${formatReadableDate(startDate)} to ${formatReadableDate(endDate)}`;
+    rangeText = `Date Range: ${formatReadableDate(
+      startDate
+    )} to ${formatReadableDate(endDate)}`;
   } else if (startDate) {
     rangeText = `Date Range: From ${formatReadableDate(startDate)}`;
   } else if (endDate) {
@@ -705,6 +812,11 @@ function formatReadableDate(value) {
     day: "numeric",
   });
 }
+
+// ============================================================
+// SECTION 19: UI helpers
+// Handles error text and common formatting.
+// ============================================================
 
 function showReportError(message) {
   const errorEl = document.getElementById("reportErrorMessage");
