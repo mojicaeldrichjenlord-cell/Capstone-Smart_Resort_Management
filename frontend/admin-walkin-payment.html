@@ -41,6 +41,12 @@
       font-size: 2.1rem;
     }
 
+    .payment-hero p {
+      margin: 0;
+      line-height: 1.6;
+      opacity: 0.95;
+    }
+
     .payment-card {
       background: rgba(255,255,255,0.96);
       border-radius: 28px;
@@ -83,6 +89,10 @@
       line-height: 1.6;
     }
 
+    .summary-item strong {
+      color: #0f172a;
+    }
+
     .payment-form-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -121,6 +131,22 @@
       resize: vertical;
     }
 
+    .field-help {
+      font-size: 0.86rem;
+      color: #64748b;
+      line-height: 1.5;
+    }
+
+    .proof-preview {
+      display: none;
+      margin-top: 10px;
+      width: 100%;
+      max-width: 260px;
+      border-radius: 16px;
+      border: 1px solid #dbe7ef;
+      background: #f8fafc;
+    }
+
     .payment-breakdown {
       background: linear-gradient(135deg, #0f172a, #16233b);
       color: white;
@@ -152,11 +178,22 @@
       line-height: 1.6;
     }
 
+    .payment-note.success-note {
+      background: #ecfdf5;
+      border-color: #a7f3d0;
+      color: #065f46;
+    }
+
     .payment-actions {
       display: flex;
       flex-direction: column;
       gap: 10px;
       margin-top: 12px;
+    }
+
+    .message {
+      margin-top: 12px;
+      font-weight: 700;
     }
 
     @media (max-width: 900px) {
@@ -167,13 +204,16 @@
     }
   </style>
 </head>
+
 <body class="has-fixed-navbar">
   <header class="navbar">
     <div class="logo">SmartResort Admin</div>
     <nav>
       <a href="admin.html">Bookings</a>
       <a href="admin-walkin.html">Manual Reservation</a>
+      <a href="admin-guests-inside.html">Guests Inside</a>
       <a href="admin-rooms.html">Accommodations</a>
+      <a href="admin-map-editor.html">Map Editor</a>
       <a href="admin-reports.html">Reports</a>
       <a href="admin-profile.html">Profile</a>
       <a href="#" id="logoutBtn">Logout</a>
@@ -185,7 +225,10 @@
 
     <section class="payment-hero">
       <h1>Manual Reservation Payment</h1>
-      <p>Simple admin payment step. Choose mode of payment and whether the guest paid in full or only the required 50% down payment.</p>
+      <p>
+        Choose payment method and payment type. For Facebook or online manual reservations,
+        GCash/PayMaya payments must include reference number and proof screenshot.
+      </p>
     </section>
 
     <section class="payment-card">
@@ -210,6 +253,9 @@
                     <option value="bank_transfer">Bank Transfer</option>
                     <option value="other">Other</option>
                   </select>
+                  <small id="paymentMethodHelp" class="field-help">
+                    Cash payments do not require uploaded proof.
+                  </small>
                 </div>
 
                 <div class="payment-form-group">
@@ -218,6 +264,37 @@
                     <option value="full">Full Payment</option>
                     <option value="downpayment">50% Down Payment</option>
                   </select>
+                </div>
+
+                <div class="payment-form-group full-width" id="referenceGroup">
+                  <label for="proofReference">
+                    Transaction Reference Number
+                    <span id="referenceRequiredText"></span>
+                  </label>
+                  <input
+                    type="text"
+                    id="proofReference"
+                    placeholder="Example: 123456789012"
+                  />
+                  <small class="field-help">
+                    Required for GCash, PayMaya, and Bank Transfer payments.
+                  </small>
+                </div>
+
+                <div class="payment-form-group full-width" id="proofGroup">
+                  <label for="proofImage">
+                    Proof Screenshot
+                    <span id="proofRequiredText"></span>
+                  </label>
+                  <input
+                    type="file"
+                    id="proofImage"
+                    accept="image/png, image/jpeg, image/jpg, image/webp"
+                  />
+                  <small class="field-help">
+                    Upload the screenshot sent by the customer through Facebook/Messenger or other channels.
+                  </small>
+                  <img id="proofPreview" class="proof-preview" alt="Proof preview" />
                 </div>
 
                 <div class="payment-form-group full-width">
@@ -230,7 +307,9 @@
               </div>
 
               <div class="payment-actions">
-                <button type="submit" class="btn-primary">Submit Manual Reservation</button>
+                <button type="submit" class="btn-primary" id="submitPaymentBtn">
+                  Submit Manual Reservation
+                </button>
                 <a href="admin-walkin.html" class="btn-secondary">Back</a>
               </div>
             </form>
@@ -253,7 +332,11 @@
                 <strong id="paymentDownpayment">₱0.00</strong>
               </div>
               <div class="payment-row">
-                <span>Remaining 50% Onsite</span>
+                <span>Paid Amount</span>
+                <strong id="paymentPaidAmount">₱0.00</strong>
+              </div>
+              <div class="payment-row">
+                <span>Remaining Balance</span>
                 <strong id="paymentRemaining">₱0.00</strong>
               </div>
               <div class="payment-row">
@@ -266,11 +349,14 @@
               </div>
             </div>
 
-            <div class="payment-note">
+            <div class="payment-note" id="paymentRuleNote">
               <strong>Admin Flow:</strong><br />
-              Once submitted, this manual reservation will be automatically approved.
-              If Full Payment is selected, payment status becomes Paid.
-              If 50% Down Payment is selected, payment status becomes Partially Paid.
+              Cash payments can be submitted without proof. GCash, PayMaya, and Bank Transfer require a transaction reference and proof screenshot.
+            </div>
+
+            <div class="payment-note success-note">
+              <strong>Reminder:</strong><br />
+              Entrance fee is not included in the downpayment computation. It is only shown as an estimate for front-desk collection.
             </div>
           </section>
         </div>

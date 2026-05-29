@@ -1,4 +1,19 @@
+// ============================================================
+// SMARTRESORT ADMIN DASHBOARD SCRIPT
+// Purpose:
+// - Load all reservations
+// - Search/filter reservations
+// - Update booking/payment status
+// - Show payment reference number
+// - View proof screenshot using popup modal
+// ============================================================
+
 const API_BASE = "http://127.0.0.1:5000/api";
+
+// ============================================================
+// SECTION 1: Allowed reservation and payment statuses
+// These arrays are used to generate dropdown options in the table.
+// ============================================================
 
 const BOOKING_STATUSES = [
   "pending",
@@ -16,13 +31,30 @@ const PAYMENT_STATUSES = [
   "rejected",
 ];
 
+// ============================================================
+// SECTION 2: Global variable for all booking records
+// allBookings stores all reservations fetched from the backend.
+// Filters will use this original list.
+// ============================================================
+
 let allBookings = [];
+
+// ============================================================
+// SECTION 3: Page startup
+// Runs when the admin page is fully loaded.
+// It checks admin access, sets button events, and loads bookings.
+// ============================================================
 
 document.addEventListener("DOMContentLoaded", () => {
   checkAdminAccess();
   setupEvents();
   loadBookings();
 });
+
+// ============================================================
+// SECTION 4: Admin access checker
+// This prevents normal customers from opening the admin dashboard.
+// ============================================================
 
 function checkAdminAccess() {
   const user = JSON.parse(localStorage.getItem("user"));
@@ -39,6 +71,11 @@ function checkAdminAccess() {
   }
 }
 
+// ============================================================
+// SECTION 5: Setup buttons and filter events
+// This connects logout, refresh, search, and dropdown filters.
+// ============================================================
+
 function setupEvents() {
   const logoutBtn = document.getElementById("logoutBtn");
   const refreshBtn = document.getElementById("refreshBtn");
@@ -47,37 +84,49 @@ function setupEvents() {
   const paymentStatusFilter = document.getElementById("paymentStatusFilter");
   const paymentMethodFilter = document.getElementById("paymentMethodFilter");
 
+  // Logout button
   if (logoutBtn) {
     logoutBtn.addEventListener("click", (e) => {
       e.preventDefault();
       localStorage.removeItem("user");
       showMessage("Logged out successfully.", "success");
+
       setTimeout(() => {
         window.location.href = "login.html";
       }, 700);
     });
   }
 
+  // Refresh table button
   if (refreshBtn) {
     refreshBtn.addEventListener("click", loadBookings);
   }
 
+  // Search input filter
   if (searchInput) {
     searchInput.addEventListener("input", applyFilters);
   }
 
+  // Reservation status filter
   if (statusFilter) {
     statusFilter.addEventListener("change", applyFilters);
   }
 
+  // Payment status filter
   if (paymentStatusFilter) {
     paymentStatusFilter.addEventListener("change", applyFilters);
   }
 
+  // Payment method filter
   if (paymentMethodFilter) {
     paymentMethodFilter.addEventListener("change", applyFilters);
   }
 }
+
+// ============================================================
+// SECTION 6: Load all bookings from backend
+// Fetches all reservations from /api/bookings and stores them.
+// ============================================================
 
 async function loadBookings() {
   const tbody = document.getElementById("adminBookingsTableBody");
@@ -99,6 +148,7 @@ async function loadBookings() {
     }
 
     allBookings = Array.isArray(data) ? data : data.bookings || [];
+
     updateSummaryCards(allBookings);
     applyFilters();
   } catch (error) {
@@ -115,6 +165,11 @@ async function loadBookings() {
     showMessage(error.message || "Failed to load reservations.", "error");
   }
 }
+
+// ============================================================
+// SECTION 7: Update dashboard summary cards
+// Counts total, pending, approved, and paid reservations.
+// ============================================================
 
 function updateSummaryCards(bookings) {
   const totalBookings = bookings.length;
@@ -142,6 +197,12 @@ function updateSummaryCards(bookings) {
   if (paidCountEl) paidCountEl.textContent = paidCount;
 }
 
+// ============================================================
+// SECTION 8: Search and filter logic
+// Filters reservations by search text, status, payment status,
+// and payment method.
+// ============================================================
+
 function applyFilters() {
   const searchValue = (document.getElementById("searchInput")?.value || "")
     .trim()
@@ -165,6 +226,8 @@ function applyFilters() {
 
   let filtered = [...allBookings];
 
+  // Search by reservation code, customer, phone, email, accommodation,
+  // booking source, reference number, or proof path.
   if (searchValue) {
     filtered = filtered.filter((booking) => {
       const displayName = getBookingDisplayName(booking);
@@ -185,12 +248,14 @@ function applyFilters() {
     });
   }
 
+  // Filter by reservation status
   if (statusValue) {
     filtered = filtered.filter(
       (booking) => String(booking.status || "").toLowerCase() === statusValue
     );
   }
 
+  // Filter by payment status
   if (paymentStatusValue) {
     filtered = filtered.filter(
       (booking) =>
@@ -198,6 +263,7 @@ function applyFilters() {
     );
   }
 
+  // Filter by payment method
   if (paymentMethodValue) {
     filtered = filtered.filter(
       (booking) =>
@@ -207,6 +273,11 @@ function applyFilters() {
 
   renderBookings(filtered);
 }
+
+// ============================================================
+// SECTION 9: Render admin booking table
+// Creates all rows of the reservation table.
+// ============================================================
 
 function renderBookings(bookings) {
   const tbody = document.getElementById("adminBookingsTableBody");
@@ -327,6 +398,12 @@ function renderBookings(bookings) {
     .join("");
 }
 
+// ============================================================
+// SECTION 10: Extract payment reference number
+// This finds the payment reference from possible fields.
+// If not found in direct fields, it extracts from the note text.
+// ============================================================
+
 function getPaymentReference(booking) {
   const directReference =
     booking.proof_reference ||
@@ -348,6 +425,11 @@ function getPaymentReference(booking) {
   return "";
 }
 
+// ============================================================
+// SECTION 11: Group reference number for easier reading
+// Example: 91728339131839 becomes [9172] [8339] [1318] [39]
+// ============================================================
+
 function groupReferenceNumber(reference) {
   const cleanReference = String(reference || "").replace(/\s+/g, "").trim();
 
@@ -357,6 +439,11 @@ function groupReferenceNumber(reference) {
 
   return cleanReference.match(/.{1,4}/g) || [cleanReference];
 }
+
+// ============================================================
+// SECTION 12: Render highlighted reference number
+// Shows reference number in small chips and includes a copy button.
+// ============================================================
 
 function renderPaymentReference(reference) {
   if (!reference) {
@@ -392,6 +479,11 @@ function renderPaymentReference(reference) {
   `;
 }
 
+// ============================================================
+// SECTION 13: Build proof screenshot URL
+// Converts uploaded proof path into a complete backend URL.
+// ============================================================
+
 function getProofUrl(proofPath) {
   const value = String(proofPath || "").trim();
 
@@ -414,22 +506,206 @@ function getProofUrl(proofPath) {
   return "";
 }
 
+// ============================================================
+// SECTION 14: Render proof screenshot button
+// Instead of opening a new tab, this opens the screenshot modal.
+// ============================================================
+
 function renderProofButton(proofUrl) {
   if (!proofUrl) {
     return `<span class="no-proof-text">No proof</span>`;
   }
 
   return `
-    <a
-      href="${escapeHtml(proofUrl)}"
-      target="_blank"
-      rel="noopener"
+    <button
+      type="button"
       class="proof-link-btn"
+      onclick="openProofModal('${escapeForInline(proofUrl)}')"
     >
       View Screenshot
-    </a>
+    </button>
   `;
 }
+
+// ============================================================
+// SECTION 15: Proof screenshot modal
+// Shows uploaded proof inside a popup with an X close button.
+// ============================================================
+
+function openProofModal(imageUrl) {
+  let modal = document.getElementById("proofImageModal");
+
+  // Create modal only once
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.id = "proofImageModal";
+
+    modal.innerHTML = `
+      <div class="proof-modal-backdrop" onclick="closeProofModal()"></div>
+
+      <div class="proof-modal-content">
+        <button type="button" class="proof-modal-close" onclick="closeProofModal()">
+          ×
+        </button>
+
+        <div class="proof-modal-header">
+          <h3>Proof of Payment</h3>
+          <p>Check the screenshot and compare the reference number.</p>
+        </div>
+
+        <img id="proofModalImage" src="" alt="Proof of payment screenshot" />
+
+        <div class="proof-modal-actions">
+          <button type="button" class="proof-modal-btn" onclick="closeProofModal()">
+            Close
+          </button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Inject modal CSS using JavaScript so you do not need to edit CSS file yet
+    const style = document.createElement("style");
+    style.id = "proofModalStyle";
+
+    style.textContent = `
+      #proofImageModal {
+        position: fixed;
+        inset: 0;
+        z-index: 99999;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 18px;
+      }
+
+      #proofImageModal.show {
+        display: flex;
+      }
+
+      .proof-modal-backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.75);
+        backdrop-filter: blur(6px);
+      }
+
+      .proof-modal-content {
+        position: relative;
+        z-index: 1;
+        width: min(92vw, 720px);
+        max-height: 92vh;
+        background: #ffffff;
+        border-radius: 24px;
+        padding: 20px;
+        box-shadow: 0 24px 70px rgba(15, 23, 42, 0.35);
+        border: 1px solid rgba(226, 232, 240, 0.95);
+        overflow: auto;
+      }
+
+      .proof-modal-close {
+        position: absolute;
+        top: 14px;
+        right: 14px;
+        width: 38px;
+        height: 38px;
+        border: none;
+        border-radius: 999px;
+        background: #ef4444;
+        color: white;
+        font-size: 1.4rem;
+        font-weight: 900;
+        cursor: pointer;
+        line-height: 1;
+      }
+
+      .proof-modal-header {
+        padding-right: 46px;
+        margin-bottom: 14px;
+      }
+
+      .proof-modal-header h3 {
+        margin: 0 0 4px;
+        color: #0f172a;
+        font-size: 1.25rem;
+      }
+
+      .proof-modal-header p {
+        margin: 0;
+        color: #64748b;
+        font-size: 0.92rem;
+        line-height: 1.5;
+      }
+
+      #proofModalImage {
+        width: 100%;
+        max-height: 68vh;
+        object-fit: contain;
+        display: block;
+        border-radius: 18px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+      }
+
+      .proof-modal-actions {
+        margin-top: 14px;
+        display: flex;
+        justify-content: flex-end;
+      }
+
+      .proof-modal-btn {
+        border: none;
+        border-radius: 999px;
+        padding: 11px 18px;
+        background: #0f172a;
+        color: white;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      @media (max-width: 600px) {
+        .proof-modal-content {
+          width: 96vw;
+          padding: 16px;
+          border-radius: 20px;
+        }
+
+        #proofModalImage {
+          max-height: 62vh;
+        }
+      }
+    `;
+
+    document.head.appendChild(style);
+  }
+
+  const image = document.getElementById("proofModalImage");
+  image.src = imageUrl;
+
+  modal.classList.add("show");
+  document.body.style.overflow = "hidden";
+}
+
+// ============================================================
+// SECTION 16: Close proof screenshot modal
+// Hides the popup and restores page scrolling.
+// ============================================================
+
+function closeProofModal() {
+  const modal = document.getElementById("proofImageModal");
+
+  if (modal) {
+    modal.classList.remove("show");
+  }
+
+  document.body.style.overflow = "";
+}
+
+// ============================================================
+// SECTION 17: Copy reference number
+// Copies payment reference to clipboard.
+// ============================================================
 
 async function copyReferenceNumber(reference) {
   try {
@@ -449,6 +725,11 @@ async function copyReferenceNumber(reference) {
   }
 }
 
+// ============================================================
+// SECTION 18: Escape text for inline onclick attributes
+// Prevents quotes and special characters from breaking onclick.
+// ============================================================
+
 function escapeForInline(value) {
   return String(value || "")
     .replace(/\\/g, "\\\\")
@@ -456,6 +737,11 @@ function escapeForInline(value) {
     .replace(/"/g, "&quot;")
     .replace(/\n/g, " ");
 }
+
+// ============================================================
+// SECTION 19: Save reservation and payment status
+// Updates both reservation status and payment status.
+// ============================================================
 
 async function saveAllStatus(bookingId) {
   const bookingSelect = document.getElementById(`bookingStatus-${bookingId}`);
@@ -529,9 +815,19 @@ async function saveAllStatus(bookingId) {
   }
 }
 
+// ============================================================
+// SECTION 20: Open admin receipt page
+// Redirects admin to the booking receipt page.
+// ============================================================
+
 function viewReceipt(bookingId) {
   window.location.href = `admin-booking-receipt.html?id=${bookingId}`;
 }
+
+// ============================================================
+// SECTION 21: Booking display helpers
+// Used for name, source, dates, times, money, and labels.
+// ============================================================
 
 function getBookingDisplayName(booking) {
   return booking.fullname || "N/A";
@@ -602,6 +898,7 @@ function formatPaymentMethod(method) {
   if (method === "gcash") return "GCash";
   if (method === "paymaya") return "PayMaya";
   if (method === "cash") return "Cash";
+  if (method === "bank_transfer") return "Bank Transfer";
   if (method === "other") return "Other";
 
   return capitalize(method);
@@ -633,6 +930,11 @@ function capitalize(text) {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
+// ============================================================
+// SECTION 22: Message helper
+// Uses toast if available, otherwise alert.
+// ============================================================
+
 function showMessage(message, type = "success") {
   if (typeof showToast === "function") {
     showToast(message, type);
@@ -640,6 +942,11 @@ function showMessage(message, type = "success") {
     alert(message);
   }
 }
+
+// ============================================================
+// SECTION 23: HTML escaping helper
+// Prevents unsafe text from breaking the table layout.
+// ============================================================
 
 function escapeHtml(value) {
   return String(value || "")

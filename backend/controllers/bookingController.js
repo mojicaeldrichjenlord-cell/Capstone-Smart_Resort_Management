@@ -380,10 +380,14 @@ async function createReservation({
     totalGuests
   );
 
-  const chargeableEntranceGuests = Math.max(totalGuests - totalFreeEntrancePax, 0);
+  const chargeableEntranceGuests = Math.max(
+    totalGuests - totalFreeEntrancePax,
+    0
+  );
 
   const estimatedEntranceFee =
-    getEntranceRate(cleanEntranceType, hasOvernightStyle) * chargeableEntranceGuests;
+    getEntranceRate(cleanEntranceType, hasOvernightStyle) *
+    chargeableEntranceGuests;
 
   const requiredDownpayment = accommodationTotal * 0.5;
 
@@ -419,6 +423,10 @@ async function createReservation({
       reservationStatus = "approved";
       paymentStatus = "partially_paid";
       noteParts.push("Manual Reservation Payment Type: 50% Down Payment");
+    }
+
+    if (cleanProofReference) {
+      noteParts.push(`Reference Number: ${cleanProofReference}`);
     }
   } else {
     noteParts.push(`Reference Number: ${cleanProofReference}`);

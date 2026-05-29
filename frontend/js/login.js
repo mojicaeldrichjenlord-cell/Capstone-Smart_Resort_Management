@@ -1,15 +1,45 @@
+// ============================================================
+// SMARTRESORT LOGIN SCRIPT
+// Purpose:
+// - Handles login form submission
+// - Saves logged-in user to localStorage
+// - Redirects admin/staff/customer to correct page
+// ============================================================
+
 const API_BASE = "http://127.0.0.1:5000/api";
+
+// ============================================================
+// SECTION 1: Get login page elements
+// These are the form, message display, and email input.
+// ============================================================
 
 const loginForm = document.getElementById("loginForm");
 const loginMessage = document.getElementById("loginMessage");
 const emailInput = document.getElementById("email");
 
+// ============================================================
+// SECTION 2: Auto-fill email after registration or password reset
+// registeredEmail can come from register page.
+// resetEmail can come from forgot password page.
+// ============================================================
+
 const savedRegisteredEmail = localStorage.getItem("registeredEmail");
+const savedResetEmail = localStorage.getItem("resetEmail");
 
 if (savedRegisteredEmail && emailInput) {
   emailInput.value = savedRegisteredEmail;
   localStorage.removeItem("registeredEmail");
 }
+
+if (savedResetEmail && emailInput) {
+  emailInput.value = savedResetEmail;
+  localStorage.removeItem("resetEmail");
+}
+
+// ============================================================
+// SECTION 3: Login form submit event
+// Sends email and password to backend /api/auth/login.
+// ============================================================
 
 if (loginForm) {
   loginForm.addEventListener("submit", async (e) => {
@@ -68,6 +98,11 @@ if (loginForm) {
     }
   });
 }
+
+// ============================================================
+// SECTION 4: Message helper
+// Uses toast notification if available, otherwise uses alert.
+// ============================================================
 
 function showMessage(message, type = "success") {
   if (typeof showToast === "function") {

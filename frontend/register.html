@@ -2,12 +2,27 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+
+  <!-- ======================================================
+       RESPONSIVE VIEWPORT
+       Makes the register page mobile-friendly.
+  ======================================================= -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <title>Register | Arvic Seaside</title>
+
+  <!-- ======================================================
+       GLOBAL CSS
+       Main style file of the system.
+  ======================================================= -->
   <link rel="stylesheet" href="css/style.css" />
 
   <style>
+    /* ======================================================
+       SECTION 1: Base layout
+       Full-screen resort background with centered form.
+    ======================================================= */
+
     * {
       box-sizing: border-box;
     }
@@ -32,6 +47,11 @@
       gap: 22px;
       align-items: stretch;
     }
+
+    /* ======================================================
+       SECTION 2: Left showcase panel
+       Explains the benefits of creating an account.
+    ======================================================= */
 
     .register-showcase {
       background: linear-gradient(
@@ -126,6 +146,11 @@
       opacity: 0.95;
     }
 
+    /* ======================================================
+       SECTION 3: Register card and form
+       Contains account information fields.
+    ======================================================= */
+
     .register-card {
       background: rgba(255, 255, 255, 0.9);
       border-radius: 30px;
@@ -199,6 +224,11 @@
       box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
     }
 
+    /* ======================================================
+       SECTION 4: Password field with show/hide button
+       Allows user to reveal password safely.
+    ======================================================= */
+
     .password-field {
       position: relative;
       width: 100%;
@@ -243,22 +273,81 @@
       line-height: 1.35;
     }
 
-    .register-submit {
-      margin-top: 18px;
+    /* ======================================================
+       SECTION 5: OTP verification box
+       Shows after registration request is successful.
+    ======================================================= */
+
+    .otp-box {
+      display: none;
+      margin-top: 16px;
+      background: #f8fafc;
+      border: 1px solid #dbe7ef;
+      border-radius: 18px;
+      padding: 16px;
+    }
+
+    .otp-box.show {
+      display: block;
+    }
+
+    .otp-box h3 {
+      margin: 0 0 8px;
+      color: #0f172a;
+      font-size: 1.05rem;
+    }
+
+    .otp-box p {
+      margin: 0 0 14px;
+      color: #64748b;
+      line-height: 1.5;
+      font-size: 0.9rem;
+    }
+
+    .otp-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    /* ======================================================
+       SECTION 6: Buttons and messages
+       Register, verify, resend, and navigation links.
+    ======================================================= */
+
+    .register-submit,
+    .otp-btn,
+    .otp-secondary-btn {
       width: 100%;
       padding: 14px 16px;
       border: none;
       border-radius: 16px;
-      background: linear-gradient(135deg, #14b8a6, #0f9488);
-      color: white;
       font-weight: 900;
       font-size: 1rem;
       cursor: pointer;
       transition: 0.2s ease;
+    }
+
+    .register-submit,
+    .otp-btn {
+      background: linear-gradient(135deg, #14b8a6, #0f9488);
+      color: white;
       box-shadow: 0 14px 28px rgba(20, 184, 166, 0.22);
     }
 
-    .register-submit:hover {
+    .otp-secondary-btn {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+
+    .register-submit {
+      margin-top: 18px;
+    }
+
+    .register-submit:hover,
+    .otp-btn:hover,
+    .otp-secondary-btn:hover {
       transform: translateY(-1px);
       filter: brightness(1.03);
     }
@@ -281,7 +370,13 @@
       margin-top: 14px;
       text-align: center;
       font-weight: 800;
+      line-height: 1.5;
     }
+
+    /* ======================================================
+       SECTION 7: Mobile responsiveness
+       Makes the page fit phones.
+    ======================================================= */
 
     @media (max-width: 950px) {
       .register-container {
@@ -334,12 +429,21 @@
       .register-subtext {
         font-size: 0.9rem;
       }
+
+      .otp-actions {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
 
 <body class="auth-page">
   <div class="register-container">
+
+    <!-- ======================================================
+         LEFT SHOWCASE PANEL
+         Marketing-style information about guest registration.
+    ======================================================= -->
     <section class="register-showcase">
       <div class="register-badge">Create your Arvic Seaside guest account</div>
 
@@ -368,43 +472,36 @@
       </div>
     </section>
 
+    <!-- ======================================================
+         REGISTER CARD
+         Contains account creation form and OTP verification.
+    ======================================================= -->
     <section class="register-card">
       <h2>Create Account</h2>
 
       <p class="register-subtext">
-        Fill in your basic information below to register your guest account.
+        Fill in your basic information below. After submitting, we will send an OTP to your email for verification.
       </p>
 
+      <!-- ======================================================
+           REGISTER FORM
+           Creates account and sends OTP.
+      ======================================================= -->
       <form id="registerForm">
         <div class="register-form-grid">
           <div class="register-form-group">
             <label for="fullname">Full Name</label>
-            <input
-              type="text"
-              id="fullname"
-              placeholder="Enter full name"
-              required
-            />
+            <input type="text" id="fullname" placeholder="Enter full name" required />
           </div>
 
           <div class="register-form-group">
             <label for="email">Email</label>
-            <input
-              type="email"
-              id="email"
-              placeholder="Enter email"
-              required
-            />
+            <input type="email" id="email" placeholder="Enter working email" required />
           </div>
 
           <div class="register-form-group">
             <label for="phone">Phone Number</label>
-            <input
-              type="text"
-              id="phone"
-              placeholder="Enter phone number"
-              required
-            />
+            <input type="text" id="phone" placeholder="Enter phone number" required />
           </div>
 
           <div class="register-form-group">
@@ -419,12 +516,7 @@
                 required
               />
 
-              <button
-                type="button"
-                class="password-toggle"
-                data-target="password"
-                aria-label="Show password"
-              >
+              <button type="button" class="password-toggle" data-target="password" aria-label="Show password">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"></path>
                   <circle cx="12" cy="12" r="3"></circle>
@@ -432,9 +524,7 @@
               </button>
             </div>
 
-            <small class="field-help">
-              Use at least 8 characters.
-            </small>
+            <small class="field-help">Use at least 8 characters.</small>
           </div>
 
           <div class="register-form-group">
@@ -449,12 +539,7 @@
                 required
               />
 
-              <button
-                type="button"
-                class="password-toggle"
-                data-target="confirmPassword"
-                aria-label="Show confirm password"
-              >
+              <button type="button" class="password-toggle" data-target="confirmPassword" aria-label="Show confirm password">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"></path>
                   <circle cx="12" cy="12" r="3"></circle>
@@ -465,18 +550,42 @@
 
           <div class="register-form-group full-width">
             <label for="address">Home Address</label>
-            <textarea
-              id="address"
-              placeholder="Enter your home address"
-              required
-            ></textarea>
+            <textarea id="address" placeholder="Enter your home address" required></textarea>
           </div>
         </div>
 
-        <button type="submit" class="register-submit">
+        <button type="submit" class="register-submit" id="registerSubmitBtn">
           Register Account
         </button>
       </form>
+
+      <!-- ======================================================
+           OTP VERIFICATION SECTION
+           Appears after registration sends the OTP.
+      ======================================================= -->
+      <section id="registerOtpBox" class="otp-box">
+        <h3>Verify Your Email</h3>
+
+        <p>
+          We sent a 6-digit OTP to <strong id="otpEmailText">your email</strong>.
+          Enter the code below to activate your account.
+        </p>
+
+        <div class="register-form-group full-width">
+          <label for="registerOtp">OTP Code</label>
+          <input type="text" id="registerOtp" maxlength="6" placeholder="Enter 6-digit OTP" />
+        </div>
+
+        <div class="otp-actions">
+          <button type="button" class="otp-btn" id="verifyOtpBtn">
+            Verify OTP
+          </button>
+
+          <button type="button" class="otp-secondary-btn" id="resendOtpBtn">
+            Resend OTP
+          </button>
+        </div>
+      </section>
 
       <p id="registerMessage" class="message"></p>
 
@@ -487,6 +596,12 @@
     </section>
   </div>
 
+  <!-- ======================================================
+       SCRIPTS
+       toast.js shows notifications.
+       Inline script handles password show/hide.
+       register.js handles registration and OTP verification.
+  ======================================================= -->
   <script src="js/toast.js"></script>
 
   <script>
@@ -499,6 +614,7 @@
 
         const isPassword = input.type === "password";
         input.type = isPassword ? "text" : "password";
+
         button.setAttribute(
           "aria-label",
           isPassword ? "Hide password" : "Show password"
