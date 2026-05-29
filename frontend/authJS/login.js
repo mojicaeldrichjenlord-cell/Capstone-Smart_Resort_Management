@@ -89,7 +89,7 @@ if (loginForm) {
         if (role === "admin" || role === "staff") {
           window.location.href = "../adminHTML/admin.html";
         } else {
-          window.location.href = "../index.html";
+          window.location.href = "../customerHTML/index.html";
         }
       }, 900);
     } catch (error) {

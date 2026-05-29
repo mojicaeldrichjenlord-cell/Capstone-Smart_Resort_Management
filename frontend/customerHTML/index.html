@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <!-- ======================================================
+       RESPONSIVE VIEWPORT
+       Makes customer home page phone-friendly.
+    ======================================================= -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Arvic Seaside | Home</title>
+
+    <!-- ======================================================
+       PAGE CSS FILES
+       global.css = shared base styles
+       style.css = old buttons/base styles for now
+       index.css = customer home page only
+    ======================================================= -->
+    <link rel="stylesheet" href="../sharedCSS/global.css" />
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../customerCSS/index.css" />
+  </head>
+
+  <body>
+    <!-- ======================================================
+       CUSTOMER NAVBAR
+       This file is now inside customerHTML.
+       Pages not yet moved still use ../ links.
+    ======================================================= -->
+    <header class="site-header">
+      <div class="site-header-inner">
+        <a href="index.html" class="site-logo">Arvic Seaside</a>
+
+        <nav class="desktop-nav">
+          <a href="index.html" class="active">Home</a>
+          <a href="../rooms.html">Accommodations</a>
+          <a href="../resort-map.html">Resort Map</a>
+          <a href="../my-bookings.html">My Bookings</a>
+          <a href="../profile.html">Profile</a>
+          <a href="#" id="logoutBtn">Logout</a>
+        </nav>
+
+        <button class="menu-toggle" id="menuToggle" aria-label="Open menu">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+
+      <nav class="mobile-nav" id="mobileNav">
+        <a href="index.html">Home</a>
+        <a href="../rooms.html">Accommodations</a>
+        <a href="../resort-map.html">Resort Map</a>
+        <a href="../my-bookings.html">My Bookings</a>
+        <a href="../profile.html">Profile</a>
+        <a href="#" id="mobileLogoutBtn">Logout</a>
+      </nav>
+    </header>
+
+    <!-- ======================================================
+       HERO SECTION
+    ======================================================= -->
+    <section class="hero-section">
+      <div class="hero-inner">
+        <div class="hero-badge">
+          Seaside comfort • Easy online booking • Smart assistant
+        </div>
+
+        <h1>Escape to a more relaxing resort stay.</h1>
+
+        <p>
+          Explore beautiful accommodations, book your preferred schedule, and
+          manage your stay with a cleaner, smarter, and more premium guest
+          experience.
+        </p>
+
+        <div class="hero-actions">
+          <a href="../rooms.html" class="btn-primary">Browse Accommodations</a>
+          <a href="../my-bookings.html" class="btn-secondary">View My Bookings</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================
+       MAIN HOME CONTENT
+    ======================================================= -->
+    <main class="home-wrapper">
+      <section class="welcome-box">
+        <h2>Your resort booking, made smoother</h2>
+
+        <p>
+          Arvic Seaside helps you discover accommodations faster, compare stay
+          details clearly, and handle your reservations with less stress. From
+          accommodation selection to booking confirmation, the whole experience
+          feels more like a modern resort website.
+        </p>
+      </section>
+
+      <section class="home-grid">
+        <div class="home-card">
+          <h2>Browse Accommodations</h2>
+
+          <p>
+            Explore available rooms, cottages, and function areas with a cleaner
+            card layout, pricing, capacity display, amenities, and booking-ready
+            actions.
+          </p>
+
+          <a href="../rooms.html" class="btn-primary">Explore Accommodations</a>
+        </div>
+
+        <div class="home-card">
+          <h2>Track Your Reservation</h2>
+
+          <p>
+            Check your current bookings, receipt details, payment method, and
+            reservation status in one organized guest dashboard.
+          </p>
+
+          <a href="../my-bookings.html" class="btn-primary">Open My Bookings</a>
+        </div>
+
+        <div class="home-card">
+          <h2>Manage Your Account</h2>
+
+          <p>
+            Review your saved guest information and update your password
+            securely whenever needed from your personal profile page.
+          </p>
+
+          <a href="../profile.html" class="btn-primary">Go to Profile</a>
+        </div>
+      </section>
+
+      <section class="quick-strip">
+        <div class="quick-item">
+          <h3>Relaxing visual theme</h3>
+
+          <p>
+            A more premium ocean-and-sand color palette for a proper seaside
+            resort feel.
+          </p>
+        </div>
+
+        <div class="quick-item">
+          <h3>Mobile-friendly layout</h3>
+
+          <p>
+            Cleaner spacing and stronger cards so the customer pages still feel
+            good on phones.
+          </p>
+        </div>
+
+        <div class="quick-item">
+          <h3>AI booking support</h3>
+
+          <p>
+            Ask for accommodation suggestions, dates, payment help, and start a
+            fresh new chat anytime.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <!-- ======================================================
+       AI CHAT WIDGET
+    ======================================================= -->
+    <button id="aiChatToggle" class="ai-chat-toggle">Ask AI Assistant</button>
+
+    <div id="aiChatWindow" class="ai-chat-window">
+      <div class="ai-chat-header">
+        <h3>Arvic Seaside AI Assistant</h3>
+
+        <div class="ai-chat-header-actions">
+          <button id="aiNewChatBtn" class="ai-chat-header-btn" title="New Chat">
+            New
+          </button>
+
+          <button
+            id="aiChatMaximize"
+            class="ai-chat-header-btn"
+            title="Maximize"
+          >
+            ▢
+          </button>
+
+          <button id="aiChatClose" class="ai-chat-header-btn" title="Close">
+            &times;
+          </button>
+        </div>
+      </div>
+
+      <div id="aiChatMessages" class="ai-chat-messages"></div>
+
+      <div class="ai-chat-input-area">
+        <input
+          type="text"
+          id="aiChatInput"
+          placeholder="Ask about rooms, cottages, dates, payment, or booking help..."
+        />
+
+        <button
+          id="aiMicBtn"
+          class="ai-chat-mic-btn"
+          title="Voice input"
+          aria-label="Voice input"
+        >
+          🎤
+        </button>
+
+        <button id="aiSendBtn" class="ai-chat-send">Send</button>
+      </div>
+    </div>
+
+    <!-- ======================================================
+       PAGE SCRIPTS
+       ai-chat.js and mobile-nav.js are still in old js folder for now.
+    ======================================================= -->
+    <script src="../sharedJS/toast.js"></script>
+    <script src="../js/mobile-nav.js"></script>
+    <script src="../customerJS/index.js"></script>
+    <script src="../js/ai-chat.js"></script>
+  </body>
+</html>
