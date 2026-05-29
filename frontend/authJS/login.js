@@ -87,7 +87,7 @@ if (loginForm) {
         const role = String(data.user.role || "").toLowerCase();
 
         if (role === "admin" || role === "staff") {
-          window.location.href = "../admin.html";
+          window.location.href = "../adminHTML/admin.html";
         } else {
           window.location.href = "../index.html";
         }
