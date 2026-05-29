@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <!-- ======================================================
+       RESPONSIVE VIEWPORT
+       Makes admin accommodations page mobile-friendly.
+    ======================================================= -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Admin Accommodations | Arvic Seaside</title>
+
+    <!-- ======================================================
+       PAGE CSS FILES
+       global.css = shared base styles
+       style.css = old navbar/button styles for now
+       admin-rooms.css = accommodations page only
+    ======================================================= -->
+    <link rel="stylesheet" href="../sharedCSS/global.css" />
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../adminCSS/admin-rooms.css" />
+  </head>
+
+  <body class="has-fixed-navbar">
+    <!-- ======================================================
+       ADMIN NAVBAR
+       This page is inside adminHTML.
+       Pages not yet moved still use ../ links.
+    ======================================================= -->
+    <header class="navbar">
+      <div class="logo">Arvic Seaside Admin</div>
+
+      <nav>
+        <a href="admin.html">Bookings</a>
+        <a href="admin-walkin.html">Manual Reservation</a>
+        <a href="admin-guests-inside.html">Guests Inside</a>
+        <a href="admin-rooms.html" class="active-nav">Accommodations</a>
+        <a href="admin-map-editor.html">Map Editor</a>
+        <a href="admin-reports.html">Reports</a>
+        <a href="admin-profile.html">Profile</a>
+        <a href="#" id="logoutBtn">Logout</a>
+      </nav>
+    </header>
+
+    <!-- ======================================================
+       MAIN ROOMS ADMIN PAGE
+       Manage accommodation categories, details, pricing, and photos.
+    ======================================================= -->
+    <main class="rooms-admin-shell">
+      <div class="admin-top-link">
+        <a href="admin.html" class="back-btn">← Back to Admin Dashboard</a>
+      </div>
+
+      <section class="rooms-admin-hero">
+        <h1>Accommodation Management Console</h1>
+
+        <p>
+          Create and manage cottages, rooms, and function areas with flexible
+          slot pricing, capacity display, location label, status control, and
+          multiple accommodation photos.
+        </p>
+
+        <div class="quick-actions">
+          <button type="button" class="btn-main" id="seedDefaultsBtn">
+            Seed Default Accommodations
+          </button>
+        </div>
+      </section>
+
+      <!-- ======================================================
+         ADD / EDIT ACCOMMODATION FORM
+      ======================================================= -->
+      <section class="room-form-box">
+        <h2 id="formTitle">Add New Accommodation</h2>
+
+        <div class="category-inline-box">
+          <div class="room-form-group">
+            <label for="categoryName">Create New Category</label>
+            <input
+              type="text"
+              id="categoryName"
+              placeholder="Example: Cottage"
+            />
+          </div>
+
+          <div class="room-form-group">
+            <label for="categoryDescription">Category Description</label>
+            <input
+              type="text"
+              id="categoryDescription"
+              placeholder="Optional description"
+            />
+          </div>
+
+          <button type="button" class="btn-light" id="addCategoryBtn">
+            Add Category
+          </button>
+        </div>
+
+        <form id="roomForm">
+          <input type="hidden" id="roomId" />
+
+          <div class="room-form-grid">
+            <div class="room-form-group">
+              <label for="categoryId">Accommodation Category</label>
+              <select id="categoryId" required>
+                <option value="">Loading categories...</option>
+              </select>
+            </div>
+
+            <div class="room-form-group">
+              <label for="roomName">Accommodation Name</label>
+              <input type="text" id="roomName" required />
+            </div>
+
+            <div class="room-form-group">
+              <label for="roomCapacity">Max Capacity (display only)</label>
+              <input type="number" id="roomCapacity" min="0" required />
+            </div>
+
+            <div class="room-form-group">
+              <label for="roomStatus">Status</label>
+              <select id="roomStatus" required>
+                <option value="available">Available</option>
+                <option value="unavailable">Unavailable</option>
+              </select>
+            </div>
+
+            <div class="room-form-group">
+              <label for="roomPrice">Day Tour Price</label>
+              <input type="number" id="roomPrice" min="0" required />
+            </div>
+
+            <div class="room-form-group">
+              <label for="overnightPrice">Overnight Price</label>
+              <input type="number" id="overnightPrice" min="0" required />
+            </div>
+
+            <div class="room-form-group">
+              <label for="extendedPrice">Extended Price (22/23 Hours)</label>
+              <input type="number" id="extendedPrice" min="0" required />
+            </div>
+
+            <div class="room-form-group">
+              <label for="mapLabel">Map Label / Location</label>
+              <input
+                type="text"
+                id="mapLabel"
+                placeholder="Example: Poolside Area A"
+              />
+            </div>
+
+            <div class="room-form-group">
+              <label for="dayStartTime">Day Tour Start Time</label>
+              <input type="time" id="dayStartTime" required />
+            </div>
+
+            <div class="room-form-group">
+              <label for="dayEndTime">Day Tour End Time</label>
+              <input type="time" id="dayEndTime" required />
+            </div>
+
+            <div class="room-form-group">
+              <label for="overnightStartTime">Overnight Start Time</label>
+              <input type="time" id="overnightStartTime" required />
+            </div>
+
+            <div class="room-form-group">
+              <label for="overnightEndTime">Overnight End Time</label>
+              <input type="time" id="overnightEndTime" required />
+            </div>
+
+            <div class="room-form-group">
+              <label for="extendedStartTime">Extended Start Time</label>
+              <input type="time" id="extendedStartTime" required />
+            </div>
+
+            <div class="room-form-group">
+              <label for="extendedEndTime">Extended End Time</label>
+              <input type="time" id="extendedEndTime" required />
+            </div>
+
+            <div class="room-form-group full-width">
+              <label for="roomDescription">Description</label>
+              <textarea id="roomDescription" required></textarea>
+            </div>
+
+            <div class="room-form-group full-width">
+              <label for="roomImage">Cover Image</label>
+              <input
+                type="text"
+                id="roomImage"
+                placeholder="Example: images/cottage-a.jpg or https://..."
+              />
+              <small class="field-help">
+                This is the main photo shown first on accommodation cards.
+              </small>
+            </div>
+
+            <div class="room-form-group full-width">
+              <label>Cover Image Preview</label>
+
+              <div class="image-preview-box">
+                <div id="imagePreviewText">No image selected.</div>
+
+                <img
+                  id="imagePreview"
+                  src=""
+                  alt="Accommodation Preview"
+                  style="display: none"
+                />
+              </div>
+            </div>
+
+            <div class="room-form-group full-width">
+              <label for="galleryImages">Gallery Images</label>
+
+              <textarea
+                id="galleryImages"
+                placeholder="Paste one image link per line. Example:
+images/family-room-a-1.jpg
+images/family-room-a-2.jpg
+images/family-room-a-3.jpg"
+              ></textarea>
+
+              <small class="field-help">
+                Add multiple photos here. Use one image path or URL per line.
+              </small>
+            </div>
+
+            <div class="room-form-group full-width">
+              <label>Gallery Preview</label>
+
+              <div class="image-preview-box">
+                <div id="galleryPreviewText">No gallery images added.</div>
+                <div id="galleryPreview" class="gallery-preview-grid"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="room-form-actions">
+            <button type="submit" class="btn-main" id="saveRoomBtn">
+              Save Accommodation
+            </button>
+
+            <button type="button" class="btn-light" id="clearFormBtn">
+              Clear Form
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- ======================================================
+         CURRENT ACCOMMODATION LIST
+      ======================================================= -->
+      <section class="rooms-list-panel">
+        <h2>Current Accommodation Inventory</h2>
+
+        <p>
+          Review cottages, rooms, and function areas including category, pricing
+          per slot, capacity display, location label, availability, and gallery
+          photos.
+        </p>
+
+        <div class="room-list-grid" id="adminRoomsContainer"></div>
+      </section>
+    </main>
+
+    <!-- ======================================================
+       PAGE SCRIPTS
+    ======================================================= -->
+    <script src="../sharedJS/toast.js"></script>
+    <script src="../js/active-nav.js"></script>
+    <script src="../adminJS/admin-rooms.js"></script>
+  </body>
+</html>
