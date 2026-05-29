@@ -6,6 +6,7 @@
 // - Update booking/payment status
 // - Show payment reference number
 // - View proof screenshot using popup modal
+// - Sync reservation/payment dropdown status
 // - Works from frontend/adminHTML/admin.html
 // ============================================================
 
@@ -86,7 +87,6 @@ function setupEvents() {
   const paymentStatusFilter = document.getElementById("paymentStatusFilter");
   const paymentMethodFilter = document.getElementById("paymentMethodFilter");
 
-  // Logout button
   if (logoutBtn) {
     logoutBtn.addEventListener("click", (e) => {
       e.preventDefault();
@@ -100,27 +100,22 @@ function setupEvents() {
     });
   }
 
-  // Refresh table button
   if (refreshBtn) {
     refreshBtn.addEventListener("click", loadBookings);
   }
 
-  // Search input filter
   if (searchInput) {
     searchInput.addEventListener("input", applyFilters);
   }
 
-  // Reservation status filter
   if (statusFilter) {
     statusFilter.addEventListener("change", applyFilters);
   }
 
-  // Payment status filter
   if (paymentStatusFilter) {
     paymentStatusFilter.addEventListener("change", applyFilters);
   }
 
-  // Payment method filter
   if (paymentMethodFilter) {
     paymentMethodFilter.addEventListener("change", applyFilters);
   }
@@ -209,11 +204,7 @@ function updateSummaryCards(bookings) {
       const checkIn = String(booking.check_in || "").slice(0, 10);
       const checkOut = String(booking.check_out || "").slice(0, 10);
 
-      return (
-        status === "approved" &&
-        checkIn <= today &&
-        checkOut >= today
-      );
+      return status === "approved" && checkIn <= today && checkOut >= today;
     })
     .reduce((sum, booking) => sum + Number(booking.guests || 0), 0);
 
@@ -280,8 +271,6 @@ function applyFilters() {
 
   let filtered = [...allBookings];
 
-  // Search by reservation code, customer, phone, email, accommodation,
-  // booking source, reference number, or proof path.
   if (searchValue) {
     filtered = filtered.filter((booking) => {
       const displayName = getBookingDisplayName(booking);
@@ -302,14 +291,12 @@ function applyFilters() {
     });
   }
 
-  // Filter by reservation status
   if (statusValue) {
     filtered = filtered.filter(
       (booking) => String(booking.status || "").toLowerCase() === statusValue
     );
   }
 
-  // Filter by payment status
   if (paymentStatusValue) {
     filtered = filtered.filter(
       (booking) =>
@@ -317,7 +304,6 @@ function applyFilters() {
     );
   }
 
-  // Filter by payment method
   if (paymentMethodValue) {
     filtered = filtered.filter(
       (booking) =>
@@ -413,7 +399,7 @@ function renderBookings(bookings) {
 
           <td>${renderPaymentReference(paymentReference)}</td>
 
-          <td>${renderProofButton(proofUrl)}</td>
+          <td>${renderProofButton(proofUrl, booking.proof_of_payment)}</td>
 
           <td>
             <div class="payment-badge payment-${paymentStatus}">
@@ -450,10 +436,56 @@ function renderBookings(bookings) {
       `;
     })
     .join("");
+
+  setupStatusDropdownSync(bookings);
 }
 
 // ============================================================
-// SECTION 10: Extract payment reference number
+// SECTION 10: Sync reservation and payment dropdowns
+// Keeps status dropdowns logically connected before saving.
+// ============================================================
+
+function setupStatusDropdownSync(bookings) {
+  bookings.forEach((booking) => {
+    const bookingSelect = document.getElementById(`bookingStatus-${booking.id}`);
+    const paymentSelect = document.getElementById(`paymentStatus-${booking.id}`);
+
+    if (!bookingSelect || !paymentSelect) return;
+
+    bookingSelect.addEventListener("change", () => {
+      const reservationStatus = bookingSelect.value;
+
+      if (reservationStatus === "rejected") {
+        paymentSelect.value = "rejected";
+      }
+
+      if (reservationStatus === "cancelled") {
+        paymentSelect.value = "unpaid";
+      }
+
+      if (reservationStatus === "completed") {
+        paymentSelect.value = "paid";
+      }
+    });
+
+    paymentSelect.addEventListener("change", () => {
+      const paymentStatus = paymentSelect.value;
+
+      if (paymentStatus === "paid" || paymentStatus === "partially_paid") {
+        if (bookingSelect.value === "pending") {
+          bookingSelect.value = "approved";
+        }
+      }
+
+      if (paymentStatus === "rejected") {
+        bookingSelect.value = "rejected";
+      }
+    });
+  });
+}
+
+// ============================================================
+// SECTION 11: Extract payment reference number
 // This finds the payment reference from possible fields.
 // If not found in direct fields, it extracts from the note text.
 // ============================================================
@@ -480,7 +512,7 @@ function getPaymentReference(booking) {
 }
 
 // ============================================================
-// SECTION 11: Group reference number for easier reading
+// SECTION 12: Group reference number for easier reading
 // Example: 91728339131839 becomes [9172] [8339] [1318] [39]
 // ============================================================
 
@@ -495,7 +527,7 @@ function groupReferenceNumber(reference) {
 }
 
 // ============================================================
-// SECTION 12: Render highlighted reference number
+// SECTION 13: Render highlighted reference number
 // Shows reference number in small chips and includes a copy button.
 // ============================================================
 
@@ -534,8 +566,9 @@ function renderPaymentReference(reference) {
 }
 
 // ============================================================
-// SECTION 13: Build proof screenshot URL
+// SECTION 14: Build proof screenshot URL
 // Converts uploaded proof path into a complete backend URL.
+// If proof value is not an upload path, it will not show as image.
 // ============================================================
 
 function getProofUrl(proofPath) {
@@ -561,12 +594,22 @@ function getProofUrl(proofPath) {
 }
 
 // ============================================================
-// SECTION 14: Render proof screenshot button
-// Instead of opening a new tab, this opens the screenshot modal.
+// SECTION 15: Render proof screenshot button
+// If proof path exists but is not image path, show clear message.
 // ============================================================
 
-function renderProofButton(proofUrl) {
+function renderProofButton(proofUrl, rawProofPath = "") {
   if (!proofUrl) {
+    const rawValue = String(rawProofPath || "").trim();
+
+    if (rawValue) {
+      return `
+        <span class="no-proof-text">
+          Invalid proof path
+        </span>
+      `;
+    }
+
     return `<span class="no-proof-text">No proof</span>`;
   }
 
@@ -582,14 +625,14 @@ function renderProofButton(proofUrl) {
 }
 
 // ============================================================
-// SECTION 15: Proof screenshot modal
+// SECTION 16: Proof screenshot modal
 // Shows uploaded proof inside a popup with an X close button.
+// If the image file is missing, it shows a clear error.
 // ============================================================
 
 function openProofModal(imageUrl) {
   let modal = document.getElementById("proofImageModal");
 
-  // Create modal only once
   if (!modal) {
     modal = document.createElement("div");
     modal.id = "proofImageModal";
@@ -609,6 +652,10 @@ function openProofModal(imageUrl) {
 
         <img id="proofModalImage" src="" alt="Proof of payment screenshot" />
 
+        <p id="proofModalError" class="proof-modal-error" style="display:none;">
+          Screenshot cannot be loaded. Please check if the uploaded proof file still exists.
+        </p>
+
         <div class="proof-modal-actions">
           <button type="button" class="proof-modal-btn" onclick="closeProofModal()">
             Close
@@ -619,7 +666,6 @@ function openProofModal(imageUrl) {
 
     document.body.appendChild(modal);
 
-    // Inject modal CSS using JavaScript so you do not need to edit CSS file yet
     const style = document.createElement("style");
     style.id = "proofModalStyle";
 
@@ -702,6 +748,16 @@ function openProofModal(imageUrl) {
         border: 1px solid #e2e8f0;
       }
 
+      .proof-modal-error {
+        margin: 14px 0 0;
+        padding: 14px 16px;
+        border-radius: 14px;
+        background: #fee2e2;
+        color: #991b1b;
+        font-weight: 800;
+        line-height: 1.5;
+      }
+
       .proof-modal-actions {
         margin-top: 14px;
         display: flex;
@@ -735,14 +791,41 @@ function openProofModal(imageUrl) {
   }
 
   const image = document.getElementById("proofModalImage");
-  image.src = imageUrl;
+  const errorText = document.getElementById("proofModalError");
+
+  if (errorText) {
+    errorText.style.display = "none";
+  }
+
+  if (image) {
+    image.style.display = "block";
+    image.src = "";
+
+    image.onerror = () => {
+      image.style.display = "none";
+
+      if (errorText) {
+        errorText.style.display = "block";
+      }
+    };
+
+    image.onload = () => {
+      if (errorText) {
+        errorText.style.display = "none";
+      }
+
+      image.style.display = "block";
+    };
+
+    image.src = imageUrl;
+  }
 
   modal.classList.add("show");
   document.body.style.overflow = "hidden";
 }
 
 // ============================================================
-// SECTION 16: Close proof screenshot modal
+// SECTION 17: Close proof screenshot modal
 // Hides the popup and restores page scrolling.
 // ============================================================
 
@@ -757,7 +840,7 @@ function closeProofModal() {
 }
 
 // ============================================================
-// SECTION 17: Copy reference number
+// SECTION 18: Copy reference number
 // Copies payment reference to clipboard.
 // ============================================================
 
@@ -780,7 +863,7 @@ async function copyReferenceNumber(reference) {
 }
 
 // ============================================================
-// SECTION 18: Escape text for inline onclick attributes
+// SECTION 19: Escape text for inline onclick attributes
 // Prevents quotes and special characters from breaking onclick.
 // ============================================================
 
@@ -793,7 +876,7 @@ function escapeForInline(value) {
 }
 
 // ============================================================
-// SECTION 19: Save reservation and payment status
+// SECTION 20: Save reservation and payment status
 // Updates both reservation status and payment status.
 // ============================================================
 
@@ -870,7 +953,7 @@ async function saveAllStatus(bookingId) {
 }
 
 // ============================================================
-// SECTION 20: Open admin receipt page
+// SECTION 21: Open admin receipt page
 // Redirects admin to the old root receipt page for now.
 // Later, when receipt page is moved into adminHTML, change this path.
 // ============================================================
@@ -880,7 +963,7 @@ function viewReceipt(bookingId) {
 }
 
 // ============================================================
-// SECTION 21: Booking display helpers
+// SECTION 22: Booking display helpers
 // Used for name, source, dates, times, money, and labels.
 // ============================================================
 
@@ -986,7 +1069,7 @@ function capitalize(text) {
 }
 
 // ============================================================
-// SECTION 22: Message helper
+// SECTION 23: Message helper
 // Uses toast if available, otherwise alert.
 // ============================================================
 
@@ -999,7 +1082,7 @@ function showMessage(message, type = "success") {
 }
 
 // ============================================================
-// SECTION 23: HTML escaping helper
+// SECTION 24: HTML escaping helper
 // Prevents unsafe text from breaking the table layout.
 // ============================================================
 

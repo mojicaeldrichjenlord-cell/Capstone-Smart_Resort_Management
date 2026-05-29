@@ -25,19 +25,21 @@
   <body class="has-fixed-navbar">
     <!-- ======================================================
        ADMIN NAVBAR
-       Links are adjusted because this file is inside adminHTML.
+       This admin dashboard is already inside adminHTML.
+       Other admin pages are still in the old frontend root for now,
+       so their links use ../ until we move those pages too.
     ======================================================= -->
     <header class="navbar">
       <div class="logo">SmartResort Admin</div>
 
       <nav>
         <a href="admin.html">Bookings</a>
-        <a href="admin-walkin.html">Manual Reservation</a>
-        <a href="admin-guests-inside.html">Guests Inside</a>
-        <a href="admin-rooms.html">Accommodations</a>
-        <a href="admin-map-editor.html">Map Editor</a>
-        <a href="admin-reports.html">Reports</a>
-        <a href="admin-profile.html">Profile</a>
+        <a href="../admin-walkin.html">Manual Reservation</a>
+        <a href="../admin-guests-inside.html">Guests Inside</a>
+        <a href="../admin-rooms.html">Accommodations</a>
+        <a href="../admin-map-editor.html">Map Editor</a>
+        <a href="../admin-reports.html">Reports</a>
+        <a href="../admin-profile.html">Profile</a>
         <a href="#" id="logoutBtn">Logout</a>
       </nav>
     </header>
@@ -61,15 +63,15 @@
         </p>
 
         <div class="hero-actions">
-          <a href="admin-walkin.html" class="hero-btn primary">
+          <a href="../admin-walkin.html" class="hero-btn primary">
             + Create Manual Reservation
           </a>
 
-          <a href="admin-guests-inside.html" class="hero-btn secondary">
+          <a href="../admin-guests-inside.html" class="hero-btn secondary">
             View Guests Inside
           </a>
 
-          <a href="admin-rooms.html" class="hero-btn secondary">
+          <a href="../admin-rooms.html" class="hero-btn secondary">
             Manage Accommodations
           </a>
         </div>
