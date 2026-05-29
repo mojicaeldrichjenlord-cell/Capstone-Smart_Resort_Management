@@ -1,3 +1,16 @@
+// ============================================================
+// SMARTRESORT ADMIN GUESTS INSIDE SCRIPT
+// Purpose:
+// - Check admin/staff access
+// - Load active approved guests for today
+// - Search active guests
+// - Mark payment as paid
+// - Check out guests
+// - Add/update extra bed fee
+// - Open receipt page
+// - Works from frontend/adminHTML/admin-guests-inside.html
+// ============================================================
+
 const API_BASE = "http://127.0.0.1:5000/api";
 const EXTRA_BED_RATE = 200;
 
@@ -5,26 +18,41 @@ let allBookings = [];
 let selectedExtraBedBookingId = null;
 let currentSearchTerm = "";
 
+// ============================================================
+// SECTION 1: Page startup
+// Checks access, connects events, and loads guests.
+// ============================================================
+
 document.addEventListener("DOMContentLoaded", () => {
   checkAdminAccess();
   setupEvents();
   loadGuestsInside();
 });
 
+// ============================================================
+// SECTION 2: Access checker
+// Allows admin and staff only.
+// ============================================================
+
 function checkAdminAccess() {
   const user = JSON.parse(localStorage.getItem("user"));
 
   if (!user) {
     alert("Please login first.");
-    window.location.href = "login.html";
+    window.location.href = "../authHTML/login.html";
     return;
   }
 
   if (user.role !== "admin" && user.role !== "staff") {
     alert("Access denied. Admin or staff only.");
-    window.location.href = "index.html";
+    window.location.href = "../index.html";
   }
 }
+
+// ============================================================
+// SECTION 3: Setup page events
+// Connects logout, refresh, search, modal, and keyboard actions.
+// ============================================================
 
 function setupEvents() {
   const logoutBtn = document.getElementById("logoutBtn");
@@ -38,11 +66,12 @@ function setupEvents() {
   if (logoutBtn) {
     logoutBtn.addEventListener("click", (e) => {
       e.preventDefault();
+
       localStorage.removeItem("user");
       showMessage("Logged out successfully.", "success");
 
       setTimeout(() => {
-        window.location.href = "login.html";
+        window.location.href = "../authHTML/login.html";
       }, 700);
     });
   }
@@ -85,6 +114,11 @@ function setupEvents() {
   });
 }
 
+// ============================================================
+// SECTION 4: Load guests inside
+// Gets all admin bookings, then filters active guests today.
+// ============================================================
+
 async function loadGuestsInside() {
   const tbody = document.getElementById("guestsInsideTableBody");
 
@@ -122,6 +156,11 @@ async function loadGuestsInside() {
   }
 }
 
+// ============================================================
+// SECTION 5: Refresh view
+// Filters active guests, applies search, updates cards/table.
+// ============================================================
+
 function refreshGuestsInsideView() {
   const activeToday = getActiveGuestsToday(allBookings);
   const filteredGuests = filterGuestsInside(activeToday);
@@ -129,6 +168,11 @@ function refreshGuestsInsideView() {
   updateSummary(filteredGuests);
   renderGuestsInside(filteredGuests);
 }
+
+// ============================================================
+// SECTION 6: Search filter
+// Searches reservation code, guest name, accommodation, contact, etc.
+// ============================================================
 
 function filterGuestsInside(bookings) {
   if (!currentSearchTerm) return bookings;
@@ -152,6 +196,11 @@ function filterGuestsInside(bookings) {
   });
 }
 
+// ============================================================
+// SECTION 7: Active guests logic
+// Shows approved bookings active for today's date.
+// ============================================================
+
 function getActiveGuestsToday(bookings) {
   const now = new Date();
   const todayOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -164,6 +213,7 @@ function getActiveGuestsToday(bookings) {
     }
 
     const checkInDate = normalizeDate(booking.check_in || booking.check_in_date);
+
     const checkOutDate = normalizeDate(
       booking.check_out || booking.check_out_date
     );
@@ -188,6 +238,11 @@ function getActiveGuestsToday(bookings) {
   });
 }
 
+// ============================================================
+// SECTION 8: Summary cards
+// Updates total guests, active reservations, payment reminders.
+// ============================================================
+
 function updateSummary(bookings) {
   let totalGuests = 0;
   let needsPaymentCount = 0;
@@ -202,11 +257,11 @@ function updateSummary(bookings) {
     const timeInfo = getTimeStatus(booking);
 
     if (remainingBalance > 0 || entranceFee > 0 || extraBedFee > 0) {
-      needsPaymentCount++;
+      needsPaymentCount += 1;
     }
 
     if (timeInfo.level === "warning" || timeInfo.level === "danger") {
-      attentionCount++;
+      attentionCount += 1;
     }
   });
 
@@ -215,6 +270,11 @@ function updateSummary(bookings) {
   setText("needsPaymentCount", needsPaymentCount);
   setText("attentionCount", attentionCount);
 }
+
+// ============================================================
+// SECTION 9: Render guests table
+// Creates active guest rows and action buttons.
+// ============================================================
 
 function renderGuestsInside(bookings) {
   const tbody = document.getElementById("guestsInsideTableBody");
@@ -238,6 +298,7 @@ function renderGuestsInside(bookings) {
   tbody.innerHTML = bookings
     .map((booking) => {
       const source = String(booking.booking_source || "online").toLowerCase();
+
       const paymentStatus = String(
         booking.payment_status || "pending"
       ).toLowerCase();
@@ -249,6 +310,7 @@ function renderGuestsInside(bookings) {
 
       const timeInfo = getTimeStatus(booking);
       const paymentClass = getPaymentClass(paymentStatus);
+
       const frontDeskNote = getFrontDeskNote(
         remainingBalance,
         entranceFee,
@@ -282,11 +344,14 @@ function renderGuestsInside(bookings) {
           entranceFee,
           extraBedFee
         )}">
-          <td><strong>${escapeHtml(
-            booking.reservation_code || `#${booking.id}`
-          )}</strong></td>
+          <td>
+            <strong>${escapeHtml(booking.reservation_code || `#${booking.id}`)}</strong>
+          </td>
+
           <td>${escapeHtml(booking.fullname || "-")}</td>
+
           <td>${source === "manual" ? "Walk-in / Manual" : "Online"}</td>
+
           <td>${accommodationHtml}</td>
 
           <td>
@@ -301,9 +366,9 @@ function renderGuestsInside(bookings) {
             <small>${formatTime(booking.check_out_time)}</small>
           </td>
 
-          <td><strong>${Number(
-            booking.guests || booking.guest_count || 0
-          )}</strong></td>
+          <td>
+            <strong>${Number(booking.guests || booking.guest_count || 0)}</strong>
+          </td>
 
           <td>
             <span class="badge ${timeInfo.level}">
@@ -369,10 +434,16 @@ function renderGuestsInside(bookings) {
     .join("");
 }
 
+// ============================================================
+// SECTION 10: Open extra bed modal
+// Loads selected guest extra bed count into modal.
+// ============================================================
+
 function openExtraBedModal(bookingId) {
   const booking = allBookings.find(
     (item) => Number(item.id) === Number(bookingId)
   );
+
   const modal = document.getElementById("extraBedModal");
   const input = document.getElementById("extraBedCountInput");
   const guestText = document.getElementById("extraBedGuestText");
@@ -395,6 +466,11 @@ function openExtraBedModal(bookingId) {
   modal.classList.add("show");
 }
 
+// ============================================================
+// SECTION 11: Close extra bed modal
+// Resets selected booking and hides modal.
+// ============================================================
+
 function closeExtraBedModal() {
   const modal = document.getElementById("extraBedModal");
   const input = document.getElementById("extraBedCountInput");
@@ -412,6 +488,11 @@ function closeExtraBedModal() {
   updateExtraBedPreview();
 }
 
+// ============================================================
+// SECTION 12: Update extra bed fee preview
+// Calculates count x 200.
+// ============================================================
+
 function updateExtraBedPreview() {
   const input = document.getElementById("extraBedCountInput");
   const preview = document.getElementById("extraBedFeePreview");
@@ -423,6 +504,11 @@ function updateExtraBedPreview() {
     preview.textContent = `₱${formatMoney(fee)}`;
   }
 }
+
+// ============================================================
+// SECTION 13: Save extra bed count
+// Updates backend then refreshes local table.
+// ============================================================
 
 async function saveExtraBed() {
   const input = document.getElementById("extraBedCountInput");
@@ -483,6 +569,11 @@ async function saveExtraBed() {
   }
 }
 
+// ============================================================
+// SECTION 14: Mark as paid
+// Sets payment status as paid using backend payment endpoint.
+// ============================================================
+
 async function markAsPaid(bookingId) {
   if (!confirm("Mark this booking as fully paid?")) return;
 
@@ -524,6 +615,11 @@ async function markAsPaid(bookingId) {
   }
 }
 
+// ============================================================
+// SECTION 15: Check out guest
+// Marks booking as completed.
+// ============================================================
+
 async function markAsCheckedOut(bookingId) {
   if (!confirm("Mark this guest as checked out / completed?")) return;
 
@@ -556,7 +652,10 @@ async function markAsCheckedOut(bookingId) {
 
     allBookings = allBookings.map((booking) => {
       if (Number(booking.id) === Number(bookingId)) {
-        return { ...booking, status: "completed" };
+        return {
+          ...booking,
+          status: "completed",
+        };
       }
 
       return booking;
@@ -571,9 +670,19 @@ async function markAsCheckedOut(bookingId) {
   }
 }
 
+// ============================================================
+// SECTION 16: View receipt
+// Opens organized admin receipt page.
+// ============================================================
+
 function viewReceipt(bookingId) {
   window.location.href = `admin-booking-receipt.html?id=${bookingId}`;
 }
+
+// ============================================================
+// SECTION 17: Accommodation display helper
+// Handles accommodation text like "Room A +2 more".
+// ============================================================
 
 function formatAccommodationDisplay(name) {
   const text = String(name || "-").trim();
@@ -600,6 +709,11 @@ function formatAccommodationDisplay(name) {
     </div>
   `;
 }
+
+// ============================================================
+// SECTION 18: Time status
+// Detects active, ending soon, or overdue.
+// ============================================================
 
 function getTimeStatus(booking) {
   const now = new Date();
@@ -640,6 +754,11 @@ function getTimeStatus(booking) {
   };
 }
 
+// ============================================================
+// SECTION 19: Front desk note
+// Gives staff a clear action note.
+// ============================================================
+
 function getFrontDeskNote(remainingBalance, entranceFee, extraBedFee, timeInfo) {
   const totalToCollect =
     Number(remainingBalance || 0) +
@@ -663,14 +782,26 @@ function getFrontDeskNote(remainingBalance, entranceFee, extraBedFee, timeInfo) 
   return "No urgent action";
 }
 
+// ============================================================
+// SECTION 20: Row class helper
+// Adds row background class based on priority.
+// ============================================================
+
 function getRowClass(timeInfo, remainingBalance, entranceFee, extraBedFee) {
   if (timeInfo.level === "danger") return "guest-row-danger";
   if (timeInfo.level === "warning") return "guest-row-warning";
+
   if (remainingBalance > 0 || entranceFee > 0 || extraBedFee > 0) {
     return "guest-row-payment";
   }
+
   return "";
 }
+
+// ============================================================
+// SECTION 21: Date/time helpers
+// Combines date and time for countdown logic.
+// ============================================================
 
 function combineDateAndTime(dateValue, timeValue) {
   if (!dateValue) return null;
@@ -716,10 +847,16 @@ function normalizeDate(value) {
   return date;
 }
 
+// ============================================================
+// SECTION 22: Payment/status formatting
+// Formats payment badges and readable dates.
+// ============================================================
+
 function getPaymentClass(status) {
   if (status === "paid") return "paid";
   if (status === "partially_paid") return "partial";
   if (status === "unpaid") return "danger";
+
   return "pending";
 }
 
@@ -729,6 +866,7 @@ function formatPaymentStatus(status) {
   if (status === "pending") return "Pending";
   if (status === "unpaid") return "Unpaid";
   if (status === "rejected") return "Rejected";
+
   return capitalize(status);
 }
 
@@ -758,9 +896,12 @@ function formatTime(value) {
   if (Number.isNaN(hours)) return text;
 
   const suffix = hours >= 12 ? "PM" : "AM";
+
   hours = hours % 12;
 
-  if (hours === 0) hours = 12;
+  if (hours === 0) {
+    hours = 12;
+  }
 
   return `${hours}:${minutes} ${suffix}`;
 }
@@ -774,9 +915,15 @@ function formatMoney(value) {
 
 function capitalize(text) {
   if (!text) return "";
+
   const value = String(text);
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
+
+// ============================================================
+// SECTION 23: DOM and message helpers
+// Updates text and shows toast/alert.
+// ============================================================
 
 function setText(id, value) {
   const el = document.getElementById(id);
@@ -793,6 +940,11 @@ function showMessage(message, type = "success") {
     alert(message);
   }
 }
+
+// ============================================================
+// SECTION 24: Escape helper
+// Prevents unsafe text from breaking table HTML.
+// ============================================================
 
 function escapeHtml(value) {
   return String(value || "")

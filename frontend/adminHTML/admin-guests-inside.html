@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <!-- ======================================================
+       RESPONSIVE VIEWPORT
+       Makes guests-inside page mobile-friendly.
+    ======================================================= -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Guests Inside | Arvic Seaside</title>
+
+    <!-- ======================================================
+       PAGE CSS FILES
+       global.css = shared base styles
+       style.css = old navbar/button styles for now
+       admin-guests-inside.css = guests inside page only
+    ======================================================= -->
+    <link rel="stylesheet" href="../sharedCSS/global.css" />
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../adminCSS/admin-guests-inside.css" />
+  </head>
+
+  <body class="has-fixed-navbar">
+    <!-- ======================================================
+       ADMIN NAVBAR
+       This page is inside adminHTML.
+       Pages not yet moved still use ../ links.
+    ======================================================= -->
+    <header class="navbar">
+      <div class="logo">Arvic Seaside Admin</div>
+
+      <nav>
+        <a href="admin.html">Bookings</a>
+        <a href="admin-walkin.html">Manual Reservation</a>
+        <a href="admin-guests-inside.html" class="active-nav">Guests Inside</a>
+        <a href="../admin-rooms.html">Accommodations</a>
+        <a href="../admin-map-editor.html">Map Editor</a>
+        <a href="../admin-reports.html">Reports</a>
+        <a href="../admin-profile.html">Profile</a>
+        <a href="#" id="logoutBtn">Logout</a>
+      </nav>
+    </header>
+
+    <!-- ======================================================
+       MAIN GUESTS INSIDE PAGE
+       Shows currently active guests and front-desk reminders.
+    ======================================================= -->
+    <main class="guests-shell">
+      <div class="top-actions">
+        <a href="admin.html" class="page-btn light">← Back to Dashboard</a>
+
+        <button id="refreshBtn" class="page-btn primary" type="button">
+          Refresh List
+        </button>
+      </div>
+
+      <section class="guests-hero">
+        <h1>Guests Inside Resort</h1>
+
+        <p>
+          Shows approved guests currently scheduled inside the resort today. Use
+          this for front-desk monitoring, payment reminders, check-out
+          awareness, extra bed charges, and manual guest check-out.
+        </p>
+      </section>
+
+      <!-- ======================================================
+         SUMMARY CARDS
+      ======================================================= -->
+      <section class="summary-grid">
+        <div class="summary-card">
+          <h3>Total Guests Inside</h3>
+          <p id="totalGuestsInside">0</p>
+        </div>
+
+        <div class="summary-card">
+          <h3>Active Reservations</h3>
+          <p id="activeReservations">0</p>
+        </div>
+
+        <div class="summary-card">
+          <h3>Needs Payment</h3>
+          <p id="needsPaymentCount">0</p>
+        </div>
+
+        <div class="summary-card">
+          <h3>Overdue / Ending Soon</h3>
+          <p id="attentionCount">0</p>
+        </div>
+      </section>
+
+      <!-- ======================================================
+         TABLE PANEL
+      ======================================================= -->
+      <section class="guests-panel">
+        <div class="panel-header">
+          <div>
+            <h2>Active Guests Today</h2>
+
+            <p>
+              Red means overdue, yellow means ending soon, and green means
+              currently active. Use action buttons to add extra bed, check out
+              guests, or view receipts.
+            </p>
+          </div>
+        </div>
+
+        <div class="guest-search-box">
+          <label for="guestSearchInput">Search Guest / Reservation</label>
+
+          <input
+            type="text"
+            id="guestSearchInput"
+            placeholder="Search reservation code or guest name..."
+          />
+        </div>
+
+        <div class="table-wrap">
+          <table class="guests-table">
+            <thead>
+              <tr>
+                <th>Reservation Code</th>
+                <th>Guest Name</th>
+                <th>Source</th>
+                <th>Accommodation</th>
+                <th>Check In</th>
+                <th>Check Out</th>
+                <th>Guests</th>
+                <th>Time Status</th>
+                <th>Payment</th>
+                <th>Remaining Balance</th>
+                <th>Entrance Fee Reminder</th>
+                <th>Extra Bed</th>
+                <th>Extra Bed Fee</th>
+                <th>Front Desk Note</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+
+            <tbody id="guestsInsideTableBody">
+              <tr>
+                <td colspan="15" class="table-message">
+                  Loading guests inside...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <!-- ======================================================
+       EXTRA BED MODAL
+       Used to add/update extra bed count and fee.
+    ======================================================= -->
+    <div class="extra-bed-modal" id="extraBedModal">
+      <div class="extra-bed-modal-box">
+        <h2>Update Extra Bed</h2>
+
+        <p id="extraBedGuestText">
+          Add or modify extra bed count for this guest. Rate is ₱200 per extra
+          bed.
+        </p>
+
+        <div class="extra-bed-form-group">
+          <label for="extraBedCountInput">Extra Bed Count</label>
+
+          <input
+            type="number"
+            id="extraBedCountInput"
+            min="0"
+            step="1"
+            value="0"
+          />
+        </div>
+
+        <div class="extra-bed-preview">
+          <div>Rate: <strong>₱200.00 each</strong></div>
+
+          <div>
+            Total Extra Bed Fee: <strong id="extraBedFeePreview">₱0.00</strong>
+          </div>
+        </div>
+
+        <div class="extra-bed-modal-actions">
+          <button type="button" class="modal-btn save" id="saveExtraBedBtn">
+            Save Extra Bed
+          </button>
+
+          <button type="button" class="modal-btn cancel" id="cancelExtraBedBtn">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================
+       PAGE SCRIPTS
+    ======================================================= -->
+    <script src="../sharedJS/toast.js"></script>
+    <script src="../js/active-nav.js"></script>
+    <script src="../adminJS/admin-guests-inside.js"></script>
+  </body>
+</html>
