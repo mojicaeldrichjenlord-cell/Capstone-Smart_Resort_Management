@@ -105,8 +105,9 @@ async function sendOtpEmail({ email, otp, purpose }) {
 
 // ============================================================
 // SECTION 5: Register customer account
-// Creates the account but marks it as unverified first.
-// Sends OTP to the user's email.
+// Creates account if new.
+// If email exists but not verified, updates info and sends new OTP.
+// If email exists and verified, blocks registration.
 // ============================================================
 
 exports.register = async (req, res) => {
@@ -129,22 +130,85 @@ exports.register = async (req, res) => {
       });
     }
 
-    const [existingUsers] = await db
-      .promise()
-      .query("SELECT id, is_verified FROM users WHERE email = ?", [cleanEmail]);
-
-    if (existingUsers.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Email is already registered.",
-      });
-    }
+    const [existingUsers] = await db.promise().query(
+      `
+      SELECT 
+        id,
+        email,
+        COALESCE(is_verified, 0) AS is_verified
+      FROM users
+      WHERE email = ?
+      LIMIT 1
+      `,
+      [cleanEmail],
+    );
 
     const otp = generateOtp();
     const otpHash = await bcrypt.hash(otp, 10);
     const hashedPassword = await bcrypt.hash(password, 10);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
+    // ========================================================
+    // CASE 1: Email already exists
+    // ========================================================
+    if (existingUsers.length > 0) {
+      const existingUser = existingUsers[0];
+
+      // Already verified = real registered account
+      if (Number(existingUser.is_verified) === 1) {
+        return res.status(400).json({
+          success: false,
+          message: "Email is already registered. Please login instead.",
+        });
+      }
+
+      // Not verified yet = allow user to resend OTP and update details
+      await db.promise().query(
+        `
+        UPDATE users
+        SET 
+          fullname = ?,
+          password = ?,
+          phone = ?,
+          address = ?,
+          role = ?,
+          account_status = ?,
+          is_verified = 0,
+          register_otp_hash = ?,
+          register_otp_expires = ?
+        WHERE id = ?
+        `,
+        [
+          fullname,
+          hashedPassword,
+          phone,
+          address,
+          "customer",
+          "active",
+          otpHash,
+          expiresAt,
+          existingUser.id,
+        ],
+      );
+
+      await sendOtpEmail({
+        email: cleanEmail,
+        otp,
+        purpose: "register",
+      });
+
+      return res.status(200).json({
+        success: true,
+        message:
+          "This email is not verified yet. We sent a new OTP to your email.",
+        email: cleanEmail,
+        requiresVerification: true,
+      });
+    }
+
+    // ========================================================
+    // CASE 2: New email, create account as unverified
+    // ========================================================
     await db.promise().query(
       `
       INSERT INTO users (

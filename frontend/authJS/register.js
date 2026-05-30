@@ -58,7 +58,14 @@ async function submitRegistration(e) {
   const password = document.getElementById("password")?.value;
   const confirmPassword = document.getElementById("confirmPassword")?.value;
 
-  if (!fullname || !email || !phone || !address || !password || !confirmPassword) {
+  if (
+    !fullname ||
+    !email ||
+    !phone ||
+    !address ||
+    !password ||
+    !confirmPassword
+  ) {
     showMessage("Please fill in all fields.", "error");
     return;
   }
@@ -110,8 +117,9 @@ async function submitRegistration(e) {
     showOtpBox(pendingVerificationEmail);
 
     showMessage(
-      data.message || "Registration successful. Please check your email for OTP.",
-      "success"
+      data.message ||
+        "Registration successful. Please check your email for OTP.",
+      "success",
     );
 
     lockRegisterForm();
@@ -179,8 +187,9 @@ async function verifyRegistrationOtp() {
     }
 
     showMessage(
-      data.message || "Email verified successfully. Redirecting to dashboard...",
-      "success"
+      data.message ||
+        "Email verified successfully. Redirecting to dashboard...",
+      "success",
     );
 
     setTimeout(() => {
@@ -200,7 +209,10 @@ async function verifyRegistrationOtp() {
 
 async function resendRegistrationOtp() {
   if (resendRemainingSeconds > 0) {
-    showMessage(`Please wait ${resendRemainingSeconds}s before resending OTP.`, "error");
+    showMessage(
+      `Please wait ${resendRemainingSeconds}s before resending OTP.`,
+      "error",
+    );
     return;
   }
 
@@ -234,7 +246,10 @@ async function resendRegistrationOtp() {
       throw new Error(data.message || "Failed to resend OTP.");
     }
 
-    showMessage(data.message || "New OTP has been sent to your email.", "success");
+    showMessage(
+      data.message || "New OTP has been sent to your email.",
+      "success",
+    );
     startResendCooldown();
   } catch (error) {
     console.error("resendRegistrationOtp error:", error);
@@ -381,14 +396,12 @@ function resetButton(button, text) {
 function showMessage(message, type = "success") {
   const messageEl = document.getElementById("registerMessage");
 
-  if (messageEl) {
-    messageEl.textContent = message;
-    messageEl.style.color = type === "error" ? "#dc2626" : "#047857";
+  if (!messageEl) {
+    console.log(message);
+    return;
   }
 
-  if (typeof showToast === "function") {
-    showToast(message, type);
-  } else {
-    alert(message);
-  }
+  messageEl.textContent = message;
+  messageEl.style.color = type === "error" ? "#dc2626" : "#047857";
+  messageEl.style.display = "block";
 }
