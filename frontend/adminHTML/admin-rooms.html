@@ -25,8 +25,6 @@
   <body class="has-fixed-navbar">
     <!-- ======================================================
        ADMIN NAVBAR
-       This page is inside adminHTML.
-       Pages not yet moved still use ../ links.
     ======================================================= -->
     <header class="navbar">
       <div class="logo">Arvic Seaside Admin</div>
@@ -45,7 +43,6 @@
 
     <!-- ======================================================
        MAIN ROOMS ADMIN PAGE
-       Manage accommodation categories, details, pricing, and photos.
     ======================================================= -->
     <main class="rooms-admin-shell">
       <div class="admin-top-link">
@@ -255,13 +252,66 @@ images/family-room-a-3.jpg"
          CURRENT ACCOMMODATION LIST
       ======================================================= -->
       <section class="rooms-list-panel">
-        <h2>Current Accommodation Inventory</h2>
+        <div class="rooms-list-header">
+          <div>
+            <h2>Current Accommodation Inventory</h2>
 
-        <p>
-          Review cottages, rooms, and function areas including category, pricing
-          per slot, capacity display, location label, availability, and gallery
-          photos.
-        </p>
+            <p>
+              Review cottages, rooms, and function areas including category,
+              pricing per slot, capacity display, location label, availability,
+              and gallery photos.
+            </p>
+          </div>
+
+          <span class="rooms-count-badge" id="roomsCountBadge">
+            Loading...
+          </span>
+        </div>
+
+        <!-- ======================================================
+           SEARCH AND FILTER BAR
+        ======================================================= -->
+        <div class="rooms-search-panel">
+          <div class="rooms-search-main">
+            <label for="adminRoomSearch">Search accommodation</label>
+
+            <div class="rooms-search-input-wrap">
+              <span class="rooms-search-icon">🔍</span>
+
+              <input
+                type="text"
+                id="adminRoomSearch"
+                placeholder="Search by name, category, map label, status, or description..."
+              />
+
+              <button type="button" id="clearRoomSearchBtn">
+                Clear
+              </button>
+            </div>
+          </div>
+
+          <div class="rooms-filter-group">
+            <label for="adminCategoryFilter">Category</label>
+
+            <select id="adminCategoryFilter">
+              <option value="">All Categories</option>
+            </select>
+          </div>
+
+          <div class="rooms-filter-group">
+            <label for="adminStatusFilter">Status</label>
+
+            <select id="adminStatusFilter">
+              <option value="">All Status</option>
+              <option value="available">Available</option>
+              <option value="unavailable">Unavailable</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="roomSearchResultText" class="room-search-result-text">
+          Loading accommodations...
+        </div>
 
         <div class="room-list-grid" id="adminRoomsContainer"></div>
       </section>

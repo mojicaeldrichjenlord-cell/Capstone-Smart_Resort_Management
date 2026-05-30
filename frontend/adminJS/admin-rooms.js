@@ -5,6 +5,7 @@
 // - Load/create categories
 // - Create/edit/delete accommodations
 // - Preview cover and gallery images
+// - Search and filter accommodation inventory
 // - Load accommodation inventory
 // - Works from frontend/adminHTML/admin-rooms.html
 // ============================================================
@@ -12,6 +13,7 @@
 const API_BASE = "http://127.0.0.1:5000/api";
 
 let categories = [];
+let allRooms = [];
 
 // ============================================================
 // SECTION 1: Page startup
@@ -22,6 +24,7 @@ document.addEventListener("DOMContentLoaded", () => {
   checkAdminAccess();
   setupLogout();
   setupForm();
+  setupRoomSearch();
   loadCategories();
   loadRooms();
 });
@@ -108,12 +111,49 @@ function setupForm() {
 }
 
 // ============================================================
-// SECTION 5: Load categories
-// Populates the accommodation category dropdown.
+// SECTION 5: Setup search and filters
+// Allows admin to quickly find accommodations.
+// ============================================================
+
+function setupRoomSearch() {
+  const searchInput = document.getElementById("adminRoomSearch");
+  const categoryFilter = document.getElementById("adminCategoryFilter");
+  const statusFilter = document.getElementById("adminStatusFilter");
+  const clearSearchBtn = document.getElementById("clearRoomSearchBtn");
+
+  if (searchInput) {
+    searchInput.addEventListener("input", applyRoomFilters);
+  }
+
+  if (categoryFilter) {
+    categoryFilter.addEventListener("change", applyRoomFilters);
+  }
+
+  if (statusFilter) {
+    statusFilter.addEventListener("change", applyRoomFilters);
+  }
+
+  if (clearSearchBtn) {
+    clearSearchBtn.addEventListener("click", () => {
+      if (searchInput) searchInput.value = "";
+      if (categoryFilter) categoryFilter.value = "";
+      if (statusFilter) statusFilter.value = "";
+
+      applyRoomFilters();
+      searchInput?.focus();
+    });
+  }
+}
+
+// ============================================================
+// SECTION 6: Load categories
+// Populates the accommodation category dropdown and filter dropdown.
 // ============================================================
 
 async function loadCategories() {
   const categorySelect = document.getElementById("categoryId");
+  const categoryFilter = document.getElementById("adminCategoryFilter");
+
   if (!categorySelect) return;
 
   try {
@@ -139,6 +179,22 @@ async function loadCategories() {
         )
         .join("")}
     `;
+
+    if (categoryFilter) {
+      categoryFilter.innerHTML = `
+        <option value="">All Categories</option>
+
+        ${categories
+          .map(
+            (category) => `
+              <option value="${escapeHtml(category.name)}">
+                ${escapeHtml(category.name)}
+              </option>
+            `
+          )
+          .join("")}
+      `;
+    }
   } catch (error) {
     console.error("loadCategories error:", error);
 
@@ -148,7 +204,7 @@ async function loadCategories() {
 }
 
 // ============================================================
-// SECTION 6: Create category
+// SECTION 7: Create category
 // Adds a new accommodation category.
 // ============================================================
 
@@ -192,7 +248,7 @@ async function createCategory() {
 }
 
 // ============================================================
-// SECTION 7: Seed default accommodations
+// SECTION 8: Seed default accommodations
 // Calls backend seed route.
 // ============================================================
 
@@ -225,7 +281,7 @@ async function seedDefaults() {
 }
 
 // ============================================================
-// SECTION 8: Save accommodation
+// SECTION 9: Save accommodation
 // Creates new accommodation or updates existing one.
 // ============================================================
 
@@ -340,8 +396,8 @@ async function handleRoomSubmit(e) {
 }
 
 // ============================================================
-// SECTION 9: Load rooms
-// Renders accommodation inventory cards.
+// SECTION 10: Load rooms
+// Fetches accommodation inventory then renders filtered cards.
 // ============================================================
 
 async function loadRooms() {
@@ -355,6 +411,9 @@ async function loadRooms() {
       "#dbe7ef"
     );
 
+    updateRoomsCount(0, 0);
+    updateSearchResultText("Loading accommodations...");
+
     const response = await fetch(`${API_BASE}/rooms`);
     const data = await response.json();
 
@@ -362,100 +421,9 @@ async function loadRooms() {
       throw new Error(data.message || "Failed to load accommodations.");
     }
 
-    const rooms = Array.isArray(data) ? data : data.rooms || [];
+    allRooms = Array.isArray(data) ? data : data.rooms || [];
 
-    if (!rooms.length) {
-      container.innerHTML = renderRoomsMessage(
-        "No accommodations found yet.",
-        "#475569",
-        "#dbe7ef"
-      );
-      return;
-    }
-
-    container.innerHTML = rooms
-      .map((room) => {
-        const roomStatus = String(room.status || "available").toLowerCase();
-
-        const galleryImages = Array.isArray(room.gallery_images)
-          ? room.gallery_images
-          : [];
-
-        const coverImage = resolveImagePath(room.image || "images/no-image.jpg");
-
-        const galleryStrip = galleryImages.length
-          ? `
-            <div class="room-gallery-strip">
-              ${galleryImages
-                .slice(0, 8)
-                .map((img) => {
-                  const imagePath = resolveImagePath(img);
-
-                  return `
-                    <img
-                      src="${escapeHtml(imagePath)}"
-                      alt="${escapeHtml(room.name || "Gallery image")}"
-                      onerror="this.src='../images/no-image.jpg'"
-                    />
-                  `;
-                })
-                .join("")}
-            </div>
-          `
-          : "";
-
-        return `
-          <div class="room-admin-card">
-            <img
-              src="${escapeHtml(coverImage)}"
-              alt="${escapeHtml(room.name || "Accommodation")}"
-              onerror="this.src='../images/no-image.jpg'"
-            />
-
-            ${galleryStrip}
-
-            <div class="room-admin-content">
-              <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;margin-bottom:10px;">
-                <h3>${escapeHtml(room.name || "N/A")}</h3>
-
-                <span class="room-status-badge status-${roomStatus}">
-                  ${capitalize(roomStatus)}
-                </span>
-              </div>
-
-              <p><strong>Category:</strong> ${escapeHtml(room.category_name || "N/A")}</p>
-              <p><strong>Description:</strong> ${escapeHtml(room.description || "N/A")}</p>
-              <p><strong>Map Label:</strong> ${escapeHtml(room.map_label || "Not set")}</p>
-              <p><strong>Gallery Photos:</strong> ${galleryImages.length}</p>
-
-              <div class="room-meta">
-                <div><strong>Max Capacity</strong><br>${room.max_capacity || 0}</div>
-                <div><strong>Day Tour</strong><br>₱${formatMoney(room.day_price)}</div>
-                <div><strong>Overnight</strong><br>₱${formatMoney(room.overnight_price)}</div>
-                <div><strong>22/23 Hours</strong><br>₱${formatMoney(room.extended_price)}</div>
-                <div><strong>Day Time</strong><br>${formatTimeRange(room.day_start_time, room.day_end_time)}</div>
-                <div><strong>Overnight Time</strong><br>${formatTimeRange(room.overnight_start_time, room.overnight_end_time)}</div>
-              </div>
-
-              <div class="room-amenities-box">
-                <strong>Extended Slot:</strong><br>
-                ${formatTimeRange(room.extended_start_time, room.extended_end_time)}
-              </div>
-
-              <div class="room-admin-actions">
-                <button class="btn-edit" onclick="editRoom(${room.id})">
-                  Edit Accommodation
-                </button>
-
-                <button class="btn-delete" onclick="deleteRoom(${room.id})">
-                  Delete / Hide
-                </button>
-              </div>
-            </div>
-          </div>
-        `;
-      })
-      .join("");
+    applyRoomFilters();
   } catch (error) {
     console.error("loadRooms error:", error);
 
@@ -464,11 +432,221 @@ async function loadRooms() {
       "#991b1b",
       "#fecaca"
     );
+
+    updateRoomsCount(0, 0);
+    updateSearchResultText("Failed to load accommodations.");
   }
 }
 
 // ============================================================
-// SECTION 10: Render message card
+// SECTION 11: Apply search and filters
+// Filters by search text, category, and status.
+// ============================================================
+
+function applyRoomFilters() {
+  const searchInput = document.getElementById("adminRoomSearch");
+  const categoryFilter = document.getElementById("adminCategoryFilter");
+  const statusFilter = document.getElementById("adminStatusFilter");
+
+  const searchTerm = normalizeSearch(searchInput?.value || "");
+  const selectedCategory = normalizeSearch(categoryFilter?.value || "");
+  const selectedStatus = normalizeSearch(statusFilter?.value || "");
+
+  const filteredRooms = allRooms.filter((room) => {
+    const roomStatus = normalizeSearch(room.status || "available");
+    const roomCategory = normalizeSearch(room.category_name || "");
+
+    const searchableText = normalizeSearch(
+      [
+        room.name,
+        room.category_name,
+        room.description,
+        room.map_label,
+        room.status,
+        room.max_capacity,
+        room.day_price,
+        room.overnight_price,
+        room.extended_price,
+      ].join(" ")
+    );
+
+    const matchesSearch = !searchTerm || searchableText.includes(searchTerm);
+    const matchesCategory =
+      !selectedCategory || roomCategory === selectedCategory;
+    const matchesStatus = !selectedStatus || roomStatus === selectedStatus;
+
+    return matchesSearch && matchesCategory && matchesStatus;
+  });
+
+  renderRooms(filteredRooms);
+  updateRoomsCount(filteredRooms.length, allRooms.length);
+  updateSearchResultText(getSearchResultMessage(filteredRooms.length, allRooms.length));
+}
+
+// ============================================================
+// SECTION 12: Render rooms
+// Renders accommodation inventory cards.
+// ============================================================
+
+function renderRooms(rooms) {
+  const container = document.getElementById("adminRoomsContainer");
+  if (!container) return;
+
+  if (!allRooms.length) {
+    container.innerHTML = renderRoomsMessage(
+      "No accommodations found yet.",
+      "#475569",
+      "#dbe7ef"
+    );
+    return;
+  }
+
+  if (!rooms.length) {
+    container.innerHTML = renderRoomsMessage(
+      "No accommodations match your search or filters.",
+      "#475569",
+      "#dbe7ef"
+    );
+    return;
+  }
+
+  container.innerHTML = rooms
+    .map((room) => {
+      const roomStatus = String(room.status || "available").toLowerCase();
+
+      const galleryImages = Array.isArray(room.gallery_images)
+        ? room.gallery_images
+        : [];
+
+      const coverImage = resolveImagePath(room.image || "images/no-image.jpg");
+
+      const galleryStrip = galleryImages.length
+        ? `
+          <div class="room-gallery-strip">
+            ${galleryImages
+              .slice(0, 8)
+              .map((img) => {
+                const imagePath = resolveImagePath(img);
+
+                return `
+                  <img
+                    src="${escapeHtml(imagePath)}"
+                    alt="${escapeHtml(room.name || "Gallery image")}"
+                    onerror="this.src='../images/no-image.jpg'"
+                  />
+                `;
+              })
+              .join("")}
+          </div>
+        `
+        : "";
+
+      return `
+        <div class="room-admin-card">
+          <img
+            src="${escapeHtml(coverImage)}"
+            alt="${escapeHtml(room.name || "Accommodation")}"
+            onerror="this.src='../images/no-image.jpg'"
+          />
+
+          ${galleryStrip}
+
+          <div class="room-admin-content">
+            <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;margin-bottom:10px;">
+              <h3>${escapeHtml(room.name || "N/A")}</h3>
+
+              <span class="room-status-badge status-${roomStatus}">
+                ${capitalize(roomStatus)}
+              </span>
+            </div>
+
+            <p><strong>Category:</strong> ${escapeHtml(room.category_name || "N/A")}</p>
+            <p><strong>Description:</strong> ${escapeHtml(room.description || "N/A")}</p>
+            <p><strong>Map Label:</strong> ${escapeHtml(room.map_label || "Not set")}</p>
+            <p><strong>Gallery Photos:</strong> ${galleryImages.length}</p>
+
+            <div class="room-meta">
+              <div><strong>Max Capacity</strong><br>${room.max_capacity || 0}</div>
+              <div><strong>Day Tour</strong><br>₱${formatMoney(room.day_price)}</div>
+              <div><strong>Overnight</strong><br>₱${formatMoney(room.overnight_price)}</div>
+              <div><strong>22/23 Hours</strong><br>₱${formatMoney(room.extended_price)}</div>
+              <div><strong>Day Time</strong><br>${formatTimeRange(room.day_start_time, room.day_end_time)}</div>
+              <div><strong>Overnight Time</strong><br>${formatTimeRange(room.overnight_start_time, room.overnight_end_time)}</div>
+            </div>
+
+            <div class="room-amenities-box">
+              <strong>Extended Slot:</strong><br>
+              ${formatTimeRange(room.extended_start_time, room.extended_end_time)}
+            </div>
+
+            <div class="room-admin-actions">
+              <button class="btn-edit" onclick="editRoom(${room.id})">
+                Edit Accommodation
+              </button>
+
+              <button class="btn-delete" onclick="deleteRoom(${room.id})">
+                Delete / Hide
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+// ============================================================
+// SECTION 13: Search helper messages
+// ============================================================
+
+function updateRoomsCount(filteredCount, totalCount) {
+  const badge = document.getElementById("roomsCountBadge");
+  if (!badge) return;
+
+  if (!totalCount) {
+    badge.textContent = "0 accommodations";
+    return;
+  }
+
+  if (filteredCount === totalCount) {
+    badge.textContent = `${totalCount} accommodation(s)`;
+  } else {
+    badge.textContent = `${filteredCount} of ${totalCount} shown`;
+  }
+}
+
+function updateSearchResultText(message) {
+  const text = document.getElementById("roomSearchResultText");
+  if (!text) return;
+
+  text.textContent = message;
+}
+
+function getSearchResultMessage(filteredCount, totalCount) {
+  if (!totalCount) {
+    return "No accommodations available.";
+  }
+
+  if (filteredCount === totalCount) {
+    return "Showing all accommodations.";
+  }
+
+  if (filteredCount === 0) {
+    return "No results found. Try another name, category, status, or location label.";
+  }
+
+  return `Showing ${filteredCount} result(s) out of ${totalCount}.`;
+}
+
+function normalizeSearch(value) {
+  return String(value || "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+// ============================================================
+// SECTION 14: Render message card
 // Shows loading, empty, or error state.
 // ============================================================
 
@@ -492,7 +670,7 @@ function renderRoomsMessage(message, textColor, borderColor) {
 }
 
 // ============================================================
-// SECTION 11: Edit room
+// SECTION 15: Edit room
 // Loads selected accommodation details into form.
 // ============================================================
 
@@ -568,7 +746,7 @@ async function editRoom(roomId) {
 }
 
 // ============================================================
-// SECTION 12: Delete / hide room
+// SECTION 16: Delete / hide room
 // Deletes room or marks unavailable depending on backend logic.
 // ============================================================
 
@@ -599,7 +777,7 @@ async function deleteRoom(roomId) {
 }
 
 // ============================================================
-// SECTION 13: Clear form
+// SECTION 17: Clear form
 // Resets add/edit form and previews.
 // ============================================================
 
@@ -634,7 +812,7 @@ function clearForm() {
 }
 
 // ============================================================
-// SECTION 14: Cover image preview
+// SECTION 18: Cover image preview
 // Shows preview for cover image input.
 // ============================================================
 
@@ -662,7 +840,7 @@ function updateImagePreview() {
 }
 
 // ============================================================
-// SECTION 15: Gallery preview
+// SECTION 19: Gallery preview
 // Shows preview thumbnails for gallery image links.
 // ============================================================
 
@@ -700,7 +878,7 @@ function updateGalleryPreview() {
 }
 
 // ============================================================
-// SECTION 16: Gallery input parser
+// SECTION 20: Gallery input parser
 // Reads one image per line or comma.
 // ============================================================
 
@@ -715,7 +893,7 @@ function getGalleryImagesFromInput() {
 }
 
 // ============================================================
-// SECTION 17: Image path resolver
+// SECTION 21: Image path resolver
 // Fixes image paths because this page is inside adminHTML.
 // Example: images/a.jpg becomes ../images/a.jpg for preview.
 // ============================================================
@@ -752,7 +930,7 @@ function resolveImagePath(value) {
 }
 
 // ============================================================
-// SECTION 18: Format helpers
+// SECTION 22: Format helpers
 // Formats money, time, labels, messages, and safe HTML.
 // ============================================================
 
