@@ -37,11 +37,9 @@
 ====================================================== */
 
 .auth-showcase {
-  background: linear-gradient(
-    135deg,
-    rgba(15, 23, 42, 0.88),
-    rgba(20, 184, 166, 0.68)
-  );
+  background: linear-gradient(135deg,
+      rgba(15, 23, 42, 0.88),
+      rgba(20, 184, 166, 0.68));
   color: white;
   border-radius: 30px;
   padding: 42px 34px;
@@ -291,4 +289,117 @@
   .forgot-link {
     text-align: center;
   }
+}
+
+/* ======================================================
+   LOGIN PASSWORD SHOW / HIDE
+====================================================== */
+
+.auth-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.password-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.password-group input {
+  flex: 1;
+}
+
+.toggle-password,
+.eye-toggle {
+  border: none;
+  border-radius: 14px;
+  background: #0f172a;
+  color: #ffffff;
+  width: 52px;
+  min-width: 52px;
+  height: 52px;
+  padding: 0;
+  font-size: 1.25rem;
+  font-weight: 900;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toggle-password:hover,
+.eye-toggle:hover {
+  background: #1e293b;
+}
+
+/* ======================================================
+   LOGIN MESSAGE FIX
+   Prevents message from pushing the login card sideways
+====================================================== */
+
+#loginMessage {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 9999;
+  max-width: 420px;
+  width: auto;
+  margin: 0;
+}
+
+@media (max-width: 480px) {
+  .password-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .toggle-password {
+    width: 100%;
+  }
+
+  #loginMessage {
+    left: 14px;
+    right: 14px;
+    top: 14px;
+    max-width: none;
+    text-align: center;
+  }
+}
+
+/* ======================================================
+   PASSWORD EYE BUTTON INSIDE INPUT
+====================================================== */
+
+.password-input-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.password-input-wrap input {
+  width: 100%;
+  padding-right: 58px;
+}
+
+.password-eye-btn {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 999px;
+  background: #dff7f4;
+  color: #0f766e;
+  font-size: 1rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.password-eye-btn:hover {
+  background: #ccfbf1;
 }

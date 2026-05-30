@@ -4,21 +4,23 @@
 // - Submit registration form
 // - Send OTP to user's email
 // - Verify OTP before account can login
-// - Resend OTP when needed
+// - Auto-login user after successful OTP verification
+// - Resend OTP with cooldown timer
 // ============================================================
 
 const API_BASE = "http://127.0.0.1:5000/api";
+const RESEND_COOLDOWN_SECONDS = 60;
 
 // ============================================================
 // SECTION 1: Global state
-// Stores the email currently waiting for OTP verification.
 // ============================================================
 
 let pendingVerificationEmail = "";
+let resendCooldownTimer = null;
+let resendRemainingSeconds = 0;
 
 // ============================================================
 // SECTION 2: Page startup
-// Connects register form, verify OTP button, and resend button.
 // ============================================================
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -44,7 +46,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // ============================================================
 // SECTION 3: Submit registration
-// Validates input, creates account, and sends OTP to email.
 // ============================================================
 
 async function submitRegistration(e) {
@@ -114,6 +115,7 @@ async function submitRegistration(e) {
     );
 
     lockRegisterForm();
+    startResendCooldown();
   } catch (error) {
     console.error("register error:", error);
     showMessage(error.message || "Registration failed.", "error");
@@ -124,7 +126,6 @@ async function submitRegistration(e) {
 
 // ============================================================
 // SECTION 4: Verify registration OTP
-// Sends email and OTP to backend for verification.
 // ============================================================
 
 async function verifyRegistrationOtp() {
@@ -168,14 +169,23 @@ async function verifyRegistrationOtp() {
       throw new Error(data.message || "OTP verification failed.");
     }
 
-    localStorage.removeItem("pendingVerificationEmail");
-    localStorage.setItem("registeredEmail", email);
+    stopResendCooldown();
 
-    showMessage(data.message || "Email verified successfully.", "success");
+    localStorage.removeItem("pendingVerificationEmail");
+    localStorage.removeItem("registeredEmail");
+
+    if (data.user) {
+      localStorage.setItem("user", JSON.stringify(data.user));
+    }
+
+    showMessage(
+      data.message || "Email verified successfully. Redirecting to dashboard...",
+      "success"
+    );
 
     setTimeout(() => {
-      window.location.href = "login.html";
-    }, 1200);
+      window.location.href = "../customerHTML/index.html";
+    }, 1000);
   } catch (error) {
     console.error("verifyRegistrationOtp error:", error);
     showMessage(error.message || "OTP verification failed.", "error");
@@ -185,11 +195,15 @@ async function verifyRegistrationOtp() {
 }
 
 // ============================================================
-// SECTION 5: Resend registration OTP
-// Sends a new OTP for the same unverified email.
+// SECTION 5: Resend registration OTP with cooldown
 // ============================================================
 
 async function resendRegistrationOtp() {
+  if (resendRemainingSeconds > 0) {
+    showMessage(`Please wait ${resendRemainingSeconds}s before resending OTP.`, "error");
+    return;
+  }
+
   const email =
     pendingVerificationEmail ||
     localStorage.getItem("pendingVerificationEmail") ||
@@ -221,17 +235,77 @@ async function resendRegistrationOtp() {
     }
 
     showMessage(data.message || "New OTP has been sent to your email.", "success");
+    startResendCooldown();
   } catch (error) {
     console.error("resendRegistrationOtp error:", error);
     showMessage(error.message || "Failed to resend OTP.", "error");
-  } finally {
-    resetButton(resendBtn, originalText);
+
+    if (resendBtn) {
+      resetButton(resendBtn, originalText);
+    }
   }
 }
 
 // ============================================================
-// SECTION 6: Show OTP verification box
-// Displays OTP section and shows the email where OTP was sent.
+// SECTION 6: Cooldown helpers
+// ============================================================
+
+function startResendCooldown() {
+  const resendBtn = document.getElementById("resendOtpBtn");
+  if (!resendBtn) return;
+
+  stopResendCooldown();
+
+  resendRemainingSeconds = RESEND_COOLDOWN_SECONDS;
+  updateResendButton();
+
+  resendCooldownTimer = setInterval(() => {
+    resendRemainingSeconds -= 1;
+    updateResendButton();
+
+    if (resendRemainingSeconds <= 0) {
+      stopResendCooldown();
+    }
+  }, 1000);
+}
+
+function stopResendCooldown() {
+  const resendBtn = document.getElementById("resendOtpBtn");
+
+  if (resendCooldownTimer) {
+    clearInterval(resendCooldownTimer);
+    resendCooldownTimer = null;
+  }
+
+  resendRemainingSeconds = 0;
+
+  if (resendBtn) {
+    resendBtn.disabled = false;
+    resendBtn.textContent = "Resend OTP";
+    resendBtn.style.opacity = "1";
+    resendBtn.style.cursor = "pointer";
+  }
+}
+
+function updateResendButton() {
+  const resendBtn = document.getElementById("resendOtpBtn");
+  if (!resendBtn) return;
+
+  if (resendRemainingSeconds > 0) {
+    resendBtn.disabled = true;
+    resendBtn.textContent = `Resend OTP in ${resendRemainingSeconds}s`;
+    resendBtn.style.opacity = "0.72";
+    resendBtn.style.cursor = "not-allowed";
+  } else {
+    resendBtn.disabled = false;
+    resendBtn.textContent = "Resend OTP";
+    resendBtn.style.opacity = "1";
+    resendBtn.style.cursor = "pointer";
+  }
+}
+
+// ============================================================
+// SECTION 7: Show OTP verification box
 // ============================================================
 
 function showOtpBox(email) {
@@ -249,8 +323,7 @@ function showOtpBox(email) {
 }
 
 // ============================================================
-// SECTION 7: Lock register form
-// Prevents editing details after OTP was sent.
+// SECTION 8: Lock register form
 // ============================================================
 
 function lockRegisterForm() {
@@ -272,8 +345,7 @@ function lockRegisterForm() {
 }
 
 // ============================================================
-// SECTION 8: Email format validator
-// Basic frontend email format checking.
+// SECTION 9: Email validator
 // ============================================================
 
 function isValidEmail(email) {
@@ -281,8 +353,7 @@ function isValidEmail(email) {
 }
 
 // ============================================================
-// SECTION 9: Button loading helper
-// Disables button while sending/verifying request.
+// SECTION 10: Button helpers
 // ============================================================
 
 function setButtonLoading(button, text) {
@@ -293,11 +364,6 @@ function setButtonLoading(button, text) {
   button.style.opacity = "0.7";
   button.style.cursor = "not-allowed";
 }
-
-// ============================================================
-// SECTION 10: Reset button helper
-// Restores button after request finishes.
-// ============================================================
 
 function resetButton(button, text) {
   if (!button) return;
@@ -310,7 +376,6 @@ function resetButton(button, text) {
 
 // ============================================================
 // SECTION 11: Message helper
-// Uses toast notification if available, otherwise alert.
 // ============================================================
 
 function showMessage(message, type = "success") {

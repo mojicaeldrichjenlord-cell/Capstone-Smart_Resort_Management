@@ -30,11 +30,17 @@
       <button id="menuToggle" class="menu-toggle" type="button">☰</button>
 
       <nav id="mobileNav">
-        <a href="index.html">Home</a>
-        <a href="rooms.html" class="active-nav">Accommodations</a>
-        <a href="resort-map.html">Resort Map</a>
-        <a href="my-bookings.html">My Bookings</a>
-        <a href="profile.html">Profile</a>
+        <a href="index.html" class="confirm-transaction-exit">Home</a>
+        <a href="rooms.html" class="active-nav confirm-transaction-exit">
+          Accommodations
+        </a>
+        <a href="resort-map.html" class="confirm-transaction-exit">
+          Resort Map
+        </a>
+        <a href="my-bookings.html" class="confirm-transaction-exit">
+          My Bookings
+        </a>
+        <a href="profile.html" class="confirm-transaction-exit">Profile</a>
         <a href="#" id="logoutBtn">Logout</a>
       </nav>
     </header>
@@ -55,7 +61,9 @@
     ======================================================= -->
     <main class="booking-page-wrapper">
       <div class="booking-top-actions">
-        <a href="rooms.html" class="back-btn">← Back to Accommodations</a>
+        <a href="rooms.html" class="back-btn confirm-transaction-exit">
+          ← Back to Accommodations
+        </a>
       </div>
 
       <!-- ======================================================
@@ -228,13 +236,41 @@
               Next to Payment
             </button>
 
-            <a href="rooms.html" class="back-btn-full">Back to Accommodations</a>
+            <a href="rooms.html" class="back-btn-full confirm-transaction-exit">
+              Back to Accommodations
+            </a>
           </div>
         </form>
 
         <p id="bookingMessage" class="message"></p>
       </div>
     </main>
+
+    <!-- ======================================================
+       CANCEL TRANSACTION CONFIRMATION MODAL
+    ====================================================== -->
+    <div class="cancel-transaction-modal" id="cancelTransactionModal">
+      <div class="cancel-transaction-box">
+        <div class="cancel-transaction-icon">!</div>
+
+        <h2>Cancel reservation process?</h2>
+
+        <p>
+          You are currently creating a reservation. If you leave this page, your
+          current booking details may be lost.
+        </p>
+
+        <div class="cancel-transaction-actions">
+          <button type="button" class="continue-booking-btn" id="continueBookingBtn">
+            Continue Booking
+          </button>
+
+          <button type="button" class="cancel-transaction-btn" id="confirmCancelTransactionBtn">
+            Cancel Transaction
+          </button>
+        </div>
+      </div>
+    </div>
 
     <!-- ======================================================
        PAGE SCRIPTS
@@ -252,6 +288,60 @@
           menuToggle.textContent = mobileNav.classList.contains("show")
             ? "×"
             : "☰";
+        });
+      }
+
+      const cancelTransactionModal = document.getElementById(
+        "cancelTransactionModal"
+      );
+      const continueBookingBtn = document.getElementById("continueBookingBtn");
+      const confirmCancelTransactionBtn = document.getElementById(
+        "confirmCancelTransactionBtn"
+      );
+
+      let pendingExitUrl = null;
+
+      document.querySelectorAll(".confirm-transaction-exit").forEach((link) => {
+        link.addEventListener("click", (event) => {
+          const href = link.getAttribute("href");
+
+          if (!href || href === "#") return;
+
+          event.preventDefault();
+          pendingExitUrl = href;
+
+          if (cancelTransactionModal) {
+            cancelTransactionModal.classList.add("show");
+          }
+        });
+      });
+
+      if (continueBookingBtn) {
+        continueBookingBtn.addEventListener("click", () => {
+          pendingExitUrl = null;
+
+          if (cancelTransactionModal) {
+            cancelTransactionModal.classList.remove("show");
+          }
+        });
+      }
+
+      if (confirmCancelTransactionBtn) {
+        confirmCancelTransactionBtn.addEventListener("click", () => {
+          sessionStorage.removeItem("smartresort_booking_draft_v2");
+
+          if (pendingExitUrl) {
+            window.location.href = pendingExitUrl;
+          }
+        });
+      }
+
+      if (cancelTransactionModal) {
+        cancelTransactionModal.addEventListener("click", (event) => {
+          if (event.target === cancelTransactionModal) {
+            pendingExitUrl = null;
+            cancelTransactionModal.classList.remove("show");
+          }
         });
       }
     </script>

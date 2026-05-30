@@ -24,7 +24,6 @@
     <div class="register-container">
       <!-- ======================================================
          LEFT SHOWCASE PANEL
-         Marketing-style information about guest registration.
       ======================================================= -->
       <section class="register-showcase">
         <div class="register-badge">
@@ -66,7 +65,6 @@
 
       <!-- ======================================================
          REGISTER CARD
-         Contains account creation form and OTP verification.
       ======================================================= -->
       <section class="register-card">
         <h2>Create Account</h2>
@@ -78,7 +76,6 @@
 
         <!-- ======================================================
            REGISTER FORM
-           Creates account and sends OTP.
         ======================================================= -->
         <form id="registerForm">
           <div class="register-form-grid">
@@ -197,7 +194,6 @@
 
         <!-- ======================================================
            OTP VERIFICATION SECTION
-           Appears after registration sends the OTP.
         ======================================================= -->
         <section id="registerOtpBox" class="otp-box">
           <h3>Verify Your Email</h3>
@@ -240,9 +236,6 @@
 
     <!-- ======================================================
        PAGE SCRIPTS
-       toast.js shows notifications.
-       password-toggle script handles show/hide password.
-       register.js handles registration and OTP verification.
     ======================================================= -->
     <script src="../sharedJS/toast.js"></script>
 
@@ -259,7 +252,7 @@
 
           button.setAttribute(
             "aria-label",
-            isPassword ? "Hide password" : "Show password",
+            isPassword ? "Hide password" : "Show password"
           );
         });
       });

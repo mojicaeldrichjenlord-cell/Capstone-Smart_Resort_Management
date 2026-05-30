@@ -4,23 +4,54 @@
 // - Handles login form submission
 // - Saves logged-in user to localStorage
 // - Redirects admin/staff/customer to correct page
+// - Adds show/hide password toggle
 // ============================================================
 
 const API_BASE = "http://127.0.0.1:5000/api";
 
 // ============================================================
 // SECTION 1: Get login page elements
-// These are the form, message display, and email input.
 // ============================================================
 
 const loginForm = document.getElementById("loginForm");
 const loginMessage = document.getElementById("loginMessage");
 const emailInput = document.getElementById("email");
+const passwordInput = document.getElementById("password");
 
 // ============================================================
-// SECTION 2: Auto-fill email after registration or password reset
-// registeredEmail can come from register page.
-// resetEmail can come from forgot password page.
+// SECTION 2: Setup show/hide password
+// Supports button with:
+// - id="togglePassword"
+// OR
+// - class="toggle-password" data-target="password"
+// ============================================================
+
+setupPasswordToggle();
+
+function setupPasswordToggle() {
+  const toggleBtn = document.getElementById("togglePassword");
+  const eyeIcon = document.getElementById("passwordEyeIcon");
+
+  if (!toggleBtn || !passwordInput) return;
+
+  toggleBtn.addEventListener("click", () => {
+    const isHidden = passwordInput.type === "password";
+
+    passwordInput.type = isHidden ? "text" : "password";
+
+    if (eyeIcon) {
+      eyeIcon.textContent = isHidden ? "👁" : "⌣";
+    }
+
+    toggleBtn.setAttribute(
+      "aria-label",
+      isHidden ? "Hide password" : "Show password",
+    );
+  });
+}
+
+// ============================================================
+// SECTION 3: Auto-fill email after registration or password reset
 // ============================================================
 
 const savedRegisteredEmail = localStorage.getItem("registeredEmail");
@@ -37,7 +68,7 @@ if (savedResetEmail && emailInput) {
 }
 
 // ============================================================
-// SECTION 3: Login form submit event
+// SECTION 4: Login form submit event
 // Sends email and password to backend /api/auth/login.
 // ============================================================
 
@@ -45,11 +76,12 @@ if (loginForm) {
   loginForm.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const email = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value.trim();
+    const email = emailInput ? emailInput.value.trim() : "";
+    const password = passwordInput ? passwordInput.value.trim() : "";
 
     if (loginMessage) {
       loginMessage.textContent = "";
+      loginMessage.className = "";
     }
 
     if (!email || !password) {
@@ -103,14 +135,22 @@ if (loginForm) {
 }
 
 // ============================================================
-// SECTION 4: Message helper
-// Uses toast notification if available, otherwise uses alert.
+// SECTION 5: Message helper
+// Uses toast notification if available.
+// Falls back to loginMessage without moving layout too much.
 // ============================================================
 
 function showMessage(message, type = "success") {
   if (typeof showToast === "function") {
     showToast(message, type);
-  } else {
-    alert(message);
+    return;
   }
+
+  if (loginMessage) {
+    loginMessage.textContent = message;
+    loginMessage.className = `login-message ${type}`;
+    return;
+  }
+
+  alert(message);
 }

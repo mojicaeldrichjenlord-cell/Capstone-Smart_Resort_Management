@@ -29,7 +29,7 @@
       <section class="auth-showcase">
         <div class="auth-badge">Smart resort reservation platform</div>
 
-        <h1>Welcome back to SmartResort</h1>
+        <h1>Welcome back to Arvic Seaside Resort</h1>
 
         <p>
           Sign in to manage bookings, explore available rooms, view receipts,
@@ -66,7 +66,7 @@
         </p>
 
         <form id="loginForm">
-          <div>
+          <div class="auth-form-group">
             <label for="email">Email</label>
             <input
               type="email"
@@ -76,15 +76,26 @@
             />
           </div>
 
-          <div>
+          <div class="auth-form-group">
             <label for="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              placeholder="Enter your password"
-              required
-            />
-          </div>
+
+           <div class="password-input-wrap">
+  <input
+    type="password"
+    id="password"
+    placeholder="Enter your password"
+    required
+  />
+
+  <button
+    type="button"
+    id="togglePassword"
+    class="password-eye-btn"
+    aria-label="Show password"
+  >
+    <span id="passwordEyeIcon">⌣</span>
+  </button>
+</div>
 
           <div class="forgot-link">
             <a href="forgot-password.html">Forgot password?</a>

@@ -20,7 +20,9 @@ const nodemailer = require("nodemailer");
 // ============================================================
 
 function normalizeEmail(email) {
-  return String(email || "").trim().toLowerCase();
+  return String(email || "")
+    .trim()
+    .toLowerCase();
 }
 
 // ============================================================
@@ -170,7 +172,7 @@ exports.register = async (req, res) => {
         0,
         otpHash,
         expiresAt,
-      ]
+      ],
     );
 
     await sendOtpEmail({
@@ -198,7 +200,7 @@ exports.register = async (req, res) => {
 
 // ============================================================
 // SECTION 6: Verify registration OTP
-// Confirms the user's email and activates login access.
+// Confirms the user's email and returns user data for auto-login.
 // ============================================================
 
 exports.verifyRegistrationOtp = async (req, res) => {
@@ -217,12 +219,22 @@ exports.verifyRegistrationOtp = async (req, res) => {
 
     const [users] = await db.promise().query(
       `
-      SELECT id, is_verified, register_otp_hash, register_otp_expires
+      SELECT 
+        id,
+        fullname,
+        email,
+        role,
+        phone,
+        address,
+        COALESCE(account_status, 'active') AS account_status,
+        COALESCE(is_verified, 0) AS is_verified,
+        register_otp_hash,
+        register_otp_expires
       FROM users
       WHERE email = ?
       LIMIT 1
       `,
-      [cleanEmail]
+      [cleanEmail],
     );
 
     if (!users.length) {
@@ -234,10 +246,28 @@ exports.verifyRegistrationOtp = async (req, res) => {
 
     const user = users[0];
 
+    if (String(user.account_status || "active").toLowerCase() === "disabled") {
+      return res.status(403).json({
+        success: false,
+        message:
+          "Your account has been disabled. Please contact the resort administrator.",
+      });
+    }
+
     if (Number(user.is_verified) === 1) {
       return res.status(200).json({
         success: true,
-        message: "Account is already verified.",
+        message: "Account is already verified. Redirecting to dashboard...",
+        user: {
+          id: user.id,
+          fullname: user.fullname,
+          email: user.email,
+          role: user.role,
+          phone: user.phone || "",
+          address: user.address || "",
+          account_status: user.account_status || "active",
+          is_verified: 1,
+        },
       });
     }
 
@@ -274,12 +304,22 @@ exports.verifyRegistrationOtp = async (req, res) => {
           register_otp_expires = NULL
       WHERE id = ?
       `,
-      [user.id]
+      [user.id],
     );
 
     return res.status(200).json({
       success: true,
-      message: "Email verified successfully. You can now login.",
+      message: "Email verified successfully. Redirecting to dashboard...",
+      user: {
+        id: user.id,
+        fullname: user.fullname,
+        email: user.email,
+        role: user.role || "customer",
+        phone: user.phone || "",
+        address: user.address || "",
+        account_status: user.account_status || "active",
+        is_verified: 1,
+      },
     });
   } catch (error) {
     console.error("verifyRegistrationOtp error:", error);
@@ -317,7 +357,7 @@ exports.resendRegistrationOtp = async (req, res) => {
       WHERE email = ?
       LIMIT 1
       `,
-      [cleanEmail]
+      [cleanEmail],
     );
 
     if (!users.length) {
@@ -346,7 +386,7 @@ exports.resendRegistrationOtp = async (req, res) => {
       SET register_otp_hash = ?, register_otp_expires = ?
       WHERE id = ?
       `,
-      [otpHash, expiresAt, user.id]
+      [otpHash, expiresAt, user.id],
     );
 
     await sendOtpEmail({
@@ -403,7 +443,7 @@ exports.login = async (req, res) => {
       FROM users
       WHERE email = ?
       `,
-      [cleanEmail]
+      [cleanEmail],
     );
 
     if (users.length === 0) {
@@ -491,7 +531,7 @@ exports.requestPasswordResetOtp = async (req, res) => {
       WHERE email = ?
       LIMIT 1
       `,
-      [cleanEmail]
+      [cleanEmail],
     );
 
     if (!users.length) {
@@ -521,7 +561,7 @@ exports.requestPasswordResetOtp = async (req, res) => {
       SET reset_otp_hash = ?, reset_otp_expires = ?
       WHERE id = ?
       `,
-      [otpHash, expiresAt, user.id]
+      [otpHash, expiresAt, user.id],
     );
 
     await sendOtpEmail({
@@ -578,7 +618,7 @@ exports.resetPasswordWithOtp = async (req, res) => {
       WHERE email = ?
       LIMIT 1
       `,
-      [cleanEmail]
+      [cleanEmail],
     );
 
     if (!users.length) {
@@ -623,7 +663,7 @@ exports.resetPasswordWithOtp = async (req, res) => {
       SET password = ?, reset_otp_hash = NULL, reset_otp_expires = NULL
       WHERE id = ?
       `,
-      [hashedPassword, user.id]
+      [hashedPassword, user.id],
     );
 
     return res.status(200).json({
@@ -664,7 +704,7 @@ exports.getProfile = async (req, res) => {
       FROM users
       WHERE id = ?
       `,
-      [userId]
+      [userId],
     );
 
     if (rows.length === 0) {
@@ -714,7 +754,7 @@ exports.updateProfile = async (req, res) => {
       FROM users
       WHERE email = ? AND id != ?
       `,
-      [cleanEmail, userId]
+      [cleanEmail, userId],
     );
 
     if (existingEmail.length > 0) {
@@ -730,7 +770,7 @@ exports.updateProfile = async (req, res) => {
       SET fullname = ?, email = ?, phone = ?, address = ?
       WHERE id = ?
       `,
-      [fullname, cleanEmail, phone, address, userId]
+      [fullname, cleanEmail, phone, address, userId],
     );
 
     const [updatedRows] = await db.promise().query(
@@ -747,7 +787,7 @@ exports.updateProfile = async (req, res) => {
       FROM users
       WHERE id = ?
       `,
-      [userId]
+      [userId],
     );
 
     return res.status(200).json({

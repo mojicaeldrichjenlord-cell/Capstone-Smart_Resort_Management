@@ -501,3 +501,104 @@
     gap: 4px;
   }
 }
+
+/* ======================================================
+   CANCEL TRANSACTION POPUP
+====================================================== */
+
+.cancel-transaction-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 7000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(5px);
+}
+
+.cancel-transaction-modal.show {
+  display: flex;
+}
+
+.cancel-transaction-box {
+  width: min(430px, 94vw);
+  background: #ffffff;
+  border-radius: 26px;
+  padding: 26px;
+  text-align: center;
+  box-shadow: 0 26px 70px rgba(15, 23, 42, 0.28);
+  border: 1px solid rgba(226, 232, 240, 0.95);
+}
+
+.cancel-transaction-icon {
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 14px;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #92400e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.7rem;
+  font-weight: 950;
+}
+
+.cancel-transaction-box h2 {
+  margin: 0 0 10px;
+  color: #0f172a;
+  font-size: 1.45rem;
+}
+
+.cancel-transaction-box p {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.6;
+  font-size: 0.96rem;
+}
+
+.cancel-transaction-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.continue-booking-btn,
+.cancel-transaction-btn {
+  flex: 1;
+  border: none;
+  border-radius: 999px;
+  padding: 12px 16px;
+  font-weight: 950;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.continue-booking-btn {
+  background: linear-gradient(135deg, #14b8a6, #0ea5e9);
+  color: #ffffff;
+  box-shadow: 0 10px 20px rgba(20, 184, 166, 0.18);
+}
+
+.cancel-transaction-btn {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.continue-booking-btn:hover,
+.cancel-transaction-btn:hover {
+  transform: translateY(-1px);
+}
+
+@media (max-width: 480px) {
+  .cancel-transaction-box {
+    padding: 22px;
+    border-radius: 22px;
+  }
+
+  .cancel-transaction-actions {
+    flex-direction: column;
+  }
+}
