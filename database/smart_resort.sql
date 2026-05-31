@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: May 30, 2026 at 05:12 PM
+-- Generation Time: May 31, 2026 at 06:56 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.1.25
 
@@ -55,10 +55,8 @@ CREATE TABLE `accommodations` (
 --
 
 INSERT INTO `accommodations` (`id`, `category_id`, `name`, `description`, `max_capacity`, `free_entrance_pax`, `image`, `map_label`, `status`, `day_price`, `overnight_price`, `extended_price`, `day_start_time`, `day_end_time`, `overnight_start_time`, `overnight_end_time`, `extended_start_time`, `extended_end_time`, `created_at`, `updated_at`) VALUES
-(33, 2, 'Single Room (Cottage 1)', 'Single room for 2-4 pax, 1 bed, 1 bathroom, free pool and beach entrance for 2 pax.', 4, 0, 'images/accommodations/single-room-cover.jpg', 'Room Wing - Single Room', 'available', 3000.00, 3000.00, 5000.00, '07:00:00', '17:00:00', '19:00:00', '05:00:00', '07:00:00', '05:00:00', '2026-04-18 06:45:44', '2026-05-09 14:12:56'),
-(36, 2, 'Family Room-A', 'Family room for 3-7 pax, 2 beds, free pool and beach entrance for 3 pax.', 7, 0, 'images/accommodations/family-room-a-cover.jpg', 'Room Wing - Family Room A', 'available', 3500.00, 3500.00, 6000.00, '07:00:00', '17:00:00', '19:00:00', '05:00:00', '07:00:00', '05:00:00', '2026-04-18 06:45:44', '2026-05-09 05:58:37'),
-(37, 2, 'Family Room-B', 'Family room for 8-20 pax, 4 beds, 2 bathrooms, free pool and beach entrance for 8 pax.', 20, 0, 'images/accommodations/family-room-b-cover.jpg', 'Room Wing - Family Room B', 'available', 8000.00, 8000.00, 15000.00, '07:00:00', '17:00:00', '19:00:00', '05:00:00', '07:00:00', '05:00:00', '2026-04-18 06:45:44', '2026-05-09 13:59:05'),
-(39, 3, 'Pool Pavillion', 'Function area with 100-150 pax capacity. Entrance fee not included.', 150, 0, 'https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?auto=format&fit=crop&w=1200&q=80', 'Function Area - Pool Pavillion', 'available', 12000.00, 12000.00, 20000.00, '08:00:00', '18:00:00', '20:00:00', '06:00:00', '08:00:00', '18:00:00', '2026-04-18 06:45:44', '2026-04-18 06:46:09'),
+(33, 2, 'Single Room (Cottage 1)', 'Single room for 2-4 pax, 1 bed, 1 bathroom, free pool and beach entrance for 2 pax.', 4, 0, 'images/accommodations/Single-Room-Cottage/single-room-cover.jpg', 'Room Wing - Single Room', 'available', 3000.00, 3000.00, 5000.00, '07:00:00', '17:00:00', '19:00:00', '05:00:00', '07:00:00', '05:00:00', '2026-04-18 06:45:44', '2026-05-30 19:16:36'),
+(39, 3, 'Pool Pavillion', 'Function area with 100-150 pax capacity. Entrance fee not included.', 150, 0, 'images/accommodations/Function-Area/Pool-Pavillion.jpg', 'Function Area - Pool Pavillion', 'available', 12000.00, 12000.00, 20000.00, '08:00:00', '18:00:00', '20:00:00', '06:00:00', '08:00:00', '18:00:00', '2026-04-18 06:45:44', '2026-05-30 19:18:05'),
 (42, 1, 'Small Nipa Hut 2', 'Cottage Accommodation for 8-10 pax.', 10, 0, 'images/accommodations/Small-Nipa-Hut/Small-Nipa-Hut-2.jpg', 'Cottage - Small Nipa Hut 2', 'available', 800.00, 800.00, 1500.00, '06:00:00', '17:00:00', '18:00:00', '05:00:00', '06:00:00', '05:00:00', '2026-05-11 07:42:18', '2026-05-11 07:42:18'),
 (43, 1, 'Small Nipa Hut 3', 'Cottage Accommodation for 8-10 pax.', 10, 0, 'images/accommodations/Small-Nipa-Hut/Small-Nipa-Hut-3.jpg', 'Cottage - Small Nipa Hut 3', 'available', 800.00, 800.00, 1500.00, '06:00:00', '17:00:00', '18:00:00', '05:00:00', '06:00:00', '05:00:00', '2026-05-11 07:44:36', '2026-05-11 07:44:36'),
 (44, 1, 'Small Nipa Hut 4', 'Cottage Accommodation for 8-10 pax.', 10, 0, 'images/accommodations/Small-Nipa-Hut/Small-Nipa-Hut-4.jpg', 'Cottage - Small Nipa Hut 4', 'available', 800.00, 800.00, 1500.00, '06:00:00', '17:00:00', '18:00:00', '05:00:00', '06:00:00', '05:00:00', '2026-05-11 07:45:43', '2026-05-11 07:45:43'),
@@ -103,11 +101,11 @@ INSERT INTO `accommodations` (`id`, `category_id`, `name`, `description`, `max_c
 (83, 1, 'Pool Shade E', 'Cottage accommodation for 15-20 pax.', 20, 0, 'images/accommodations/Pool-Shade/Pool-Shade-E.jpg', 'Cottage - Pool Shade E', 'available', 1500.00, 1500.00, 3000.00, '06:00:00', '17:00:00', '18:00:00', '05:00:00', '06:00:00', '05:00:00', '2026-05-30 06:34:14', '2026-05-30 06:34:14'),
 (84, 1, 'Pool Shade G', 'Cottage accommodation for 15-20 pax.', 20, 0, 'images/accommodations/Pool-Shade/Pool-Shade-G.jpg', 'Cottage - Pool Shade G', 'available', 1500.00, 1500.00, 3000.00, '06:00:00', '17:00:00', '18:00:00', '05:00:00', '06:00:00', '05:00:00', '2026-05-30 06:35:13', '2026-05-30 06:35:13'),
 (85, 1, 'Pool Shade H', 'Cottage accommodation for 15-20 pax.', 20, 0, 'images/accommodations/Pool-Shade/Pool-Shade-H.jpg', 'Cottage - Pool Shade H', 'available', 1500.00, 1500.00, 3000.00, '06:00:00', '17:00:00', '18:00:00', '05:00:00', '06:00:00', '05:00:00', '2026-05-30 06:35:52', '2026-05-30 06:35:52'),
-(86, 2, 'Single Room Cottage 1', 'Room accommodation for 2-4 pax.', 4, 0, 'images/accommodations/Single-Room-Cottage-1.jpg', 'Room - Single Room Cottage 1', 'available', 3000.00, 3000.00, 5000.00, '07:00:00', '17:00:00', '19:00:00', '05:00:00', '07:00:00', '17:00:00', '2026-05-30 06:41:36', '2026-05-30 06:42:02'),
-(87, 2, 'Single Room Cottage 2', 'Room accommodation for 2-4 pax.', 4, 0, 'images/accommodations/Single-Room-Cottage-2.jpg', 'Room - Single Room Cottage 2', 'available', 3000.00, 3000.00, 5000.00, '07:00:00', '17:00:00', '19:00:00', '05:00:00', '07:00:00', '05:00:00', '2026-05-30 06:43:16', '2026-05-30 06:43:16'),
-(88, 2, 'Single Room Cottage 3', 'Room accommodation for 2-4 pax.', 4, 0, 'images/accommodations/Single-Room-Cottage-3.jpg', 'Room - Single Room Cottage 3', 'available', 3000.00, 3000.00, 5000.00, '07:00:00', '17:00:00', '19:00:00', '05:00:00', '07:00:00', '05:00:00', '2026-05-30 06:44:36', '2026-05-30 06:44:36'),
-(89, 2, 'Single Room Cottage 4', 'Room accommodation for 2-4 pax.', 4, 0, 'images/accommodations/Single-Room-Cottage-4.jpg', 'Room - Single Room Cottage 4', 'available', 3000.00, 3000.00, 5000.00, '07:00:00', '17:00:00', '19:00:00', '05:00:00', '07:00:00', '05:00:00', '2026-05-30 06:45:50', '2026-05-30 06:45:50'),
-(90, 2, 'Single Room Cottage 5', 'Room accommodation for 2-4 pax.', 4, 0, 'images/accommodations/Single-Room-Cottage-5.jpg', 'Room - Single Room Cottage 5', 'available', 3000.00, 3000.00, 5000.00, '07:00:00', '17:00:00', '19:00:00', '05:00:00', '07:00:00', '05:00:00', '2026-05-30 06:47:03', '2026-05-30 06:47:03'),
+(86, 2, 'Single Room Cottage 1', 'Room accommodation for 2-4 pax.', 4, 0, 'images/accommodations/Single-Room-Cottage/Single-Room-Cottage-1.jpg', 'Room - Single Room Cottage 1', 'available', 3000.00, 3000.00, 5000.00, '07:00:00', '17:00:00', '19:00:00', '05:00:00', '07:00:00', '17:00:00', '2026-05-30 06:41:36', '2026-05-30 19:16:05'),
+(87, 2, 'Single Room Cottage 2', 'Room accommodation for 2-4 pax.', 4, 0, 'images/accommodations/Single-Room-Cottage/Single-Room-Cottage-2.jpg', 'Room - Single Room Cottage 2', 'available', 3000.00, 3000.00, 5000.00, '07:00:00', '17:00:00', '19:00:00', '05:00:00', '07:00:00', '05:00:00', '2026-05-30 06:43:16', '2026-05-30 19:15:51'),
+(88, 2, 'Single Room Cottage 3', 'Room accommodation for 2-4 pax.', 4, 0, 'images/accommodations/Single-Room-Cottage/Single-Room-Cottage-3.jpg', 'Room - Single Room Cottage 3', 'available', 3000.00, 3000.00, 5000.00, '07:00:00', '17:00:00', '19:00:00', '05:00:00', '07:00:00', '05:00:00', '2026-05-30 06:44:36', '2026-05-30 19:13:35'),
+(89, 2, 'Single Room Cottage 4', 'Room accommodation for 2-4 pax.', 4, 0, 'images/accommodations/Single-Room-Cottage/Single-Room-Cottage-4.jpg', 'Room - Single Room Cottage 4', 'available', 3000.00, 3000.00, 5000.00, '07:00:00', '17:00:00', '19:00:00', '05:00:00', '07:00:00', '05:00:00', '2026-05-30 06:45:50', '2026-05-30 19:15:37'),
+(90, 2, 'Single Room Cottage 5', 'Room accommodation for 2-4 pax.', 4, 0, 'images/accommodations/Single-Room-Cottage/Single-Room-Cottage-5.jpg', 'Room - Single Room Cottage 5', 'available', 3000.00, 3000.00, 5000.00, '07:00:00', '17:00:00', '19:00:00', '05:00:00', '07:00:00', '05:00:00', '2026-05-30 06:47:03', '2026-05-30 19:12:00'),
 (91, 2, 'Single Room (Pool Side) A', 'Room accommodation for 2-4 pax.', 4, 0, 'images/accommodations/Single-Room-Poolside/Single-Room-Poolside-Cover.jpg', 'Room - Single Room (Pool Side) A', 'available', 3000.00, 3000.00, 5000.00, '07:00:00', '17:00:00', '19:00:00', '05:00:00', '07:00:00', '05:00:00', '2026-05-30 06:49:21', '2026-05-30 06:58:45'),
 (92, 2, 'Single Room (Pool side) B', 'Room accommodation for 2-4 pax.', 4, 0, 'images/accommodations/Single-Room-Poolside/Single-Room-Poolside-Cover.jpg', 'Room - Single Room (Pool side) B', 'available', 3000.00, 3000.00, 5000.00, '07:00:00', '17:00:00', '19:00:00', '05:00:00', '07:00:00', '05:00:00', '2026-05-30 06:50:33', '2026-05-30 06:58:59'),
 (93, 2, 'Single Room (Pool side) C', 'Room accommodation for 2-4 pax.', 4, 0, 'images/accommodations/Single-Room-Poolside/Single-Room-Poolside-Cover.jpg', 'Room - Single Room (Pool side) C', 'available', 3000.00, 3000.00, 5000.00, '07:00:00', '17:00:00', '19:00:00', '05:00:00', '07:00:00', '05:00:00', '2026-05-30 06:51:45', '2026-05-30 06:59:11'),
@@ -116,8 +114,8 @@ INSERT INTO `accommodations` (`id`, `category_id`, `name`, `description`, `max_c
 (96, 2, 'Single Room (Pool side) F', 'Room accommodation for 2-4 pax.', 4, 0, 'images/accommodations/Single-Room-Poolside/Single-Room-Poolside-Cover.jpg', 'Room - Single Room (Pool side) F', 'available', 3000.00, 3000.00, 5000.00, '07:00:00', '17:00:00', '19:00:00', '05:00:00', '07:00:00', '05:00:00', '2026-05-30 06:58:28', '2026-05-30 06:58:28'),
 (97, 2, 'Double Room 1', 'Room accommodation for 3-7 pax.', 7, 0, 'images/accommodations/Double-Room/Double-Room-Cover.jpg', 'Room - Double Room 1', 'available', 4000.00, 4000.00, 7000.00, '07:00:00', '17:00:00', '19:00:00', '05:00:00', '07:00:00', '05:00:00', '2026-05-30 07:02:31', '2026-05-30 07:02:31'),
 (98, 2, 'Double Room 2', 'Room accommodation for 3-7 pax.', 7, 0, 'images/accommodations/Double-Room/Double-Room-Cover.jpg', 'Room - Double Room 2', 'available', 4000.00, 4000.00, 7000.00, '07:00:00', '17:00:00', '19:00:00', '05:00:00', '07:00:00', '05:00:00', '2026-05-30 07:03:29', '2026-05-30 07:03:29'),
-(99, 2, 'Family Room A', 'Room accommodation for 3-7 pax.', 7, 0, 'images/accommodations/Family-Room-A-Cover.jpg', 'Room - Family Room A', 'available', 3500.00, 3500.00, 6000.00, '07:00:00', '17:00:00', '19:00:00', '05:00:00', '07:00:00', '05:00:00', '2026-05-30 07:06:01', '2026-05-30 07:06:01'),
-(100, 2, 'Family Room B', 'Room accommodation for 3-7 pax.', 7, 0, 'images/accommodations/Family-Room-B-Cover.jpg', 'Room - Family Room B', 'available', 3500.00, 3500.00, 6000.00, '07:00:00', '17:00:00', '19:00:00', '05:00:00', '07:00:00', '05:00:00', '2026-05-30 07:07:35', '2026-05-30 07:07:35');
+(99, 2, 'Family Room A', 'Room accommodation for 3-7 pax.', 7, 0, 'images/accommodations/Family-Room-A/Family-Room-A-Cover.jpg', 'Room - Family Room A', 'available', 3500.00, 3500.00, 6000.00, '07:00:00', '17:00:00', '19:00:00', '05:00:00', '07:00:00', '05:00:00', '2026-05-30 07:06:01', '2026-05-30 19:10:58'),
+(100, 2, 'Family Room B', 'Room accommodation for 3-7 pax.', 7, 0, 'images/accommodations/Family-Room-B/Family-Room-B-Cover.jpg', 'Room - Family Room B', 'available', 3500.00, 3500.00, 6000.00, '07:00:00', '17:00:00', '19:00:00', '05:00:00', '07:00:00', '05:00:00', '2026-05-30 07:07:35', '2026-05-30 18:59:27');
 
 -- --------------------------------------------------------
 
@@ -167,16 +165,6 @@ CREATE TABLE `bookings` (
   `extra_bed_count` int(11) DEFAULT 0,
   `extra_bed_fee` decimal(10,2) DEFAULT 0.00
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `bookings`
---
-
-INSERT INTO `bookings` (`id`, `user_id`, `booking_source`, `walkin_guest_name`, `walkin_guest_phone`, `walkin_guest_address`, `room_id`, `check_in`, `check_in_time`, `check_out`, `check_out_time`, `guests`, `status`, `created_at`, `payment_method`, `payment_status`, `extra_bed_count`, `extra_bed_fee`) VALUES
-(27, 8, 'online', NULL, NULL, NULL, 8, '2026-05-01', '08:00:00', '2026-05-02', '10:00:00', 5, 'approved', '2026-04-06 01:41:39', 'cash', 'unpaid', 0, 0.00),
-(28, NULL, 'walk-in', 'walkinCustomer', '009188329323', 'kwodkosad', 8, '2026-04-16', '14:00:00', '2026-04-17', '12:00:00', 6, 'approved', '2026-04-16 13:22:15', 'cash', 'pending', 0, 0.00),
-(29, 8, 'online', NULL, NULL, NULL, 9, '2026-04-17', '14:00:00', '2026-04-18', '12:00:00', 1, 'pending', '2026-04-17 06:11:58', 'cash', 'unpaid', 0, 0.00),
-(30, 8, 'online', NULL, NULL, NULL, 8, '2026-04-17', '14:00:00', '2026-04-18', '12:00:00', 1, 'pending', '2026-04-17 06:16:40', 'cash', 'unpaid', 0, 0.00);
 
 -- --------------------------------------------------------
 
@@ -271,17 +259,6 @@ CREATE TABLE `reservations` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `reservations`
---
-
-INSERT INTO `reservations` (`id`, `reservation_code`, `user_id`, `booking_source`, `first_name`, `middle_name`, `last_name`, `contact_no`, `guest_count`, `estimated_entrance_fee`, `accommodation_total`, `required_downpayment`, `paid_amount`, `remaining_balance`, `note`, `payment_method`, `payment_status`, `reservation_status`, `proof_of_payment`, `reserved_at`, `created_at`, `updated_at`) VALUES
-(1, 'APR-19-001', NULL, 'manual', 'Eldrich', 'F.', 'F.Mojica', '09672995549', 13, 3900.00, 1000.00, 500.00, 0.00, 1000.00, 'Entrance Type: Pool & Beach | Reference Number: 9172839391931839 | Free Entrance Included: 0 pax | Chargeable Entrance Guests: 13 | Discount reminder: Senior/PWD/Kids discount will be verified at the front desk. | Customer Note: wala | test', 'cash', 'pending', 'pending', '/uploads/payment-proofs/1776570833532-Screenshot_2026-04-18_202438.png', '2026-04-19 11:53:53', '2026-04-19 03:53:53', '2026-04-19 03:53:53'),
-(6, 'MAY-11-001', 8, 'online', 'Customer', 'f', 'wqewq', '09672995549', 10, 2500.00, 800.00, 400.00, 800.00, 0.00, 'Entrance Type: Pool & Beach | Free Entrance Included: 0 pax | Chargeable Entrance Guests: 10 | Discount reminder: Senior/PWD/Kids discount will be verified at the front desk. | Reference Number: 9172839391931839', 'gcash', 'paid', 'approved', '/uploads/payment-proofs/1778487658868-Single-Room-Poolside-1.jpg', '2026-05-11 16:20:58', '2026-05-11 08:20:58', '2026-05-17 13:54:03'),
-(7, 'MAY-29-001', NULL, 'manual', 'Eldrich', 'user middle', 'user last', '09672995549', 4, 1200.00, 800.00, 400.00, 800.00, 0.00, 'Entrance Type: Pool & Beach | Free Entrance Included: 0 pax | Chargeable Entrance Guests: 4 | Discount reminder: Senior/PWD/Kids discount will be verified at the front desk. | Manual Reservation Payment Type: 50% Down Payment', 'gcash', 'paid', 'completed', NULL, '2026-05-29 11:45:58', '2026-05-29 03:45:58', '2026-05-29 10:45:20'),
-(8, 'MAY-29-002', NULL, 'manual', 'Eldrich', 'F.', 'user last', '09123456789', 2, 600.00, 4300.00, 2150.00, 4300.00, 0.00, 'Entrance Type: Pool & Beach | Free Entrance Included: 0 pax | Chargeable Entrance Guests: 2 | Discount reminder: Senior/PWD/Kids discount will be verified at the front desk. | Manual Reservation Payment Type: Full Payment | Customer Note: dsadwd', 'cash', 'paid', 'approved', NULL, '2026-05-29 20:08:32', '2026-05-29 12:08:32', '2026-05-29 12:08:32'),
-(9, 'MAY-30-001', 14, 'online', 'Eldrich', 'F.', 'F.Mojica', '09672995549', 23, 5750.00, 800.00, 400.00, 0.00, 800.00, 'Entrance Type: Pool & Beach | Free Entrance Included: 0 pax | Chargeable Entrance Guests: 23 | Discount reminder: Senior/PWD/Kids discount will be verified at the front desk. | Reference Number: 9172839391931839', 'gcash', 'pending', 'pending', '/uploads/payment-proofs/1780080594945-mb-MEG-ACE-1920-1080.jpg', '2026-05-30 02:49:54', '2026-05-29 18:49:54', '2026-05-29 18:49:54');
-
 -- --------------------------------------------------------
 
 --
@@ -301,17 +278,6 @@ CREATE TABLE `reservation_items` (
   `item_price` decimal(10,2) NOT NULL DEFAULT 0.00,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `reservation_items`
---
-
-INSERT INTO `reservation_items` (`id`, `reservation_id`, `accommodation_id`, `slot_type`, `slot_label`, `check_in_date`, `check_in_time`, `check_out_date`, `check_out_time`, `item_price`, `created_at`) VALUES
-(7, 6, 47, 'day_tour', 'Day Tour', '2026-05-11', '06:00:00', '2026-05-11', '17:00:00', 800.00, '2026-05-11 08:20:58'),
-(8, 7, 58, 'overnight', 'Overnight', '2026-05-29', '18:00:00', '2026-05-30', '05:00:00', 800.00, '2026-05-29 03:45:58'),
-(9, 8, 46, 'overnight', 'Overnight', '2026-05-29', '18:00:00', '2026-05-30', '05:00:00', 800.00, '2026-05-29 12:08:32'),
-(10, 8, 36, 'day_tour', 'Day Tour', '2026-05-29', '07:00:00', '2026-05-29', '17:00:00', 3500.00, '2026-05-29 12:08:32'),
-(11, 9, 62, 'day_tour', 'Day Tour', '2026-05-29', '06:00:00', '2026-05-29', '17:00:00', 800.00, '2026-05-29 18:49:54');
 
 -- --------------------------------------------------------
 
@@ -366,31 +332,6 @@ CREATE TABLE `room_gallery` (
 --
 
 INSERT INTO `room_gallery` (`id`, `room_id`, `image_path`, `sort_order`, `image_url`) VALUES
-(36, 36, '', 0, 'images/accommodations/family-room-a-1.jpg'),
-(37, 36, '', 0, 'images/accommodations/family-room-a-2.jpg'),
-(38, 36, '', 0, 'images/accommodations/family-room-a-3.jpg'),
-(39, 36, '', 0, 'images/accommodations/family-room-a-4.jpg'),
-(40, 36, '', 0, 'images/accommodations/family-room-a-5.jpg'),
-(41, 36, '', 0, 'images/accommodations/family-room-a-6.jpg'),
-(42, 37, '', 0, 'images/accommodations/family-room-b-1.jpg'),
-(43, 37, '', 0, 'images/accommodations/family-room-b-2.jpg'),
-(44, 37, '', 0, 'images/accommodations/family-room-b-3.jpg'),
-(45, 37, '', 0, 'images/accommodations/family-room-b-4.jpg'),
-(46, 37, '', 0, 'images/accommodations/family-room-b-5.jpg'),
-(47, 37, '', 0, 'images/accommodations/family-room-b-6.jpg'),
-(48, 33, '', 0, 'images/accommodations/single-room-cottage-1.jpg'),
-(49, 33, '', 0, 'images/accommodations/single-room-1.jpg'),
-(50, 33, '', 0, 'images/accommodations/single-room-2.jpg'),
-(53, 86, '', 0, 'images/accommodations/Single-Room-1.jpg'),
-(54, 86, '', 0, 'images/accommodations/Single-Room-2.jpg'),
-(55, 87, '', 0, 'images/accommodations/Single-Room-1.jpg'),
-(56, 87, '', 0, 'images/accommodations/Single-Room-2.jpg'),
-(57, 88, '', 0, 'images/accommodations/Single-Room-1.jpg'),
-(58, 88, '', 0, 'images/accommodations/Single-Room-2.jpg'),
-(59, 89, '', 0, 'images/accommodations/Single-Room-1.jpg'),
-(60, 89, '', 0, 'images/accommodations/Single-Room-2.jpg'),
-(61, 90, '', 0, 'images/accommodations/Single-Room-1.jpg'),
-(62, 90, '', 0, 'images/accommodations/Single-Room-2.jpg'),
 (81, 95, '', 0, 'images/accommodations/Single-Room-Poolside/Single-Room-Poolside-1.jpg'),
 (82, 95, '', 0, 'images/accommodations/Single-Room-Poolside/Single-Room-Poolside-2.jpg'),
 (83, 95, '', 0, 'images/accommodations/Single-Room-Poolside/Single-Room-Poolside-E.jpg'),
@@ -417,19 +358,32 @@ INSERT INTO `room_gallery` (`id`, `room_id`, `image_path`, `sort_order`, `image_
 (104, 98, '', 0, 'images/accommodations/Double-Room/Double-Room-2.jpg'),
 (105, 98, '', 0, 'images/accommodations/Double-Room/Double-Room-3.jpg'),
 (106, 98, '', 0, 'images/accommodations/Double-Room/Double-Room-4.jpg'),
-(107, 99, '', 0, 'images/accommodations/Family-Room-A-1.jpg'),
-(108, 99, '', 0, 'images/accommodations/Family-Room-A-2.jpg'),
-(109, 99, '', 0, 'images/accommodations/Family-Room-A-3.jpg'),
-(110, 99, '', 0, 'images/accommodations/Family-Room-A-4.jpg'),
-(111, 99, '', 0, 'images/accommodations/Family-Room-A-5.jpg'),
-(112, 99, '', 0, 'images/accommodations/Family-Room-A-6.jpg'),
-(113, 100, '', 0, 'images/accommodations/Family-Room-B-1.jpg'),
-(114, 100, '', 0, 'images/accommodations/Family-Room-B-2.jpg'),
-(115, 100, '', 0, 'images/accommodations/Family-Room-B-3.jpg'),
-(116, 100, '', 0, 'images/accommodations/Family-Room-B-4.jpg'),
-(117, 100, '', 0, 'images/accommodations/Family-Room-B-5.jpg'),
-(118, 100, '', 0, 'images/accommodations/Family-Room-B-6.jpg'),
-(119, 100, '', 0, 'images/accommodations/Family-Room-B-7.jpg');
+(120, 100, '', 0, 'images/accommodations/Family-Room-B/Family-Room-B-1.jpg'),
+(121, 100, '', 0, 'images/accommodations/Family-Room-B/Family-Room-B-2.jpg'),
+(122, 100, '', 0, 'images/accommodations/Family-Room-B/Family-Room-B-3.jpg'),
+(123, 100, '', 0, 'images/accommodations/Family-Room-B/Family-Room-B-4.jpg'),
+(124, 100, '', 0, 'images/accommodations/Family-Room-B/Family-Room-B-5.jpg'),
+(125, 100, '', 0, 'images/accommodations/Family-Room-B/Family-Room-B-6.jpg'),
+(126, 100, '', 0, 'images/accommodations/Family-Room-B/Family-Room-B-7.jpg'),
+(127, 99, '', 0, 'images/accommodations/Family-Room-A/Family-Room-A-1.jpg'),
+(128, 99, '', 0, 'images/accommodations/Family-Room-A/Family-Room-A-2.jpg'),
+(129, 99, '', 0, 'images/accommodations/Family-Room-A/Family-Room-A-3.jpg'),
+(130, 99, '', 0, 'images/accommodations/Family-Room-A/Family-Room-A-4.jpg'),
+(131, 99, '', 0, 'images/accommodations/Family-Room-A/Family-Room-A-5.jpg'),
+(132, 99, '', 0, 'images/accommodations/Family-Room-A/Family-Room-A-6.jpg'),
+(133, 90, '', 0, 'images/accommodations/Single-Room-Cottage/Single-Room-1.jpg'),
+(134, 90, '', 0, 'images/accommodations/Single-Room-Cottage/Single-Room-2.jpg'),
+(137, 88, '', 0, 'images/accommodations/Single-Room-Cottage/Single-Room-1.jpg'),
+(138, 88, '', 0, 'images/accommodations/Single-Room-Cottage/Single-Room-2.jpg'),
+(141, 89, '', 0, 'images/accommodations/Single-Room-Cottage/Single-Room-1.jpg'),
+(142, 89, '', 0, 'images/accommodations/Single-Room-Cottage/Single-Room-2.jpg'),
+(143, 87, '', 0, 'images/accommodations/Single-Room-Cottage/Single-Room-1.jpg'),
+(144, 87, '', 0, 'images/accommodations/Single-Room-Cottage/Single-Room-2.jpg'),
+(145, 86, '', 0, 'images/accommodations/Single-Room-Cottage/Single-Room-1.jpg'),
+(146, 86, '', 0, 'images/accommodations/Single-Room-Cottage/Single-Room-2.jpg'),
+(147, 33, '', 0, 'images/accommodations/Single-Room-Cottage/single-room-cottage-1.jpg'),
+(148, 33, '', 0, 'images/accommodations/Single-Room-Cottage/single-room-1.jpg'),
+(149, 33, '', 0, 'images/accommodations/Single-Room-Cottage/single-room-2.jpg');
 
 -- --------------------------------------------------------
 
@@ -462,10 +416,9 @@ CREATE TABLE `users` (
 INSERT INTO `users` (`id`, `fullname`, `email`, `phone`, `address`, `phone_number`, `home_address`, `password`, `role`, `account_status`, `reset_otp_hash`, `reset_otp_expires`, `is_verified`, `register_otp_hash`, `register_otp_expires`) VALUES
 (4, 'Admin', 'Admin@gmail.com', '09123456789', 'Cavite', '', '', '$2b$10$nBzCwx13MLeXFOQ8BwyNXex1v9lRGUaKTECWUFHqrF0FbWrvLs.3O', 'admin', 'active', NULL, NULL, 1, NULL, NULL),
 (8, 'Customer', 'Customer@gmail.com', '09672995549', 'Sta. Cecilia 2 Julugan 8 Blk 1 Lot 23 Tanza, Cavite', NULL, NULL, '$2b$10$YxleGpIY62j7Xm6zT7VyTe1MLf82bPh51i6gewMTQgwvDSbqzIegu', 'customer', 'active', '$2b$10$2ddVuuTVVNFKckczqRuz5uoH1WKTIBj3RlcjpgYYRT3v1QCAvLMYC', '2026-05-29 16:05:28', 0, NULL, NULL),
-(9, 'user1', 'user1@gmail.com', '09672995549', 'tanza', NULL, NULL, '$2b$10$48fnU77QHCzAbC.P08hQu.APwokTmSSCJiEohQLAlHtV7O8p72y6e', 'customer', 'active', NULL, NULL, 0, NULL, NULL),
 (11, 'Eldrich F.Mojica', 'fmojicaeldrich@gmail.com', '09672995549', 'cavite tanza', NULL, NULL, '$2b$10$pK/uAKJ/NwTPuWtwk712iuWjkiENFKNaUWXcboyy5N5R7djMvKFiS', 'admin', 'active', '$2b$10$2g3HmEaBwBpUIKJkPBqeuu7AbbSwYk/xj9nLKjl2nfkcM/YKrosu.', '2026-05-29 21:58:34', 1, NULL, NULL),
 (14, 'Eldrich F.Mojica', 'mojicaeldrichjenlord@gmail.com', '09672995549', 'cavite', NULL, NULL, '$2b$10$oRb5ZwJfr4Qg1xKIUIZX1OSuL0P9FDHaPYbiY1pdEG9KOEXiIZWaC', 'customer', 'active', '$2b$10$Pq312GdtZSCHzpmike3fEugv9nh4WB7jycBX4rit0mcqq6JNRPReW', '2026-05-29 17:55:40', 1, NULL, NULL),
-(15, 'Icce Tan', 'icctan10@gmail.com', '09562317224', 'Imus Cavite', NULL, NULL, '$2b$10$3kqF2PP.ZifTJE1O2X1UeuF5hwapijwnzJA2nz.73qr5GHmuZJyoG', 'customer', 'active', NULL, NULL, 1, NULL, NULL);
+(22, 'andrhea', 'andhreagenesis15@gmail.com', '09562317224', 'costa verde', NULL, NULL, '$2b$10$k/OFB5rmqF8FBx5.psWKQ.2ploOjWogFDlXM28rCFPFF8a2QJsBeq', 'customer', 'active', NULL, NULL, 1, NULL, NULL);
 
 --
 -- Indexes for dumped tables
@@ -565,7 +518,7 @@ ALTER TABLE `accommodation_categories`
 -- AUTO_INCREMENT for table `bookings`
 --
 ALTER TABLE `bookings`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `booking_modification_requests`
@@ -583,13 +536,13 @@ ALTER TABLE `map_markers`
 -- AUTO_INCREMENT for table `reservations`
 --
 ALTER TABLE `reservations`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `reservation_items`
 --
 ALTER TABLE `reservation_items`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
 -- AUTO_INCREMENT for table `rooms`
@@ -601,13 +554,13 @@ ALTER TABLE `rooms`
 -- AUTO_INCREMENT for table `room_gallery`
 --
 ALTER TABLE `room_gallery`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=120;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=150;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
 
 --
 -- Constraints for dumped tables
