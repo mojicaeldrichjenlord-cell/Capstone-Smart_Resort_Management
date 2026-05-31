@@ -5,8 +5,8 @@
 // - Check customer access
 // - Load customer bookings
 // - View receipt
-// - Cancel pending booking
-// - Submit modification request
+// - Cancel reservation at least 1 day before check-in
+// - Modify reservation directly when allowed
 // - Works from frontend/customerHTML/my-bookings.html
 // ============================================================
 
@@ -125,6 +125,7 @@ function renderBookingCard(booking) {
   );
 
   const canRequestModification = isModificationAllowed(booking);
+  const canCancelReservation = isCancellationAllowed(booking);
 
   return `
     <div style="
@@ -238,14 +239,14 @@ function renderBookingCard(booking) {
                   style="flex:1;"
                   onclick="openModificationModal(${booking.id})"
                 >
-                  Request Modification
+                  Modify Reservation
                 </button>
               `
               : ""
           }
 
           ${
-            status === "pending"
+            canCancelReservation
               ? `
                 <button
                   class="btn-secondary"
@@ -309,11 +310,11 @@ function getModificationModal() {
         <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:14px;">
           <div>
             <h2 style="margin:0 0 4px;color:#0f172a;font-size:1.35rem;">
-              Request Modification
+              Modify Reservation
             </h2>
 
             <p style="margin:0;color:#64748b;line-height:1.5;font-size:0.92rem;">
-              Send your requested changes. Admin/staff will review it first.
+              Update your reservation details. Changes apply immediately if allowed.
             </p>
           </div>
 
@@ -399,13 +400,12 @@ function getModificationModal() {
             line-height:1.5;
             font-size:0.9rem;
           ">
-            Modification requests must be made at least 1 day before check-in.
-            Changes are not automatic and must be approved by admin/staff.
+            Modifications must be made at least 1 day before check-in. Changes will update your reservation immediately.
           </div>
 
           <div style="display:flex;gap:10px;margin-top:16px;">
             <button type="submit" class="btn-primary" style="flex:1;">
-              Submit Request
+              Save Changes
             </button>
 
             <button
@@ -509,9 +509,9 @@ async function submitModificationRequest(e) {
     }
 
     if (typeof showToast === "function") {
-      showToast(data.message || "Modification request submitted.", "success");
+      showToast(data.message || "Reservation updated successfully.", "success");
     } else {
-      alert(data.message || "Modification request submitted.");
+      alert(data.message || "Reservation updated successfully.");
     }
 
     closeModificationModal();
@@ -581,6 +581,30 @@ async function cancelBooking(bookingId) {
 // ============================================================
 
 function isModificationAllowed(booking) {
+  const status = String(booking.status || "").toLowerCase();
+
+  if (["cancelled", "rejected", "completed"].includes(status)) {
+    return false;
+  }
+
+  const checkIn = new Date(booking.check_in);
+  const today = new Date();
+
+  if (Number.isNaN(checkIn.getTime())) {
+    return false;
+  }
+
+  checkIn.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+
+  const daysBeforeCheckIn = Math.floor(
+    (checkIn.getTime() - today.getTime()) / (24 * 60 * 60 * 1000)
+  );
+
+  return daysBeforeCheckIn >= 1;
+}
+
+function isCancellationAllowed(booking) {
   const status = String(booking.status || "").toLowerCase();
 
   if (["cancelled", "rejected", "completed"].includes(status)) {

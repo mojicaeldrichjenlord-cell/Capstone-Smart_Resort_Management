@@ -1,4 +1,5 @@
 const db = require("../config/db");
+const fs = require("fs");
 
 function normalizeText(value) {
   return String(value || "").trim();
@@ -36,14 +37,28 @@ function parseRequestReservationBody(req) {
     ? `/uploads/payment-proofs/${req.file.filename}`
     : null;
 
+  let proofImageData = null;
+
+  if (req.file && req.file.path && req.file.mimetype) {
+    try {
+      const fileBuffer = fs.readFileSync(req.file.path);
+      proofImageData = `data:${req.file.mimetype};base64,${fileBuffer.toString(
+        "base64",
+      )}`;
+    } catch (error) {
+      console.error("Failed to convert proof image to Base64:", error.message);
+    }
+  }
+
   const proofReference = normalizeNullableText(
-    parsedBody.proof_reference || parsedBody.proof_of_payment
+    parsedBody.proof_reference || parsedBody.proof_of_payment,
   );
 
   return {
     ...parsedBody,
     proof_reference: proofReference,
     proof_of_payment: uploadedProofPath || proofReference,
+    proof_image_data: proofImageData || parsedBody.proof_image_data || null,
   };
 }
 
@@ -60,7 +75,7 @@ async function generateReservationCode(connection) {
     WHERE DATE(reserved_at) = CURDATE()
     ORDER BY id DESC
     LIMIT 1
-    `
+    `,
   );
 
   let nextNumber = 1;
@@ -166,6 +181,64 @@ function buildCheckOutDate(checkInDate, startTime, endTime) {
   return checkInDate;
 }
 
+async function checkReservationConflicts(
+  connection,
+  reservationItems,
+  ignoreReservationId = null,
+) {
+  for (const item of reservationItems) {
+    const params = [
+      item.accommodation_id,
+      item.check_out_date,
+      item.check_out_time,
+      item.check_in_date,
+      item.check_in_time,
+    ];
+
+    let ignoreClause = "";
+
+    if (ignoreReservationId) {
+      ignoreClause = "AND r.id != ?";
+      params.push(ignoreReservationId);
+    }
+
+    const [conflictRows] = await connection.query(
+      `
+      SELECT
+        r.id,
+        r.reservation_code,
+        r.reservation_status,
+        r.payment_status,
+        ri.check_in_date,
+        ri.check_in_time,
+        ri.check_out_date,
+        ri.check_out_time,
+        a.name AS accommodation_name
+      FROM reservation_items ri
+      INNER JOIN reservations r ON ri.reservation_id = r.id
+      INNER JOIN accommodations a ON ri.accommodation_id = a.id
+      WHERE ri.accommodation_id = ?
+        AND LOWER(COALESCE(r.reservation_status, 'pending')) NOT IN ('cancelled', 'rejected', 'completed')
+        AND LOWER(COALESCE(r.payment_status, 'pending')) NOT IN ('rejected', 'refunded')
+        AND TIMESTAMP(ri.check_in_date, ri.check_in_time) < TIMESTAMP(?, ?)
+        AND TIMESTAMP(?, ?) < TIMESTAMP(ri.check_out_date, ri.check_out_time)
+        ${ignoreClause}
+      LIMIT 1
+      `,
+      params,
+    );
+
+    if (conflictRows.length) {
+      const conflict = conflictRows[0];
+
+      throw {
+        status: 409,
+        message: `${conflict.accommodation_name} is already reserved for the selected date and time. Please choose another date, slot, or accommodation.`,
+      };
+    }
+  }
+}
+
 async function getAccommodationsMapByIds(ids) {
   const uniqueIds = [...new Set(ids.map((id) => Number(id)).filter(Boolean))];
 
@@ -199,7 +272,7 @@ async function getAccommodationsMapByIds(ids) {
     INNER JOIN accommodation_categories c ON a.category_id = c.id
     WHERE a.id IN (${placeholders})
     `,
-    uniqueIds
+    uniqueIds,
   );
 
   const map = {};
@@ -237,7 +310,7 @@ async function getReservationItems(reservationId) {
     WHERE ri.reservation_id = ?
     ORDER BY ri.id ASC
     `,
-    [reservationId]
+    [reservationId],
   );
 
   return rows;
@@ -260,6 +333,7 @@ async function createReservation({
     payment_method,
     payment_type,
     proof_of_payment,
+    proof_image_data,
     proof_reference,
     items,
   } = body;
@@ -272,6 +346,7 @@ async function createReservation({
   const cleanNote = normalizeNullableText(note);
   const cleanPaymentMethod = normalizeText(payment_method || "gcash");
   const cleanProof = normalizeNullableText(proof_of_payment);
+  const cleanProofImageData = normalizeNullableText(proof_image_data);
   const cleanProofReference = normalizeText(proof_reference);
   const cleanPaymentType = normalizeText(payment_type || "downpayment");
   const totalGuests = toNumber(guest_count, 0);
@@ -299,7 +374,7 @@ async function createReservation({
       };
     }
 
-    if (!cleanProof) {
+    if (!cleanProof && !cleanProofImageData) {
       throw {
         status: 400,
         message: "Payment proof or reference is required.",
@@ -308,7 +383,7 @@ async function createReservation({
   }
 
   const accommodationMap = await getAccommodationsMapByIds(
-    items.map((item) => item.accommodation_id)
+    items.map((item) => item.accommodation_id),
   );
 
   const reservationItems = [];
@@ -353,7 +428,7 @@ async function createReservation({
     const checkOutDate = buildCheckOutDate(
       checkInDate,
       slotConfig.start_time,
-      slotConfig.end_time
+      slotConfig.end_time,
     );
 
     reservationItems.push({
@@ -377,12 +452,12 @@ async function createReservation({
   const totalFreeEntrancePax = getTotalFreeEntrancePaxFromItems(
     items,
     accommodationMap,
-    totalGuests
+    totalGuests,
   );
 
   const chargeableEntranceGuests = Math.max(
     totalGuests - totalFreeEntrancePax,
-    0
+    0,
   );
 
   const estimatedEntranceFee =
@@ -391,23 +466,23 @@ async function createReservation({
 
   const requiredDownpayment = accommodationTotal * 0.5;
 
-  let paidAmount = 0;
-  let remainingBalance = accommodationTotal;
-  let reservationStatus = autoApprove ? "approved" : "pending";
-  let paymentStatus = autoApprove ? "paid" : "pending";
+  let paidAmount = requiredDownpayment;
+  let remainingBalance = accommodationTotal - requiredDownpayment;
+  let reservationStatus = "approved";
+  let paymentStatus = "partially_paid";
 
   const noteParts = [];
 
   noteParts.push(
     `Entrance Type: ${
       cleanEntranceType === "beach_only" ? "Beach Only" : "Pool & Beach"
-    }`
+    }`,
   );
 
   noteParts.push(`Free Entrance Included: ${totalFreeEntrancePax} pax`);
   noteParts.push(`Chargeable Entrance Guests: ${chargeableEntranceGuests}`);
   noteParts.push(
-    "Discount reminder: Senior/PWD/Kids discount will be verified at the front desk."
+    "Discount reminder: Senior/PWD/Kids discount will be verified at the front desk.",
   );
 
   if (isManualReservation) {
@@ -443,6 +518,8 @@ async function createReservation({
   try {
     await connection.beginTransaction();
 
+    await checkReservationConflicts(connection, reservationItems);
+
     const reservationCode = await generateReservationCode(connection);
 
     const [reservationResult] = await connection.query(
@@ -466,9 +543,10 @@ async function createReservation({
         payment_status,
         reservation_status,
         proof_of_payment,
+        proof_image_data,
         reserved_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
       `,
       [
         reservationCode,
@@ -489,7 +567,8 @@ async function createReservation({
         paymentStatus,
         reservationStatus,
         cleanProof,
-      ]
+        cleanProofImageData,
+      ],
     );
 
     const reservationId = reservationResult.insertId;
@@ -520,7 +599,7 @@ async function createReservation({
           item.check_out_date,
           item.check_out_time,
           item.item_price,
-        ]
+        ],
       );
     }
 
@@ -536,7 +615,7 @@ async function createReservation({
       chargeableEntranceGuests,
       message: isManualReservation
         ? "Manual reservation created successfully."
-        : "Reservation submitted successfully. Please wait for admin payment review.",
+        : "Reservation approved successfully. Your downpayment is recorded as partially paid.",
     };
   } catch (error) {
     await connection.rollback();
@@ -569,6 +648,7 @@ exports.createBooking = async (req, res) => {
       bookingId: result.reservationId,
       reservationCode: result.reservationCode,
       proofPath: parsedBody.proof_of_payment || null,
+      proofImageDataSaved: Boolean(parsedBody.proof_image_data),
     });
   } catch (error) {
     console.error("createBooking error:", error);
@@ -596,6 +676,7 @@ exports.createWalkInBooking = async (req, res) => {
       bookingId: result.reservationId,
       reservationCode: result.reservationCode,
       proofPath: parsedBody.proof_of_payment || null,
+      proofImageDataSaved: Boolean(parsedBody.proof_image_data),
     });
   } catch (error) {
     console.error("createWalkInBooking error:", error);
@@ -633,6 +714,7 @@ exports.getUserBookings = async (req, res) => {
         r.payment_status,
         r.reservation_status AS status,
         r.proof_of_payment,
+        r.proof_image_data,
         r.reserved_at,
         r.created_at,
 
@@ -674,7 +756,7 @@ exports.getUserBookings = async (req, res) => {
       WHERE r.user_id = ?
       ORDER BY r.created_at DESC
       `,
-      [userId]
+      [userId],
     );
 
     const bookings = rows.map((row) => ({
@@ -705,8 +787,18 @@ exports.cancelBooking = async (req, res) => {
     const { id } = req.params;
 
     const [rows] = await db.promise().query(
-      `SELECT id, reservation_status FROM reservations WHERE id = ? LIMIT 1`,
-      [id]
+      `
+      SELECT
+        r.id,
+        r.reservation_status,
+        MIN(ri.check_in_date) AS check_in_date
+      FROM reservations r
+      LEFT JOIN reservation_items ri ON r.id = ri.reservation_id
+      WHERE r.id = ?
+      GROUP BY r.id
+      LIMIT 1
+      `,
+      [id],
     );
 
     if (!rows.length) {
@@ -716,16 +808,43 @@ exports.cancelBooking = async (req, res) => {
     }
 
     const reservation = rows[0];
+    const status = String(reservation.reservation_status || "").toLowerCase();
 
-    if (String(reservation.reservation_status).toLowerCase() !== "pending") {
+    if (["cancelled", "rejected", "completed"].includes(status)) {
       return res.status(400).json({
-        message: "Only pending reservations can be cancelled.",
+        message: "This reservation can no longer be cancelled.",
+      });
+    }
+
+    if (!reservation.check_in_date) {
+      return res.status(400).json({
+        message: "This reservation has no valid check-in date.",
+      });
+    }
+
+    const checkInDate = new Date(reservation.check_in_date);
+    const today = new Date();
+
+    checkInDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+
+    const daysBeforeCheckIn = Math.floor(
+      (checkInDate.getTime() - today.getTime()) / (24 * 60 * 60 * 1000),
+    );
+
+    if (daysBeforeCheckIn < 1) {
+      return res.status(400).json({
+        message: "Cancellation is only allowed at least 1 day before check-in.",
       });
     }
 
     await db.promise().query(
-      `UPDATE reservations SET reservation_status = 'cancelled' WHERE id = ?`,
-      [id]
+      `
+      UPDATE reservations
+      SET reservation_status = 'cancelled'
+      WHERE id = ?
+      `,
+      [id],
     );
 
     return res.status(200).json({
@@ -767,6 +886,7 @@ exports.getBookingReceipt = async (req, res) => {
         r.payment_status,
         r.reservation_status AS status,
         r.proof_of_payment,
+        r.proof_image_data,
         r.reserved_at,
         r.created_at,
         u.email,
@@ -807,7 +927,7 @@ exports.getBookingReceipt = async (req, res) => {
       WHERE r.id = ?
       LIMIT 1
       `,
-      [id]
+      [id],
     );
 
     if (!rows.length) {
@@ -821,10 +941,14 @@ exports.getBookingReceipt = async (req, res) => {
 
     const totalFreeEntrancePax = Math.min(
       items.reduce((sum, item) => sum + Number(item.free_entrance_pax || 0), 0),
-      Number(booking.guest_count || 0)
+      Number(booking.guest_count || 0),
     );
 
-    booking.fullname = [booking.first_name, booking.middle_name, booking.last_name]
+    booking.fullname = [
+      booking.first_name,
+      booking.middle_name,
+      booking.last_name,
+    ]
       .filter(Boolean)
       .join(" ");
     booking.phone = booking.contact_no || "-";
@@ -837,9 +961,10 @@ exports.getBookingReceipt = async (req, res) => {
     booking.free_entrance_pax = totalFreeEntrancePax;
     booking.chargeable_entrance_guests = Math.max(
       Number(booking.guest_count || 0) - totalFreeEntrancePax,
-      0
+      0,
     );
-    booking.room_name = booking.accommodation_list || booking.room_name || "N/A";
+    booking.room_name =
+      booking.accommodation_list || booking.room_name || "N/A";
     booking.items = items;
 
     return res.status(200).json({
@@ -879,6 +1004,7 @@ exports.getAllBookings = async (req, res) => {
         r.payment_status,
         r.reservation_status AS status,
         r.proof_of_payment,
+        r.proof_image_data,
         r.reserved_at,
         r.created_at,
         u.email,
@@ -917,7 +1043,7 @@ exports.getAllBookings = async (req, res) => {
         GROUP BY ri.reservation_id
       ) acc_list ON r.id = acc_list.reservation_id
       ORDER BY r.created_at DESC
-      `
+      `,
     );
 
     const bookings = rows.map((row) => ({
@@ -966,10 +1092,9 @@ exports.updateBookingStatus = async (req, res) => {
       });
     }
 
-    const [rows] = await db.promise().query(
-      `SELECT id FROM reservations WHERE id = ? LIMIT 1`,
-      [id]
-    );
+    const [rows] = await db
+      .promise()
+      .query(`SELECT id FROM reservations WHERE id = ? LIMIT 1`, [id]);
 
     if (!rows.length) {
       return res.status(404).json({
@@ -977,10 +1102,12 @@ exports.updateBookingStatus = async (req, res) => {
       });
     }
 
-    await db.promise().query(
-      `UPDATE reservations SET reservation_status = ? WHERE id = ?`,
-      [status, id]
-    );
+    await db
+      .promise()
+      .query(`UPDATE reservations SET reservation_status = ? WHERE id = ?`, [
+        status,
+        id,
+      ]);
 
     return res.status(200).json({
       message: "Reservation status updated successfully.",
@@ -1008,16 +1135,20 @@ exports.updatePaymentStatus = async (req, res) => {
       "rejected",
     ];
 
-    if (!allowedPaymentStatuses.includes(String(payment_status).toLowerCase())) {
+    if (
+      !allowedPaymentStatuses.includes(String(payment_status).toLowerCase())
+    ) {
       return res.status(400).json({
         message: "Invalid payment status.",
       });
     }
 
-    const [rows] = await db.promise().query(
-      `SELECT id, accommodation_total FROM reservations WHERE id = ? LIMIT 1`,
-      [id]
-    );
+    const [rows] = await db
+      .promise()
+      .query(
+        `SELECT id, accommodation_total FROM reservations WHERE id = ? LIMIT 1`,
+        [id],
+      );
 
     if (!rows.length) {
       return res.status(404).json({
@@ -1033,7 +1164,8 @@ exports.updatePaymentStatus = async (req, res) => {
       paidAmount = Number(rows[0].accommodation_total || 0) * 0.5;
     }
 
-    const remainingBalance = Number(rows[0].accommodation_total || 0) - paidAmount;
+    const remainingBalance =
+      Number(rows[0].accommodation_total || 0) - paidAmount;
 
     await db.promise().query(
       `
@@ -1041,7 +1173,7 @@ exports.updatePaymentStatus = async (req, res) => {
       SET payment_status = ?, paid_amount = ?, remaining_balance = ?
       WHERE id = ?
       `,
-      [payment_status, paidAmount, remainingBalance, id]
+      [payment_status, paidAmount, remainingBalance, id],
     );
 
     return res.status(200).json({
@@ -1058,6 +1190,8 @@ exports.updatePaymentStatus = async (req, res) => {
 };
 
 exports.requestBookingModification = async (req, res) => {
+  const connection = await db.promise().getConnection();
+
   try {
     const { id } = req.params;
 
@@ -1071,6 +1205,12 @@ exports.requestBookingModification = async (req, res) => {
 
     const cleanUserId = Number(user_id);
     const reservationId = Number(id);
+    const cleanRequestedDate = requested_check_in_date || null;
+    const cleanRequestedSlot = requested_slot_type || null;
+    const cleanRequestedGuestCount = requested_guest_count
+      ? Number(requested_guest_count)
+      : null;
+    const cleanRequestedNote = String(requested_note || "").trim();
 
     if (!reservationId) {
       return res.status(400).json({
@@ -1083,88 +1223,6 @@ exports.requestBookingModification = async (req, res) => {
         message: "User ID is required.",
       });
     }
-
-    const [reservationRows] = await db.promise().query(
-      `
-      SELECT
-        r.id,
-        r.user_id,
-        r.reservation_status,
-        MIN(ri.check_in_date) AS check_in_date
-      FROM reservations r
-      LEFT JOIN reservation_items ri ON r.id = ri.reservation_id
-      WHERE r.id = ?
-        AND r.user_id = ?
-      GROUP BY r.id
-      LIMIT 1
-      `,
-      [reservationId, cleanUserId]
-    );
-
-    if (!reservationRows.length) {
-      return res.status(404).json({
-        message: "Reservation not found.",
-      });
-    }
-
-    const reservation = reservationRows[0];
-    const status = String(reservation.reservation_status || "").toLowerCase();
-
-    if (["cancelled", "rejected", "completed"].includes(status)) {
-      return res.status(400).json({
-        message: "This reservation can no longer be modified.",
-      });
-    }
-
-    if (!reservation.check_in_date) {
-      return res.status(400).json({
-        message: "This reservation has no valid check-in date.",
-      });
-    }
-
-    const checkInDate = new Date(reservation.check_in_date);
-    const today = new Date();
-
-    checkInDate.setHours(0, 0, 0, 0);
-    today.setHours(0, 0, 0, 0);
-
-    const oneDayInMs = 24 * 60 * 60 * 1000;
-    const daysBeforeCheckIn = Math.floor(
-      (checkInDate.getTime() - today.getTime()) / oneDayInMs
-    );
-
-    if (daysBeforeCheckIn < 1) {
-      return res.status(400).json({
-        message:
-          "Modification requests must be made at least 1 day before check-in.",
-      });
-    }
-
-    const [pendingRows] = await db.promise().query(
-      `
-      SELECT id
-      FROM booking_modification_requests
-      WHERE reservation_id = ?
-        AND user_id = ?
-        AND request_status = 'pending'
-      LIMIT 1
-      `,
-      [reservationId, cleanUserId]
-    );
-
-    if (pendingRows.length) {
-      return res.status(400).json({
-        message:
-          "You already have a pending modification request for this reservation.",
-      });
-    }
-
-    const cleanRequestedDate = requested_check_in_date || null;
-    const cleanRequestedSlot = requested_slot_type || null;
-    const cleanRequestedGuestCount = requested_guest_count
-      ? Number(requested_guest_count)
-      : null;
-    const cleanRequestedNote = String(requested_note || "").trim();
 
     if (
       !cleanRequestedDate &&
@@ -1188,46 +1246,237 @@ exports.requestBookingModification = async (req, res) => {
 
     if (
       cleanRequestedGuestCount !== null &&
-      (!Number.isFinite(cleanRequestedGuestCount) || cleanRequestedGuestCount < 1)
+      (!Number.isFinite(cleanRequestedGuestCount) ||
+        cleanRequestedGuestCount < 1)
     ) {
       return res.status(400).json({
         message: "Guest count must be at least 1.",
       });
     }
 
-    await db.promise().query(
+    await connection.beginTransaction();
+
+    const [reservationRows] = await connection.query(
       `
-      INSERT INTO booking_modification_requests (
-        reservation_id,
-        user_id,
-        requested_check_in_date,
-        requested_slot_type,
-        requested_guest_count,
-        requested_note,
-        request_status
-      )
-      VALUES (?, ?, ?, ?, ?, ?, 'pending')
+      SELECT
+        r.id,
+        r.user_id,
+        r.guest_count,
+        r.accommodation_total,
+        r.required_downpayment,
+        r.paid_amount,
+        r.remaining_balance,
+        r.reservation_status,
+        r.note,
+        MIN(ri.check_in_date) AS check_in_date
+      FROM reservations r
+      LEFT JOIN reservation_items ri ON r.id = ri.reservation_id
+      WHERE r.id = ?
+        AND r.user_id = ?
+      GROUP BY r.id
+      LIMIT 1
       `,
-      [
-        reservationId,
-        cleanUserId,
-        cleanRequestedDate,
-        cleanRequestedSlot,
-        cleanRequestedGuestCount,
-        cleanRequestedNote || null,
-      ]
+      [reservationId, cleanUserId],
     );
 
-    return res.status(201).json({
-      message:
-        "Modification request submitted successfully. Please wait for admin review.",
+    if (!reservationRows.length) {
+      throw {
+        status: 404,
+        message: "Reservation not found.",
+      };
+    }
+
+    const reservation = reservationRows[0];
+    const status = String(reservation.reservation_status || "").toLowerCase();
+
+    if (["cancelled", "rejected", "completed"].includes(status)) {
+      throw {
+        status: 400,
+        message: "This reservation can no longer be modified.",
+      };
+    }
+
+    if (!reservation.check_in_date) {
+      throw {
+        status: 400,
+        message: "This reservation has no valid check-in date.",
+      };
+    }
+
+    const checkInDate = new Date(reservation.check_in_date);
+    const today = new Date();
+
+    checkInDate.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+
+    const daysBeforeCheckIn = Math.floor(
+      (checkInDate.getTime() - today.getTime()) / (24 * 60 * 60 * 1000),
+    );
+
+    if (daysBeforeCheckIn < 1) {
+      throw {
+        status: 400,
+        message: "Modification is only allowed at least 1 day before check-in.",
+      };
+    }
+
+    const [currentItems] = await connection.query(
+      `
+      SELECT
+        ri.id,
+        ri.reservation_id,
+        ri.accommodation_id,
+        ri.slot_type,
+        ri.check_in_date,
+        a.category_id,
+        c.name AS category_name,
+        a.name,
+        a.description,
+        a.max_capacity,
+        a.free_entrance_pax,
+        a.image,
+        a.map_label,
+        a.status,
+        a.day_price,
+        a.overnight_price,
+        a.extended_price,
+        a.day_start_time,
+        a.day_end_time,
+        a.overnight_start_time,
+        a.overnight_end_time,
+        a.extended_start_time,
+        a.extended_end_time
+      FROM reservation_items ri
+      INNER JOIN accommodations a ON ri.accommodation_id = a.id
+      INNER JOIN accommodation_categories c ON a.category_id = c.id
+      WHERE ri.reservation_id = ?
+      ORDER BY ri.id ASC
+      `,
+      [reservationId],
+    );
+
+    if (!currentItems.length) {
+      throw {
+        status: 400,
+        message: "This reservation has no accommodation items to update.",
+      };
+    }
+
+    const updatedItems = [];
+    let accommodationTotal = 0;
+
+    for (const currentItem of currentItems) {
+      const slotType = cleanRequestedSlot || currentItem.slot_type;
+      const checkInDateValue = cleanRequestedDate || currentItem.check_in_date;
+      const slotConfig = buildSlotConfig(currentItem, slotType);
+      const checkOutDate = buildCheckOutDate(
+        checkInDateValue,
+        slotConfig.start_time,
+        slotConfig.end_time,
+      );
+
+      updatedItems.push({
+        item_id: currentItem.id,
+        accommodation_id: currentItem.accommodation_id,
+        slot_type: slotType,
+        slot_label: slotConfig.slot_label,
+        check_in_date: checkInDateValue,
+        check_in_time: slotConfig.start_time,
+        check_out_date: checkOutDate,
+        check_out_time: slotConfig.end_time,
+        item_price: slotConfig.price,
+      });
+
+      accommodationTotal += slotConfig.price;
+    }
+
+    await checkReservationConflicts(connection, updatedItems, reservationId);
+
+    for (const item of updatedItems) {
+      await connection.query(
+        `
+        UPDATE reservation_items
+        SET
+          slot_type = ?,
+          slot_label = ?,
+          check_in_date = ?,
+          check_in_time = ?,
+          check_out_date = ?,
+          check_out_time = ?,
+          item_price = ?
+        WHERE id = ?
+          AND reservation_id = ?
+        `,
+        [
+          item.slot_type,
+          item.slot_label,
+          item.check_in_date,
+          item.check_in_time,
+          item.check_out_date,
+          item.check_out_time,
+          item.item_price,
+          item.item_id,
+          reservationId,
+        ],
+      );
+    }
+
+    const paidAmount = Number(reservation.paid_amount || 0);
+    const requiredDownpayment = accommodationTotal * 0.5;
+    const remainingBalance = Math.max(accommodationTotal - paidAmount, 0);
+
+    const noteParts = [];
+
+    if (reservation.note) {
+      noteParts.push(reservation.note);
+    }
+
+    if (cleanRequestedNote) {
+      noteParts.push(`Customer Modification Note: ${cleanRequestedNote}`);
+    }
+
+    noteParts.push(
+      `Modification applied by customer on ${new Date().toLocaleString("en-US")}`,
+    );
+
+    await connection.query(
+      `
+      UPDATE reservations
+      SET
+        guest_count = ?,
+        accommodation_total = ?,
+        required_downpayment = ?,
+        remaining_balance = ?,
+        note = ?
+      WHERE id = ?
+        AND user_id = ?
+      `,
+      [
+        cleanRequestedGuestCount || reservation.guest_count,
+        accommodationTotal,
+        requiredDownpayment,
+        remainingBalance,
+        noteParts.join(" | "),
+        reservationId,
+        cleanUserId,
+      ],
+    );
+
+    await connection.commit();
+
+    return res.status(200).json({
+      message: "Reservation updated successfully.",
     });
   } catch (error) {
+    await connection.rollback();
+
     console.error("requestBookingModification error:", error);
 
-    return res.status(500).json({
-      message: "Failed to submit modification request.",
+    return res.status(error.status || 500).json({
+      message: error.message || "Failed to update reservation.",
       error: error.message,
     });
+  } finally {
+    connection.release();
   }
 };

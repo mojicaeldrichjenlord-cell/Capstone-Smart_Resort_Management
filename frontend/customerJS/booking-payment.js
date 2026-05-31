@@ -349,7 +349,7 @@ function updateQrPlaceholder() {
     <div class="qr-payment-reminder">
       Scan the QR code using your selected payment app.
       After payment, enter your reference number and upload the transaction screenshot.
-      Your reservation will remain pending until admin verifies your payment.
+      Your reservation is approved, but your payment will remain pending until admin verifies it.
     </div>
   `;
 }

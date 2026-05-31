@@ -10,7 +10,6 @@
 // - Works from frontend/adminHTML/admin.html
 // ============================================================
 
-
 // ============================================================
 // SECTION 1: Allowed reservation and payment statuses
 // These arrays are used to generate dropdown options in the table.
@@ -349,7 +348,7 @@ function renderBookings(bookings) {
         booking.booking_source || "online",
       ).toLowerCase();
       const paymentReference = getPaymentReference(booking);
-      const proofUrl = getProofUrl(booking.proof_of_payment);
+      const proofSource = getProofSource(booking);
 
       return `
         <tr>
@@ -409,7 +408,7 @@ function renderBookings(bookings) {
 
           <td>${renderPaymentReference(paymentReference)}</td>
 
-          <td>${renderProofButton(proofUrl, booking.proof_of_payment)}</td>
+          <td>${renderProofButton(proofSource, booking.proof_of_payment)}</td>
 
           <td>
             <div class="payment-badge payment-${paymentStatus}">
@@ -587,6 +586,16 @@ function renderPaymentReference(reference) {
 // If proof value is not an upload path, it will not show as image.
 // ============================================================
 
+function getProofSource(booking) {
+  const proofImageData = String(booking?.proof_image_data || "").trim();
+
+  if (proofImageData.startsWith("data:image/")) {
+    return proofImageData;
+  }
+
+  return getProofUrl(booking?.proof_of_payment);
+}
+
 function getProofUrl(proofPath) {
   const value = String(proofPath || "").trim();
 
@@ -598,12 +607,20 @@ function getProofUrl(proofPath) {
     return value;
   }
 
+  let backendBase = "";
+
+  if (typeof API_BASE !== "undefined" && API_BASE) {
+    backendBase = String(API_BASE).replace(/\/api\/?$/, "");
+  } else {
+    backendBase = "http://127.0.0.1:5000";
+  }
+
   if (value.startsWith("/uploads/")) {
-    return `http://127.0.0.1:5000${value}`;
+    return `${backendBase}${value}`;
   }
 
   if (value.startsWith("uploads/")) {
-    return `http://127.0.0.1:5000/${value}`;
+    return `${backendBase}/${value}`;
   }
 
   return "";
