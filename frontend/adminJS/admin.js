@@ -390,18 +390,6 @@ function renderBookings(bookings) {
             <div class="status-badge status-${bookingStatus}">
               ${capitalize(bookingStatus)}
             </div>
-
-            <select id="bookingStatus-${booking.id}">
-              ${BOOKING_STATUSES.map(
-                (status) => `
-                  <option value="${status}" ${
-                    bookingStatus === status ? "selected" : ""
-                  }>
-                    ${capitalize(status)}
-                  </option>
-                `,
-              ).join("")}
-            </select>
           </td>
 
           <td>${formatPaymentMethod(paymentMethod)}</td>
@@ -414,39 +402,96 @@ function renderBookings(bookings) {
             <div class="payment-badge payment-${paymentStatus}">
               ${formatPaymentStatus(paymentStatus)}
             </div>
-
-            <select id="paymentStatus-${booking.id}">
-              ${PAYMENT_STATUSES.map(
-                (status) => `
-                  <option value="${status}" ${
-                    paymentStatus === status ? "selected" : ""
-                  }>
-                    ${formatPaymentStatus(status)}
-                  </option>
-                `,
-              ).join("")}
-            </select>
           </td>
 
           <td>${formatDateTime(booking.created_at)}</td>
 
           <td>
-            <div class="action-buttons">
-              <button class="action-btn save-booking-btn" onclick="saveAllStatus(${booking.id})">
-                Save Status
-              </button>
-
-              <button class="action-btn receipt-btn" onclick="viewReceipt(${booking.id})">
-                View Receipt
-              </button>
-            </div>
+            ${renderActionButtons(booking)}
           </td>
         </tr>
       `;
     })
     .join("");
+}
 
-  setupStatusDropdownSync(bookings);
+function renderActionButtons(booking) {
+  const bookingId = Number(booking.id);
+  const bookingStatus = String(booking.status || "pending").toLowerCase();
+  const paymentStatus = String(booking.payment_status || "pending").toLowerCase();
+
+  const isClosed = ["cancelled", "rejected", "completed"].includes(bookingStatus);
+  const isPaymentRejected = paymentStatus === "rejected";
+  const isPaid = paymentStatus === "paid";
+  const isPartiallyPaid = paymentStatus === "partially_paid";
+
+  return `
+    <div class="action-buttons simplified-actions">
+      <button
+        type="button"
+        class="action-btn receipt-btn"
+        onclick="viewReceipt(${bookingId})"
+      >
+        Receipt
+      </button>
+
+      ${
+        !isClosed && !isPaymentRejected && !isPartiallyPaid && !isPaid
+          ? `
+            <button
+              type="button"
+              class="action-btn verify-payment-btn"
+              onclick="verifyPayment(${bookingId})"
+            >
+              Verify Payment
+            </button>
+          `
+          : ""
+      }
+
+      ${
+        !isClosed && !isPaymentRejected
+          ? `
+            <button
+              type="button"
+              class="action-btn reject-payment-btn"
+              onclick="rejectPayment(${bookingId})"
+            >
+              Reject Payment
+            </button>
+          `
+          : ""
+      }
+
+      ${
+        bookingStatus === "approved"
+          ? `
+            <button
+              type="button"
+              class="action-btn complete-booking-btn"
+              onclick="completeReservation(${bookingId})"
+            >
+              Complete
+            </button>
+          `
+          : ""
+      }
+
+      ${
+        !isClosed
+          ? `
+            <button
+              type="button"
+              class="action-btn cancel-booking-btn"
+              onclick="cancelReservation(${bookingId})"
+            >
+              Cancel
+            </button>
+          `
+          : ""
+      }
+    </div>
+  `;
 }
 
 // ============================================================
@@ -909,92 +954,120 @@ function escapeForInline(value) {
 }
 
 // ============================================================
-// SECTION 20: Save reservation and payment status
-// Updates both reservation status and payment status.
+// SECTION 20: Quick admin action helpers
+// Updates reservation/payment status using simple staff-friendly buttons.
 // ============================================================
 
-async function saveAllStatus(bookingId) {
-  const bookingSelect = document.getElementById(`bookingStatus-${bookingId}`);
-  const paymentSelect = document.getElementById(`paymentStatus-${bookingId}`);
+async function updateReservationStatusOnly(bookingId, status) {
+  const response = await fetch(`${API_BASE}/bookings/${bookingId}/status`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ status }),
+  });
 
-  if (!bookingSelect || !paymentSelect) {
-    showMessage("Status controls not found.", "error");
-    return;
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to update reservation status.");
   }
 
-  const newBookingStatus = bookingSelect.value;
-  const newPaymentStatus = paymentSelect.value;
+  return data;
+}
 
-  const saveButton = document.querySelector(
-    `button[onclick="saveAllStatus(${bookingId})"]`,
-  );
+async function updatePaymentStatusOnly(bookingId, payment_status) {
+  const response = await fetch(`${API_BASE}/bookings/${bookingId}/payment-status`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ payment_status }),
+  });
 
-  const originalButtonText = saveButton
-    ? saveButton.textContent
-    : "Save Status";
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to update payment status.");
+  }
+
+  return data;
+}
+
+async function runAdminAction(button, loadingText, actionCallback) {
+  const originalButtonText = button ? button.textContent : "";
 
   try {
-    if (saveButton) {
-      saveButton.disabled = true;
-      saveButton.textContent = "Saving...";
-      saveButton.style.opacity = "0.7";
-      saveButton.style.cursor = "not-allowed";
+    if (button) {
+      button.disabled = true;
+      button.textContent = loadingText;
+      button.style.opacity = "0.7";
+      button.style.cursor = "not-allowed";
     }
 
-    const bookingResponse = await fetch(
-      `${API_BASE}/bookings/${bookingId}/status`,
-      {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ status: newBookingStatus }),
-      },
-    );
-
-    const bookingData = await bookingResponse.json();
-
-    if (!bookingResponse.ok) {
-      throw new Error(
-        bookingData.message || "Failed to update reservation status.",
-      );
-    }
-
-    const paymentResponse = await fetch(
-      `${API_BASE}/bookings/${bookingId}/payment-status`,
-      {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ payment_status: newPaymentStatus }),
-      },
-    );
-
-    const paymentData = await paymentResponse.json();
-
-    if (!paymentResponse.ok) {
-      throw new Error(
-        paymentData.message || "Failed to update payment status.",
-      );
-    }
-
-    showMessage(
-      "Reservation and payment status updated successfully.",
-      "success",
-    );
+    await actionCallback();
     await loadBookings();
   } catch (error) {
-    console.error("saveAllStatus error:", error);
-    showMessage(error.message || "Failed to save status.", "error");
+    console.error("runAdminAction error:", error);
+    showMessage(error.message || "Failed to process action.", "error");
   } finally {
-    if (saveButton) {
-      saveButton.disabled = false;
-      saveButton.textContent = originalButtonText;
-      saveButton.style.opacity = "1";
-      saveButton.style.cursor = "pointer";
+    if (button) {
+      button.disabled = false;
+      button.textContent = originalButtonText;
+      button.style.opacity = "1";
+      button.style.cursor = "pointer";
     }
   }
+}
+
+async function verifyPayment(bookingId) {
+  const button = event?.currentTarget || null;
+
+  await runAdminAction(button, "Verifying...", async () => {
+    await updateReservationStatusOnly(bookingId, "approved");
+    await updatePaymentStatusOnly(bookingId, "partially_paid");
+    showMessage("Payment marked as partially paid.", "success");
+  });
+}
+
+async function rejectPayment(bookingId) {
+  const confirmed = confirm("Reject this payment proof?");
+  if (!confirmed) return;
+
+  const button = event?.currentTarget || null;
+
+  await runAdminAction(button, "Rejecting...", async () => {
+    await updatePaymentStatusOnly(bookingId, "rejected");
+    showMessage("Payment proof rejected.", "success");
+  });
+}
+
+async function cancelReservation(bookingId) {
+  const confirmed = confirm("Cancel this reservation?");
+  if (!confirmed) return;
+
+  const button = event?.currentTarget || null;
+
+  await runAdminAction(button, "Cancelling...", async () => {
+    await updateReservationStatusOnly(bookingId, "cancelled");
+    await updatePaymentStatusOnly(bookingId, "unpaid");
+    showMessage("Reservation cancelled.", "success");
+  });
+}
+
+async function completeReservation(bookingId) {
+  const confirmed = confirm(
+    "Mark this reservation as completed? This will also mark payment as paid.",
+  );
+  if (!confirmed) return;
+
+  const button = event?.currentTarget || null;
+
+  await runAdminAction(button, "Completing...", async () => {
+    await updateReservationStatusOnly(bookingId, "completed");
+    await updatePaymentStatusOnly(bookingId, "paid");
+    showMessage("Reservation completed and payment marked as paid.", "success");
+  });
 }
 
 // ============================================================

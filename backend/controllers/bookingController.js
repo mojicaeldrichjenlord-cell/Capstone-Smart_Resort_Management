@@ -39,15 +39,10 @@ function parseRequestReservationBody(req) {
 
   let proofImageData = null;
 
-  if (req.file && req.file.path && req.file.mimetype) {
-    try {
-      const fileBuffer = fs.readFileSync(req.file.path);
-      proofImageData = `data:${req.file.mimetype};base64,${fileBuffer.toString(
-        "base64",
-      )}`;
-    } catch (error) {
-      console.error("Failed to convert proof image to Base64:", error.message);
-    }
+  if (req.file && req.file.path) {
+    const fileBuffer = fs.readFileSync(req.file.path);
+    const mimeType = req.file.mimetype || "image/jpeg";
+    proofImageData = `data:${mimeType};base64,${fileBuffer.toString("base64")}`;
   }
 
   const proofReference = normalizeNullableText(
@@ -58,7 +53,7 @@ function parseRequestReservationBody(req) {
     ...parsedBody,
     proof_reference: proofReference,
     proof_of_payment: uploadedProofPath || proofReference,
-    proof_image_data: proofImageData || parsedBody.proof_image_data || null,
+    proof_image_data: proofImageData,
   };
 }
 

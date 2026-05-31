@@ -250,7 +250,7 @@
 
 .admin-table {
   width: 100%;
-  min-width: 2050px;
+  min-width: 1750px;
   border-collapse: collapse;
 }
 
@@ -376,14 +376,18 @@
 
 /* ======================================================
    SECTION 9: Action buttons
-   Save status and view receipt buttons.
+   Staff-friendly quick action buttons.
 ====================================================== */
 
 .action-buttons {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 8px;
   min-width: 145px;
+}
+
+.simplified-actions {
+  min-width: 155px;
 }
 
 .action-btn {
@@ -393,11 +397,8 @@
   font-weight: 800;
   cursor: pointer;
   transition: 0.2s ease;
-}
-
-.save-booking-btn {
-  background: #2563eb;
-  color: white;
+  width: 100%;
+  line-height: 1.2;
 }
 
 .receipt-btn {
@@ -405,9 +406,34 @@
   color: #111827;
 }
 
+.verify-payment-btn {
+  background: #22c55e;
+  color: #052e16;
+}
+
+.reject-payment-btn {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.complete-booking-btn {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.cancel-booking-btn {
+  background: #e5e7eb;
+  color: #374151;
+}
+
 .action-btn:hover {
   transform: translateY(-1px);
   filter: brightness(0.98);
+}
+
+.action-btn:disabled {
+  transform: none;
+  filter: none;
 }
 
 /* ======================================================
