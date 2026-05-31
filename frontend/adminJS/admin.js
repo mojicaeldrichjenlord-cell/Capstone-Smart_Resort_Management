@@ -418,9 +418,13 @@ function renderBookings(bookings) {
 function renderActionButtons(booking) {
   const bookingId = Number(booking.id);
   const bookingStatus = String(booking.status || "pending").toLowerCase();
-  const paymentStatus = String(booking.payment_status || "pending").toLowerCase();
+  const paymentStatus = String(
+    booking.payment_status || "pending",
+  ).toLowerCase();
 
-  const isClosed = ["cancelled", "rejected", "completed"].includes(bookingStatus);
+  const isClosed = ["cancelled", "rejected", "completed"].includes(
+    bookingStatus,
+  );
   const isPaymentRejected = paymentStatus === "rejected";
   const isPaid = paymentStatus === "paid";
   const isPartiallyPaid = paymentStatus === "partially_paid";
@@ -734,12 +738,7 @@ function openProofModal(imageUrl) {
           Screenshot cannot be loaded. Please check if the uploaded proof file still exists.
         </p>
 
-        <div class="proof-modal-actions">
-          <button type="button" class="proof-modal-btn" onclick="closeProofModal()">
-            Close
-          </button>
-        </div>
-      </div>
+        
     `;
 
     document.body.appendChild(modal);
@@ -836,21 +835,7 @@ function openProofModal(imageUrl) {
         line-height: 1.5;
       }
 
-      .proof-modal-actions {
-        margin-top: 14px;
-        display: flex;
-        justify-content: flex-end;
-      }
 
-      .proof-modal-btn {
-        border: none;
-        border-radius: 999px;
-        padding: 11px 18px;
-        background: #0f172a;
-        color: white;
-        font-weight: 800;
-        cursor: pointer;
-      }
 
       @media (max-width: 600px) {
         .proof-modal-content {
@@ -977,13 +962,16 @@ async function updateReservationStatusOnly(bookingId, status) {
 }
 
 async function updatePaymentStatusOnly(bookingId, payment_status) {
-  const response = await fetch(`${API_BASE}/bookings/${bookingId}/payment-status`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
+  const response = await fetch(
+    `${API_BASE}/bookings/${bookingId}/payment-status`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ payment_status }),
     },
-    body: JSON.stringify({ payment_status }),
-  });
+  );
 
   const data = await response.json();
 
