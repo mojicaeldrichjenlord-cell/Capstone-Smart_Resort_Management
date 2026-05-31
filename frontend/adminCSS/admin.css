@@ -1,14 +1,7 @@
 /* ======================================================
    ADMIN DASHBOARD CSS
    File: frontend/adminCSS/admin.css
-   Purpose:
-   - Styles only adminHTML/admin.html
-   - Keeps dashboard CSS separated from global style.css
-====================================================== */
-
-/* ======================================================
-   SECTION 1: Main wrapper
-   Controls admin dashboard page width and spacing.
+   Clean card layout, no horizontal scroll
 ====================================================== */
 
 .admin-wrapper {
@@ -17,18 +10,10 @@
   margin: 0 auto 36px;
 }
 
-/* ======================================================
-   SECTION 2: Hero banner
-   Main admin dashboard introduction card.
-====================================================== */
-
+/* HERO */
 .admin-hero {
   background:
-    linear-gradient(
-      135deg,
-      rgba(15, 23, 42, 0.95),
-      rgba(20, 184, 166, 0.8)
-    ),
+    linear-gradient(135deg, rgba(15, 23, 42, 0.96), rgba(20, 184, 166, 0.82)),
     linear-gradient(135deg, #0f172a, #14b8a6);
   color: white;
   border-radius: 30px;
@@ -39,23 +24,9 @@
   overflow: hidden;
 }
 
-.admin-hero::after {
-  content: "";
-  position: absolute;
-  top: -60px;
-  right: -60px;
-  width: 220px;
-  height: 220px;
-  background: rgba(255, 255, 255, 0.08);
-  border-radius: 50%;
-  filter: blur(6px);
-}
-
 .admin-hero h1 {
   margin: 0 0 10px;
   font-size: 2.25rem;
-  position: relative;
-  z-index: 1;
 }
 
 .admin-hero p {
@@ -63,22 +34,13 @@
   max-width: 760px;
   line-height: 1.7;
   opacity: 0.96;
-  position: relative;
-  z-index: 1;
 }
-
-/* ======================================================
-   SECTION 3: Hero action buttons
-   Quick links to common admin tasks.
-====================================================== */
 
 .hero-actions {
   margin-top: 18px;
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
-  position: relative;
-  z-index: 1;
 }
 
 .hero-btn {
@@ -95,25 +57,15 @@
 .hero-btn.primary {
   background: #14b8a6;
   color: white;
-  box-shadow: 0 12px 24px rgba(20, 184, 166, 0.24);
 }
 
 .hero-btn.secondary {
   background: rgba(255, 255, 255, 0.14);
   color: white;
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
-.hero-btn:hover {
-  transform: translateY(-1px);
-  filter: brightness(1.03);
-}
-
-/* ======================================================
-   SECTION 4: Overview cards
-   Summary statistics such as total, pending, paid, etc.
-====================================================== */
-
+/* OVERVIEW */
 .admin-overview-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -122,26 +74,24 @@
 }
 
 .overview-card {
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(219, 231, 239, 0.92);
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid rgba(203, 213, 225, 0.9);
   border-radius: 24px;
   padding: 22px;
   box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
-  position: relative;
-  overflow: hidden;
 }
 
 .overview-label {
   color: #64748b;
   font-size: 0.92rem;
-  font-weight: 700;
+  font-weight: 800;
   margin-bottom: 10px;
 }
 
 .overview-value {
   color: #0f172a;
   font-size: 2rem;
-  font-weight: 800;
+  font-weight: 900;
 }
 
 .overview-note {
@@ -151,14 +101,10 @@
   line-height: 1.4;
 }
 
-/* ======================================================
-   SECTION 5: Admin panels
-   Used by filter panel and reservation table panel.
-====================================================== */
-
+/* PANEL */
 .admin-panel {
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(219, 231, 239, 0.92);
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid rgba(203, 213, 225, 0.9);
   border-radius: 28px;
   box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08);
   padding: 24px;
@@ -192,15 +138,17 @@
   border: none;
   padding: 12px 18px;
   border-radius: 999px;
-  font-weight: 800;
+  font-weight: 900;
   cursor: pointer;
+  box-shadow: 0 12px 24px rgba(20, 184, 166, 0.22);
 }
 
-/* ======================================================
-   SECTION 6: Search and filter controls
-   Input and dropdown styling.
-====================================================== */
+.refresh-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.03);
+}
 
+/* FILTERS */
 .filter-grid {
   display: grid;
   grid-template-columns: 2fr 1fr 1fr 1fr;
@@ -215,7 +163,7 @@
 
 .filter-item label {
   font-size: 0.92rem;
-  font-weight: 700;
+  font-weight: 800;
   color: #0f172a;
 }
 
@@ -227,6 +175,7 @@
   border: 1px solid #cbd5e1;
   outline: none;
   background: #fff;
+  color: #0f172a;
   font-size: 0.95rem;
 }
 
@@ -236,223 +185,239 @@
   box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
 }
 
-/* ======================================================
-   SECTION 7: Reservation table
-   Wide table with horizontal scroll.
-====================================================== */
-
+/* IMPORTANT: old table wrapper becomes card container */
 .admin-table-wrap {
-  overflow-x: auto;
+  overflow: visible !important;
   border-radius: 22px;
   border: 1px solid #dbe7ef;
-  background: #fff;
+  background: #f8fafc;
+  padding: 16px;
 }
 
+/* hide old table behavior if still present */
 .admin-table {
   width: 100%;
-  min-width: 1750px;
+  min-width: 0 !important;
   border-collapse: collapse;
 }
 
-.admin-table thead th {
-  background: #0f172a;
-  color: white;
-  padding: 15px 12px;
-  font-size: 0.88rem;
-  text-align: left;
-  white-space: nowrap;
-}
-
-.admin-table tbody td {
-  padding: 15px 12px;
-  border-bottom: 1px solid #e2e8f0;
-  font-size: 0.92rem;
-  color: #1e293b;
-  vertical-align: top;
-}
-
-.admin-table tbody tr:nth-child(even) {
-  background: #f8fafc;
-}
-
-.admin-table tbody tr:hover {
-  background: #ecfeff;
-}
-
-.admin-table select {
-  width: 100%;
-  min-width: 130px;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid #cbd5e1;
-  background: #fff;
-}
-
-.table-message {
+/* STATE */
+.reservation-state-box {
+  background: #ffffff;
+  border: 1px solid #dbe7ef;
+  border-radius: 18px;
+  padding: 24px;
   text-align: center;
-  padding: 28px !important;
   color: #64748b;
-  font-weight: 700;
+  font-weight: 900;
 }
 
-/* ======================================================
-   SECTION 8: Status, payment, and source badges
-   Small labels used inside the reservation table.
-====================================================== */
+.reservation-state-box.error {
+  background: #fef2f2;
+  color: #991b1b;
+  border-color: #fecaca;
+}
 
+/* CARD LIST */
+.reservation-card-list {
+  display: grid;
+  gap: 18px;
+}
+
+/* CARD */
+.reservation-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 175px;
+  gap: 18px;
+  background: #ffffff;
+  border: 1px solid #dbe7ef;
+  border-radius: 24px;
+  padding: 18px;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+}
+
+.reservation-card-main {
+  min-width: 0;
+}
+
+.reservation-topline {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.reservation-code {
+  color: #0f172a;
+  font-size: 1.18rem;
+  font-weight: 950;
+  letter-spacing: 0.02em;
+}
+
+.reservation-id {
+  color: #64748b;
+  font-size: 0.86rem;
+  margin-top: 4px;
+  font-weight: 800;
+}
+
+.reservation-badges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* INFO GRID */
+.reservation-info-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 1.5fr 1fr 1.15fr;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.reservation-info-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 13px;
+  color: #334155;
+  line-height: 1.55;
+  font-size: 0.9rem;
+  min-width: 0;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.info-label {
+  color: #64748b;
+  font-size: 0.76rem;
+  font-weight: 950;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+}
+
+.info-strong {
+  color: #0f172a;
+  font-weight: 950;
+  margin-bottom: 5px;
+}
+
+/* FOOTER */
+.reservation-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.created-text {
+  color: #64748b;
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.proof-area {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* BADGES */
 .status-badge,
 .payment-badge,
 .source-badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 12px;
+  padding: 8px 11px;
   border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 800;
+  font-size: 0.78rem;
+  font-weight: 950;
   white-space: nowrap;
-  margin-bottom: 8px;
 }
 
 .status-pending {
   background: #fef3c7;
   color: #92400e;
+  border: 1px solid #fde68a;
 }
 
 .status-approved {
   background: #dcfce7;
   color: #166534;
+  border: 1px solid #bbf7d0;
 }
 
 .status-rejected {
   background: #fee2e2;
   color: #991b1b;
+  border: 1px solid #fecaca;
 }
 
 .status-cancelled {
   background: #e5e7eb;
   color: #374151;
+  border: 1px solid #d1d5db;
 }
 
 .status-completed {
   background: #dbeafe;
   color: #1d4ed8;
+  border: 1px solid #bfdbfe;
 }
 
 .payment-unpaid {
   background: #fee2e2;
   color: #991b1b;
+  border: 1px solid #fecaca;
 }
 
 .payment-pending {
   background: #fef3c7;
   color: #92400e;
+  border: 1px solid #fde68a;
 }
 
 .payment-paid {
   background: #dcfce7;
   color: #166534;
+  border: 1px solid #bbf7d0;
 }
 
 .payment-partially_paid {
   background: #dbeafe;
   color: #1d4ed8;
+  border: 1px solid #bfdbfe;
 }
 
 .payment-rejected {
   background: #fee2e2;
   color: #991b1b;
+  border: 1px solid #fecaca;
 }
 
 .source-online {
   background: #dbeafe;
   color: #1d4ed8;
+  border: 1px solid #bfdbfe;
 }
 
 .source-manual {
   background: #ecfeff;
   color: #0f766e;
+  border: 1px solid #a5f3fc;
 }
 
-/* ======================================================
-   SECTION 9: Action buttons
-   Staff-friendly quick action buttons.
-====================================================== */
-
-.action-buttons {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 8px;
-  min-width: 145px;
-}
-
-.simplified-actions {
-  min-width: 155px;
-}
-
-.action-btn {
-  border: none;
-  border-radius: 12px;
-  padding: 10px 12px;
-  font-weight: 800;
-  cursor: pointer;
-  transition: 0.2s ease;
-  width: 100%;
-  line-height: 1.2;
-}
-
-.receipt-btn {
-  background: #f59e0b;
-  color: #111827;
-}
-
-.verify-payment-btn {
-  background: #22c55e;
-  color: #052e16;
-}
-
-.reject-payment-btn {
-  background: #fee2e2;
-  color: #991b1b;
-}
-
-.complete-booking-btn {
-  background: #2563eb;
-  color: #ffffff;
-}
-
-.cancel-booking-btn {
-  background: #e5e7eb;
-  color: #374151;
-}
-
-.action-btn:hover {
-  transform: translateY(-1px);
-  filter: brightness(0.98);
-}
-
-.action-btn:disabled {
-  transform: none;
-  filter: none;
-}
-
-/* ======================================================
-   SECTION 10: Payment reference display
-   Groups reference number into highlighted chips.
-====================================================== */
-
+/* REFERENCE / PROOF */
 .reference-box {
   display: grid;
   gap: 8px;
-  min-width: 180px;
-}
-
-.reference-label {
-  color: #64748b;
-  font-size: 0.78rem;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
 
 .reference-chip-row {
@@ -470,8 +435,8 @@
   border: 1px solid #fed7aa;
   border-radius: 10px;
   padding: 6px 8px;
-  font-weight: 900;
-  font-size: 0.86rem;
+  font-weight: 950;
+  font-size: 0.84rem;
   letter-spacing: 0.04em;
 }
 
@@ -484,10 +449,10 @@
 .copy-ref-btn,
 .proof-link-btn {
   border: none;
-  border-radius: 10px;
-  padding: 8px 10px;
+  border-radius: 12px;
+  padding: 9px 11px;
   font-size: 0.8rem;
-  font-weight: 900;
+  font-weight: 950;
   cursor: pointer;
   transition: 0.18s ease;
   text-decoration: none;
@@ -502,6 +467,7 @@
 .proof-link-btn {
   background: #dcfce7;
   color: #166534;
+  border: 1px solid #bbf7d0;
   display: inline-flex;
   justify-content: center;
 }
@@ -515,13 +481,90 @@
 .no-proof-text {
   color: #94a3b8;
   font-size: 0.84rem;
-  font-weight: 700;
+  font-weight: 800;
 }
 
-/* ======================================================
-   SECTION 11: Responsive design
-   Adjusts admin dashboard for tablets and phones.
-====================================================== */
+/* ACTIONS */
+.reservation-actions {
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  border-left: 1px solid #e2e8f0;
+  padding-left: 18px;
+}
+
+.action-btn {
+  border: none;
+  border-radius: 14px;
+  padding: 11px 12px;
+  font-weight: 950;
+  cursor: pointer;
+  transition: 0.2s ease;
+  width: 100%;
+  line-height: 1.2;
+  font-size: 0.86rem;
+}
+
+.receipt-btn {
+  background: #f59e0b;
+  color: #111827;
+}
+
+.verify-payment-btn {
+  background: #22c55e;
+  color: #052e16;
+}
+
+.verify-payment-btn.muted {
+  background: #dcfce7;
+  color: #166534;
+  cursor: not-allowed;
+}
+
+.reject-payment-btn {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.complete-booking-btn {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.cancel-booking-btn {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.action-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(0.98);
+}
+
+.action-btn:disabled {
+  transform: none;
+  filter: none;
+}
+
+/* RESPONSIVE */
+@media (max-width: 1200px) {
+  .reservation-card {
+    grid-template-columns: 1fr;
+  }
+
+  .reservation-actions {
+    border-left: none;
+    border-top: 1px solid #e2e8f0;
+    padding-left: 0;
+    padding-top: 14px;
+    grid-template-columns: repeat(5, minmax(120px, 1fr));
+  }
+
+  .reservation-info-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
 
 @media (max-width: 1100px) {
   .admin-overview-grid {
@@ -533,13 +576,28 @@
   }
 }
 
-@media (max-width: 700px) {
+@media (max-width: 760px) {
   .admin-wrapper {
     width: 92%;
   }
 
   .admin-overview-grid,
-  .filter-grid {
+  .filter-grid,
+  .reservation-info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .reservation-topline,
+  .reservation-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .reservation-badges {
+    justify-content: flex-start;
+  }
+
+  .reservation-actions {
     grid-template-columns: 1fr;
   }
 

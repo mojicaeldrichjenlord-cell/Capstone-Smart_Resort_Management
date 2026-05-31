@@ -3,47 +3,12 @@
 // Purpose:
 // - Load all reservations
 // - Search/filter reservations
-// - Update booking/payment status
-// - Show payment reference number
-// - View proof screenshot using popup modal
-// - Sync reservation/payment dropdown status
-// - Works from frontend/adminHTML/admin.html
-// ============================================================
-
-// ============================================================
-// SECTION 1: Allowed reservation and payment statuses
-// These arrays are used to generate dropdown options in the table.
-// ============================================================
-
-const BOOKING_STATUSES = [
-  "pending",
-  "approved",
-  "rejected",
-  "cancelled",
-  "completed",
-];
-
-const PAYMENT_STATUSES = [
-  "unpaid",
-  "pending",
-  "paid",
-  "partially_paid",
-  "rejected",
-];
-
-// ============================================================
-// SECTION 2: Global variable for all booking records
-// allBookings stores all reservations fetched from the backend.
-// Filters will use this original list.
+// - Staff-friendly reservation cards
+// - View proof screenshot using Base64/file fallback
+// - Quick admin actions: verify, reject, complete, cancel
 // ============================================================
 
 let allBookings = [];
-
-// ============================================================
-// SECTION 3: Page startup
-// Runs when the admin page is fully loaded.
-// It checks admin access, sets button events, and loads bookings.
-// ============================================================
 
 document.addEventListener("DOMContentLoaded", () => {
   checkAdminAccess();
@@ -52,9 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ============================================================
-// SECTION 4: Admin access checker
-// This prevents normal customers from opening the admin dashboard.
-// Since admin.html is now inside adminHTML, login/index paths need ../
+// SECTION 1: Admin access
 // ============================================================
 
 function checkAdminAccess() {
@@ -66,15 +29,14 @@ function checkAdminAccess() {
     return;
   }
 
-  if (user.role !== "admin") {
+  if (user.role !== "admin" && user.role !== "staff") {
     alert("Access denied. Admin only.");
-    window.location.href = "../index.html";
+    window.location.href = "../authHTML/login.html";
   }
 }
 
 // ============================================================
-// SECTION 5: Setup buttons and filter events
-// This connects logout, refresh, search, and dropdown filters.
+// SECTION 2: Events
 // ============================================================
 
 function setupEvents() {
@@ -94,47 +56,57 @@ function setupEvents() {
 
       setTimeout(() => {
         window.location.href = "../authHTML/login.html";
-      }, 700);
+      }, 600);
     });
   }
 
-  if (refreshBtn) {
-    refreshBtn.addEventListener("click", loadBookings);
+  if (refreshBtn) refreshBtn.addEventListener("click", loadBookings);
+  if (searchInput) searchInput.addEventListener("input", applyFilters);
+  if (statusFilter) statusFilter.addEventListener("change", applyFilters);
+  if (paymentStatusFilter) paymentStatusFilter.addEventListener("change", applyFilters);
+  if (paymentMethodFilter) paymentMethodFilter.addEventListener("change", applyFilters);
+}
+
+// ============================================================
+// SECTION 3: Reservation container
+// Replaces the old wide table content with clean reservation cards.
+// ============================================================
+
+function getReservationsContainer() {
+  const oldTableBody = document.getElementById("adminBookingsTableBody");
+
+  if (oldTableBody) {
+    const tableWrap = oldTableBody.closest(".admin-table-wrap");
+
+    if (tableWrap) {
+      return tableWrap;
+    }
+
+    return oldTableBody;
   }
 
-  if (searchInput) {
-    searchInput.addEventListener("input", applyFilters);
-  }
+  return document.querySelector(".admin-table-wrap");
+}
 
-  if (statusFilter) {
-    statusFilter.addEventListener("change", applyFilters);
-  }
+function setReservationsContent(html) {
+  const container = getReservationsContainer();
 
-  if (paymentStatusFilter) {
-    paymentStatusFilter.addEventListener("change", applyFilters);
-  }
-
-  if (paymentMethodFilter) {
-    paymentMethodFilter.addEventListener("change", applyFilters);
+  if (container) {
+    container.innerHTML = html;
   }
 }
 
 // ============================================================
-// SECTION 6: Load all bookings from backend
-// Fetches all reservations from /api/bookings and stores them.
+// SECTION 4: Load reservations
 // ============================================================
 
 async function loadBookings() {
-  const tbody = document.getElementById("adminBookingsTableBody");
-
   try {
-    if (tbody) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="21" class="table-message">Loading reservations...</td>
-        </tr>
-      `;
-    }
+    setReservationsContent(`
+      <div class="reservation-state-box">
+        Loading reservations...
+      </div>
+    `);
 
     const response = await fetch(`${API_BASE}/bookings`);
     const data = await response.json();
@@ -150,22 +122,18 @@ async function loadBookings() {
   } catch (error) {
     console.error("loadBookings error:", error);
 
-    if (tbody) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="21" class="table-message">Failed to load reservations.</td>
-        </tr>
-      `;
-    }
+    setReservationsContent(`
+      <div class="reservation-state-box error">
+        Failed to load reservations.
+      </div>
+    `);
 
     showMessage(error.message || "Failed to load reservations.", "error");
   }
 }
 
 // ============================================================
-// SECTION 7: Update dashboard summary cards
-// Counts total, pending, approved, paid, today, walk-ins,
-// guests inside, and today revenue.
+// SECTION 5: Summary cards
 // ============================================================
 
 function updateSummaryCards(bookings) {
@@ -173,17 +141,17 @@ function updateSummaryCards(bookings) {
 
   const totalBookings = bookings.length;
 
-  const pendingCount = bookings.filter(
-    (booking) => String(booking.status || "").toLowerCase() === "pending",
-  ).length;
+  const pendingCount = bookings.filter((booking) => {
+    return String(booking.status || "").toLowerCase() === "pending";
+  }).length;
 
-  const approvedCount = bookings.filter(
-    (booking) => String(booking.status || "").toLowerCase() === "approved",
-  ).length;
+  const approvedCount = bookings.filter((booking) => {
+    return String(booking.status || "").toLowerCase() === "approved";
+  }).length;
 
-  const paidCount = bookings.filter(
-    (booking) => String(booking.payment_status || "").toLowerCase() === "paid",
-  ).length;
+  const paidCount = bookings.filter((booking) => {
+    return String(booking.payment_status || "").toLowerCase() === "paid";
+  }).length;
 
   const todayBookings = bookings.filter((booking) => {
     const createdDate = String(booking.created_at || "").slice(0, 10);
@@ -193,6 +161,7 @@ function updateSummaryCards(bookings) {
   const walkinToday = bookings.filter((booking) => {
     const createdDate = String(booking.created_at || "").slice(0, 10);
     const source = String(booking.booking_source || "").toLowerCase();
+
     return createdDate === today && source === "manual";
   }).length;
 
@@ -215,57 +184,48 @@ function updateSummaryCards(bookings) {
       const paymentStatus = String(booking.payment_status || "").toLowerCase();
 
       if (paymentStatus === "paid" || paymentStatus === "partially_paid") {
-        return (
-          sum + Number(booking.paid_amount || booking.required_downpayment || 0)
-        );
+        return sum + Number(booking.paid_amount || booking.required_downpayment || 0);
       }
 
       return sum;
     }, 0);
 
-  const totalBookingsEl = document.getElementById("totalBookings");
-  const pendingCountEl = document.getElementById("pendingCount");
-  const approvedCountEl = document.getElementById("approvedCount");
-  const paidCountEl = document.getElementById("paidCount");
-  const todayBookingsEl = document.getElementById("todayBookings");
-  const walkinTodayEl = document.getElementById("walkinToday");
-  const guestsInsideEl = document.getElementById("guestsInside");
-  const todayRevenueEl = document.getElementById("todayRevenue");
+  setText("totalBookings", totalBookings);
+  setText("pendingCount", pendingCount);
+  setText("approvedCount", approvedCount);
+  setText("paidCount", paidCount);
+  setText("todayBookings", todayBookings);
+  setText("walkinToday", walkinToday);
+  setText("guestsInside", guestsInside);
+  setText("todayRevenue", `₱${formatMoney(todayRevenue)}`);
+}
 
-  if (totalBookingsEl) totalBookingsEl.textContent = totalBookings;
-  if (pendingCountEl) pendingCountEl.textContent = pendingCount;
-  if (approvedCountEl) approvedCountEl.textContent = approvedCount;
-  if (paidCountEl) paidCountEl.textContent = paidCount;
-  if (todayBookingsEl) todayBookingsEl.textContent = todayBookings;
-  if (walkinTodayEl) walkinTodayEl.textContent = walkinToday;
-  if (guestsInsideEl) guestsInsideEl.textContent = guestsInside;
-  if (todayRevenueEl)
-    todayRevenueEl.textContent = `₱${formatMoney(todayRevenue)}`;
+function setText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
 }
 
 // ============================================================
-// SECTION 8: Search and filter logic
-// Filters reservations by search text, status, payment status,
-// and payment method.
+// SECTION 6: Filters
 // ============================================================
 
 function applyFilters() {
-  const searchValue = (document.getElementById("searchInput")?.value || "")
+  const searchValue = String(document.getElementById("searchInput")?.value || "")
     .trim()
     .toLowerCase();
 
-  const statusValue = (document.getElementById("statusFilter")?.value || "")
+  const statusValue = String(document.getElementById("statusFilter")?.value || "")
     .trim()
     .toLowerCase();
 
-  const paymentStatusValue = (
-    document.getElementById("paymentStatusFilter")?.value || ""
+  const paymentStatusValue = String(
+    document.getElementById("paymentStatusFilter")?.value || "",
   )
     .trim()
     .toLowerCase();
 
-  const paymentMethodValue = (
-    document.getElementById("paymentMethodFilter")?.value || ""
+  const paymentMethodValue = String(
+    document.getElementById("paymentMethodFilter")?.value || "",
   )
     .trim()
     .toLowerCase();
@@ -274,278 +234,371 @@ function applyFilters() {
 
   if (searchValue) {
     filtered = filtered.filter((booking) => {
-      const displayName = getBookingDisplayName(booking);
-
-      const text = `
+      const searchableText = `
         ${booking.id || ""}
         ${booking.reservation_code || ""}
-        ${displayName || ""}
+        ${getBookingDisplayName(booking) || ""}
         ${booking.phone || ""}
         ${booking.email || ""}
         ${booking.room_name || ""}
         ${booking.booking_source || ""}
+        ${booking.payment_method || ""}
+        ${booking.payment_status || ""}
+        ${booking.status || ""}
         ${getPaymentReference(booking) || ""}
-        ${booking.proof_of_payment || ""}
       `.toLowerCase();
 
-      return text.includes(searchValue);
+      return searchableText.includes(searchValue);
     });
   }
 
   if (statusValue) {
-    filtered = filtered.filter(
-      (booking) => String(booking.status || "").toLowerCase() === statusValue,
-    );
+    filtered = filtered.filter((booking) => {
+      return String(booking.status || "").toLowerCase() === statusValue;
+    });
   }
 
   if (paymentStatusValue) {
-    filtered = filtered.filter(
-      (booking) =>
-        String(booking.payment_status || "").toLowerCase() ===
-        paymentStatusValue,
-    );
+    filtered = filtered.filter((booking) => {
+      return String(booking.payment_status || "").toLowerCase() === paymentStatusValue;
+    });
   }
 
   if (paymentMethodValue) {
-    filtered = filtered.filter(
-      (booking) =>
-        String(booking.payment_method || "").toLowerCase() ===
-        paymentMethodValue,
-    );
+    filtered = filtered.filter((booking) => {
+      return String(booking.payment_method || "").toLowerCase() === paymentMethodValue;
+    });
   }
 
   renderBookings(filtered);
 }
 
 // ============================================================
-// SECTION 9: Render admin booking table
-// Creates all rows of the reservation table.
+// SECTION 7: Render reservation cards
 // ============================================================
 
 function renderBookings(bookings) {
-  const tbody = document.getElementById("adminBookingsTableBody");
-  if (!tbody) return;
-
   if (!bookings.length) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="21" class="table-message">No reservations found.</td>
-      </tr>
-    `;
+    setReservationsContent(`
+      <div class="reservation-state-box">
+        No reservations found.
+      </div>
+    `);
     return;
   }
 
-  tbody.innerHTML = bookings
-    .map((booking) => {
-      const bookingStatus = String(booking.status || "pending").toLowerCase();
-      const paymentMethod = String(
-        booking.payment_method || "cash",
-      ).toLowerCase();
-      const paymentStatus = String(
-        booking.payment_status || "pending",
-      ).toLowerCase();
-      const bookingSource = String(
-        booking.booking_source || "online",
-      ).toLowerCase();
-      const paymentReference = getPaymentReference(booking);
-      const proofSource = getProofSource(booking);
-
-      return `
-        <tr>
-          <td><strong>#${booking.id}</strong></td>
-
-          <td><strong>${escapeHtml(booking.reservation_code || "-")}</strong></td>
-
-          <td>
-            <div class="source-badge source-${bookingSource}">
-              ${formatBookingSource(bookingSource)}
-            </div>
-          </td>
-
-          <td>
-            <div style="font-weight:800;color:#0f172a;">
-              ${escapeHtml(getBookingDisplayName(booking))}
-            </div>
-          </td>
-
-          <td>${escapeHtml(booking.phone || "-")}</td>
-
-          <td>${escapeHtml(booking.email || "-")}</td>
-
-          <td>
-            <div style="font-weight:700;color:#0f172a;">
-              ${escapeHtml(booking.room_name || "N/A")}
-            </div>
-          </td>
-
-          <td>${formatDate(booking.check_in)}</td>
-          <td>${formatTime(booking.check_in_time)}</td>
-          <td>${formatDate(booking.check_out)}</td>
-          <td>${formatTime(booking.check_out_time)}</td>
-          <td>${booking.guests || 0}</td>
-          <td>₱${formatMoney(booking.accommodation_total)}</td>
-          <td>₱${formatMoney(booking.required_downpayment)}</td>
-
-          <td>
-            <div class="status-badge status-${bookingStatus}">
-              ${capitalize(bookingStatus)}
-            </div>
-          </td>
-
-          <td>${formatPaymentMethod(paymentMethod)}</td>
-
-          <td>${renderPaymentReference(paymentReference)}</td>
-
-          <td>${renderProofButton(proofSource, booking.proof_of_payment)}</td>
-
-          <td>
-            <div class="payment-badge payment-${paymentStatus}">
-              ${formatPaymentStatus(paymentStatus)}
-            </div>
-          </td>
-
-          <td>${formatDateTime(booking.created_at)}</td>
-
-          <td>
-            ${renderActionButtons(booking)}
-          </td>
-        </tr>
-      `;
-    })
-    .join("");
+  setReservationsContent(`
+    <div class="reservation-card-list">
+      ${bookings.map((booking) => renderReservationCard(booking)).join("")}
+    </div>
+  `);
 }
 
-function renderActionButtons(booking) {
+function renderReservationCard(booking) {
   const bookingId = Number(booking.id);
   const bookingStatus = String(booking.status || "pending").toLowerCase();
   const paymentStatus = String(booking.payment_status || "pending").toLowerCase();
-
-  const isClosed = ["cancelled", "rejected", "completed"].includes(bookingStatus);
-  const isPaymentRejected = paymentStatus === "rejected";
-  const isPaid = paymentStatus === "paid";
-  const isPartiallyPaid = paymentStatus === "partially_paid";
+  const paymentMethod = String(booking.payment_method || "cash").toLowerCase();
+  const bookingSource = String(booking.booking_source || "online").toLowerCase();
+  const proofSource = getProofSource(booking);
+  const paymentReference = getPaymentReference(booking);
 
   return `
-    <div class="action-buttons simplified-actions">
-      <button
-        type="button"
-        class="action-btn receipt-btn"
-        onclick="viewReceipt(${bookingId})"
-      >
-        Receipt
-      </button>
+    <article class="reservation-card">
+      <div class="reservation-card-main">
+        <div class="reservation-topline">
+          <div>
+            <div class="reservation-code">
+              ${escapeHtml(booking.reservation_code || `#${bookingId}`)}
+            </div>
+            <div class="reservation-id">
+              Reservation ID: #${escapeHtml(bookingId || "-")}
+            </div>
+          </div>
 
-      ${
-        !isClosed && !isPaymentRejected && !isPartiallyPaid && !isPaid
-          ? `
-            <button
-              type="button"
-              class="action-btn verify-payment-btn"
-              onclick="verifyPayment(${bookingId})"
-            >
-              Verify Payment
-            </button>
-          `
-          : ""
-      }
+          <div class="reservation-badges">
+            <span class="source-badge source-${bookingSource}">
+              ${formatBookingSource(bookingSource)}
+            </span>
 
-      ${
-        !isClosed && !isPaymentRejected
-          ? `
-            <button
-              type="button"
-              class="action-btn reject-payment-btn"
-              onclick="rejectPayment(${bookingId})"
-            >
-              Reject Payment
-            </button>
-          `
-          : ""
-      }
+            <span class="status-badge status-${bookingStatus}">
+              ${capitalize(bookingStatus)}
+            </span>
 
-      ${
-        bookingStatus === "approved"
-          ? `
-            <button
-              type="button"
-              class="action-btn complete-booking-btn"
-              onclick="completeReservation(${bookingId})"
-            >
-              Complete
-            </button>
-          `
-          : ""
-      }
+            <span class="payment-badge payment-${paymentStatus}">
+              ${formatPaymentStatus(paymentStatus)}
+            </span>
+          </div>
+        </div>
 
-      ${
-        !isClosed
-          ? `
-            <button
-              type="button"
-              class="action-btn cancel-booking-btn"
-              onclick="cancelReservation(${bookingId})"
-            >
-              Cancel
-            </button>
-          `
-          : ""
-      }
-    </div>
+        <div class="reservation-info-grid">
+          <section class="reservation-info-box">
+            <div class="info-label">Customer</div>
+            <div class="info-strong">${escapeHtml(getBookingDisplayName(booking))}</div>
+            <div>${escapeHtml(booking.phone || "-")}</div>
+            <div>${escapeHtml(booking.email || "-")}</div>
+          </section>
+
+          <section class="reservation-info-box">
+            <div class="info-label">Stay Details</div>
+            <div class="info-strong">${escapeHtml(booking.room_name || "N/A")}</div>
+            <div>Check-in: ${formatDate(booking.check_in)} • ${formatTime(booking.check_in_time)}</div>
+            <div>Check-out: ${formatDate(booking.check_out)} • ${formatTime(booking.check_out_time)}</div>
+            <div>Guests: ${Number(booking.guests || 0)}</div>
+          </section>
+
+          <section class="reservation-info-box">
+            <div class="info-label">Payment</div>
+            <div>Total: <strong>₱${formatMoney(booking.accommodation_total)}</strong></div>
+            <div>Downpayment: <strong>₱${formatMoney(booking.required_downpayment)}</strong></div>
+            <div>Paid: <strong>₱${formatMoney(booking.paid_amount)}</strong></div>
+            <div>Remaining: <strong>₱${formatMoney(booking.remaining_balance)}</strong></div>
+            <div>Method: ${formatPaymentMethod(paymentMethod)}</div>
+          </section>
+
+          <section class="reservation-info-box">
+            <div class="info-label">Reference</div>
+            ${renderPaymentReference(paymentReference)}
+          </section>
+        </div>
+
+        <div class="reservation-footer">
+          <div class="created-text">
+            Created: ${formatDateTime(booking.created_at)}
+          </div>
+
+          <div class="proof-area">
+            ${renderProofButton(proofSource, booking.proof_of_payment)}
+          </div>
+        </div>
+      </div>
+
+      <div class="reservation-actions">
+        <button
+          type="button"
+          class="action-btn receipt-btn"
+          onclick="viewReceipt(${bookingId})"
+        >
+          Receipt
+        </button>
+
+        ${renderVerifyButton(bookingId, bookingStatus, paymentStatus)}
+
+        ${renderRejectButton(bookingId, bookingStatus, paymentStatus)}
+
+        ${renderCompleteButton(bookingId, bookingStatus)}
+
+        ${renderCancelButton(bookingId, bookingStatus)}
+      </div>
+    </article>
   `;
 }
 
 // ============================================================
-// SECTION 10: Sync reservation and payment dropdowns
-// Keeps status dropdowns logically connected before saving.
+// SECTION 8: Button renderers
 // ============================================================
 
-function setupStatusDropdownSync(bookings) {
-  bookings.forEach((booking) => {
-    const bookingSelect = document.getElementById(
-      `bookingStatus-${booking.id}`,
-    );
-    const paymentSelect = document.getElementById(
-      `paymentStatus-${booking.id}`,
-    );
+function renderVerifyButton(bookingId, bookingStatus, paymentStatus) {
+  if (bookingStatus === "cancelled" || bookingStatus === "completed" || bookingStatus === "rejected") {
+    return "";
+  }
 
-    if (!bookingSelect || !paymentSelect) return;
+  if (paymentStatus === "paid" || paymentStatus === "partially_paid") {
+    return `
+      <button
+        type="button"
+        class="action-btn verify-payment-btn muted"
+        disabled
+      >
+        Payment OK
+      </button>
+    `;
+  }
 
-    bookingSelect.addEventListener("change", () => {
-      const reservationStatus = bookingSelect.value;
+  return `
+    <button
+      type="button"
+      class="action-btn verify-payment-btn"
+      onclick="verifyPayment(${bookingId}, this)"
+    >
+      Verify Payment
+    </button>
+  `;
+}
 
-      if (reservationStatus === "rejected") {
-        paymentSelect.value = "rejected";
-      }
+function renderRejectButton(bookingId, bookingStatus, paymentStatus) {
+  if (
+    bookingStatus === "rejected" ||
+    bookingStatus === "cancelled" ||
+    bookingStatus === "completed" ||
+    paymentStatus === "rejected"
+  ) {
+    return "";
+  }
 
-      if (reservationStatus === "cancelled") {
-        paymentSelect.value = "unpaid";
-      }
+  return `
+    <button
+      type="button"
+      class="action-btn reject-payment-btn"
+      onclick="rejectPayment(${bookingId}, this)"
+    >
+      Reject Payment
+    </button>
+  `;
+}
 
-      if (reservationStatus === "completed") {
-        paymentSelect.value = "paid";
-      }
-    });
+function renderCompleteButton(bookingId, bookingStatus) {
+  if (bookingStatus === "completed" || bookingStatus === "cancelled" || bookingStatus === "rejected") {
+    return "";
+  }
 
-    paymentSelect.addEventListener("change", () => {
-      const paymentStatus = paymentSelect.value;
+  return `
+    <button
+      type="button"
+      class="action-btn complete-booking-btn"
+      onclick="completeReservation(${bookingId}, this)"
+    >
+      Complete
+    </button>
+  `;
+}
 
-      if (paymentStatus === "paid" || paymentStatus === "partially_paid") {
-        if (bookingSelect.value === "pending") {
-          bookingSelect.value = "approved";
-        }
-      }
+function renderCancelButton(bookingId, bookingStatus) {
+  if (bookingStatus === "cancelled" || bookingStatus === "completed" || bookingStatus === "rejected") {
+    return "";
+  }
 
-      if (paymentStatus === "rejected") {
-        bookingSelect.value = "rejected";
-      }
-    });
-  });
+  return `
+    <button
+      type="button"
+      class="action-btn cancel-booking-btn"
+      onclick="cancelReservation(${bookingId}, this)"
+    >
+      Cancel
+    </button>
+  `;
 }
 
 // ============================================================
-// SECTION 11: Extract payment reference number
-// This finds the payment reference from possible fields.
-// If not found in direct fields, it extracts from the note text.
+// SECTION 9: Quick admin actions
+// ============================================================
+
+async function verifyPayment(bookingId, button) {
+  const confirmed = confirm("Mark this payment as verified / partially paid?");
+  if (!confirmed) return;
+
+  await runAdminAction(button, "Verifying...", async () => {
+    await updateReservationStatusOnly(bookingId, "approved");
+    await updatePaymentStatusOnly(bookingId, "partially_paid");
+    showMessage("Payment verified successfully.", "success");
+  });
+}
+
+async function rejectPayment(bookingId, button) {
+  const confirmed = confirm("Reject this payment proof?");
+  if (!confirmed) return;
+
+  await runAdminAction(button, "Rejecting...", async () => {
+    await updatePaymentStatusOnly(bookingId, "rejected");
+    await updateReservationStatusOnly(bookingId, "rejected");
+    showMessage("Payment proof rejected.", "success");
+  });
+}
+
+async function completeReservation(bookingId, button) {
+  const confirmed = confirm("Mark this reservation as completed and payment as paid?");
+  if (!confirmed) return;
+
+  await runAdminAction(button, "Completing...", async () => {
+    await updateReservationStatusOnly(bookingId, "completed");
+    await updatePaymentStatusOnly(bookingId, "paid");
+    showMessage("Reservation completed successfully.", "success");
+  });
+}
+
+async function cancelReservation(bookingId, button) {
+  const confirmed = confirm("Cancel this reservation?");
+  if (!confirmed) return;
+
+  await runAdminAction(button, "Cancelling...", async () => {
+    await updateReservationStatusOnly(bookingId, "cancelled");
+    await updatePaymentStatusOnly(bookingId, "unpaid");
+    showMessage("Reservation cancelled successfully.", "success");
+  });
+}
+
+async function runAdminAction(button, loadingText, actionCallback) {
+  const originalButtonText = button ? button.textContent : "";
+
+  try {
+    if (button) {
+      button.disabled = true;
+      button.textContent = loadingText;
+      button.style.opacity = "0.7";
+      button.style.cursor = "not-allowed";
+    }
+
+    await actionCallback();
+    await loadBookings();
+  } catch (error) {
+    console.error("runAdminAction error:", error);
+    showMessage(error.message || "Failed to process action.", "error");
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = originalButtonText;
+      button.style.opacity = "1";
+      button.style.cursor = "pointer";
+    }
+  }
+}
+
+async function updateReservationStatusOnly(bookingId, status) {
+  const response = await fetch(`${API_BASE}/bookings/${bookingId}/status`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ status }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to update reservation status.");
+  }
+
+  return data;
+}
+
+async function updatePaymentStatusOnly(bookingId, payment_status) {
+  const response = await fetch(`${API_BASE}/bookings/${bookingId}/payment-status`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ payment_status }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to update payment status.");
+  }
+
+  return data;
+}
+
+// ============================================================
+// SECTION 10: Receipt
+// ============================================================
+
+function viewReceipt(bookingId) {
+  window.location.href = `admin-booking-receipt.html?id=${bookingId}`;
+}
+
+// ============================================================
+// SECTION 11: Payment reference
 // ============================================================
 
 function getPaymentReference(booking) {
@@ -569,27 +622,13 @@ function getPaymentReference(booking) {
   return "";
 }
 
-// ============================================================
-// SECTION 12: Group reference number for easier reading
-// Example: 91728339131839 becomes [9172] [8339] [1318] [39]
-// ============================================================
-
 function groupReferenceNumber(reference) {
-  const cleanReference = String(reference || "")
-    .replace(/\s+/g, "")
-    .trim();
+  const cleanReference = String(reference || "").replace(/\s+/g, "").trim();
 
-  if (!cleanReference) {
-    return [];
-  }
+  if (!cleanReference) return [];
 
   return cleanReference.match(/.{1,4}/g) || [cleanReference];
 }
-
-// ============================================================
-// SECTION 13: Render highlighted reference number
-// Shows reference number in small chips and includes a copy button.
-// ============================================================
 
 function renderPaymentReference(reference) {
   if (!reference) {
@@ -600,15 +639,9 @@ function renderPaymentReference(reference) {
 
   return `
     <div class="reference-box">
-      <div class="reference-label">Reference No.</div>
-
       <div class="reference-chip-row">
         ${groups
-          .map(
-            (group) => `
-              <span class="reference-chip">${escapeHtml(group)}</span>
-            `,
-          )
+          .map((group) => `<span class="reference-chip">${escapeHtml(group)}</span>`)
           .join("")}
       </div>
 
@@ -625,10 +658,26 @@ function renderPaymentReference(reference) {
   `;
 }
 
+async function copyReferenceNumber(reference) {
+  try {
+    await navigator.clipboard.writeText(reference);
+    showMessage("Reference number copied.", "success");
+  } catch (error) {
+    console.error("copyReferenceNumber error:", error);
+
+    const tempInput = document.createElement("input");
+    tempInput.value = reference;
+    document.body.appendChild(tempInput);
+    tempInput.select();
+    document.execCommand("copy");
+    tempInput.remove();
+
+    showMessage("Reference number copied.", "success");
+  }
+}
+
 // ============================================================
-// SECTION 14: Build proof screenshot URL
-// Converts uploaded proof path into a complete backend URL.
-// If proof value is not an upload path, it will not show as image.
+// SECTION 12: Proof screenshot
 // ============================================================
 
 function getProofSource(booking) {
@@ -644,9 +693,7 @@ function getProofSource(booking) {
 function getProofUrl(proofPath) {
   const value = String(proofPath || "").trim();
 
-  if (!value) {
-    return "";
-  }
+  if (!value) return "";
 
   if (value.startsWith("http://") || value.startsWith("https://")) {
     return value;
@@ -671,21 +718,12 @@ function getProofUrl(proofPath) {
   return "";
 }
 
-// ============================================================
-// SECTION 15: Render proof screenshot button
-// If proof path exists but is not image path, show clear message.
-// ============================================================
-
 function renderProofButton(proofUrl, rawProofPath = "") {
   if (!proofUrl) {
     const rawValue = String(rawProofPath || "").trim();
 
     if (rawValue) {
-      return `
-        <span class="no-proof-text">
-          Invalid proof path
-        </span>
-      `;
+      return `<span class="no-proof-text">Invalid proof path</span>`;
     }
 
     return `<span class="no-proof-text">No proof</span>`;
@@ -697,16 +735,10 @@ function renderProofButton(proofUrl, rawProofPath = "") {
       class="proof-link-btn"
       onclick="openProofModal('${escapeForInline(proofUrl)}')"
     >
-      View Screenshot
+      View Proof
     </button>
   `;
 }
-
-// ============================================================
-// SECTION 16: Proof screenshot modal
-// Shows uploaded proof inside a popup with an X close button.
-// If the image file is missing, it shows a clear error.
-// ============================================================
 
 function openProofModal(imageUrl) {
   let modal = document.getElementById("proofImageModal");
@@ -719,7 +751,12 @@ function openProofModal(imageUrl) {
       <div class="proof-modal-backdrop" onclick="closeProofModal()"></div>
 
       <div class="proof-modal-content">
-        <button type="button" class="proof-modal-close" onclick="closeProofModal()">
+        <button
+          type="button"
+          class="proof-modal-close"
+          onclick="closeProofModal()"
+          aria-label="Close proof modal"
+        >
           ×
         </button>
 
@@ -731,14 +768,8 @@ function openProofModal(imageUrl) {
         <img id="proofModalImage" src="" alt="Proof of payment screenshot" />
 
         <p id="proofModalError" class="proof-modal-error" style="display:none;">
-          Screenshot cannot be loaded. Please check if the uploaded proof file still exists.
+          Screenshot cannot be loaded. Please check the proof file or upload format.
         </p>
-
-        <div class="proof-modal-actions">
-          <button type="button" class="proof-modal-btn" onclick="closeProofModal()">
-            Close
-          </button>
-        </div>
       </div>
     `;
 
@@ -772,7 +803,7 @@ function openProofModal(imageUrl) {
       .proof-modal-content {
         position: relative;
         z-index: 1;
-        width: min(92vw, 720px);
+        width: min(92vw, 760px);
         max-height: 92vh;
         background: #ffffff;
         border-radius: 24px;
@@ -836,22 +867,6 @@ function openProofModal(imageUrl) {
         line-height: 1.5;
       }
 
-      .proof-modal-actions {
-        margin-top: 14px;
-        display: flex;
-        justify-content: flex-end;
-      }
-
-      .proof-modal-btn {
-        border: none;
-        border-radius: 999px;
-        padding: 11px 18px;
-        background: #0f172a;
-        color: white;
-        font-weight: 800;
-        cursor: pointer;
-      }
-
       @media (max-width: 600px) {
         .proof-modal-content {
           width: 96vw;
@@ -871,9 +886,7 @@ function openProofModal(imageUrl) {
   const image = document.getElementById("proofModalImage");
   const errorText = document.getElementById("proofModalError");
 
-  if (errorText) {
-    errorText.style.display = "none";
-  }
+  if (errorText) errorText.style.display = "none";
 
   if (image) {
     image.style.display = "block";
@@ -881,17 +894,11 @@ function openProofModal(imageUrl) {
 
     image.onerror = () => {
       image.style.display = "none";
-
-      if (errorText) {
-        errorText.style.display = "block";
-      }
+      if (errorText) errorText.style.display = "block";
     };
 
     image.onload = () => {
-      if (errorText) {
-        errorText.style.display = "none";
-      }
-
+      if (errorText) errorText.style.display = "none";
       image.style.display = "block";
     };
 
@@ -901,11 +908,6 @@ function openProofModal(imageUrl) {
   modal.classList.add("show");
   document.body.style.overflow = "hidden";
 }
-
-// ============================================================
-// SECTION 17: Close proof screenshot modal
-// Hides the popup and restores page scrolling.
-// ============================================================
 
 function closeProofModal() {
   const modal = document.getElementById("proofImageModal");
@@ -918,175 +920,17 @@ function closeProofModal() {
 }
 
 // ============================================================
-// SECTION 18: Copy reference number
-// Copies payment reference to clipboard.
-// ============================================================
-
-async function copyReferenceNumber(reference) {
-  try {
-    await navigator.clipboard.writeText(reference);
-    showMessage("Reference number copied.", "success");
-  } catch (error) {
-    console.error("copyReferenceNumber error:", error);
-
-    const tempInput = document.createElement("input");
-    tempInput.value = reference;
-    document.body.appendChild(tempInput);
-    tempInput.select();
-    document.execCommand("copy");
-    tempInput.remove();
-
-    showMessage("Reference number copied.", "success");
-  }
-}
-
-// ============================================================
-// SECTION 19: Escape text for inline onclick attributes
-// Prevents quotes and special characters from breaking onclick.
-// ============================================================
-
-function escapeForInline(value) {
-  return String(value || "")
-    .replace(/\\/g, "\\\\")
-    .replace(/'/g, "\\'")
-    .replace(/"/g, "&quot;")
-    .replace(/\n/g, " ");
-}
-
-// ============================================================
-// SECTION 20: Quick admin action helpers
-// Updates reservation/payment status using simple staff-friendly buttons.
-// ============================================================
-
-async function updateReservationStatusOnly(bookingId, status) {
-  const response = await fetch(`${API_BASE}/bookings/${bookingId}/status`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ status }),
-  });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.message || "Failed to update reservation status.");
-  }
-
-  return data;
-}
-
-async function updatePaymentStatusOnly(bookingId, payment_status) {
-  const response = await fetch(`${API_BASE}/bookings/${bookingId}/payment-status`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ payment_status }),
-  });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.message || "Failed to update payment status.");
-  }
-
-  return data;
-}
-
-async function runAdminAction(button, loadingText, actionCallback) {
-  const originalButtonText = button ? button.textContent : "";
-
-  try {
-    if (button) {
-      button.disabled = true;
-      button.textContent = loadingText;
-      button.style.opacity = "0.7";
-      button.style.cursor = "not-allowed";
-    }
-
-    await actionCallback();
-    await loadBookings();
-  } catch (error) {
-    console.error("runAdminAction error:", error);
-    showMessage(error.message || "Failed to process action.", "error");
-  } finally {
-    if (button) {
-      button.disabled = false;
-      button.textContent = originalButtonText;
-      button.style.opacity = "1";
-      button.style.cursor = "pointer";
-    }
-  }
-}
-
-async function verifyPayment(bookingId) {
-  const button = event?.currentTarget || null;
-
-  await runAdminAction(button, "Verifying...", async () => {
-    await updateReservationStatusOnly(bookingId, "approved");
-    await updatePaymentStatusOnly(bookingId, "partially_paid");
-    showMessage("Payment marked as partially paid.", "success");
-  });
-}
-
-async function rejectPayment(bookingId) {
-  const confirmed = confirm("Reject this payment proof?");
-  if (!confirmed) return;
-
-  const button = event?.currentTarget || null;
-
-  await runAdminAction(button, "Rejecting...", async () => {
-    await updatePaymentStatusOnly(bookingId, "rejected");
-    showMessage("Payment proof rejected.", "success");
-  });
-}
-
-async function cancelReservation(bookingId) {
-  const confirmed = confirm("Cancel this reservation?");
-  if (!confirmed) return;
-
-  const button = event?.currentTarget || null;
-
-  await runAdminAction(button, "Cancelling...", async () => {
-    await updateReservationStatusOnly(bookingId, "cancelled");
-    await updatePaymentStatusOnly(bookingId, "unpaid");
-    showMessage("Reservation cancelled.", "success");
-  });
-}
-
-async function completeReservation(bookingId) {
-  const confirmed = confirm(
-    "Mark this reservation as completed? This will also mark payment as paid.",
-  );
-  if (!confirmed) return;
-
-  const button = event?.currentTarget || null;
-
-  await runAdminAction(button, "Completing...", async () => {
-    await updateReservationStatusOnly(bookingId, "completed");
-    await updatePaymentStatusOnly(bookingId, "paid");
-    showMessage("Reservation completed and payment marked as paid.", "success");
-  });
-}
-
-// ============================================================
-// SECTION 21: Open admin receipt page
-// Redirects admin to the old root receipt page for now.
-// Later, when receipt page is moved into adminHTML, change this path.
-// ============================================================
-
-function viewReceipt(bookingId) {
-  window.location.href = `admin-booking-receipt.html?id=${bookingId}`;
-}
-
-// ============================================================
-// SECTION 22: Booking display helpers
-// Used for name, source, dates, times, money, and labels.
+// SECTION 13: Formatting helpers
 // ============================================================
 
 function getBookingDisplayName(booking) {
-  return booking.fullname || "N/A";
+  return (
+    booking.fullname ||
+    [booking.first_name, booking.middle_name, booking.last_name]
+      .filter(Boolean)
+      .join(" ") ||
+    "N/A"
+  );
 }
 
 function formatBookingSource(source) {
@@ -1098,10 +942,7 @@ function formatDate(dateValue) {
   if (!dateValue) return "N/A";
 
   const date = new Date(dateValue);
-
-  if (Number.isNaN(date.getTime())) {
-    return "N/A";
-  }
+  if (Number.isNaN(date.getTime())) return "N/A";
 
   return date.toLocaleDateString();
 }
@@ -1110,30 +951,19 @@ function formatTime(timeValue) {
   if (!timeValue) return "N/A";
 
   const timeText = String(timeValue).trim();
-
-  if (!timeText) {
-    return "N/A";
-  }
-
   const parts = timeText.split(":");
 
-  if (parts.length < 2) {
-    return timeText;
-  }
+  if (parts.length < 2) return timeText;
 
   let hours = Number(parts[0]);
   const minutes = parts[1];
 
-  if (Number.isNaN(hours)) {
-    return timeText;
-  }
+  if (Number.isNaN(hours)) return timeText;
 
   const suffix = hours >= 12 ? "PM" : "AM";
-  hours = hours % 12;
 
-  if (hours === 0) {
-    hours = 12;
-  }
+  hours = hours % 12;
+  if (hours === 0) hours = 12;
 
   return `${hours}:${minutes} ${suffix}`;
 }
@@ -1142,10 +972,7 @@ function formatDateTime(dateValue) {
   if (!dateValue) return "N/A";
 
   const date = new Date(dateValue);
-
-  if (Number.isNaN(date.getTime())) {
-    return "N/A";
-  }
+  if (Number.isNaN(date.getTime())) return "N/A";
 
   return date.toLocaleString();
 }
@@ -1153,6 +980,7 @@ function formatDateTime(dateValue) {
 function formatPaymentMethod(method) {
   if (method === "gcash") return "GCash";
   if (method === "paymaya") return "PayMaya";
+  if (method === "maya") return "Maya";
   if (method === "cash") return "Cash";
   if (method === "bank_transfer") return "Bank Transfer";
   if (method === "other") return "Other";
@@ -1183,13 +1011,8 @@ function capitalize(text) {
   if (!text) return "";
 
   const value = String(text);
-  return value.charAt(0).toUpperCase() + value.slice(1);
+  return value.charAt(0).toUpperCase() + value.slice(1).replace(/_/g, " ");
 }
-
-// ============================================================
-// SECTION 23: Message helper
-// Uses toast if available, otherwise alert.
-// ============================================================
 
 function showMessage(message, type = "success") {
   if (typeof showToast === "function") {
@@ -1199,10 +1022,13 @@ function showMessage(message, type = "success") {
   }
 }
 
-// ============================================================
-// SECTION 24: HTML escaping helper
-// Prevents unsafe text from breaking the table layout.
-// ============================================================
+function escapeForInline(value) {
+  return String(value || "")
+    .replace(/\\/g, "\\\\")
+    .replace(/'/g, "\\'")
+    .replace(/"/g, "&quot;")
+    .replace(/\n/g, " ");
+}
 
 function escapeHtml(value) {
   return String(value || "")
