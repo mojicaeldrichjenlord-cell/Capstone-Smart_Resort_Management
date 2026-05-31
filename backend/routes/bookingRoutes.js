@@ -36,13 +36,22 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  const allowed = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
+  const allowed = [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/jpg",
+    "image/heic",
+    "image/heif",
+  ];
 
   if (allowed.includes(file.mimetype)) {
     return cb(null, true);
   }
 
-  return cb(new Error("Only JPG, PNG, and WEBP image files are allowed."));
+  return cb(
+    new Error("Only JPG, PNG, WEBP, HEIC, and HEIF image files are allowed."),
+  );
 };
 
 const upload = multer({

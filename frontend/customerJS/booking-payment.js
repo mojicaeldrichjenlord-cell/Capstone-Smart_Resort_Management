@@ -113,7 +113,9 @@ function loadDraft() {
   const raw = sessionStorage.getItem(BOOKING_DRAFT_KEY);
 
   if (!raw) {
-    alert("No reservation draft found. Please fill up the reservation form first.");
+    alert(
+      "No reservation draft found. Please fill up the reservation form first.",
+    );
     window.location.href = "booking.html";
     return;
   }
@@ -205,7 +207,7 @@ function renderDraftSummary() {
       const checkOutDate = calculateCheckOutDate(
         item.check_in_date,
         slot?.start,
-        slot?.end
+        slot?.end,
       );
 
       return `
@@ -372,21 +374,29 @@ function updateProofPreview() {
     return;
   }
 
-  const allowedTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
+  const allowedTypes = [
+    "image/png",
+    "image/jpeg",
+    "image/jpg",
+    "image/webp",
+    "image/heic",
+    "image/heif",
+  ];
   const maxSize = 5 * 1024 * 1024;
 
   if (!allowedTypes.includes(file.type)) {
     input.value = "";
     preview.classList.add("show");
     preview.textContent =
-      "Invalid file type. Please upload PNG, JPG, JPEG, or WEBP only.";
+      "Invalid file type. Please upload PNG, JPG, JPEG, WEBP, HEIC, or HEIF only.";
     return;
   }
 
   if (file.size > maxSize) {
     input.value = "";
     preview.classList.add("show");
-    preview.textContent = "File is too large. Please upload an image below 5MB.";
+    preview.textContent =
+      "File is too large. Please upload an image below 5MB.";
     return;
   }
 
@@ -429,19 +439,29 @@ async function submitReservation(e) {
     return;
   }
 
-  const allowedTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
+  const allowedTypes = [
+    "image/png",
+    "image/jpeg",
+    "image/jpg",
+    "image/webp",
+    "image/heic",
+    "image/heif",
+  ];
   const maxSize = 5 * 1024 * 1024;
 
   if (!allowedTypes.includes(paymentProofFile.type)) {
     showMessage(
-      "Invalid proof image. Please upload PNG, JPG, JPEG, or WEBP only.",
-      "error"
+      "Invalid proof image. Please upload PNG, JPG, JPEG, WEBP, HEIC, or HEIF only.",
+      "error",
     );
     return;
   }
 
   if (paymentProofFile.size > maxSize) {
-    showMessage("Proof image is too large. Please upload an image below 5MB.", "error");
+    showMessage(
+      "Proof image is too large. Please upload an image below 5MB.",
+      "error",
+    );
     return;
   }
 
@@ -461,7 +481,9 @@ async function submitReservation(e) {
   // so the field name must be proof_image.
   formData.append("proof_image", paymentProofFile);
 
-  const submitBtn = document.querySelector('#paymentForm button[type="submit"]');
+  const submitBtn = document.querySelector(
+    '#paymentForm button[type="submit"]',
+  );
   const originalText = submitBtn ? submitBtn.textContent : "Submit Reservation";
 
   try {
@@ -492,7 +514,7 @@ async function submitReservation(e) {
     console.error("submitReservation error:", error);
     showMessage(
       error.message || "Something went wrong. Please try again.",
-      "error"
+      "error",
     );
   } finally {
     if (submitBtn) {
@@ -516,7 +538,7 @@ async function safeReadJson(response) {
     console.error("Non-JSON response from server:", text);
 
     throw new Error(
-      "Server returned HTML instead of JSON. Check if backend route /api/bookings is running correctly."
+      "Server returned HTML instead of JSON. Check if backend route /api/bookings is running correctly.",
     );
   }
 }
