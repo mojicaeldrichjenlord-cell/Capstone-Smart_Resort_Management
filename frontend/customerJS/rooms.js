@@ -10,7 +10,6 @@
 // - Works from frontend/customerHTML/rooms.html
 // ============================================================
 
-const API_BASE = "http://127.0.0.1:5000/api";
 
 let allRooms = [];
 let currentFilter = "all";

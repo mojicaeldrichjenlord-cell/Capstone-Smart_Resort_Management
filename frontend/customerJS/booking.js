@@ -10,7 +10,6 @@
 // - Works from frontend/customerHTML/booking.html
 // ============================================================
 
-const API_BASE = "http://127.0.0.1:5000/api";
 const BOOKING_DRAFT_KEY = "smartresort_booking_draft_v2";
 
 let availableAccommodations = [];

@@ -10,7 +10,6 @@
 // - Works from frontend/adminHTML/admin-rooms.html
 // ============================================================
 
-const API_BASE = "http://127.0.0.1:5000/api";
 
 let categories = [];
 let allRooms = [];

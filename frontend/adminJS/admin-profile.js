@@ -8,7 +8,6 @@
 // - Works from frontend/adminHTML/admin-profile.html
 // ============================================================
 
-const API_BASE = "http://127.0.0.1:5000/api";
 
 // ============================================================
 // SECTION 1: Page startup

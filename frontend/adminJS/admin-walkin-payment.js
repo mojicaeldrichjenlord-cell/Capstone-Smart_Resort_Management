@@ -10,7 +10,6 @@
 // - Works from frontend/adminHTML/admin-walkin-payment.html
 // ============================================================
 
-const API_BASE = "http://127.0.0.1:5000/api";
 const ADMIN_WALKIN_DRAFT_KEY = "smartresort_admin_walkin_draft_v2";
 
 let walkInDraft = null;

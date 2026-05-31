@@ -9,7 +9,6 @@
 // - Works from frontend/adminHTML/admin-reports.html
 // ============================================================
 
-const API_BASE = "http://127.0.0.1:5000/api";
 
 let allBookings = [];
 let bookingStatusChart = null;

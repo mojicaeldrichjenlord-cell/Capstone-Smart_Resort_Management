@@ -10,7 +10,6 @@
 // - Works from frontend/customerHTML/my-bookings.html
 // ============================================================
 
-const API_BASE = "http://127.0.0.1:5000/api";
 
 let currentUser = null;
 let selectedModifyBookingId = null;

@@ -8,7 +8,6 @@
 // - Works from frontend/customerHTML/booking-receipt.html
 // ============================================================
 
-const API_BASE = "http://127.0.0.1:5000/api";
 
 document.addEventListener("DOMContentLoaded", () => {
   const user = JSON.parse(localStorage.getItem("user"));

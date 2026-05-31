@@ -11,7 +11,6 @@
 // - Works from frontend/adminHTML/admin-guests-inside.html
 // ============================================================
 
-const API_BASE = "http://127.0.0.1:5000/api";
 const EXTRA_BED_RATE = 200;
 
 let allBookings = [];
