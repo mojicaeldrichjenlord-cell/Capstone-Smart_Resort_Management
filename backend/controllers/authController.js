@@ -104,6 +104,58 @@ async function sendOtpEmail({ email, otp, purpose }) {
 }
 
 // ============================================================
+// SECTION 4.1: Welcome email sender
+// Sends email after successful account verification.
+// ============================================================
+
+async function sendWelcomeEmail({ email, fullname }) {
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    throw new Error("Email sender is not configured in .env.");
+  }
+
+  const transporter = createEmailTransporter();
+  const fromName = process.env.EMAIL_FROM_NAME || "SmartResort";
+
+  await transporter.sendMail({
+    from: `"${fromName}" <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject: "Welcome to Arvic Seaside",
+    html: `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #0f172a;">
+        <h2 style="color:#0f766e;">Welcome to Arvic Seaside!</h2>
+
+        <p>Hello <strong>${fullname || "Guest"}</strong>,</p>
+
+        <p>
+          Your email has been verified successfully and your guest account is now active.
+        </p>
+
+        <p>
+          You can now browse accommodations, create reservations, track your bookings,
+          and view your receipt details through the SmartResort system.
+        </p>
+
+        <div style="
+          margin-top:16px;
+          padding:14px 18px;
+          background:#ecfeff;
+          border:1px solid #99f6e4;
+          border-radius:12px;
+          color:#0f766e;
+          font-weight:700;
+        ">
+          Thank you for choosing Arvic Seaside Beach Resort and Hotel.
+        </div>
+
+        <p style="margin-top:18px;color:#64748b;">
+          This is an automated email. Please do not reply directly to this message.
+        </p>
+      </div>
+    `,
+  });
+}
+
+// ============================================================
 // SECTION 5: Register customer account
 // Creates account if new.
 // If email exists but not verified, updates info and sends new OTP.
@@ -362,14 +414,25 @@ exports.verifyRegistrationOtp = async (req, res) => {
 
     await db.promise().query(
       `
-      UPDATE users
-      SET is_verified = 1,
-          register_otp_hash = NULL,
-          register_otp_expires = NULL
-      WHERE id = ?
-      `,
+  UPDATE users
+  SET is_verified = 1,
+      register_otp_hash = NULL,
+      register_otp_expires = NULL
+  WHERE id = ?
+  `,
       [user.id],
     );
+
+    // Send welcome email after successful verification.
+    // If welcome email fails, account verification still succeeds.
+    try {
+      await sendWelcomeEmail({
+        email: user.email,
+        fullname: user.fullname,
+      });
+    } catch (welcomeEmailError) {
+      console.error("sendWelcomeEmail error:", welcomeEmailError.message);
+    }
 
     return res.status(200).json({
       success: true,
