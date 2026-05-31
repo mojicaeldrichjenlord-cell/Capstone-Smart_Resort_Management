@@ -1,7 +1,7 @@
 /* ======================================================
    ADMIN DASHBOARD CSS
    File: frontend/adminCSS/admin.css
-   Clean card layout, no horizontal scroll
+   Clean admin dashboard with reservation card scroll area
 ====================================================== */
 
 .admin-wrapper {
@@ -65,7 +65,12 @@
   border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
-/* OVERVIEW */
+.hero-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.03);
+}
+
+/* OVERVIEW CARDS */
 .admin-overview-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -74,8 +79,8 @@
 }
 
 .overview-card {
-  background: rgba(255, 255, 255, 0.97);
-  border: 1px solid rgba(203, 213, 225, 0.9);
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 60%, #ecfeff 100%);
+  border: 1px solid rgba(20, 184, 166, 0.16);
   border-radius: 24px;
   padding: 22px;
   box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
@@ -89,7 +94,7 @@
 }
 
 .overview-value {
-  color: #0f172a;
+  color: #0f766e;
   font-size: 2rem;
   font-weight: 900;
 }
@@ -101,10 +106,10 @@
   line-height: 1.4;
 }
 
-/* PANEL */
+/* PANELS */
 .admin-panel {
-  background: rgba(255, 255, 255, 0.97);
-  border: 1px solid rgba(203, 213, 225, 0.9);
+  background: linear-gradient(135deg, #f0fdfa 0%, #f8fafc 45%, #ecfeff 100%);
+  border: 1px solid rgba(20, 184, 166, 0.22);
   border-radius: 28px;
   box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08);
   padding: 24px;
@@ -174,7 +179,7 @@
   border-radius: 14px;
   border: 1px solid #cbd5e1;
   outline: none;
-  background: #fff;
+  background: #ffffff;
   color: #0f172a;
   font-size: 0.95rem;
 }
@@ -185,23 +190,47 @@
   box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.15);
 }
 
-/* IMPORTANT: old table wrapper becomes card container */
+/* RESERVATION SCROLL CONTAINER */
 .admin-table-wrap {
-  overflow: visible !important;
   border-radius: 22px;
-  border: 1px solid #dbe7ef;
-  background: #f8fafc;
+  border: 1px solid rgba(20, 184, 166, 0.22);
+  background: linear-gradient(135deg, #ecfeff 0%, #f0fdfa 45%, #f8fafc 100%);
   padding: 16px;
+
+  max-height: 640px;
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  scrollbar-width: thin;
+  scrollbar-color: #14b8a6 #e2e8f0;
 }
 
-/* hide old table behavior if still present */
+.admin-table-wrap::-webkit-scrollbar {
+  width: 10px;
+}
+
+.admin-table-wrap::-webkit-scrollbar-track {
+  background: #e2e8f0;
+  border-radius: 999px;
+}
+
+.admin-table-wrap::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #14b8a6, #0f766e);
+  border-radius: 999px;
+}
+
+.admin-table-wrap::-webkit-scrollbar-thumb:hover {
+  background: #0f766e;
+}
+
+/* HIDE OLD TABLE BEHAVIOR */
 .admin-table {
   width: 100%;
   min-width: 0 !important;
   border-collapse: collapse;
 }
 
-/* STATE */
+/* STATE BOX */
 .reservation-state-box {
   background: #ffffff;
   border: 1px solid #dbe7ef;
@@ -218,19 +247,19 @@
   border-color: #fecaca;
 }
 
-/* CARD LIST */
+/* RESERVATION CARD LIST */
 .reservation-card-list {
   display: grid;
   gap: 18px;
 }
 
-/* CARD */
+/* RESERVATION CARD */
 .reservation-card {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 175px;
   gap: 18px;
-  background: #ffffff;
-  border: 1px solid #dbe7ef;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 55%, #f0fdfa 100%);
+  border: 1px solid rgba(20, 184, 166, 0.2);
   border-radius: 24px;
   padding: 18px;
   box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
@@ -279,7 +308,7 @@
 }
 
 .reservation-info-box {
-  background: #f8fafc;
+  background: rgba(248, 250, 252, 0.92);
   border: 1px solid #e2e8f0;
   border-radius: 16px;
   padding: 13px;
@@ -549,6 +578,10 @@
 
 /* RESPONSIVE */
 @media (max-width: 1200px) {
+  .admin-table-wrap {
+    max-height: 700px;
+  }
+
   .reservation-card {
     grid-template-columns: 1fr;
   }
@@ -579,6 +612,11 @@
 @media (max-width: 760px) {
   .admin-wrapper {
     width: 92%;
+  }
+
+  .admin-table-wrap {
+    max-height: 620px;
+    padding: 12px;
   }
 
   .admin-overview-grid,
