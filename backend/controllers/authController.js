@@ -2,7 +2,7 @@
 // SMARTRESORT AUTH CONTROLLER
 // Purpose:
 // - Register customer account
-// - Send registration email OTP
+// - Send registration email OTP using Brevo API
 // - Verify registration OTP
 // - Login user
 // - Forgot password OTP
@@ -12,7 +12,7 @@
 
 const db = require("../config/db");
 const bcrypt = require("bcrypt");
-const nodemailer = require("nodemailer");
+const axios = require("axios");
 
 // ============================================================
 // SECTION 1: Email normalizer
@@ -35,135 +35,120 @@ function generateOtp() {
 }
 
 // ============================================================
-// SECTION 3: Email transporter
-// Uses Gmail account from .env to send OTP emails.
-// ============================================================
-
-function createEmailTransporter() {
-  return nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 587,
-    secure: false,
-    requireTLS: true,
-    family: 4,
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-    connectionTimeout: 30000,
-    greetingTimeout: 30000,
-    socketTimeout: 30000,
-  });
-}
-
-// ============================================================
-// SECTION 4: General OTP email sender
-// Sends OTP for registration or forgot password.
+// SECTION 3: Brevo OTP email sender
+// Sends OTP for registration or forgot password using Brevo API.
+// Required .env / Render Environment:
+// BREVO_API_KEY
+// EMAIL_FROM
+// EMAIL_FROM_NAME
 // ============================================================
 
 async function sendOtpEmail({ email, otp, purpose }) {
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    throw new Error("Email sender is not configured in .env.");
+  const brevoApiKey = process.env.BREVO_API_KEY;
+  const senderEmail = process.env.EMAIL_FROM || process.env.EMAIL_USER;
+  const senderName =
+    process.env.EMAIL_FROM_NAME || "Arvic Seaside Beach Resort and Hotel";
+
+  if (!brevoApiKey) {
+    throw new Error("BREVO_API_KEY is missing.");
   }
 
-  const transporter = createEmailTransporter();
-  const fromName = process.env.EMAIL_FROM_NAME || "SmartResort";
+  if (!senderEmail) {
+    throw new Error("EMAIL_FROM is missing.");
+  }
 
-  const title =
-    purpose === "register"
-      ? "SmartResort Email Verification"
-      : "SmartResort Password Reset";
+  if (!email || !otp) {
+    throw new Error("Recipient email and OTP are required.");
+  }
 
-  const message =
-    purpose === "register"
-      ? "Your registration verification OTP code is:"
-      : "Your password reset OTP code is:";
+  const isRegister = purpose === "register";
 
-  await transporter.sendMail({
-    from: `"${fromName}" <${process.env.EMAIL_USER}>`,
-    to: email,
-    subject: title,
-    html: `
-      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #0f172a;">
-        <h2 style="color:#0f766e;">${title}</h2>
-        <p>Hello,</p>
-        <p>${message}</p>
+  const title = isRegister
+    ? "SmartResort Email Verification"
+    : "SmartResort Password Reset";
 
-        <div style="
-          display:inline-block;
-          padding:14px 20px;
-          background:#ecfeff;
-          border:1px solid #99f6e4;
-          border-radius:12px;
-          font-size:26px;
-          font-weight:800;
-          letter-spacing:4px;
-          color:#0f766e;
-        ">
-          ${otp}
-        </div>
+  const message = isRegister
+    ? "Your registration verification OTP code is:"
+    : "Your password reset OTP code is:";
 
-        <p>This code will expire in <strong>10 minutes</strong>.</p>
-        <p>If you did not request this, please ignore this email.</p>
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #0f172a; max-width: 560px; margin: auto; padding: 24px; border: 1px solid #e5e7eb; border-radius: 16px;">
+      <h2 style="color:#0f766e; margin-top: 0;">${title}</h2>
+
+      <p>Hello,</p>
+      <p>${message}</p>
+
+      <div style="
+        display:block;
+        padding:16px 20px;
+        background:#ecfeff;
+        border:1px solid #99f6e4;
+        border-radius:14px;
+        font-size:30px;
+        font-weight:800;
+        letter-spacing:6px;
+        color:#0f766e;
+        text-align:center;
+        margin: 18px 0;
+      ">
+        ${otp}
       </div>
-    `,
-  });
+
+      <p>This code will expire in <strong>10 minutes</strong>.</p>
+      <p>If you did not request this, please ignore this email.</p>
+
+      <hr style="border:none; border-top:1px solid #e5e7eb; margin:20px 0;" />
+
+      <p style="font-size:13px; color:#64748b;">
+        SmartResort - Arvic Seaside Beach Resort and Hotel
+      </p>
+    </div>
+  `;
+
+  try {
+    await axios.post(
+      "https://api.brevo.com/v3/smtp/email",
+      {
+        sender: {
+          name: senderName,
+          email: senderEmail,
+        },
+        to: [
+          {
+            email,
+          },
+        ],
+        subject: title,
+        htmlContent,
+      },
+      {
+        headers: {
+          "api-key": brevoApiKey,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        timeout: 30000,
+      }
+    );
+  } catch (error) {
+    console.error("Brevo email error:", {
+      message: error.message,
+      status: error.response?.status,
+      data: error.response?.data,
+    });
+
+    const brevoMessage =
+      error.response?.data?.message ||
+      error.response?.data?.code ||
+      error.message ||
+      "Brevo email sending failed.";
+
+    throw new Error(`Brevo email sending failed: ${brevoMessage}`);
+  }
 }
 
 // ============================================================
-// SECTION 4.1: Welcome email sender
-// Sends email after successful account verification.
-// ============================================================
-
-async function sendWelcomeEmail({ email, fullname }) {
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    throw new Error("Email sender is not configured in .env.");
-  }
-
-  const transporter = createEmailTransporter();
-  const fromName = process.env.EMAIL_FROM_NAME || "SmartResort";
-
-  await transporter.sendMail({
-    from: `"${fromName}" <${process.env.EMAIL_USER}>`,
-    to: email,
-    subject: "Welcome to Arvic Seaside",
-    html: `
-      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #0f172a;">
-        <h2 style="color:#0f766e;">Welcome to Arvic Seaside!</h2>
-
-        <p>Hello <strong>${fullname || "Guest"}</strong>,</p>
-
-        <p>
-          Your email has been verified successfully and your guest account is now active.
-        </p>
-
-        <p>
-          You can now browse accommodations, create reservations, track your bookings,
-          and view your receipt details through the SmartResort system.
-        </p>
-
-        <div style="
-          margin-top:16px;
-          padding:14px 18px;
-          background:#ecfeff;
-          border:1px solid #99f6e4;
-          border-radius:12px;
-          color:#0f766e;
-          font-weight:700;
-        ">
-          Thank you for choosing Arvic Seaside Beach Resort and Hotel.
-        </div>
-
-        <p style="margin-top:18px;color:#64748b;">
-          This is an automated email. Please do not reply directly to this message.
-        </p>
-      </div>
-    `,
-  });
-}
-
-// ============================================================
-// SECTION 5: Register customer account
+// SECTION 4: Register customer account
 // Creates account if new.
 // If email exists but not verified, updates info and sends new OTP.
 // If email exists and verified, blocks registration.
@@ -199,7 +184,7 @@ exports.register = async (req, res) => {
       WHERE email = ?
       LIMIT 1
       `,
-      [cleanEmail],
+      [cleanEmail]
     );
 
     const otp = generateOtp();
@@ -213,7 +198,6 @@ exports.register = async (req, res) => {
     if (existingUsers.length > 0) {
       const existingUser = existingUsers[0];
 
-      // Already verified = real registered account
       if (Number(existingUser.is_verified) === 1) {
         return res.status(400).json({
           success: false,
@@ -221,7 +205,6 @@ exports.register = async (req, res) => {
         });
       }
 
-      // Not verified yet = allow user to resend OTP and update details
       await db.promise().query(
         `
         UPDATE users
@@ -247,7 +230,7 @@ exports.register = async (req, res) => {
           otpHash,
           expiresAt,
           existingUser.id,
-        ],
+        ]
       );
 
       await sendOtpEmail({
@@ -295,7 +278,7 @@ exports.register = async (req, res) => {
         0,
         otpHash,
         expiresAt,
-      ],
+      ]
     );
 
     await sendOtpEmail({
@@ -322,7 +305,7 @@ exports.register = async (req, res) => {
 };
 
 // ============================================================
-// SECTION 6: Verify registration OTP
+// SECTION 5: Verify registration OTP
 // Confirms the user's email and returns user data for auto-login.
 // ============================================================
 
@@ -357,7 +340,7 @@ exports.verifyRegistrationOtp = async (req, res) => {
       WHERE email = ?
       LIMIT 1
       `,
-      [cleanEmail],
+      [cleanEmail]
     );
 
     if (!users.length) {
@@ -421,25 +404,14 @@ exports.verifyRegistrationOtp = async (req, res) => {
 
     await db.promise().query(
       `
-  UPDATE users
-  SET is_verified = 1,
-      register_otp_hash = NULL,
-      register_otp_expires = NULL
-  WHERE id = ?
-  `,
-      [user.id],
+      UPDATE users
+      SET is_verified = 1,
+          register_otp_hash = NULL,
+          register_otp_expires = NULL
+      WHERE id = ?
+      `,
+      [user.id]
     );
-
-    // Send welcome email after successful verification.
-    // If welcome email fails, account verification still succeeds.
-    try {
-      await sendWelcomeEmail({
-        email: user.email,
-        fullname: user.fullname,
-      });
-    } catch (welcomeEmailError) {
-      console.error("sendWelcomeEmail error:", welcomeEmailError.message);
-    }
 
     return res.status(200).json({
       success: true,
@@ -467,7 +439,7 @@ exports.verifyRegistrationOtp = async (req, res) => {
 };
 
 // ============================================================
-// SECTION 7: Resend registration OTP
+// SECTION 6: Resend registration OTP
 // Sends a new OTP for unverified accounts.
 // ============================================================
 
@@ -491,7 +463,7 @@ exports.resendRegistrationOtp = async (req, res) => {
       WHERE email = ?
       LIMIT 1
       `,
-      [cleanEmail],
+      [cleanEmail]
     );
 
     if (!users.length) {
@@ -520,7 +492,7 @@ exports.resendRegistrationOtp = async (req, res) => {
       SET register_otp_hash = ?, register_otp_expires = ?
       WHERE id = ?
       `,
-      [otpHash, expiresAt, user.id],
+      [otpHash, expiresAt, user.id]
     );
 
     await sendOtpEmail({
@@ -545,7 +517,7 @@ exports.resendRegistrationOtp = async (req, res) => {
 };
 
 // ============================================================
-// SECTION 8: Login user
+// SECTION 7: Login user
 // Blocks disabled and unverified accounts.
 // ============================================================
 
@@ -577,7 +549,7 @@ exports.login = async (req, res) => {
       FROM users
       WHERE email = ?
       `,
-      [cleanEmail],
+      [cleanEmail]
     );
 
     if (users.length === 0) {
@@ -641,7 +613,7 @@ exports.login = async (req, res) => {
 };
 
 // ============================================================
-// SECTION 9: Request forgot password OTP
+// SECTION 8: Request forgot password OTP
 // Sends password reset OTP to registered email.
 // ============================================================
 
@@ -665,7 +637,7 @@ exports.requestPasswordResetOtp = async (req, res) => {
       WHERE email = ?
       LIMIT 1
       `,
-      [cleanEmail],
+      [cleanEmail]
     );
 
     if (!users.length) {
@@ -695,7 +667,7 @@ exports.requestPasswordResetOtp = async (req, res) => {
       SET reset_otp_hash = ?, reset_otp_expires = ?
       WHERE id = ?
       `,
-      [otpHash, expiresAt, user.id],
+      [otpHash, expiresAt, user.id]
     );
 
     await sendOtpEmail({
@@ -720,7 +692,7 @@ exports.requestPasswordResetOtp = async (req, res) => {
 };
 
 // ============================================================
-// SECTION 10: Reset password using OTP
+// SECTION 9: Reset password using OTP
 // Verifies reset OTP and updates password.
 // ============================================================
 
@@ -752,7 +724,7 @@ exports.resetPasswordWithOtp = async (req, res) => {
       WHERE email = ?
       LIMIT 1
       `,
-      [cleanEmail],
+      [cleanEmail]
     );
 
     if (!users.length) {
@@ -797,7 +769,7 @@ exports.resetPasswordWithOtp = async (req, res) => {
       SET password = ?, reset_otp_hash = NULL, reset_otp_expires = NULL
       WHERE id = ?
       `,
-      [hashedPassword, user.id],
+      [hashedPassword, user.id]
     );
 
     return res.status(200).json({
@@ -816,7 +788,7 @@ exports.resetPasswordWithOtp = async (req, res) => {
 };
 
 // ============================================================
-// SECTION 11: Get user profile
+// SECTION 10: Get user profile
 // Loads profile information.
 // ============================================================
 
@@ -838,7 +810,7 @@ exports.getProfile = async (req, res) => {
       FROM users
       WHERE id = ?
       `,
-      [userId],
+      [userId]
     );
 
     if (rows.length === 0) {
@@ -864,7 +836,7 @@ exports.getProfile = async (req, res) => {
 };
 
 // ============================================================
-// SECTION 12: Update user profile
+// SECTION 11: Update user profile
 // Updates name, email, phone, and address.
 // ============================================================
 
@@ -888,7 +860,7 @@ exports.updateProfile = async (req, res) => {
       FROM users
       WHERE email = ? AND id != ?
       `,
-      [cleanEmail, userId],
+      [cleanEmail, userId]
     );
 
     if (existingEmail.length > 0) {
@@ -904,7 +876,7 @@ exports.updateProfile = async (req, res) => {
       SET fullname = ?, email = ?, phone = ?, address = ?
       WHERE id = ?
       `,
-      [fullname, cleanEmail, phone, address, userId],
+      [fullname, cleanEmail, phone, address, userId]
     );
 
     const [updatedRows] = await db.promise().query(
@@ -921,7 +893,7 @@ exports.updateProfile = async (req, res) => {
       FROM users
       WHERE id = ?
       `,
-      [userId],
+      [userId]
     );
 
     return res.status(200).json({
@@ -941,7 +913,7 @@ exports.updateProfile = async (req, res) => {
 };
 
 // ============================================================
-// SECTION 13: Change password from profile
+// SECTION 12: Change password from profile
 // Requires current password and new password.
 // ============================================================
 
@@ -986,12 +958,10 @@ exports.changePassword = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    await db
-      .promise()
-      .query("UPDATE users SET password = ? WHERE id = ?", [
-        hashedPassword,
-        userId,
-      ]);
+    await db.promise().query("UPDATE users SET password = ? WHERE id = ?", [
+      hashedPassword,
+      userId,
+    ]);
 
     return res.status(200).json({
       success: true,
