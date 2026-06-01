@@ -830,9 +830,7 @@ function formatPaymentMethod(method) {
 
   if (value === "gcash") return "GCash";
   if (value === "paymaya") return "Maya / PayMaya";
-  if (value === "maya") return "Maya";
   if (value === "cash") return "Cash";
-  if (value === "bank_transfer") return "Bank Transfer";
 
   return capitalize(value.replaceAll("_", " "));
 }

@@ -31,8 +31,6 @@
   <body class="has-fixed-navbar">
     <!-- ======================================================
        ADMIN NAVBAR
-       This page is inside adminHTML.
-       Profile is not moved yet, so it still uses ../admin-profile.html.
     ======================================================= -->
     <header class="navbar">
       <div class="logo">Arvic Seaside Admin</div>
@@ -63,14 +61,14 @@
         <h1>Reservation Reports</h1>
 
         <p>
-          Minimal and easy-to-read analytics for reservations, guests, collected
-          money, online bookings, walk-in/manual reservations, payments, and
-          accommodation usage.
+          Monthly meeting-friendly analytics for reservations, guests, collected
+          money, online bookings, walk-in/manual reservations, accommodation
+          demand, peak days, guest trend, and cancellations.
         </p>
 
         <div class="print-report-meta">
           <strong id="printReportDate">Generated: -</strong>
-          <span id="printReportRange">Date Range: All Records</span>
+          <span id="printReportRange">Date Range: Today</span>
         </div>
       </section>
 
@@ -81,8 +79,9 @@
         <h2>Filter Report</h2>
 
         <p>
-          Select a start and end date. This report includes both online and
-          manual/walk-in reservations.
+          By default, this page loads today only. Select a start and end date
+          when admin/staff needs monthly, yearly, or custom analytics for
+          printing and meetings.
         </p>
 
         <div class="filter-grid">
@@ -103,7 +102,7 @@
           </button>
 
           <button id="clearReportFilterBtn" class="btn-secondary">
-            Reset Filter
+            Reset to Today
           </button>
 
           <button id="printReportBtn" class="btn-primary">
@@ -144,8 +143,8 @@
         </div>
 
         <div class="stat-card">
-          <h3>Pending</h3>
-          <p id="pendingBookingsCount">0</p>
+          <h3>Completed</h3>
+          <p id="completedBookingsCount">0</p>
         </div>
 
         <div class="stat-card">
@@ -160,10 +159,10 @@
       <section class="chart-grid">
         <div class="chart-box">
           <div class="chart-header">
-            <h2>Reservations by Status</h2>
+            <h2>Reservation Outcome Summary</h2>
             <p>
-              Shows pending, approved, rejected, cancelled, and completed
-              reservations.
+              Shows approved, completed, and cancelled reservations for the
+              selected report period.
             </p>
           </div>
 
@@ -199,12 +198,15 @@
 
         <div class="chart-box">
           <div class="chart-header">
-            <h2>Payment Method Summary</h2>
-            <p>Displays how customers paid or submitted payment details.</p>
+            <h2>Monthly Sales by Accommodation Category</h2>
+            <p>
+              Shows which category earns more money: Rooms, Cottages, or
+              Function Areas.
+            </p>
           </div>
 
           <div class="chart-canvas-wrap">
-            <canvas id="paymentMethodChart"></canvas>
+            <canvas id="salesByCategoryChart"></canvas>
           </div>
         </div>
 
@@ -227,6 +229,47 @@
 
           <div class="chart-canvas-wrap">
             <canvas id="slotUsageChart"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-box">
+          <div class="chart-header">
+            <h2>Peak Reservation Days</h2>
+            <p>
+              Shows which days get the most reservations, useful for staffing
+              and promo planning.
+            </p>
+          </div>
+
+          <div class="chart-canvas-wrap">
+            <canvas id="peakReservationDaysChart"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-box">
+          <div class="chart-header">
+            <h2>Guest Volume Trend</h2>
+            <p>
+              Shows how guest volume changes across the selected period.
+            </p>
+          </div>
+
+          <div class="chart-canvas-wrap">
+            <canvas id="guestVolumeTrendChart"></canvas>
+          </div>
+        </div>
+
+        <div class="chart-box">
+          <div class="chart-header">
+            <h2>Monthly Cancellation Summary</h2>
+            <p>
+              Compares successful reservations against cancelled
+              reservations.
+            </p>
+          </div>
+
+          <div class="chart-canvas-wrap">
+            <canvas id="monthlyCancellationChart"></canvas>
           </div>
         </div>
       </section>

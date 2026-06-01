@@ -58,7 +58,7 @@
 
         <p>
           Manage online and manual reservations, monitor today’s resort
-          activity, update payment progress, and review all reservation records
+          activity, check in arriving guests, track payment progress, and review all reservation records
           in one dashboard.
         </p>
 
@@ -85,13 +85,13 @@
         <div class="overview-card">
           <div class="overview-label">Total Reservations</div>
           <div class="overview-value" id="totalBookings">0</div>
-          <div class="overview-note">All online and manual records</div>
+          <div class="overview-note">Today's online and manual records</div>
         </div>
 
         <div class="overview-card">
-          <div class="overview-label">Pending</div>
-          <div class="overview-value" id="pendingCount">0</div>
-          <div class="overview-note">Needs admin checking</div>
+          <div class="overview-label">Partially Paid</div>
+          <div class="overview-value" id="partiallyPaidCount">0</div>
+          <div class="overview-note">Downpayment paid / balance onsite</div>
         </div>
 
         <div class="overview-card">
@@ -107,9 +107,9 @@
         </div>
 
         <div class="overview-card">
-          <div class="overview-label">Today Reservations</div>
-          <div class="overview-value" id="todayBookings">0</div>
-          <div class="overview-note">Created today</div>
+          <div class="overview-label">Online Today</div>
+          <div class="overview-value" id="onlineToday">0</div>
+          <div class="overview-note">Customer online reservations today</div>
         </div>
 
         <div class="overview-card">
@@ -121,7 +121,7 @@
         <div class="overview-card">
           <div class="overview-label">Guests Inside</div>
           <div class="overview-value" id="guestsInside">0</div>
-          <div class="overview-note">Estimated active guests</div>
+          <div class="overview-note">Checked-in guests currently inside</div>
         </div>
 
         <div class="overview-card">
@@ -160,7 +160,6 @@
             <label for="statusFilter">Reservation Status</label>
             <select id="statusFilter">
               <option value="">All</option>
-              <option value="pending">Pending</option>
               <option value="approved">Approved</option>
               <option value="rejected">Rejected</option>
               <option value="cancelled">Cancelled</option>
@@ -172,8 +171,6 @@
             <label for="paymentStatusFilter">Payment Status</label>
             <select id="paymentStatusFilter">
               <option value="">All</option>
-              <option value="unpaid">Unpaid</option>
-              <option value="pending">Pending</option>
               <option value="paid">Paid</option>
               <option value="partially_paid">Partially Paid</option>
               <option value="rejected">Rejected</option>
@@ -187,8 +184,6 @@
               <option value="cash">Cash</option>
               <option value="gcash">GCash</option>
               <option value="paymaya">PayMaya</option>
-              <option value="bank_transfer">Bank Transfer</option>
-              <option value="other">Other</option>
             </select>
           </div>
         </div>
@@ -201,10 +196,10 @@
       <section class="admin-panel">
         <div class="panel-header">
           <div>
-            <h2>All Reservations</h2>
+            <h2>Today's Reservations</h2>
             <p>
-              Includes online reservations, manual reservations, and walk-in
-              records.
+              Shows online reservations, manual reservations, and walk-in
+              records created today.
             </p>
           </div>
 

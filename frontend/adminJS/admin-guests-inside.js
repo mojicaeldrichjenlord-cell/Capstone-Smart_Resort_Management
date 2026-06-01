@@ -4,7 +4,7 @@
 // - Check admin/staff access
 // - Load active approved guests for today
 // - Search active guests
-// - Mark payment as paid
+// - Show only checked-in guests
 // - Check out guests
 // - Add/update extra bed fee
 // - Open receipt page
@@ -130,8 +130,14 @@ async function loadGuestsInside() {
       `;
     }
 
-    const response = await fetch(`${API_BASE}/admin/bookings`);
-    const data = await response.json();
+    let response = await fetch(`${API_BASE}/bookings?scope=today`);
+    let data = await response.json();
+
+    // Fallback for older backend routes.
+    if (!response.ok) {
+      response = await fetch(`${API_BASE}/admin/bookings`);
+      data = await response.json();
+    }
 
     if (!response.ok) {
       throw new Error(data.message || "Failed to load guests inside.");
@@ -202,39 +208,64 @@ function filterGuestsInside(bookings) {
 
 function getActiveGuestsToday(bookings) {
   const now = new Date();
-  const todayOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   return bookings.filter((booking) => {
-    const status = String(booking.status || "").toLowerCase();
+    const status = getReservationStatus(booking);
+    const isCheckedIn = isBookingCheckedIn(booking);
 
-    if (status !== "approved") {
+    // Guests Inside must only show guests already allowed to enter.
+    // Payment alone is not enough; admin/staff must click Check In / Allow Entry first.
+    if (status !== "approved" || !isCheckedIn) {
       return false;
     }
 
-    const checkInDate = normalizeDate(booking.check_in || booking.check_in_date);
+    const checkInDate = booking.check_in || booking.check_in_date;
+    const checkOutDate = booking.check_out || booking.check_out_date;
 
-    const checkOutDate = normalizeDate(
-      booking.check_out || booking.check_out_date
+    const checkInDateTime = combineDateAndTime(
+      checkInDate,
+      booking.check_in_time,
+      false
     );
 
-    if (!checkInDate || !checkOutDate) {
+    const checkOutDateTime = combineDateAndTime(
+      checkOutDate,
+      booking.check_out_time,
+      true
+    );
+
+    if (!checkInDateTime || !checkOutDateTime) {
       return false;
     }
 
-    const checkInOnly = new Date(
-      checkInDate.getFullYear(),
-      checkInDate.getMonth(),
-      checkInDate.getDate()
-    );
-
-    const checkOutOnly = new Date(
-      checkOutDate.getFullYear(),
-      checkOutDate.getMonth(),
-      checkOutDate.getDate()
-    );
-
-    return checkInOnly <= todayOnly && checkOutOnly >= todayOnly;
+    return checkInDateTime <= now && checkOutDateTime >= now;
   });
+}
+
+function isBookingCheckedIn(booking) {
+  const rawValue = booking.is_checked_in;
+
+  return (
+    rawValue === true ||
+    rawValue === 1 ||
+    rawValue === "1" ||
+    String(rawValue || "").toLowerCase() === "true"
+  );
+}
+
+// ============================================================
+// SECTION 8: Reservation status helper
+// Supports both booking.status and booking.reservation_status
+// because some backend routes return different field names.
+// ============================================================
+
+function getReservationStatus(booking) {
+  return String(
+    booking.status ||
+      booking.reservation_status ||
+      booking.booking_status ||
+      ""
+  ).toLowerCase();
 }
 
 // ============================================================
@@ -251,11 +282,11 @@ function updateSummary(bookings) {
     totalGuests += Number(booking.guests || booking.guest_count || 0);
 
     const remainingBalance = Number(booking.remaining_balance || 0);
-    const entranceFee = Number(booking.estimated_entrance_fee || 0);
-    const extraBedFee = Number(booking.extra_bed_fee || 0);
+    const entranceFee = getUnpaidEntranceFee(booking);
+    const unpaidExtraBedFee = getUnpaidExtraBedFee(booking);
     const timeInfo = getTimeStatus(booking);
 
-    if (remainingBalance > 0 || entranceFee > 0 || extraBedFee > 0) {
+    if (remainingBalance > 0 || entranceFee > 0 || unpaidExtraBedFee > 0) {
       needsPaymentCount += 1;
     }
 
@@ -303,9 +334,11 @@ function renderGuestsInside(bookings) {
       ).toLowerCase();
 
       const remainingBalance = Number(booking.remaining_balance || 0);
-      const entranceFee = Number(booking.estimated_entrance_fee || 0);
+      const entranceFee = getUnpaidEntranceFee(booking);
       const extraBedCount = Number(booking.extra_bed_count || 0);
       const extraBedFee = Number(booking.extra_bed_fee || 0);
+      const unpaidExtraBedFee = getUnpaidExtraBedFee(booking);
+      const extraBedPaid = isExtraBedPaid(booking);
 
       const timeInfo = getTimeStatus(booking);
       const paymentClass = getPaymentClass(paymentStatus);
@@ -313,7 +346,7 @@ function renderGuestsInside(bookings) {
       const frontDeskNote = getFrontDeskNote(
         remainingBalance,
         entranceFee,
-        extraBedFee,
+        unpaidExtraBedFee,
         timeInfo
       );
 
@@ -321,27 +354,18 @@ function renderGuestsInside(bookings) {
         booking.room_name || booking.accommodation_name || "-"
       );
 
-      const markPaidButton =
-        paymentStatus !== "paid"
-          ? `
-            <button class="action-btn save-payment-btn" onclick="markAsPaid(${Number(
-              booking.id
-            )})">
-              Mark Paid
-            </button>
-          `
-          : `
-            <button class="action-btn save-payment-btn" disabled style="opacity:0.65;cursor:not-allowed;">
-              Paid
-            </button>
-          `;
+      const extraBedPaymentButton = renderExtraBedPaymentButton(
+        Number(booking.id),
+        extraBedFee,
+        extraBedPaid
+      );
 
       return `
         <tr class="${getRowClass(
           timeInfo,
           remainingBalance,
           entranceFee,
-          extraBedFee
+          unpaidExtraBedFee
         )}">
           <td>
             <strong>${escapeHtml(booking.reservation_code || `#${booking.id}`)}</strong>
@@ -396,8 +420,9 @@ function renderGuestsInside(bookings) {
             </div>
           </td>
 
-          <td class="${extraBedFee > 0 ? "money-warning" : "money-ok"}">
+          <td class="${unpaidExtraBedFee > 0 ? "money-warning" : "money-ok"}">
             ₱${formatMoney(extraBedFee)}
+            ${extraBedFee > 0 ? `<br><small>${extraBedPaid ? "Paid" : "Unpaid"}</small>` : ""}
           </td>
 
           <td>
@@ -412,7 +437,7 @@ function renderGuestsInside(bookings) {
                 Extra Bed
               </button>
 
-              ${markPaidButton}
+              ${extraBedPaymentButton}
 
               <button class="action-btn save-booking-btn" onclick="markAsCheckedOut(${Number(
                 booking.id
@@ -552,6 +577,8 @@ async function saveExtraBed() {
           ...booking,
           extra_bed_count: data.extra_bed_count,
           extra_bed_fee: data.extra_bed_fee,
+          extra_bed_paid: data.extra_bed_paid || 0,
+          extra_bed_paid_at: data.extra_bed_paid_at || null,
         };
       }
 
@@ -568,17 +595,38 @@ async function saveExtraBed() {
   }
 }
 
-// ============================================================
-// SECTION 14: Mark as paid
-// Sets payment status as paid using backend payment endpoint.
-// ============================================================
 
-async function markAsPaid(bookingId) {
-  if (!confirm("Mark this booking as fully paid?")) return;
+function renderExtraBedPaymentButton(bookingId, extraBedFee, extraBedPaid) {
+  const fee = Number(extraBedFee || 0);
+
+  if (fee <= 0) {
+    return "";
+  }
+
+  if (extraBedPaid) {
+    return `
+      <button class="action-btn save-payment-btn" disabled style="opacity:0.65;cursor:not-allowed;">
+        Extra Bed Paid
+      </button>
+    `;
+  }
+
+  return `
+    <button
+      class="action-btn save-payment-btn"
+      onclick="markExtraBedPaid(${Number(bookingId)})"
+    >
+      Mark Extra Bed Paid
+    </button>
+  `;
+}
+
+async function markExtraBedPaid(bookingId) {
+  if (!confirm("Mark this extra bed fee as paid?")) return;
 
   try {
     const response = await fetch(
-      `${API_BASE}/admin/payments/${bookingId}/mark-paid`,
+      `${API_BASE}/admin/bookings/${Number(bookingId)}/extra-bed-paid`,
       {
         method: "PUT",
         headers: {
@@ -590,15 +638,15 @@ async function markAsPaid(bookingId) {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.message || "Failed to mark as paid.");
+      throw new Error(data.message || "Failed to mark extra bed as paid.");
     }
 
     allBookings = allBookings.map((booking) => {
       if (Number(booking.id) === Number(bookingId)) {
         return {
           ...booking,
-          payment_status: "paid",
-          remaining_balance: 0,
+          extra_bed_paid: 1,
+          extra_bed_paid_at: data.extra_bed_paid_at || new Date().toISOString(),
         };
       }
 
@@ -606,13 +654,18 @@ async function markAsPaid(bookingId) {
     });
 
     refreshGuestsInsideView();
-
-    showMessage("Booking marked as fully paid.", "success");
+    showMessage("Extra bed fee marked as paid.", "success");
   } catch (error) {
-    console.error("markAsPaid error:", error);
-    showMessage(error.message || "Failed to mark as paid.", "error");
+    console.error("markExtraBedPaid error:", error);
+    showMessage(error.message || "Failed to mark extra bed as paid.", "error");
   }
 }
+
+// ============================================================
+// SECTION 14: Payment note
+// Booking balance and entrance fee are collected during Check In / Allow Entry
+// from the Admin Dashboard. Extra bed fee is shown here as a front-desk reminder.
+// ============================================================
 
 // ============================================================
 // SECTION 15: Check out guest
@@ -758,6 +811,42 @@ function getTimeStatus(booking) {
 // Gives staff a clear action note.
 // ============================================================
 
+function getUnpaidEntranceFee(booking) {
+  const entranceFee = Number(booking.estimated_entrance_fee || 0);
+  const entrancePaidValue = booking.entrance_fee_paid;
+  const entranceCollected = Number(booking.entrance_fee_collected || 0);
+
+  const isEntrancePaid =
+    entrancePaidValue === true ||
+    entrancePaidValue === 1 ||
+    entrancePaidValue === "1" ||
+    String(entrancePaidValue || "").toLowerCase() === "true" ||
+    entranceCollected > 0;
+
+  return isEntrancePaid ? 0 : entranceFee;
+}
+
+function isExtraBedPaid(booking) {
+  const rawValue = booking.extra_bed_paid;
+  const paidAt = booking.extra_bed_paid_at;
+
+  return (
+    rawValue === true ||
+    rawValue === 1 ||
+    rawValue === "1" ||
+    String(rawValue || "").toLowerCase() === "true" ||
+    Boolean(paidAt)
+  );
+}
+
+function getUnpaidExtraBedFee(booking) {
+  const fee = Number(booking.extra_bed_fee || 0);
+
+  if (fee <= 0) return 0;
+
+  return isExtraBedPaid(booking) ? 0 : fee;
+}
+
 function getFrontDeskNote(remainingBalance, entranceFee, extraBedFee, timeInfo) {
   const totalToCollect =
     Number(remainingBalance || 0) +
@@ -802,7 +891,7 @@ function getRowClass(timeInfo, remainingBalance, entranceFee, extraBedFee) {
 // Combines date and time for countdown logic.
 // ============================================================
 
-function combineDateAndTime(dateValue, timeValue) {
+function combineDateAndTime(dateValue, timeValue, defaultEndOfDay = true) {
   if (!dateValue) return null;
 
   const date = new Date(dateValue);
@@ -812,7 +901,12 @@ function combineDateAndTime(dateValue, timeValue) {
   }
 
   if (!timeValue) {
-    date.setHours(23, 59, 59, 999);
+    if (defaultEndOfDay) {
+      date.setHours(23, 59, 59, 999);
+    } else {
+      date.setHours(0, 0, 0, 0);
+    }
+
     return date;
   }
 
@@ -820,6 +914,12 @@ function combineDateAndTime(dateValue, timeValue) {
   const parts = timeText.split(":");
 
   if (parts.length < 2) {
+    if (defaultEndOfDay) {
+      date.setHours(23, 59, 59, 999);
+    } else {
+      date.setHours(0, 0, 0, 0);
+    }
+
     return date;
   }
 
@@ -827,6 +927,12 @@ function combineDateAndTime(dateValue, timeValue) {
   const minutes = Number(parts[1]);
 
   if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+    if (defaultEndOfDay) {
+      date.setHours(23, 59, 59, 999);
+    } else {
+      date.setHours(0, 0, 0, 0);
+    }
+
     return date;
   }
 

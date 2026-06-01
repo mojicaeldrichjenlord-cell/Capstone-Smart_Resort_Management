@@ -155,8 +155,26 @@ function renderReceipt(booking) {
   );
 
   const estimatedEntranceFee = Number(booking.estimated_entrance_fee || 0);
+  const entranceFeeCollected = Number(booking.entrance_fee_collected || 0);
+  const entranceFeePaid = isTruthy(booking.entrance_fee_paid) || entranceFeeCollected > 0;
+
+  const extraBedCount = Number(booking.extra_bed_count || 0);
+  const extraBedFee = Number(booking.extra_bed_fee || 0);
+  const extraBedPaid = isTruthy(booking.extra_bed_paid);
+  const extraBedPaidAt = booking.extra_bed_paid_at || "";
+
   const entranceRate =
     chargeableGuests > 0 ? estimatedEntranceFee / chargeableGuests : 0;
+
+  const onsiteReminderTotal =
+    Number(booking.remaining_balance || 0) +
+    (entranceFeePaid ? 0 : estimatedEntranceFee) +
+    (extraBedPaid ? 0 : extraBedFee);
+
+  const totalCollected =
+    Number(booking.paid_amount || 0) +
+    entranceFeeCollected +
+    (extraBedPaid ? extraBedFee : 0);
 
   document.getElementById("reservationCode").textContent =
     booking.reservation_code || `#${booking.id}`;
@@ -203,6 +221,14 @@ function renderReceipt(booking) {
     ${infoRow("Email", escapeHtml(booking.email || "-"))}
     ${infoRow("Guest Count", escapeHtml(totalGuests))}
     ${infoRow("Entrance Fee Estimate", `₱${formatMoney(estimatedEntranceFee)}`)}
+    ${infoRow("Entrance Fee Paid", entranceFeePaid ? "Yes" : "No")}
+    ${infoRow("Extra Bed", `${extraBedCount} bed(s)`)}
+    ${infoRow(
+      "Extra Bed Payment",
+      extraBedFee > 0
+        ? `₱${formatMoney(extraBedFee)} - ${extraBedPaid ? "Paid" : "Unpaid"}`
+        : "No extra bed"
+    )}
   `;
 
   document.getElementById("itemsTableBody").innerHTML = items.length
@@ -240,15 +266,30 @@ function renderReceipt(booking) {
   document.getElementById("paymentBreakdown").innerHTML = `
     ${amountRow("Accommodation Total", booking.accommodation_total)}
     ${amountRow("Required Down Payment", booking.required_downpayment)}
-    ${amountRow("Paid Amount", booking.paid_amount)}
+    ${amountRow("Accommodation Paid", booking.paid_amount)}
     ${amountRow("Remaining Balance", booking.remaining_balance)}
-    ${amountRow("Entrance Fee Estimate", booking.estimated_entrance_fee)}
+    ${amountRow(
+      entranceFeePaid ? "Entrance Fee Collected" : "Entrance Fee To Collect",
+      entranceFeePaid ? entranceFeeCollected : booking.estimated_entrance_fee
+    )}
+    ${amountRow(
+      extraBedPaid ? "Extra Bed Fee Paid" : "Extra Bed Fee To Collect",
+      extraBedFee
+    )}
+    ${
+      extraBedFee > 0 && extraBedPaidAt
+        ? `<div class="amount-row"><span>Extra Bed Paid At</span><strong>${escapeHtml(
+            formatDateTime(extraBedPaidAt)
+          )}</strong></div>`
+        : ""
+    }
+    <div class="amount-total">
+      <span>Total Collected</span>
+      <strong>₱${formatMoney(totalCollected)}</strong>
+    </div>
     <div class="amount-total">
       <span>Total Onsite Reminder</span>
-      <strong>₱${formatMoney(
-        Number(booking.remaining_balance || 0) +
-          Number(booking.estimated_entrance_fee || 0)
-      )}</strong>
+      <strong>₱${formatMoney(onsiteReminderTotal)}</strong>
     </div>
   `;
 
@@ -324,9 +365,23 @@ function renderThermalReceipt(booking) {
       Math.max(totalGuests - freeEntrancePax, 0)
   );
 
+  const entranceFeeCollected = Number(booking.entrance_fee_collected || 0);
+  const entranceFeePaid =
+    isTruthy(booking.entrance_fee_paid) || entranceFeeCollected > 0;
+
+  const extraBedCount = Number(booking.extra_bed_count || 0);
+  const extraBedFee = Number(booking.extra_bed_fee || 0);
+  const extraBedPaid = isTruthy(booking.extra_bed_paid);
+
   const onsiteTotal =
     Number(booking.remaining_balance || 0) +
-    Number(booking.estimated_entrance_fee || 0);
+    (entranceFeePaid ? 0 : Number(booking.estimated_entrance_fee || 0)) +
+    (extraBedPaid ? 0 : extraBedFee);
+
+  const totalCollected =
+    Number(booking.paid_amount || 0) +
+    entranceFeeCollected +
+    (extraBedPaid ? extraBedFee : 0);
 
   const thermal = document.getElementById("thermalReceipt");
   if (!thermal) return;
@@ -416,6 +471,30 @@ function renderThermalReceipt(booking) {
         <span>₱${formatMoney(booking.estimated_entrance_fee)}</span>
       </div>
 
+      <div class="thermal-row">
+        <span>Entrance Paid</span>
+        <span>${entranceFeePaid ? "Yes" : "No"}</span>
+      </div>
+
+      <div class="thermal-divider"></div>
+
+      <div class="thermal-section-title">EXTRA BED</div>
+
+      <div class="thermal-row">
+        <span>Extra Bed</span>
+        <span>${extraBedCount} bed(s)</span>
+      </div>
+
+      <div class="thermal-row">
+        <span>Extra Bed Fee</span>
+        <span>₱${formatMoney(extraBedFee)}</span>
+      </div>
+
+      <div class="thermal-row">
+        <span>Extra Bed Paid</span>
+        <span>${extraBedPaid ? "Yes" : "No"}</span>
+      </div>
+
       <div class="thermal-divider"></div>
 
       <div class="thermal-section-title">PAYMENT</div>
@@ -433,6 +512,11 @@ function renderThermalReceipt(booking) {
       <div class="thermal-row">
         <span>Remaining</span>
         <span>₱${formatMoney(booking.remaining_balance)}</span>
+      </div>
+
+      <div class="thermal-row">
+        <span>Total Collected</span>
+        <span>₱${formatMoney(totalCollected)}</span>
       </div>
 
       <div class="thermal-divider"></div>
@@ -507,14 +591,21 @@ function getPaymentClass(status) {
 // Formats payment method, status, dates, time, money, and text.
 // ============================================================
 
+function isTruthy(value) {
+  return (
+    Number(value || 0) === 1 ||
+    String(value || "").toLowerCase() === "true" ||
+    String(value || "").toLowerCase() === "yes"
+  );
+}
+
 function formatPaymentMethod(method) {
   const value = String(method || "").toLowerCase();
 
   if (value === "gcash") return "GCash";
   if (value === "paymaya") return "PayMaya";
   if (value === "cash") return "Cash";
-  if (value === "bank_transfer") return "Bank Transfer";
-  if (value === "other") return "Other";
+
 
   return capitalize(value);
 }

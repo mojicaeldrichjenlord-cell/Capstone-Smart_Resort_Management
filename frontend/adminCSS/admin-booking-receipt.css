@@ -88,12 +88,10 @@ body {
 }
 
 .receipt-header {
-  background: linear-gradient(
-    135deg,
-    #0f172a 0%,
-    #16233b 60%,
-    #14b8a6 100%
-  );
+  background: linear-gradient(135deg,
+      #0f172a 0%,
+      #16233b 60%,
+      #14b8a6 100%);
   color: white;
   padding: 24px;
   display: flex;
@@ -375,6 +373,7 @@ td {
 ====================================================== */
 
 @media (max-width: 900px) {
+
   .grid-2,
   .grid-bottom,
   .grid-last {
@@ -388,6 +387,7 @@ td {
 ====================================================== */
 
 @media print {
+
   body.print-a4 .top-actions,
   body.print-thermal .top-actions,
   body.print-a4 .navbar,
@@ -470,5 +470,58 @@ td {
   @page {
     size: auto;
     margin: 6mm;
+  }
+}
+
+/* ============================================================
+   RECEIPT PAGE NAVBAR OVERLAP FIX
+   Paste this at the bottom of the CSS used by admin-booking-receipt.html.
+   Good target files: admin-booking-receipt.css or admin.css if that page uses it.
+============================================================ */
+
+body.has-fixed-navbar {
+  padding-top: 96px;
+}
+
+.navbar {
+  z-index: 9999;
+}
+
+.receipt-shell,
+.receipt-wrapper,
+.receipt-page,
+.admin-receipt-wrapper,
+.admin-receipt-page,
+main {
+  position: relative;
+  z-index: 1;
+}
+
+.receipt-actions,
+.receipt-top-actions,
+.admin-top-link,
+.print-actions,
+.receipt-button-row {
+  position: relative;
+  z-index: 2;
+  margin-top: 18px;
+  margin-bottom: 22px;
+  padding-top: 8px;
+}
+
+@media (max-width: 768px) {
+  body.has-fixed-navbar {
+    padding-top: 112px;
+  }
+
+  .receipt-actions,
+  .receipt-top-actions,
+  .admin-top-link,
+  .print-actions,
+  .receipt-button-row {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
   }
 }

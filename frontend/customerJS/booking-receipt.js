@@ -168,6 +168,24 @@ async function loadReceipt() {
         ? estimatedEntranceFee / chargeableEntranceGuests
         : 0;
 
+    const extraBedCount = Number(booking.extra_bed_count || 0);
+    const extraBedFee = Number(booking.extra_bed_fee || 0);
+    const extraBedPaid = isExtraBedPaid(booking);
+    const entranceFeePaid = isEntranceFeePaid(booking);
+    const entranceFeeCollected = Number(booking.entrance_fee_collected || 0);
+
+    const extraBedToCollect = extraBedFee > 0 && !extraBedPaid ? extraBedFee : 0;
+    const entranceToCollect = entranceFeePaid ? 0 : estimatedEntranceFee;
+    const onsiteReminderTotal =
+      Number(booking.remaining_balance || 0) +
+      entranceToCollect +
+      extraBedToCollect;
+
+    const totalCollected =
+      Number(booking.paid_amount || 0) +
+      entranceFeeCollected +
+      (extraBedPaid ? extraBedFee : 0);
+
     receiptBox.innerHTML = `
       <div style="
         max-width: 1100px;
@@ -269,6 +287,7 @@ async function loadReceipt() {
               ${infoRow("Email", escapeHtml(booking.email || "-"))}
               ${infoRow("Guest Count", escapeHtml(totalGuests))}
               ${infoRow("Entrance Fee Estimate", `₱${formatMoney(estimatedEntranceFee)}`)}
+              ${infoRow("Extra Bed", `${escapeHtml(extraBedCount)} bed(s)`)}
             </div>
           </div>
 
@@ -363,9 +382,15 @@ async function loadReceipt() {
 
               ${summaryAmountRow("Accommodation Total", booking.accommodation_total)}
               ${summaryAmountRow("Required Down Payment", booking.required_downpayment)}
-              ${summaryAmountRow("Paid Amount", booking.paid_amount)}
+              ${summaryAmountRow("Accommodation Paid", booking.paid_amount)}
               ${summaryAmountRow("Remaining Balance", booking.remaining_balance)}
-              ${summaryAmountRow("Entrance Fee Estimate", booking.estimated_entrance_fee)}
+              ${summaryAmountRow("Entrance Fee", booking.estimated_entrance_fee)}
+              ${summaryTextRow("Entrance Fee Status", entranceFeePaid ? "Collected" : "To collect onsite")}
+              ${summaryAmountRow("Entrance Fee Collected", entranceFeeCollected)}
+              ${summaryAmountRow("Extra Bed Fee", extraBedFee)}
+              ${summaryTextRow("Extra Bed Status", extraBedFee > 0 ? (extraBedPaid ? "Paid" : "To collect onsite") : "No extra bed")}
+              ${extraBedPaid && booking.extra_bed_paid_at ? summaryTextRow("Extra Bed Paid At", formatDateTime(booking.extra_bed_paid_at)) : ""}
+              ${summaryAmountRow("Total Collected", totalCollected)}
 
               <div style="
                 display:flex;
@@ -379,10 +404,7 @@ async function loadReceipt() {
               ">
                 <span>Total Onsite Reminder</span>
 
-                <strong>₱${formatMoney(
-                  Number(booking.remaining_balance || 0) +
-                    Number(booking.estimated_entrance_fee || 0)
-                )}</strong>
+                <strong>₱${formatMoney(onsiteReminderTotal)}</strong>
               </div>
             </div>
           </div>
@@ -409,8 +431,8 @@ async function loadReceipt() {
               <div style="color:#334155;line-height:1.8;font-size:0.95rem;">
                 Please keep this receipt for your reservation record.<br>
                 Present your reservation code at the front desk.<br>
-                The remaining balance and final entrance-related charges will be
-                settled onsite.
+                Remaining balance, entrance fee, and extra bed fee are shown as
+                onsite reminders only when not yet collected.
               </div>
             </div>
           </div>
@@ -593,6 +615,36 @@ function summaryAmountRow(label, value) {
       <strong>₱${formatMoney(value)}</strong>
     </div>
   `;
+}
+
+function summaryTextRow(label, value) {
+  return `
+    <div style="
+      display:flex;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:10px;
+      font-size:0.96rem;
+    ">
+      <span>${label}</span>
+      <strong>${escapeHtml(value)}</strong>
+    </div>
+  `;
+}
+
+function isEntranceFeePaid(booking) {
+  return (
+    Number(booking.entrance_fee_paid || 0) === 1 ||
+    Number(booking.entrance_fee_collected || 0) > 0 ||
+    String(booking.entrance_fee_paid || "").toLowerCase() === "true"
+  );
+}
+
+function isExtraBedPaid(booking) {
+  return (
+    Number(booking.extra_bed_paid || 0) === 1 ||
+    String(booking.extra_bed_paid || "").toLowerCase() === "true"
+  );
 }
 
 function getSourceBadgeStyles(source) {
@@ -786,9 +838,8 @@ function formatPaymentMethod(method) {
 
   if (value === "gcash") return "GCash";
   if (value === "paymaya") return "PayMaya";
-  if (value === "maya") return "Maya";
   if (value === "cash") return "Cash";
-  if (value === "bank_transfer") return "Bank Transfer";
+
 
   return capitalize(value.replaceAll("_", " "));
 }

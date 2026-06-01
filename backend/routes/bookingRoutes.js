@@ -13,6 +13,7 @@ const {
   getAllBookings,
   updateBookingStatus,
   updatePaymentStatus,
+  checkInBooking,
   requestBookingModification,
 } = require("../controllers/bookingController");
 
@@ -72,6 +73,7 @@ router.get("/:id/receipt", getBookingReceipt);
 router.put("/:id/cancel", cancelBooking);
 router.put("/:id/status", updateBookingStatus);
 router.put("/:id/payment-status", updatePaymentStatus);
+router.put("/:id/check-in", checkInBooking);
 
 router.post("/:id/modification-request", requestBookingModification);
 

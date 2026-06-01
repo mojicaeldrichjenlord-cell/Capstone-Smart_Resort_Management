@@ -704,6 +704,14 @@ exports.getUserBookings = async (req, res) => {
         r.required_downpayment,
         r.paid_amount,
         r.remaining_balance,
+        r.is_checked_in,
+        r.checked_in_at,
+        r.entrance_fee_paid,
+        r.entrance_fee_collected,
+        r.extra_bed_count,
+        r.extra_bed_fee,
+        r.extra_bed_paid,
+        r.extra_bed_paid_at,
         r.note,
         r.payment_method,
         r.payment_status,
@@ -876,6 +884,14 @@ exports.getBookingReceipt = async (req, res) => {
         r.required_downpayment,
         r.paid_amount,
         r.remaining_balance,
+        r.is_checked_in,
+        r.checked_in_at,
+        r.entrance_fee_paid,
+        r.entrance_fee_collected,
+        r.extra_bed_count,
+        r.extra_bed_fee,
+        r.extra_bed_paid,
+        r.extra_bed_paid_at,
         r.note,
         r.payment_method,
         r.payment_status,
@@ -977,6 +993,70 @@ exports.getBookingReceipt = async (req, res) => {
 
 exports.getAllBookings = async (req, res) => {
   try {
+    const scope = String(req.query.scope || "today").toLowerCase();
+    const startDate = String(req.query.startDate || "").trim();
+    const endDate = String(req.query.endDate || "").trim();
+
+    let dateWhereClause = "";
+    const dateParams = [];
+
+    /*
+      Default behavior:
+      - If no query is passed, load TODAY only.
+      - Uses +08:00 for Philippines date consistency.
+      - scope=all is still available only when intentionally requested.
+    */
+    if (startDate && endDate) {
+      dateWhereClause = `
+        WHERE (
+          DATE(CONVERT_TZ(r.created_at, '+00:00', '+08:00')) BETWEEN ? AND ?
+          OR DATE(CONVERT_TZ(r.checked_in_at, '+00:00', '+08:00')) BETWEEN ? AND ?
+          OR DATE(CONVERT_TZ(r.extra_bed_paid_at, '+00:00', '+08:00')) BETWEEN ? AND ?
+        )
+      `;
+      dateParams.push(startDate, endDate, startDate, endDate, startDate, endDate);
+    } else if (scope === "dashboard_today") {
+      dateWhereClause = `
+        WHERE (
+          DATE(CONVERT_TZ(r.created_at, '+00:00', '+08:00')) =
+            DATE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))
+          OR DATE(CONVERT_TZ(r.checked_in_at, '+00:00', '+08:00')) =
+            DATE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))
+          OR DATE(CONVERT_TZ(r.extra_bed_paid_at, '+00:00', '+08:00')) =
+            DATE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))
+          OR (
+            first_item.check_in_date <= DATE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))
+            AND first_item.check_out_date >= DATE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))
+          )
+        )
+      `;
+    } else if (scope === "all") {
+      dateWhereClause = "";
+    } else if (scope === "month") {
+      dateWhereClause = `
+        WHERE YEAR(CONVERT_TZ(r.created_at, '+00:00', '+08:00')) =
+              YEAR(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))
+          AND MONTH(CONVERT_TZ(r.created_at, '+00:00', '+08:00')) =
+              MONTH(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))
+      `;
+    } else if (scope === "year") {
+      dateWhereClause = `
+        WHERE YEAR(CONVERT_TZ(r.created_at, '+00:00', '+08:00')) =
+              YEAR(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))
+      `;
+    } else {
+      dateWhereClause = `
+        WHERE (
+          DATE(CONVERT_TZ(r.created_at, '+00:00', '+08:00')) =
+            DATE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))
+          OR DATE(CONVERT_TZ(r.checked_in_at, '+00:00', '+08:00')) =
+            DATE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))
+          OR DATE(CONVERT_TZ(r.extra_bed_paid_at, '+00:00', '+08:00')) =
+            DATE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))
+        )
+      `;
+    }
+
     const [rows] = await db.promise().query(
       `
       SELECT
@@ -994,6 +1074,14 @@ exports.getAllBookings = async (req, res) => {
         r.required_downpayment,
         r.paid_amount,
         r.remaining_balance,
+        r.is_checked_in,
+        r.checked_in_at,
+        r.entrance_fee_paid,
+        r.entrance_fee_collected,
+        r.extra_bed_count,
+        r.extra_bed_fee,
+        r.extra_bed_paid,
+        r.extra_bed_paid_at,
         r.note,
         r.payment_method,
         r.payment_status,
@@ -1037,8 +1125,10 @@ exports.getAllBookings = async (req, res) => {
         INNER JOIN accommodations a2 ON ri.accommodation_id = a2.id
         GROUP BY ri.reservation_id
       ) acc_list ON r.id = acc_list.reservation_id
+      ${dateWhereClause}
       ORDER BY r.created_at DESC
       `,
+      dateParams,
     );
 
     const bookings = rows.map((row) => ({
@@ -1056,6 +1146,9 @@ exports.getAllBookings = async (req, res) => {
     }));
 
     return res.status(200).json({
+      scope,
+      startDate: startDate || null,
+      endDate: endDate || null,
       bookings,
     });
   } catch (error) {
@@ -1183,6 +1276,88 @@ exports.updatePaymentStatus = async (req, res) => {
     });
   }
 };
+
+
+exports.checkInBooking = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [rows] = await db.promise().query(
+      `
+      SELECT
+        id,
+        reservation_status,
+        payment_status,
+        accommodation_total,
+        estimated_entrance_fee,
+        is_checked_in
+      FROM reservations
+      WHERE id = ?
+      LIMIT 1
+      `,
+      [id],
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({
+        message: "Reservation not found.",
+      });
+    }
+
+    const reservation = rows[0];
+    const status = String(reservation.reservation_status || "").toLowerCase();
+
+    if (["cancelled", "rejected", "completed"].includes(status)) {
+      return res.status(400).json({
+        message: "This reservation can no longer be checked in.",
+      });
+    }
+
+    if (Number(reservation.is_checked_in || 0) === 1) {
+      return res.status(400).json({
+        message: "This reservation is already checked in.",
+      });
+    }
+
+    const accommodationTotal = Number(reservation.accommodation_total || 0);
+    const entranceFee = Number(reservation.estimated_entrance_fee || 0);
+
+    await db.promise().query(
+      `
+      UPDATE reservations
+      SET
+        reservation_status = 'approved',
+        payment_status = 'paid',
+        paid_amount = ?,
+        remaining_balance = 0,
+        entrance_fee_paid = 1,
+        entrance_fee_collected = ?,
+        is_checked_in = 1,
+        checked_in_at = NOW()
+      WHERE id = ?
+      `,
+      [accommodationTotal, entranceFee, id],
+    );
+
+    return res.status(200).json({
+      message: "Guest checked in successfully.",
+      payment_status: "paid",
+      paid_amount: accommodationTotal,
+      remaining_balance: 0,
+      entrance_fee_paid: 1,
+      entrance_fee_collected: entranceFee,
+      is_checked_in: 1,
+    });
+  } catch (error) {
+    console.error("checkInBooking error:", error);
+
+    return res.status(500).json({
+      message: "Failed to check in reservation.",
+      error: error.message,
+    });
+  }
+};
+
 
 exports.requestBookingModification = async (req, res) => {
   const connection = await db.promise().getConnection();

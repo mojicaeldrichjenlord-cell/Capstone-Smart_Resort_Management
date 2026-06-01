@@ -5,7 +5,7 @@
 // - Search/filter reservations
 // - Staff-friendly reservation cards
 // - View proof screenshot using Base64/file fallback
-// - Quick admin actions: verify, reject, complete, cancel
+// - Quick admin actions: check in / allow entry and cancel
 // ============================================================
 
 let allBookings = [];
@@ -63,8 +63,10 @@ function setupEvents() {
   if (refreshBtn) refreshBtn.addEventListener("click", loadBookings);
   if (searchInput) searchInput.addEventListener("input", applyFilters);
   if (statusFilter) statusFilter.addEventListener("change", applyFilters);
-  if (paymentStatusFilter) paymentStatusFilter.addEventListener("change", applyFilters);
-  if (paymentMethodFilter) paymentMethodFilter.addEventListener("change", applyFilters);
+  if (paymentStatusFilter)
+    paymentStatusFilter.addEventListener("change", applyFilters);
+  if (paymentMethodFilter)
+    paymentMethodFilter.addEventListener("change", applyFilters);
 }
 
 // ============================================================
@@ -104,15 +106,15 @@ async function loadBookings() {
   try {
     setReservationsContent(`
       <div class="reservation-state-box">
-        Loading reservations...
+        Loading today's reservations...
       </div>
     `);
 
-    const response = await fetch(`${API_BASE}/bookings`);
+    const response = await fetch(`${API_BASE}/bookings?scope=dashboard_today`);
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.message || "Failed to fetch reservations.");
+      throw new Error(data.message || "Failed to fetch today's reservations.");
     }
 
     allBookings = Array.isArray(data) ? data : data.bookings || [];
@@ -124,11 +126,14 @@ async function loadBookings() {
 
     setReservationsContent(`
       <div class="reservation-state-box error">
-        Failed to load reservations.
+        Failed to load today's reservations.
       </div>
     `);
 
-    showMessage(error.message || "Failed to load reservations.", "error");
+    showMessage(
+      error.message || "Failed to load today's reservations.",
+      "error",
+    );
   }
 }
 
@@ -141,8 +146,10 @@ function updateSummaryCards(bookings) {
 
   const totalBookings = bookings.length;
 
-  const pendingCount = bookings.filter((booking) => {
-    return String(booking.status || "").toLowerCase() === "pending";
+  const partiallyPaidCount = bookings.filter((booking) => {
+    return (
+      String(booking.payment_status || "").toLowerCase() === "partially_paid"
+    );
   }).length;
 
   const approvedCount = bookings.filter((booking) => {
@@ -153,9 +160,11 @@ function updateSummaryCards(bookings) {
     return String(booking.payment_status || "").toLowerCase() === "paid";
   }).length;
 
-  const todayBookings = bookings.filter((booking) => {
+  const onlineToday = bookings.filter((booking) => {
     const createdDate = String(booking.created_at || "").slice(0, 10);
-    return createdDate === today;
+    const source = String(booking.booking_source || "online").toLowerCase();
+
+    return createdDate === today && source !== "manual";
   }).length;
 
   const walkinToday = bookings.filter((booking) => {
@@ -171,33 +180,35 @@ function updateSummaryCards(bookings) {
       const checkIn = String(booking.check_in || "").slice(0, 10);
       const checkOut = String(booking.check_out || "").slice(0, 10);
 
-      return status === "approved" && checkIn <= today && checkOut >= today;
+      return (
+        status === "approved" &&
+        isBookingCheckedIn(booking) &&
+        checkIn <= today &&
+        checkOut >= today
+      );
     })
     .reduce((sum, booking) => sum + Number(booking.guests || 0), 0);
 
-  const todayRevenue = bookings
-    .filter((booking) => {
-      const createdDate = String(booking.created_at || "").slice(0, 10);
-      return createdDate === today;
-    })
-    .reduce((sum, booking) => {
-      const paymentStatus = String(booking.payment_status || "").toLowerCase();
-
-      if (paymentStatus === "paid" || paymentStatus === "partially_paid") {
-        return sum + Number(booking.paid_amount || booking.required_downpayment || 0);
-      }
-
-      return sum;
-    }, 0);
+  const todayRevenue = bookings.reduce((sum, booking) => {
+    return sum + calculateTodayCollectedRevenue(booking, today);
+  }, 0);
 
   setText("totalBookings", totalBookings);
-  setText("pendingCount", pendingCount);
+  setText("partiallyPaidCount", partiallyPaidCount);
   setText("approvedCount", approvedCount);
   setText("paidCount", paidCount);
-  setText("todayBookings", todayBookings);
+  setText("onlineToday", onlineToday);
   setText("walkinToday", walkinToday);
   setText("guestsInside", guestsInside);
   setText("todayRevenue", `₱${formatMoney(todayRevenue)}`);
+}
+
+
+function isBookingCheckedIn(booking) {
+  return (
+    Number(booking.is_checked_in || 0) === 1 ||
+    String(booking.is_checked_in || "").toLowerCase() === "true"
+  );
 }
 
 function setText(id, value) {
@@ -210,11 +221,15 @@ function setText(id, value) {
 // ============================================================
 
 function applyFilters() {
-  const searchValue = String(document.getElementById("searchInput")?.value || "")
+  const searchValue = String(
+    document.getElementById("searchInput")?.value || "",
+  )
     .trim()
     .toLowerCase();
 
-  const statusValue = String(document.getElementById("statusFilter")?.value || "")
+  const statusValue = String(
+    document.getElementById("statusFilter")?.value || "",
+  )
     .trim()
     .toLowerCase();
 
@@ -260,13 +275,19 @@ function applyFilters() {
 
   if (paymentStatusValue) {
     filtered = filtered.filter((booking) => {
-      return String(booking.payment_status || "").toLowerCase() === paymentStatusValue;
+      return (
+        String(booking.payment_status || "").toLowerCase() ===
+        paymentStatusValue
+      );
     });
   }
 
   if (paymentMethodValue) {
     filtered = filtered.filter((booking) => {
-      return String(booking.payment_method || "").toLowerCase() === paymentMethodValue;
+      return (
+        String(booking.payment_method || "").toLowerCase() ===
+        paymentMethodValue
+      );
     });
   }
 
@@ -297,9 +318,13 @@ function renderBookings(bookings) {
 function renderReservationCard(booking) {
   const bookingId = Number(booking.id);
   const bookingStatus = String(booking.status || "pending").toLowerCase();
-  const paymentStatus = String(booking.payment_status || "pending").toLowerCase();
+  const paymentStatus = String(
+    booking.payment_status || "pending",
+  ).toLowerCase();
   const paymentMethod = String(booking.payment_method || "cash").toLowerCase();
-  const bookingSource = String(booking.booking_source || "online").toLowerCase();
+  const bookingSource = String(
+    booking.booking_source || "online",
+  ).toLowerCase();
   const proofSource = getProofSource(booking);
   const paymentReference = getPaymentReference(booking);
 
@@ -328,6 +353,8 @@ function renderReservationCard(booking) {
             <span class="payment-badge payment-${paymentStatus}">
               ${formatPaymentStatus(paymentStatus)}
             </span>
+
+            ${renderCheckInBadge(booking)}
           </div>
         </div>
 
@@ -353,6 +380,8 @@ function renderReservationCard(booking) {
             <div>Downpayment: <strong>₱${formatMoney(booking.required_downpayment)}</strong></div>
             <div>Paid: <strong>₱${formatMoney(booking.paid_amount)}</strong></div>
             <div>Remaining: <strong>₱${formatMoney(booking.remaining_balance)}</strong></div>
+            <div>Entrance Fee: <strong>₱${formatMoney(booking.estimated_entrance_fee)}</strong></div>
+            <div>Entrance Paid: <strong>${isEntranceFeePaid(booking) ? "Yes" : "No"}</strong></div>
             <div>Method: ${formatPaymentMethod(paymentMethod)}</div>
           </section>
 
@@ -382,11 +411,7 @@ function renderReservationCard(booking) {
           Receipt
         </button>
 
-        ${renderVerifyButton(bookingId, bookingStatus, paymentStatus)}
-
-        ${renderRejectButton(bookingId, bookingStatus, paymentStatus)}
-
-        ${renderCompleteButton(bookingId, bookingStatus)}
+        ${renderCheckInButton(booking, bookingId, bookingStatus)}
 
         ${renderCancelButton(bookingId, bookingStatus)}
       </div>
@@ -398,19 +423,77 @@ function renderReservationCard(booking) {
 // SECTION 8: Button renderers
 // ============================================================
 
-function renderVerifyButton(bookingId, bookingStatus, paymentStatus) {
-  if (bookingStatus === "cancelled" || bookingStatus === "completed" || bookingStatus === "rejected") {
+function renderCheckInBadge(booking) {
+  if (!isBookingCheckedIn(booking)) return "";
+
+  return `
+    <span class="payment-badge payment-paid">
+      Checked In
+    </span>
+  `;
+}
+
+function isEntranceFeePaid(booking) {
+  return (
+    Number(booking.entrance_fee_paid || 0) === 1 ||
+    Number(booking.entrance_fee_collected || 0) > 0 ||
+    String(booking.entrance_fee_paid || "").toLowerCase() === "true"
+  );
+}
+
+function isDateToday(value, today) {
+  if (!value) return false;
+  return String(value).slice(0, 10) === today;
+}
+
+function isExtraBedPaid(booking) {
+  return (
+    Number(booking.extra_bed_paid || 0) === 1 ||
+    String(booking.extra_bed_paid || "").toLowerCase() === "true"
+  );
+}
+
+function calculateTodayCollectedRevenue(booking, today) {
+  const createdToday = isDateToday(booking.created_at, today);
+  const checkedInToday = isDateToday(booking.checked_in_at, today);
+  const extraBedPaidToday = isDateToday(booking.extra_bed_paid_at, today);
+
+  let amount = 0;
+
+  if (checkedInToday) {
+    amount += Number(booking.accommodation_total || booking.paid_amount || 0);
+    amount += Number(booking.entrance_fee_collected || 0);
+  } else if (createdToday) {
+    amount += Number(booking.paid_amount || booking.required_downpayment || 0);
+  }
+
+  if (isExtraBedPaid(booking) && extraBedPaidToday) {
+    amount += Number(booking.extra_bed_fee || 0);
+  }
+
+  return amount;
+}
+
+function renderCheckInButton(booking, bookingId, bookingStatus) {
+  const paymentStatus = String(booking.payment_status || "").toLowerCase();
+
+  if (
+    bookingStatus === "cancelled" ||
+    bookingStatus === "completed" ||
+    bookingStatus === "rejected" ||
+    paymentStatus === "rejected"
+  ) {
     return "";
   }
 
-  if (paymentStatus === "paid" || paymentStatus === "partially_paid") {
+  if (isBookingCheckedIn(booking)) {
     return `
       <button
         type="button"
         class="action-btn verify-payment-btn muted"
         disabled
       >
-        Payment OK
+        Already Inside
       </button>
     `;
   }
@@ -419,52 +502,19 @@ function renderVerifyButton(bookingId, bookingStatus, paymentStatus) {
     <button
       type="button"
       class="action-btn verify-payment-btn"
-      onclick="verifyPayment(${bookingId}, this)"
+      onclick="checkInReservation(${bookingId}, this)"
     >
-      Verify Payment
-    </button>
-  `;
-}
-
-function renderRejectButton(bookingId, bookingStatus, paymentStatus) {
-  if (
-    bookingStatus === "rejected" ||
-    bookingStatus === "cancelled" ||
-    bookingStatus === "completed" ||
-    paymentStatus === "rejected"
-  ) {
-    return "";
-  }
-
-  return `
-    <button
-      type="button"
-      class="action-btn reject-payment-btn"
-      onclick="rejectPayment(${bookingId}, this)"
-    >
-      Reject Payment
-    </button>
-  `;
-}
-
-function renderCompleteButton(bookingId, bookingStatus) {
-  if (bookingStatus === "completed" || bookingStatus === "cancelled" || bookingStatus === "rejected") {
-    return "";
-  }
-
-  return `
-    <button
-      type="button"
-      class="action-btn complete-booking-btn"
-      onclick="completeReservation(${bookingId}, this)"
-    >
-      Complete
+      Check In / Allow Entry
     </button>
   `;
 }
 
 function renderCancelButton(bookingId, bookingStatus) {
-  if (bookingStatus === "cancelled" || bookingStatus === "completed" || bookingStatus === "rejected") {
+  if (
+    bookingStatus === "cancelled" ||
+    bookingStatus === "completed" ||
+    bookingStatus === "rejected"
+  ) {
     return "";
   }
 
@@ -483,36 +533,16 @@ function renderCancelButton(bookingId, bookingStatus) {
 // SECTION 9: Quick admin actions
 // ============================================================
 
-async function verifyPayment(bookingId, button) {
-  const confirmed = confirm("Mark this payment as verified / partially paid?");
+async function checkInReservation(bookingId, button) {
+  const confirmed = confirm(
+    "Check in this guest and allow entry? This will record the remaining 50% as paid, mark the entrance fee as collected, and show the guest in Guests Inside.",
+  );
+
   if (!confirmed) return;
 
-  await runAdminAction(button, "Verifying...", async () => {
-    await updateReservationStatusOnly(bookingId, "approved");
-    await updatePaymentStatusOnly(bookingId, "partially_paid");
-    showMessage("Payment verified successfully.", "success");
-  });
-}
-
-async function rejectPayment(bookingId, button) {
-  const confirmed = confirm("Reject this payment proof?");
-  if (!confirmed) return;
-
-  await runAdminAction(button, "Rejecting...", async () => {
-    await updatePaymentStatusOnly(bookingId, "rejected");
-    await updateReservationStatusOnly(bookingId, "rejected");
-    showMessage("Payment proof rejected.", "success");
-  });
-}
-
-async function completeReservation(bookingId, button) {
-  const confirmed = confirm("Mark this reservation as completed and payment as paid?");
-  if (!confirmed) return;
-
-  await runAdminAction(button, "Completing...", async () => {
-    await updateReservationStatusOnly(bookingId, "completed");
-    await updatePaymentStatusOnly(bookingId, "paid");
-    showMessage("Reservation completed successfully.", "success");
+  await runAdminAction(button, "Checking in...", async () => {
+    await checkInBooking(bookingId);
+    showMessage("Guest checked in successfully.", "success");
   });
 }
 
@@ -572,18 +602,38 @@ async function updateReservationStatusOnly(bookingId, status) {
 }
 
 async function updatePaymentStatusOnly(bookingId, payment_status) {
-  const response = await fetch(`${API_BASE}/bookings/${bookingId}/payment-status`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
+  const response = await fetch(
+    `${API_BASE}/bookings/${bookingId}/payment-status`,
+    {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ payment_status }),
     },
-    body: JSON.stringify({ payment_status }),
-  });
+  );
 
   const data = await response.json();
 
   if (!response.ok) {
     throw new Error(data.message || "Failed to update payment status.");
+  }
+
+  return data;
+}
+
+async function checkInBooking(bookingId) {
+  const response = await fetch(`${API_BASE}/bookings/${bookingId}/check-in`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to check in reservation.");
   }
 
   return data;
@@ -623,7 +673,9 @@ function getPaymentReference(booking) {
 }
 
 function groupReferenceNumber(reference) {
-  const cleanReference = String(reference || "").replace(/\s+/g, "").trim();
+  const cleanReference = String(reference || "")
+    .replace(/\s+/g, "")
+    .trim();
 
   if (!cleanReference) return [];
 
@@ -641,7 +693,10 @@ function renderPaymentReference(reference) {
     <div class="reference-box">
       <div class="reference-chip-row">
         ${groups
-          .map((group) => `<span class="reference-chip">${escapeHtml(group)}</span>`)
+          .map(
+            (group) =>
+              `<span class="reference-chip">${escapeHtml(group)}</span>`,
+          )
           .join("")}
       </div>
 
@@ -980,10 +1035,7 @@ function formatDateTime(dateValue) {
 function formatPaymentMethod(method) {
   if (method === "gcash") return "GCash";
   if (method === "paymaya") return "PayMaya";
-  if (method === "maya") return "Maya";
   if (method === "cash") return "Cash";
-  if (method === "bank_transfer") return "Bank Transfer";
-  if (method === "other") return "Other";
 
   return capitalize(method);
 }

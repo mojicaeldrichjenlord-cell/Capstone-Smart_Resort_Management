@@ -1,22 +1,28 @@
 // ============================================================
 // SMARTRESORT ADMIN REPORTS SCRIPT
 // Purpose:
-// - Check admin access
-// - Load booking data
-// - Render report summary cards
-// - Render charts using Chart.js
-// - Filter and print reports
+// - Check admin/staff access
+// - Load today-only reports by default
+// - Load filtered reports only when admin/staff selects date range
+// - Render monthly meeting-friendly cards and charts using Chart.js
+// - Print reports
 // - Works from frontend/adminHTML/admin-reports.html
 // ============================================================
-
 
 let allBookings = [];
 let bookingStatusChart = null;
 let bookingSourceChart = null;
 let popularRoomsChart = null;
-let paymentMethodChart = null;
+let salesByCategoryChart = null;
 let guestsPerRoomChart = null;
 let slotUsageChart = null;
+let peakReservationDaysChart = null;
+let guestVolumeTrendChart = null;
+let monthlyCancellationChart = null;
+
+let activeReportMode = "today";
+let activeStartDate = "";
+let activeEndDate = "";
 
 // ============================================================
 // SECTION 1: Chart colors
@@ -82,19 +88,20 @@ Chart.defaults.plugins.tooltip.cornerRadius = 10;
 
 // ============================================================
 // SECTION 3: Page startup
-// Checks admin access, sets events, and loads reports.
+// Checks access, sets events, and loads today report.
 // ============================================================
 
 document.addEventListener("DOMContentLoaded", () => {
   checkAdminAccess();
   setupLogout();
   setupReportEvents();
-  loadReports();
+  setDateInputsToToday();
+  loadTodayReports();
 });
 
 // ============================================================
-// SECTION 4: Admin access checker
-// Allows admin users only.
+// SECTION 4: Admin/staff access checker
+// Allows admin and staff users.
 // ============================================================
 
 function checkAdminAccess() {
@@ -106,8 +113,8 @@ function checkAdminAccess() {
     return;
   }
 
-  if (user.role !== "admin") {
-    alert("Access denied. Admin only.");
+  if (user.role !== "admin" && user.role !== "staff") {
+    alert("Access denied. Admin or staff only.");
     window.location.href = "../index.html";
   }
 }
@@ -155,9 +162,8 @@ function setupReportEvents() {
 
   if (clearBtn) {
     clearBtn.addEventListener("click", () => {
-      document.getElementById("reportStartDate").value = "";
-      document.getElementById("reportEndDate").value = "";
-      renderReports(allBookings);
+      setDateInputsToToday();
+      loadTodayReports();
     });
   }
 
@@ -178,15 +184,36 @@ function setupReportEvents() {
 }
 
 // ============================================================
-// SECTION 7: Load reports
-// Gets bookings data from backend.
+// SECTION 7: Load reports from backend
+// Default reads current date only. Filters read selected date range.
 // ============================================================
 
-async function loadReports() {
+async function loadTodayReports() {
+  activeReportMode = "today";
+  activeStartDate = getTodayDateString();
+  activeEndDate = getTodayDateString();
+
+  await fetchReports(`${API_BASE}/bookings?scope=today`);
+}
+
+async function loadFilteredReports(startDate, endDate) {
+  activeReportMode = "custom";
+  activeStartDate = startDate;
+  activeEndDate = endDate;
+
+  const query = new URLSearchParams({
+    startDate,
+    endDate,
+  });
+
+  await fetchReports(`${API_BASE}/bookings?${query.toString()}`);
+}
+
+async function fetchReports(url) {
   try {
     hideReportError();
 
-    const response = await fetch(`${API_BASE}/bookings`);
+    const response = await fetch(url);
     const data = await response.json();
 
     if (!response.ok) {
@@ -195,46 +222,50 @@ async function loadReports() {
 
     allBookings = Array.isArray(data) ? data : data.bookings || [];
     renderReports(allBookings);
+    updatePrintReportMeta();
   } catch (error) {
-    console.error("loadReports error:", error);
+    console.error("fetchReports error:", error);
 
-    showReportError("Something went wrong while loading the report dashboard.");
+    showReportError(error.message || "Something went wrong while loading reports.");
+    allBookings = [];
     renderReports([]);
+    updatePrintReportMeta();
   }
 }
 
 // ============================================================
 // SECTION 8: Apply report filters
-// Filters bookings by created/reserved date.
+// Uses backend date filtering instead of loading all records.
 // ============================================================
 
 function applyReportFilters() {
-  const startDate = document.getElementById("reportStartDate").value;
-  const endDate = document.getElementById("reportEndDate").value;
+  let startDate = document.getElementById("reportStartDate")?.value || "";
+  let endDate = document.getElementById("reportEndDate")?.value || "";
 
-  let filtered = [...allBookings];
-
-  if (startDate) {
-    const start = new Date(startDate);
-    start.setHours(0, 0, 0, 0);
-
-    filtered = filtered.filter((booking) => {
-      const created = new Date(booking.created_at || booking.reserved_at);
-      return !Number.isNaN(created.getTime()) && created >= start;
-    });
+  if (!startDate && !endDate) {
+    setDateInputsToToday();
+    loadTodayReports();
+    return;
   }
 
-  if (endDate) {
-    const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999);
-
-    filtered = filtered.filter((booking) => {
-      const created = new Date(booking.created_at || booking.reserved_at);
-      return !Number.isNaN(created.getTime()) && created <= end;
-    });
+  if (startDate && !endDate) {
+    endDate = startDate;
+    const endInput = document.getElementById("reportEndDate");
+    if (endInput) endInput.value = endDate;
   }
 
-  renderReports(filtered);
+  if (!startDate && endDate) {
+    startDate = endDate;
+    const startInput = document.getElementById("reportStartDate");
+    if (startInput) startInput.value = startDate;
+  }
+
+  if (startDate > endDate) {
+    showReportError("Start date cannot be later than end date.");
+    return;
+  }
+
+  loadFilteredReports(startDate, endDate);
 }
 
 // ============================================================
@@ -247,14 +278,17 @@ function renderReports(bookings) {
   renderBookingStatusChart(bookings);
   renderBookingSourceChart(bookings);
   renderPopularRoomsChart(bookings);
-  renderPaymentMethodChart(bookings);
+  renderSalesByCategoryChart(bookings);
   renderGuestsPerRoomChart(bookings);
   renderSlotUsageChart(bookings);
+  renderPeakReservationDaysChart(bookings);
+  renderGuestVolumeTrendChart(bookings);
+  renderMonthlyCancellationChart(bookings);
 }
 
 // ============================================================
 // SECTION 10: Update stat cards
-// Counts reservations, guests, source, status, and money.
+// Counts reservations, guests, source, status, and collected money.
 // ============================================================
 
 function updateStats(bookings) {
@@ -277,13 +311,13 @@ function updateStats(bookings) {
     return status === "approved";
   }).length;
 
-  const pendingBookings = bookings.filter((booking) => {
+  const completedBookings = bookings.filter((booking) => {
     const status = String(booking.status || "").toLowerCase();
-    return status === "pending";
+    return status === "completed";
   }).length;
 
   const moneyCollected = bookings.reduce((sum, booking) => {
-    return sum + Number(booking.paid_amount || 0);
+    return sum + calculateCollectedRevenueForReport(booking);
   }, 0);
 
   setText("totalBookingsCount", totalBookings);
@@ -291,7 +325,7 @@ function updateStats(bookings) {
   setText("onlineBookingsCount", onlineBookings);
   setText("manualBookingsCount", manualBookings);
   setText("approvedBookingsCount", approvedBookings);
-  setText("pendingBookingsCount", pendingBookings);
+  setText("completedBookingsCount", completedBookings);
   setText("totalRevenueAmount", `₱${formatMoney(moneyCollected)}`);
 }
 
@@ -301,11 +335,9 @@ function updateStats(bookings) {
 
 function renderBookingStatusChart(bookings) {
   const counts = {
-    pending: 0,
     approved: 0,
-    rejected: 0,
-    cancelled: 0,
     completed: 0,
+    cancelled: 0,
   };
 
   bookings.forEach((booking) => {
@@ -326,27 +358,19 @@ function renderBookingStatusChart(bookings) {
   bookingStatusChart = new Chart(canvas, {
     type: "bar",
     data: {
-      labels: ["Pending", "Approved", "Rejected", "Cancelled", "Completed"],
+      labels: ["Approved", "Completed", "Cancelled"],
       datasets: [
         {
           label: "Reservations",
-          data: [
-            counts.pending,
-            counts.approved,
-            counts.rejected,
-            counts.cancelled,
-            counts.completed,
-          ],
+          data: [counts.approved, counts.completed, counts.cancelled],
           backgroundColor: [
-            STATUS_COLORS.pending,
             STATUS_COLORS.approved,
-            STATUS_COLORS.rejected,
-            STATUS_COLORS.cancelled,
             STATUS_COLORS.completed,
+            STATUS_COLORS.cancelled,
           ],
           borderRadius: 12,
           borderSkipped: false,
-          maxBarThickness: 38,
+          maxBarThickness: 42,
         },
       ],
     },
@@ -407,11 +431,7 @@ function renderPopularRoomsChart(bookings) {
   const itemCounts = {};
 
   bookings.forEach((booking) => {
-    const roomName =
-      booking.room_name ||
-      booking.accommodation_name ||
-      "Unknown Accommodation";
-
+    const roomName = getAccommodationName(booking);
     itemCounts[roomName] = (itemCounts[roomName] || 0) + 1;
   });
 
@@ -441,7 +461,7 @@ function renderPopularRoomsChart(bookings) {
           label: "Reservations",
           data: values,
           backgroundColor: labels.map(
-            (_, index) => MINIMAL_PALETTE[index % MINIMAL_PALETTE.length]
+            (_, index) => MINIMAL_PALETTE[index % MINIMAL_PALETTE.length],
           ),
           borderRadius: 10,
           borderSkipped: false,
@@ -476,45 +496,60 @@ function renderPopularRoomsChart(bookings) {
 }
 
 // ============================================================
-// SECTION 14: Chart - Payment method summary
+// SECTION 14: Chart - Monthly sales by accommodation category
+// Replaces the old Payment Method Summary.
 // ============================================================
 
-function renderPaymentMethodChart(bookings) {
-  const paymentCounts = {};
+function renderSalesByCategoryChart(bookings) {
+  const categorySales = {
+    Rooms: 0,
+    Cottages: 0,
+    "Function Areas": 0,
+    Others: 0,
+  };
 
   bookings.forEach((booking) => {
-    const method = formatPaymentMethodLabel(booking.payment_method || "unknown");
-    paymentCounts[method] = (paymentCounts[method] || 0) + 1;
+    const category = getAccommodationCategory(booking);
+    const amount = calculateCollectedRevenueForReport(booking);
+
+    categorySales[category] = (categorySales[category] || 0) + amount;
   });
 
-  const labels = Object.keys(paymentCounts);
-  const values = Object.values(paymentCounts);
+  const labels = Object.keys(categorySales).filter((label) => {
+    return Number(categorySales[label] || 0) > 0;
+  });
 
-  const canvas = document.getElementById("paymentMethodChart");
+  const finalLabels = labels.length ? labels : ["No data"];
+  const values = labels.length ? labels.map((label) => categorySales[label]) : [0];
+
+  const canvas = document.getElementById("salesByCategoryChart");
   if (!canvas) return;
 
-  if (paymentMethodChart) {
-    paymentMethodChart.destroy();
+  if (salesByCategoryChart) {
+    salesByCategoryChart.destroy();
   }
 
-  paymentMethodChart = new Chart(canvas, {
-    type: "doughnut",
+  salesByCategoryChart = new Chart(canvas, {
+    type: "bar",
     data: {
-      labels: labels.length ? labels : ["No data"],
+      labels: finalLabels,
       datasets: [
         {
-          label: "Payment Methods",
-          data: values.length ? values : [1],
-          backgroundColor: (labels.length ? labels : ["No data"]).map(
-            (_, index) => MINIMAL_PALETTE[index % MINIMAL_PALETTE.length]
-          ),
-          borderColor: "#FFFFFF",
-          borderWidth: 4,
-          hoverOffset: 8,
+          label: "Sales Value",
+          data: values,
+          backgroundColor: [
+            REPORT_COLORS.blue,
+            REPORT_COLORS.tealSoft,
+            REPORT_COLORS.purple,
+            REPORT_COLORS.gray,
+          ],
+          borderRadius: 12,
+          borderSkipped: false,
+          maxBarThickness: 42,
         },
       ],
     },
-    options: getDoughnutChartOptions(),
+    options: getMoneyBarChartOptions(),
   });
 }
 
@@ -526,10 +561,7 @@ function renderGuestsPerRoomChart(bookings) {
   const guestTotals = {};
 
   bookings.forEach((booking) => {
-    const roomName =
-      booking.room_name ||
-      booking.accommodation_name ||
-      "Unknown Accommodation";
+    const roomName = getAccommodationName(booking);
 
     guestTotals[roomName] =
       (guestTotals[roomName] || 0) +
@@ -578,25 +610,33 @@ function renderSlotUsageChart(bookings) {
     "Day Tour": 0,
     Overnight: 0,
     "22/23 Hours": 0,
+    Other: 0,
   };
 
   bookings.forEach((booking) => {
     const label = String(
-      booking.slot_label || booking.slot_type || ""
+      booking.slot_label || booking.slot_type || "",
     ).toLowerCase();
 
     if (label.includes("day")) {
       slotCounts["Day Tour"] += 1;
-    } else if (label.includes("overnight")) {
+    } else if (label.includes("overnight") || label.includes("night")) {
       slotCounts.Overnight += 1;
     } else if (
       label.includes("22") ||
       label.includes("23") ||
-      label.includes("extended")
+      label.includes("extended") ||
+      label.includes("hour")
     ) {
       slotCounts["22/23 Hours"] += 1;
+    } else {
+      slotCounts.Other += 1;
     }
   });
+
+  const labels = Object.keys(slotCounts).filter((label) => slotCounts[label] > 0);
+  const finalLabels = labels.length ? labels : ["No data"];
+  const values = labels.length ? labels.map((label) => slotCounts[label]) : [0];
 
   const canvas = document.getElementById("slotUsageChart");
   if (!canvas) return;
@@ -608,16 +648,14 @@ function renderSlotUsageChart(bookings) {
   slotUsageChart = new Chart(canvas, {
     type: "bar",
     data: {
-      labels: Object.keys(slotCounts),
+      labels: finalLabels,
       datasets: [
         {
           label: "Slot Usage",
-          data: Object.values(slotCounts),
-          backgroundColor: [
-            REPORT_COLORS.tealSoft,
-            REPORT_COLORS.blue,
-            REPORT_COLORS.amber,
-          ],
+          data: values,
+          backgroundColor: finalLabels.map(
+            (_, index) => MINIMAL_PALETTE[index % MINIMAL_PALETTE.length],
+          ),
           borderRadius: 12,
           borderSkipped: false,
           maxBarThickness: 42,
@@ -629,7 +667,166 @@ function renderSlotUsageChart(bookings) {
 }
 
 // ============================================================
-// SECTION 17: Chart option helpers
+// SECTION 17: Chart - Peak reservation days
+// Useful for staffing and promotion planning.
+// ============================================================
+
+function renderPeakReservationDaysChart(bookings) {
+  const dayCounts = {
+    Sunday: 0,
+    Monday: 0,
+    Tuesday: 0,
+    Wednesday: 0,
+    Thursday: 0,
+    Friday: 0,
+    Saturday: 0,
+  };
+
+  bookings.forEach((booking) => {
+    const date = getBookingActivityDate(booking);
+    if (!date) return;
+
+    const dayName = date.toLocaleDateString("en-US", { weekday: "long" });
+    dayCounts[dayName] = (dayCounts[dayName] || 0) + 1;
+  });
+
+  const labels = Object.keys(dayCounts);
+  const values = labels.map((label) => dayCounts[label]);
+
+  const canvas = document.getElementById("peakReservationDaysChart");
+  if (!canvas) return;
+
+  if (peakReservationDaysChart) {
+    peakReservationDaysChart.destroy();
+  }
+
+  peakReservationDaysChart = new Chart(canvas, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Reservations",
+          data: values,
+          backgroundColor: REPORT_COLORS.blueSoft,
+          borderRadius: 12,
+          borderSkipped: false,
+          maxBarThickness: 38,
+        },
+      ],
+    },
+    options: getBarChartOptions(),
+  });
+}
+
+// ============================================================
+// SECTION 18: Chart - Guest volume trend
+// Daily for short ranges, weekly for longer ranges.
+// ============================================================
+
+function renderGuestVolumeTrendChart(bookings) {
+  const trendTotals = {};
+
+  bookings.forEach((booking) => {
+    const date = getBookingActivityDate(booking);
+    if (!date) return;
+
+    const key = getTrendLabel(date);
+    trendTotals[key] =
+      (trendTotals[key] || 0) + Number(booking.guests || booking.guest_count || 0);
+  });
+
+  const entries = Object.entries(trendTotals).sort((a, b) => {
+    return a[0].localeCompare(b[0]);
+  });
+
+  const labels = entries.length ? entries.map((entry) => entry[0]) : ["No data"];
+  const values = entries.length ? entries.map((entry) => entry[1]) : [0];
+
+  const canvas = document.getElementById("guestVolumeTrendChart");
+  if (!canvas) return;
+
+  if (guestVolumeTrendChart) {
+    guestVolumeTrendChart.destroy();
+  }
+
+  guestVolumeTrendChart = new Chart(canvas, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [
+        {
+          label: "Guests",
+          data: values,
+          borderColor: REPORT_COLORS.teal,
+          backgroundColor: "rgba(20, 184, 166, 0.14)",
+          fill: true,
+          tension: 0.35,
+          pointRadius: 4,
+          pointHoverRadius: 6,
+        },
+      ],
+    },
+    options: getLineChartOptions(),
+  });
+}
+
+// ============================================================
+// SECTION 19: Chart - Monthly cancellation summary
+// Focuses on meeting-level success vs cancellation data.
+// ============================================================
+
+function renderMonthlyCancellationChart(bookings) {
+  const counts = {
+    Successful: 0,
+    Cancelled: 0,
+  };
+
+  bookings.forEach((booking) => {
+    const status = String(booking.status || "").toLowerCase();
+
+    if (status === "approved" || status === "completed") {
+      counts.Successful += 1;
+    } else if (status === "cancelled") {
+      counts.Cancelled += 1;
+    }
+  });
+
+  const labels = Object.keys(counts).filter((label) => counts[label] > 0);
+  const finalLabels = labels.length ? labels : ["No data"];
+  const values = labels.length ? labels.map((label) => counts[label]) : [0];
+
+  const canvas = document.getElementById("monthlyCancellationChart");
+  if (!canvas) return;
+
+  if (monthlyCancellationChart) {
+    monthlyCancellationChart.destroy();
+  }
+
+  monthlyCancellationChart = new Chart(canvas, {
+    type: "doughnut",
+    data: {
+      labels: finalLabels,
+      datasets: [
+        {
+          data: values,
+          backgroundColor: finalLabels.map((label) => {
+            if (label === "Successful") return REPORT_COLORS.green;
+            if (label === "Cancelled") return REPORT_COLORS.gray;
+            return REPORT_COLORS.blue;
+          }),
+          borderColor: "#FFFFFF",
+          borderWidth: 4,
+          hoverOffset: 8,
+        },
+      ],
+    },
+    options: getDoughnutChartOptions(),
+  });
+}
+
+// ============================================================
+// SECTION 20: Chart option helpers
 // Shared chart configurations.
 // ============================================================
 
@@ -677,6 +874,80 @@ function getBarChartOptions() {
             return `${label}: ${
               context.parsed.y ?? context.parsed.x ?? context.raw
             }`;
+          },
+        },
+      },
+    },
+  };
+}
+
+function getMoneyBarChartOptions() {
+  return {
+    ...getBarChartOptions(),
+    scales: {
+      x: {
+        grid: {
+          display: false,
+        },
+        ticks: getTickStyle(),
+      },
+      y: {
+        beginAtZero: true,
+        grid: getGridStyle(),
+        ticks: {
+          ...getTickStyle(),
+          callback: (value) => `₱${formatMoney(value)}`,
+        },
+      },
+    },
+    plugins: {
+      ...getBarChartOptions().plugins,
+      tooltip: {
+        callbacks: {
+          label: (context) => {
+            return `${context.dataset.label || "Amount"}: ₱${formatMoney(
+              context.parsed.y ?? context.raw,
+            )}`;
+          },
+        },
+      },
+    },
+  };
+}
+
+function getLineChartOptions() {
+  return {
+    responsive: true,
+    maintainAspectRatio: false,
+    animation: {
+      duration: 450,
+    },
+    scales: {
+      x: {
+        grid: {
+          display: false,
+        },
+        ticks: getTickStyle(),
+      },
+      y: {
+        beginAtZero: true,
+        grid: getGridStyle(),
+        ticks: {
+          ...getTickStyle(),
+          precision: 0,
+        },
+      },
+    },
+    plugins: {
+      legend: {
+        display: true,
+        position: "bottom",
+        labels: getLegendStyle(),
+      },
+      tooltip: {
+        callbacks: {
+          label: (context) => {
+            return `Guests: ${context.parsed.y ?? context.raw}`;
           },
         },
       },
@@ -753,7 +1024,7 @@ function getGridStyle() {
 }
 
 // ============================================================
-// SECTION 18: Print report meta
+// SECTION 21: Print report meta
 // Updates generated date and selected date range before printing.
 // ============================================================
 
@@ -772,19 +1043,14 @@ function updatePrintReportMeta() {
     hour12: true,
   });
 
-  const startDate = document.getElementById("reportStartDate")?.value;
-  const endDate = document.getElementById("reportEndDate")?.value;
+  let rangeText = "Date Range: Today";
 
-  let rangeText = "Date Range: All Records";
-
-  if (startDate && endDate) {
+  if (activeReportMode === "custom" && activeStartDate && activeEndDate) {
     rangeText = `Date Range: ${formatReadableDate(
-      startDate
-    )} to ${formatReadableDate(endDate)}`;
-  } else if (startDate) {
-    rangeText = `Date Range: From ${formatReadableDate(startDate)}`;
-  } else if (endDate) {
-    rangeText = `Date Range: Until ${formatReadableDate(endDate)}`;
+      activeStartDate,
+    )} to ${formatReadableDate(activeEndDate)}`;
+  } else if (activeStartDate && activeEndDate && activeStartDate === activeEndDate) {
+    rangeText = `Date Range: ${formatReadableDate(activeStartDate)}`;
   }
 
   if (generatedEl) {
@@ -799,7 +1065,7 @@ function updatePrintReportMeta() {
 function formatReadableDate(value) {
   if (!value) return "-";
 
-  const date = new Date(value);
+  const date = new Date(`${value}T00:00:00`);
 
   if (Number.isNaN(date.getTime())) {
     return value;
@@ -813,7 +1079,160 @@ function formatReadableDate(value) {
 }
 
 // ============================================================
-// SECTION 19: UI helpers
+// SECTION 22: Report date helpers
+// ============================================================
+
+function getTodayDateString() {
+  const now = new Date();
+  const philippinesTime = new Date(
+    now.toLocaleString("en-US", { timeZone: "Asia/Manila" }),
+  );
+
+  const year = philippinesTime.getFullYear();
+  const month = String(philippinesTime.getMonth() + 1).padStart(2, "0");
+  const day = String(philippinesTime.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function setDateInputsToToday() {
+  const today = getTodayDateString();
+  const startInput = document.getElementById("reportStartDate");
+  const endInput = document.getElementById("reportEndDate");
+
+  if (startInput) startInput.value = today;
+  if (endInput) endInput.value = today;
+}
+
+function getBookingActivityDate(booking) {
+  const value =
+    booking.check_in ||
+    booking.check_in_date ||
+    booking.reserved_at ||
+    booking.created_at;
+
+  if (!value) return null;
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+
+  return date;
+}
+
+function getTrendLabel(date) {
+  if (!date) return "No date";
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+// ============================================================
+// SECTION 23: Accommodation helpers
+// ============================================================
+
+function getAccommodationName(booking) {
+  return (
+    booking.room_name ||
+    booking.accommodation_name ||
+    booking.accommodation_list ||
+    "Unknown Accommodation"
+  );
+}
+
+function getAccommodationCategory(booking) {
+  const rawCategory = String(
+    booking.category ||
+      booking.accommodation_category ||
+      booking.room_category ||
+      booking.type ||
+      booking.accommodation_type ||
+      "",
+  ).toLowerCase();
+
+  const name = String(getAccommodationName(booking)).toLowerCase();
+  const combined = `${rawCategory} ${name}`;
+
+  if (
+    combined.includes("function") ||
+    combined.includes("hall") ||
+    combined.includes("pavilion") ||
+    combined.includes("event")
+  ) {
+    return "Function Areas";
+  }
+
+  if (
+    combined.includes("cottage") ||
+    combined.includes("shade") ||
+    combined.includes("kubo") ||
+    combined.includes("hut") ||
+    combined.includes("umbrella")
+  ) {
+    return "Cottages";
+  }
+
+  if (
+    combined.includes("room") ||
+    combined.includes("villa") ||
+    combined.includes("suite") ||
+    combined.includes("aircon") ||
+    combined.includes("non-aircon")
+  ) {
+    return "Rooms";
+  }
+
+  return "Others";
+}
+
+
+// ============================================================
+// SECTION 24: Revenue helpers
+// Counts collected money only:
+// - Downpayment/full payment on created date
+// - Remaining balance + entrance fee on check-in date
+// - Extra bed fee only after Mark Extra Bed Paid
+// ============================================================
+
+function isDateWithinActiveRange(value) {
+  if (!value || !activeStartDate || !activeEndDate) return false;
+
+  const dateText = String(value).slice(0, 10);
+  return dateText >= activeStartDate && dateText <= activeEndDate;
+}
+
+function isExtraBedPaid(booking) {
+  return (
+    Number(booking.extra_bed_paid || 0) === 1 ||
+    String(booking.extra_bed_paid || "").toLowerCase() === "true"
+  );
+}
+
+function calculateCollectedRevenueForReport(booking) {
+  const createdInRange = isDateWithinActiveRange(booking.created_at);
+  const checkedInInRange = isDateWithinActiveRange(booking.checked_in_at);
+  const extraBedPaidInRange = isDateWithinActiveRange(booking.extra_bed_paid_at);
+
+  let amount = 0;
+
+  if (checkedInInRange) {
+    amount += Number(booking.accommodation_total || booking.paid_amount || 0);
+    amount += Number(booking.entrance_fee_collected || 0);
+  } else if (createdInRange) {
+    amount += Number(booking.paid_amount || booking.required_downpayment || 0);
+  }
+
+  if (isExtraBedPaid(booking) && extraBedPaidInRange) {
+    amount += Number(booking.extra_bed_fee || 0);
+  }
+
+  return amount;
+}
+
+// ============================================================
+// SECTION 25: UI helpers
 // Handles error text and common formatting.
 // ============================================================
 
@@ -846,28 +1265,4 @@ function formatMoney(value) {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-}
-
-function formatPaymentMethodLabel(method) {
-  const value = String(method || "").toLowerCase();
-
-  if (value === "gcash") return "GCash";
-  if (value === "paymaya") return "PayMaya";
-  if (value === "maya") return "Maya";
-  if (value === "cash") return "Cash";
-  if (value === "bank_transfer") return "Bank Transfer";
-  if (value === "paypal") return "PayPal";
-  if (value === "other") return "Other";
-  if (value === "unknown") return "Unknown";
-
-  return capitalize(value.replaceAll("_", " "));
-}
-
-function capitalize(text) {
-  if (!text) return "";
-
-  return String(text)
-    .split(" ")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
 }

@@ -368,7 +368,7 @@ async function submitManualReservation(e) {
 
   if (requiresProof && !proofReference) {
     showMessage(
-      "Reference number is required for GCash, PayMaya, or Bank Transfer.",
+      "Reference number is required for PayMaya, or Gcash.",
       "error"
     );
     return;
@@ -376,7 +376,7 @@ async function submitManualReservation(e) {
 
   if (requiresProof && !proofImage) {
     showMessage(
-      "Proof screenshot is required for GCash, PayMaya, or Bank Transfer.",
+      "Proof screenshot is required for PayMaya, or Gcash.",
       "error"
     );
     return;
@@ -656,9 +656,8 @@ function setText(id, value) {
 function formatPaymentMethod(method) {
   if (method === "gcash") return "GCash";
   if (method === "paymaya") return "PayMaya";
-  if (method === "bank_transfer") return "Bank Transfer";
   if (method === "cash") return "Cash";
-  if (method === "other") return "Other";
+
 
   return capitalize(method);
 }
