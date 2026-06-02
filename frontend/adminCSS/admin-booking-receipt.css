@@ -1,14 +1,7 @@
 /* ======================================================
    ADMIN BOOKING RECEIPT CSS
    File: frontend/adminCSS/admin-booking-receipt.css
-   Purpose:
-   - Styles only adminHTML/admin-booking-receipt.html
-   - Keeps receipt CSS separated from global style.css
-====================================================== */
-
-/* ======================================================
-   SECTION 1: Page base layout
-   Background, font, and page spacing.
+   Purpose: Thermal-only admin receipt
 ====================================================== */
 
 body {
@@ -20,508 +13,233 @@ body {
 
 .receipt-page {
   width: 92%;
-  max-width: 1150px;
+  max-width: 900px;
   margin: 120px auto 50px;
 }
 
-/* ======================================================
-   SECTION 2: Top action buttons
-   Back, A4 print, and thermal print buttons.
-====================================================== */
-
 .top-actions {
-  display: flex !important;
-  gap: 12px !important;
-  flex-wrap: wrap !important;
-  margin-bottom: 18px !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  position: relative !important;
-  z-index: 9999 !important;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+  position: relative;
+  z-index: 2;
 }
 
 .back-btn,
 .print-btn {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  text-decoration: none !important;
-  border: none !important;
-  cursor: pointer !important;
-  padding: 12px 18px !important;
-  border-radius: 999px !important;
-  font-weight: 700 !important;
-  font-size: 0.96rem !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-}
-
-.back-btn {
-  background: #ffffff !important;
-  color: #0f172a !important;
-  border: 1px solid #dbe7ef !important;
-}
-
-.print-btn {
-  background: linear-gradient(135deg, #14b8a6, #0ea5e9) !important;
-  color: #ffffff !important;
-  box-shadow: 0 10px 24px rgba(20, 184, 166, 0.22) !important;
-}
-
-.print-btn.secondary {
-  background: #0f172a !important;
-  color: #ffffff !important;
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.2) !important;
-}
-
-/* ======================================================
-   SECTION 3: Receipt shell and header
-   Main A4 receipt card.
-====================================================== */
-
-.receipt-shell {
-  background: rgba(255, 255, 255, 0.97);
-  border-radius: 30px;
-  overflow: hidden;
-  box-shadow: 0 22px 46px rgba(15, 23, 42, 0.08);
-  border: 1px solid rgba(219, 231, 239, 0.92);
-}
-
-.receipt-header {
-  background: linear-gradient(135deg,
-      #0f172a 0%,
-      #16233b 60%,
-      #14b8a6 100%);
-  color: white;
-  padding: 24px;
-  display: flex;
-  justify-content: space-between;
-  gap: 18px;
-  align-items: flex-start;
-  flex-wrap: wrap;
-}
-
-.receipt-header h1 {
-  margin: 0 0 8px;
-  font-size: 2rem;
-}
-
-.receipt-header p {
-  margin: 0;
-  line-height: 1.7;
-  opacity: 0.96;
-}
-
-.receipt-code-box {
-  min-width: 190px;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 18px;
-  padding: 12px 16px;
-  text-align: center;
-  backdrop-filter: blur(10px);
-}
-
-.receipt-code-box small {
-  display: block;
-  opacity: 0.9;
-  font-weight: 700;
-  margin-bottom: 6px;
-}
-
-.receipt-code-box strong {
-  display: block;
-  font-size: 1.45rem;
-  font-weight: 900;
-  letter-spacing: 0.4px;
-}
-
-/* ======================================================
-   SECTION 4: Receipt content grids
-   Layout for reservation, guest, payment, and notes.
-====================================================== */
-
-.receipt-content {
-  padding: 20px;
-}
-
-.grid-2 {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-  margin-bottom: 18px;
-}
-
-.grid-bottom {
-  display: grid;
-  grid-template-columns: 1fr 0.95fr;
-  gap: 18px;
-  margin-top: 18px;
-}
-
-.grid-last {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px;
-  margin-top: 18px;
-}
-
-/* ======================================================
-   SECTION 5: Section cards and information rows
-   Reusable card style for receipt details.
-====================================================== */
-
-.section-card {
-  background: linear-gradient(180deg, #fcfeff 0%, #f4fbfc 100%);
-  border: 1px solid #dbe7ef;
-  border-radius: 22px;
-  padding: 18px;
-}
-
-.section-card h2 {
-  margin: 0 0 12px;
-  font-size: 1.12rem;
-  font-weight: 800;
-  color: #0f172a;
-}
-
-.info-row {
-  display: grid;
-  grid-template-columns: 1fr 1.1fr;
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid #dbe7ef;
-  align-items: start;
-  color: #334155;
-  font-size: 0.95rem;
-  line-height: 1.5;
-}
-
-.info-row:last-child {
-  border-bottom: none;
-}
-
-.info-row strong {
-  color: #0f172a;
-}
-
-/* ======================================================
-   SECTION 6: Accommodation item table
-   Shows reserved room/cottage/function area items.
-====================================================== */
-
-.table-shell {
-  background: #ffffff;
-  border: 1px solid #dbe7ef;
-  border-radius: 20px;
-  overflow: hidden;
-}
-
-.table-title {
-  background: linear-gradient(180deg, #0f172a 0%, #111c34 100%);
-  color: white;
-  padding: 14px 16px;
-  font-size: 1.02rem;
-  font-weight: 800;
-}
-
-.table-wrap {
-  overflow-x: auto;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 760px;
-}
-
-th {
-  padding: 12px 10px;
-  border-bottom: 1px solid #dbe7ef;
-  text-align: left;
-  font-size: 0.9rem;
-  white-space: nowrap;
-  background: #f8fafc;
-}
-
-td {
-  padding: 12px 10px;
-  border-bottom: 1px solid #e5e7eb;
-  color: #334155;
-  font-size: 0.9rem;
-  vertical-align: top;
-}
-
-/* ======================================================
-   SECTION 7: Payment summary
-   Dark card for total, paid amount, and balance.
-====================================================== */
-
-.dark-summary {
-  background: linear-gradient(180deg, #0f172a 0%, #16233b 100%);
-  color: white;
-  border-radius: 22px;
-  padding: 20px;
-}
-
-.dark-summary h2 {
-  margin: 0 0 14px;
-  font-size: 1.16rem;
-}
-
-.amount-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 10px;
-  font-size: 0.96rem;
-}
-
-.amount-total {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
-  font-weight: 900;
-  font-size: 1.08rem;
-}
-
-/* ======================================================
-   SECTION 8: Notes, reminders, and badges
-   Status labels and helper note boxes.
-====================================================== */
-
-.note-box {
-  margin-top: 14px;
-  background: #fff7ed;
-  border: 1px solid #fdba74;
-  border-radius: 14px;
-  padding: 12px 14px;
-  color: #9a3412;
-  line-height: 1.7;
-  font-size: 0.93rem;
-}
-
-.reminder-text {
-  color: #334155;
-  line-height: 1.8;
-  font-size: 0.95rem;
-}
-
-.badge {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 7px 12px;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  padding: 12px 18px;
   border-radius: 999px;
-  font-size: 0.82rem;
   font-weight: 800;
-  border: 1px solid transparent;
+  font-size: 0.96rem;
 }
 
-.badge.online {
-  background: #dbeafe;
-  color: #1d4ed8;
-  border-color: #bfdbfe;
+.back-btn {
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid #dbe7ef;
 }
 
-.badge.manual {
-  background: #dcfce7;
-  color: #166534;
-  border-color: #bbf7d0;
+.print-btn {
+  background: linear-gradient(135deg, #14b8a6, #0ea5e9);
+  color: #ffffff;
+  box-shadow: 0 10px 24px rgba(20, 184, 166, 0.22);
 }
 
-.badge.pending {
-  background: #fef3c7;
-  color: #92400e;
-  border-color: #fde68a;
+.receipt-preview-card {
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid rgba(219, 231, 239, 0.92);
+  border-radius: 28px;
+  padding: 24px;
+  box-shadow: 0 22px 46px rgba(15, 23, 42, 0.08);
 }
 
-.badge.approved,
-.badge.paid {
-  background: #dcfce7;
-  color: #166534;
-  border-color: #bbf7d0;
+.preview-header {
+  text-align: center;
+  margin-bottom: 20px;
 }
 
-.badge.partial {
-  background: #dbeafe;
-  color: #1d4ed8;
-  border-color: #bfdbfe;
+.preview-header h1 {
+  margin: 0 0 8px;
+  font-size: 2rem;
+  letter-spacing: -0.04em;
 }
 
-.badge.rejected {
-  background: #fee2e2;
-  color: #991b1b;
-  border-color: #fecaca;
+.preview-header p {
+  margin: 0 auto;
+  max-width: 560px;
+  color: #64748b;
+  line-height: 1.6;
 }
-
-/* ======================================================
-   SECTION 9: Thermal receipt default
-   Hidden on screen, visible only when thermal printing.
-====================================================== */
 
 .thermal-receipt-shell {
-  display: none;
+  width: 80mm;
+  max-width: 100%;
+  margin: 0 auto;
+  background: #ffffff;
+  color: #000000;
+  border: 1px solid #d1d5db;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.12);
 }
 
-/* ======================================================
-   SECTION 10: Responsive layout
-   Makes cards stack on smaller screens.
-====================================================== */
-
-@media (max-width: 900px) {
-
-  .grid-2,
-  .grid-bottom,
-  .grid-last {
-    grid-template-columns: 1fr;
-  }
+.thermal-inner {
+  padding: 10px;
+  font-family: Arial, sans-serif;
+  font-size: 11px;
+  line-height: 1.45;
 }
 
-/* ======================================================
-   SECTION 11: Print styles
-   Supports both A4 and thermal receipt printing.
-====================================================== */
-
-@media print {
-
-  body.print-a4 .top-actions,
-  body.print-thermal .top-actions,
-  body.print-a4 .navbar,
-  body.print-thermal .navbar {
-    display: none !important;
-  }
-
-  body.print-a4 {
-    background: #ffffff !important;
-  }
-
-  body.print-a4 .receipt-page {
-    width: 100%;
-    max-width: none;
-    margin: 0;
-  }
-
-  body.print-a4 .receipt-shell {
-    border: none;
-    box-shadow: none;
-    border-radius: 0;
-  }
-
-  body.print-thermal {
-    background: #ffffff !important;
-  }
-
-  body.print-thermal .receipt-shell {
-    display: none !important;
-  }
-
-  body.print-thermal .thermal-receipt-shell {
-    display: block !important;
-    width: 80mm;
-    max-width: 80mm;
-    margin: 0 auto;
-    background: #ffffff;
-    color: #000000;
-    font-family: Arial, sans-serif;
-  }
-
-  body.print-thermal .thermal-inner {
-    padding: 8px;
-    font-size: 11px;
-    line-height: 1.45;
-  }
-
-  body.print-thermal .thermal-center {
-    text-align: center;
-  }
-
-  body.print-thermal .thermal-divider {
-    border-top: 1px dashed #000;
-    margin: 8px 0;
-  }
-
-  body.print-thermal .thermal-row {
-    display: flex;
-    justify-content: space-between;
-    gap: 8px;
-  }
-
-  body.print-thermal .thermal-title {
-    font-size: 14px;
-    font-weight: 800;
-  }
-
-  body.print-thermal .thermal-bold {
-    font-weight: 700;
-  }
-
-  body.print-thermal .thermal-items {
-    margin-top: 6px;
-  }
-
-  body.print-thermal .thermal-item {
-    margin-bottom: 8px;
-  }
-
-  @page {
-    size: auto;
-    margin: 6mm;
-  }
+.thermal-center {
+  text-align: center;
 }
 
-/* ============================================================
-   RECEIPT PAGE NAVBAR OVERLAP FIX
-   Paste this at the bottom of the CSS used by admin-booking-receipt.html.
-   Good target files: admin-booking-receipt.css or admin.css if that page uses it.
-============================================================ */
-
-body.has-fixed-navbar {
-  padding-top: 96px;
+.thermal-title {
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
 }
 
-.navbar {
-  z-index: 9999;
+.thermal-sub {
+  font-size: 11px;
+  margin-top: 2px;
 }
 
-.receipt-shell,
-.receipt-wrapper,
-.receipt-page,
-.admin-receipt-wrapper,
-.admin-receipt-page,
-main {
-  position: relative;
-  z-index: 1;
+.thermal-code {
+  font-size: 14px;
+  font-weight: 900;
+  margin-top: 6px;
 }
 
-.receipt-actions,
-.receipt-top-actions,
-.admin-top-link,
-.print-actions,
-.receipt-button-row {
-  position: relative;
-  z-index: 2;
-  margin-top: 18px;
-  margin-bottom: 22px;
-  padding-top: 8px;
+.thermal-divider {
+  border-top: 1px dashed #000000;
+  margin: 8px 0;
+}
+
+.thermal-section-title {
+  font-weight: 900;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+}
+
+.thermal-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 2px 0;
+}
+
+.thermal-row span:first-child {
+  flex: 0 0 auto;
+}
+
+.thermal-row span:last-child {
+  text-align: right;
+  word-break: break-word;
+}
+
+.thermal-bold {
+  font-weight: 900;
+}
+
+.thermal-small {
+  font-size: 10px;
+}
+
+.thermal-item {
+  margin-bottom: 8px;
+}
+
+.thermal-total-box {
+  text-align: center;
+  border: 1px solid #000000;
+  padding: 8px 6px;
+  margin: 8px 0;
+}
+
+.thermal-total-label {
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.thermal-total-amount {
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.thermal-note {
+  font-size: 10px;
+  text-align: center;
+  line-height: 1.4;
 }
 
 @media (max-width: 768px) {
-  body.has-fixed-navbar {
-    padding-top: 112px;
+  .receipt-page {
+    width: 94%;
+    margin-top: 112px;
   }
 
-  .receipt-actions,
-  .receipt-top-actions,
-  .admin-top-link,
-  .print-actions,
-  .receipt-button-row {
-    display: flex;
+  .top-actions {
     flex-direction: column;
-    gap: 10px;
-    align-items: stretch;
+  }
+
+  .back-btn,
+  .print-btn {
+    width: 100%;
+  }
+
+  .receipt-preview-card {
+    padding: 16px;
+    border-radius: 22px;
+  }
+}
+
+@media print {
+  body {
+    background: #ffffff !important;
+  }
+
+  .navbar,
+  .top-actions,
+  .preview-header {
+    display: none !important;
+  }
+
+  .receipt-page {
+    width: 80mm !important;
+    max-width: 80mm !important;
+    margin: 0 auto !important;
+  }
+
+  .receipt-preview-card {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  .thermal-receipt-shell {
+    display: block !important;
+    width: 80mm !important;
+    max-width: 80mm !important;
+    margin: 0 auto !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  .thermal-inner {
+    padding: 8px !important;
+    font-size: 11px !important;
+    line-height: 1.45 !important;
+  }
+
+  @page {
+    size: 80mm auto;
+    margin: 4mm;
   }
 }

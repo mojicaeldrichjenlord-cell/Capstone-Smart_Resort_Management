@@ -1,31 +1,19 @@
 // ============================================================
-// SMARTRESORT ADMIN BOOKING RECEIPT SCRIPT
+// SMARTRESORT ADMIN THERMAL RECEIPT SCRIPT
+// File: frontend/adminJS/admin-booking-receipt.js
 // Purpose:
-// - Check admin access
+// - Check admin/staff access
 // - Load reservation receipt data
-// - Render A4 admin receipt
-// - Render thermal receipt
-// - Print A4 or thermal format
-// - Works from frontend/adminHTML/admin-booking-receipt.html
-// ============================================================
-
-
-// ============================================================
-// SECTION 1: Page startup
-// Runs access check, print button setup, and receipt loading.
+// - Render thermal-only front-desk receipt
+// - Display Philippine time accurately
 // ============================================================
 
 document.addEventListener("DOMContentLoaded", () => {
   checkAdminAccess();
   setupLogoutButton();
-  setupPrintButtons();
+  setupPrintButton();
   loadAdminReceipt();
 });
-
-// ============================================================
-// SECTION 2: Admin access checker
-// Redirects unauthenticated users or non-admin users.
-// ============================================================
 
 function checkAdminAccess() {
   const user = JSON.parse(localStorage.getItem("user"));
@@ -36,16 +24,11 @@ function checkAdminAccess() {
     return;
   }
 
-  if (user.role !== "admin") {
+  if (user.role !== "admin" && user.role !== "staff") {
     alert("Access denied. Admin only.");
     window.location.href = "../index.html";
   }
 }
-
-// ============================================================
-// SECTION 3: Logout button
-// Clears logged-in user and returns to login page.
-// ============================================================
 
 function setupLogoutButton() {
   const logoutBtn = document.getElementById("logoutBtn");
@@ -54,7 +37,6 @@ function setupLogoutButton() {
 
   logoutBtn.addEventListener("click", (e) => {
     e.preventDefault();
-
     localStorage.removeItem("user");
 
     if (typeof showToast === "function") {
@@ -67,53 +49,25 @@ function setupLogoutButton() {
   });
 }
 
-// ============================================================
-// SECTION 4: Print buttons
-// Adds print mode class before printing.
-// ============================================================
-
-function setupPrintButtons() {
-  const printA4Btn = document.getElementById("printA4Btn");
+function setupPrintButton() {
   const printThermalBtn = document.getElementById("printThermalBtn");
 
-  if (printA4Btn) {
-    printA4Btn.addEventListener("click", () => {
-      document.body.classList.remove("print-thermal");
-      document.body.classList.add("print-a4");
+  if (!printThermalBtn) return;
 
-      window.print();
-
-      setTimeout(() => {
-        document.body.classList.remove("print-a4");
-      }, 500);
-    });
-  }
-
-  if (printThermalBtn) {
-    printThermalBtn.addEventListener("click", () => {
-      document.body.classList.remove("print-a4");
-      document.body.classList.add("print-thermal");
-
-      window.print();
-
-      setTimeout(() => {
-        document.body.classList.remove("print-thermal");
-      }, 500);
-    });
-  }
+  printThermalBtn.addEventListener("click", () => {
+    window.print();
+  });
 }
-
-// ============================================================
-// SECTION 5: Load admin receipt
-// Gets booking ID from URL and fetches receipt data.
-// ============================================================
 
 async function loadAdminReceipt() {
   const params = new URLSearchParams(window.location.search);
   const bookingId = params.get("id");
+  const thermal = document.getElementById("thermalReceipt");
 
   if (!bookingId) {
-    alert("Booking ID is missing.");
+    if (thermal) {
+      thermal.innerHTML = `<div class="thermal-inner">Booking ID is missing.</div>`;
+    }
     return;
   }
 
@@ -126,245 +80,26 @@ async function loadAdminReceipt() {
     }
 
     const booking = data.booking || data;
-
-    renderReceipt(booking);
     renderThermalReceipt(booking);
   } catch (error) {
     console.error("loadAdminReceipt error:", error);
-    alert(error.message || "Failed to load admin receipt.");
-  }
-}
 
-// ============================================================
-// SECTION 6: Render A4 receipt
-// Displays reservation, guest, items, and payment breakdown.
-// ============================================================
-
-function renderReceipt(booking) {
-  const items = Array.isArray(booking.items) ? booking.items : [];
-  const source = String(booking.booking_source || "online").toLowerCase();
-  const status = String(booking.status || "pending").toLowerCase();
-  const paymentStatus = String(booking.payment_status || "pending").toLowerCase();
-
-  const totalGuests = Number(booking.guests || booking.guest_count || 0);
-  const freeEntrancePax = Number(booking.free_entrance_pax || 0);
-
-  const chargeableGuests = Number(
-    booking.chargeable_entrance_guests ??
-      Math.max(totalGuests - freeEntrancePax, 0)
-  );
-
-  const estimatedEntranceFee = Number(booking.estimated_entrance_fee || 0);
-  const entranceFeeCollected = Number(booking.entrance_fee_collected || 0);
-  const entranceFeePaid = isTruthy(booking.entrance_fee_paid) || entranceFeeCollected > 0;
-
-  const extraBedCount = Number(booking.extra_bed_count || 0);
-  const extraBedFee = Number(booking.extra_bed_fee || 0);
-  const extraBedPaid = isTruthy(booking.extra_bed_paid);
-  const extraBedPaidAt = booking.extra_bed_paid_at || "";
-
-  const entranceRate =
-    chargeableGuests > 0 ? estimatedEntranceFee / chargeableGuests : 0;
-
-  const onsiteReminderTotal =
-    Number(booking.remaining_balance || 0) +
-    (entranceFeePaid ? 0 : estimatedEntranceFee) +
-    (extraBedPaid ? 0 : extraBedFee);
-
-  const totalCollected =
-    Number(booking.paid_amount || 0) +
-    entranceFeeCollected +
-    (extraBedPaid ? extraBedFee : 0);
-
-  document.getElementById("reservationCode").textContent =
-    booking.reservation_code || `#${booking.id}`;
-
-  document.getElementById("reservationInfo").innerHTML = `
-    ${infoRow("Reservation ID", `#${escapeHtml(booking.id)}`)}
-    ${infoRow(
-      "Source",
-      `<span class="badge ${source === "manual" ? "manual" : "online"}">
-        ${source === "manual" ? "Manual" : "Online"}
-      </span>`
-    )}
-    ${infoRow(
-      "Status",
-      `<span class="badge ${getStatusClass(status)}">${capitalize(status)}</span>`
-    )}
-    ${infoRow(
-      "Payment Status",
-      `<span class="badge ${getPaymentClass(paymentStatus)}">
-        ${formatPaymentStatus(paymentStatus)}
-      </span>`
-    )}
-    ${infoRow(
-      "Payment Method",
-      escapeHtml(formatPaymentMethod(booking.payment_method || "cash"))
-    )}
-    ${infoRow(
-      "Reserved At",
-      escapeHtml(formatDateTime(booking.reserved_at || booking.created_at))
-    )}
-    ${infoRow(
-      "Reserved Date",
-      escapeHtml(formatDate(booking.reserved_at || booking.created_at))
-    )}
-    ${infoRow(
-      "Reserved Time",
-      escapeHtml(formatTimeFromDateTime(booking.reserved_at || booking.created_at))
-    )}
-  `;
-
-  document.getElementById("guestInfo").innerHTML = `
-    ${infoRow("Guest Name", escapeHtml(booking.fullname || "-"))}
-    ${infoRow("Phone", escapeHtml(booking.phone || booking.contact_no || "-"))}
-    ${infoRow("Email", escapeHtml(booking.email || "-"))}
-    ${infoRow("Guest Count", escapeHtml(totalGuests))}
-    ${infoRow("Entrance Fee Estimate", `₱${formatMoney(estimatedEntranceFee)}`)}
-    ${infoRow("Entrance Fee Paid", entranceFeePaid ? "Yes" : "No")}
-    ${infoRow("Extra Bed", `${extraBedCount} bed(s)`)}
-    ${infoRow(
-      "Extra Bed Payment",
-      extraBedFee > 0
-        ? `₱${formatMoney(extraBedFee)} - ${extraBedPaid ? "Paid" : "Unpaid"}`
-        : "No extra bed"
-    )}
-  `;
-
-  document.getElementById("itemsTableBody").innerHTML = items.length
-    ? items
-        .map(
-          (item) => `
-            <tr>
-              <td>${escapeHtml(item.accommodation_name || "-")}</td>
-              <td>${escapeHtml(item.category_name || "-")}</td>
-              <td>${escapeHtml(item.slot_label || "-")}</td>
-              <td>${formatDate(item.check_in_date)} ${formatTime(item.check_in_time)}</td>
-              <td>${formatDate(item.check_out_date)} ${formatTime(item.check_out_time)}</td>
-              <td>₱${formatMoney(item.item_price)}</td>
-              <td>${escapeHtml(item.map_label || "-")}</td>
-            </tr>
-          `
-        )
-        .join("")
-    : `
-      <tr>
-        <td colspan="7" style="text-align:center;color:#64748b;">
-          No reserved items found.
-        </td>
-      </tr>
-    `;
-
-  document.getElementById("deductionInfo").innerHTML = `
-    ${infoRow("Total Guests", escapeHtml(totalGuests))}
-    ${infoRow("Free Entrance Included", `${escapeHtml(freeEntrancePax)} pax`)}
-    ${infoRow("Chargeable Entrance Guests", `${escapeHtml(chargeableGuests)} pax`)}
-    ${infoRow("Entrance Rate Used", `₱${formatMoney(entranceRate)}`)}
-    ${infoRow("Estimated Entrance Fee", `₱${formatMoney(estimatedEntranceFee)}`)}
-  `;
-
-  document.getElementById("paymentBreakdown").innerHTML = `
-    ${amountRow("Accommodation Total", booking.accommodation_total)}
-    ${amountRow("Required Down Payment", booking.required_downpayment)}
-    ${amountRow("Accommodation Paid", booking.paid_amount)}
-    ${amountRow("Remaining Balance", booking.remaining_balance)}
-    ${amountRow(
-      entranceFeePaid ? "Entrance Fee Collected" : "Entrance Fee To Collect",
-      entranceFeePaid ? entranceFeeCollected : booking.estimated_entrance_fee
-    )}
-    ${amountRow(
-      extraBedPaid ? "Extra Bed Fee Paid" : "Extra Bed Fee To Collect",
-      extraBedFee
-    )}
-    ${
-      extraBedFee > 0 && extraBedPaidAt
-        ? `<div class="amount-row"><span>Extra Bed Paid At</span><strong>${escapeHtml(
-            formatDateTime(extraBedPaidAt)
-          )}</strong></div>`
-        : ""
+    if (thermal) {
+      thermal.innerHTML = `
+        <div class="thermal-inner">
+          Failed to load receipt.<br>
+          ${escapeHtml(error.message || "")}
+        </div>
+      `;
     }
-    <div class="amount-total">
-      <span>Total Collected</span>
-      <strong>₱${formatMoney(totalCollected)}</strong>
-    </div>
-    <div class="amount-total">
-      <span>Total Onsite Reminder</span>
-      <strong>₱${formatMoney(onsiteReminderTotal)}</strong>
-    </div>
-  `;
-
-  document.getElementById("referenceInfo").innerHTML = `
-    ${infoRow("Proof / Reference", renderProofOrReference(booking.proof_of_payment))}
-    ${infoRow("Note", escapeHtml(booking.note || "-"))}
-  `;
+  }
 }
-
-// ============================================================
-// SECTION 7: Render proof/reference
-// Converts upload path into a clickable backend file link.
-// ============================================================
-
-function renderProofOrReference(proofValue) {
-  const value = String(proofValue || "").trim();
-
-  if (!value) {
-    return "-";
-  }
-
-  const proofUrl = buildProofUrl(value);
-
-  if (!proofUrl) {
-    return escapeHtml(value);
-  }
-
-  return `
-    <a
-      href="${escapeHtml(proofUrl)}"
-      target="_blank"
-      rel="noopener noreferrer"
-      style="color:#0ea5e9;word-break:break-all;"
-    >
-      View Uploaded Proof
-    </a>
-  `;
-}
-
-// ============================================================
-// SECTION 8: Build proof URL
-// Turns /uploads path into backend static file URL.
-// ============================================================
-
-function buildProofUrl(value) {
-  if (value.startsWith("http://") || value.startsWith("https://")) {
-    return value;
-  }
-
-  if (value.startsWith("/uploads/")) {
-    return `http://127.0.0.1:5000${value}`;
-  }
-
-  if (value.startsWith("uploads/")) {
-    return `http://127.0.0.1:5000/${value}`;
-  }
-
-  return "";
-}
-
-// ============================================================
-// SECTION 9: Render thermal receipt
-// Builds POS-style receipt for thermal printing.
-// ============================================================
 
 function renderThermalReceipt(booking) {
   const items = Array.isArray(booking.items) ? booking.items : [];
+
   const totalGuests = Number(booking.guests || booking.guest_count || 0);
-  const freeEntrancePax = Number(booking.free_entrance_pax || 0);
-
-  const chargeableGuests = Number(
-    booking.chargeable_entrance_guests ??
-      Math.max(totalGuests - freeEntrancePax, 0)
-  );
-
+  const estimatedEntranceFee = Number(booking.estimated_entrance_fee || 0);
   const entranceFeeCollected = Number(booking.entrance_fee_collected || 0);
   const entranceFeePaid =
     isTruthy(booking.entrance_fee_paid) || entranceFeeCollected > 0;
@@ -373,15 +108,23 @@ function renderThermalReceipt(booking) {
   const extraBedFee = Number(booking.extra_bed_fee || 0);
   const extraBedPaid = isTruthy(booking.extra_bed_paid);
 
-  const onsiteTotal =
-    Number(booking.remaining_balance || 0) +
-    (entranceFeePaid ? 0 : Number(booking.estimated_entrance_fee || 0)) +
-    (extraBedPaid ? 0 : extraBedFee);
+  const accommodationTotal = Number(booking.accommodation_total || 0);
+  const paidAmount = Number(booking.paid_amount || 0);
+  const remainingBalance = Number(booking.remaining_balance || 0);
+
+  const entranceToCollect = entranceFeePaid ? 0 : estimatedEntranceFee;
+  const extraBedToCollect = extraBedPaid ? 0 : extraBedFee;
 
   const totalCollected =
-    Number(booking.paid_amount || 0) +
-    entranceFeeCollected +
-    (extraBedPaid ? extraBedFee : 0);
+    paidAmount + entranceFeeCollected + (extraBedPaid ? extraBedFee : 0);
+
+  const onsiteTotal = remainingBalance + entranceToCollect + extraBedToCollect;
+
+  const status = formatPaymentStatus(booking.payment_status || "pending");
+  const guestName = booking.fullname || buildFullName(booking) || "-";
+  const phone = booking.phone || booking.contact_no || "-";
+  const reservedAt = formatPhilippineDateTime(booking.reserved_at || booking.created_at);
+  const printedAt = formatPhilippineDateTime(new Date().toISOString());
 
   const thermal = document.getElementById("thermalReceipt");
   if (!thermal) return;
@@ -389,8 +132,9 @@ function renderThermalReceipt(booking) {
   thermal.innerHTML = `
     <div class="thermal-inner">
       <div class="thermal-center">
-        <div class="thermal-title">SMART RESORT</div>
-        <div class="thermal-sub">ADMIN RECEIPT</div>
+        <div class="thermal-title">ARVIC SEASIDE</div>
+        <div class="thermal-sub">BEACH RESORT & HOTEL</div>
+        <div class="thermal-sub">ADMIN THERMAL RECEIPT</div>
         <div class="thermal-code">${escapeHtml(
           booking.reservation_code || `#${booking.id}`
         )}</div>
@@ -399,8 +143,32 @@ function renderThermalReceipt(booking) {
       <div class="thermal-divider"></div>
 
       <div class="thermal-row">
-        <span>Guest</span>
-        <span>${escapeHtml(booking.fullname || "-")}</span>
+        <span>Reservation ID</span>
+        <span>#${escapeHtml(booking.id)}</span>
+      </div>
+
+      <div class="thermal-row">
+        <span>Reserved</span>
+        <span>${escapeHtml(reservedAt)}</span>
+      </div>
+
+      <div class="thermal-row">
+        <span>Printed</span>
+        <span>${escapeHtml(printedAt)}</span>
+      </div>
+
+      <div class="thermal-divider"></div>
+
+      <div class="thermal-section-title">Guest</div>
+
+      <div class="thermal-row">
+        <span>Name</span>
+        <span>${escapeHtml(guestName)}</span>
+      </div>
+
+      <div class="thermal-row">
+        <span>Contact</span>
+        <span>${escapeHtml(phone)}</span>
       </div>
 
       <div class="thermal-row">
@@ -410,75 +178,52 @@ function renderThermalReceipt(booking) {
 
       <div class="thermal-row">
         <span>Payment</span>
-        <span>${formatPaymentStatus(booking.payment_status || "pending")}</span>
+        <span>${escapeHtml(status)}</span>
       </div>
 
       <div class="thermal-row">
         <span>Method</span>
-        <span>${formatPaymentMethod(booking.payment_method || "cash")}</span>
-      </div>
-
-      <div class="thermal-row">
-        <span>Date</span>
-        <span>${formatDate(booking.reserved_at || booking.created_at)}</span>
+        <span>${escapeHtml(formatPaymentMethod(booking.payment_method || "cash"))}</span>
       </div>
 
       <div class="thermal-divider"></div>
 
-      <div class="thermal-section-title">ITEMS</div>
+      <div class="thermal-section-title">Accommodation</div>
 
       ${
         items.length
-          ? items
-              .map(
-                (item) => `
-                  <div class="thermal-item">
-                    <div class="thermal-bold">${escapeHtml(
-                      item.accommodation_name || "-"
-                    )}</div>
-                    <div class="thermal-small">${escapeHtml(item.slot_label || "-")}</div>
-                    <div class="thermal-small">
-                      ${formatDate(item.check_in_date)} ${formatTime(item.check_in_time)}
-                    </div>
-
-                    <div class="thermal-row">
-                      <span>Price</span>
-                      <span>₱${formatMoney(item.item_price)}</span>
-                    </div>
-                  </div>
-                `
-              )
-              .join("")
-          : `<div>No items found.</div>`
+          ? items.map(renderThermalItem).join("")
+          : `<div>No reserved items found.</div>`
       }
 
       <div class="thermal-divider"></div>
 
-      <div class="thermal-section-title">ENTRANCE</div>
+      <div class="thermal-section-title">Payment Summary</div>
 
       <div class="thermal-row">
-        <span>Free Pax</span>
-        <span>${freeEntrancePax}</span>
+        <span>Accommodation</span>
+        <span>₱${formatMoney(accommodationTotal)}</span>
       </div>
 
       <div class="thermal-row">
-        <span>Chargeable</span>
-        <span>${chargeableGuests}</span>
+        <span>Downpayment Paid</span>
+        <span>₱${formatMoney(paidAmount)}</span>
+      </div>
+
+      <div class="thermal-row">
+        <span>Remaining Bal.</span>
+        <span>₱${formatMoney(remainingBalance)}</span>
       </div>
 
       <div class="thermal-row">
         <span>Entrance Fee</span>
-        <span>₱${formatMoney(booking.estimated_entrance_fee)}</span>
+        <span>₱${formatMoney(estimatedEntranceFee)}</span>
       </div>
 
       <div class="thermal-row">
         <span>Entrance Paid</span>
         <span>${entranceFeePaid ? "Yes" : "No"}</span>
       </div>
-
-      <div class="thermal-divider"></div>
-
-      <div class="thermal-section-title">EXTRA BED</div>
 
       <div class="thermal-row">
         <span>Extra Bed</span>
@@ -497,99 +242,130 @@ function renderThermalReceipt(booking) {
 
       <div class="thermal-divider"></div>
 
-      <div class="thermal-section-title">PAYMENT</div>
-
-      <div class="thermal-row">
-        <span>Accommodation</span>
-        <span>₱${formatMoney(booking.accommodation_total)}</span>
-      </div>
-
-      <div class="thermal-row">
-        <span>Paid</span>
-        <span>₱${formatMoney(booking.paid_amount)}</span>
-      </div>
-
-      <div class="thermal-row">
-        <span>Remaining</span>
-        <span>₱${formatMoney(booking.remaining_balance)}</span>
-      </div>
-
-      <div class="thermal-row">
+      <div class="thermal-row thermal-bold">
         <span>Total Collected</span>
         <span>₱${formatMoney(totalCollected)}</span>
       </div>
 
-      <div class="thermal-divider"></div>
-
       <div class="thermal-total-box">
-        <div class="thermal-total-label">ONSITE PAYMENT</div>
+        <div class="thermal-total-label">TO COLLECT ONSITE</div>
         <div class="thermal-total-amount">₱${formatMoney(onsiteTotal)}</div>
       </div>
 
       <div class="thermal-divider"></div>
 
       <div class="thermal-note">
-        ${escapeHtml(booking.note || "Present this receipt at the front desk.")}
+        Verify remaining balance, entrance fee, discounts, and extra bed charges at the front desk.
       </div>
 
       <div class="thermal-divider"></div>
 
       <div class="thermal-center thermal-small">
-        SmartResort System<br />
-        Keep this receipt for verification
+        SmartResort System<br>
+        Keep for front-desk verification
       </div>
     </div>
   `;
 }
 
-// ============================================================
-// SECTION 10: HTML row helpers
-// Creates reusable info rows and amount rows.
-// ============================================================
-
-function infoRow(label, value) {
+function renderThermalItem(item) {
   return `
-    <div class="info-row">
-      <strong>${label}</strong>
-      <div>${value}</div>
+    <div class="thermal-item">
+      <div class="thermal-bold">${escapeHtml(item.accommodation_name || "-")}</div>
+      <div class="thermal-small">${escapeHtml(item.category_name || "-")} • ${escapeHtml(item.slot_label || "-")}</div>
+      <div class="thermal-small">
+        IN: ${escapeHtml(formatDateOnly(item.check_in_date))} ${escapeHtml(formatTime(item.check_in_time))}
+      </div>
+      <div class="thermal-small">
+        OUT: ${escapeHtml(formatDateOnly(item.check_out_date))} ${escapeHtml(formatTime(item.check_out_time))}
+      </div>
+      <div class="thermal-row">
+        <span>Price</span>
+        <span>₱${formatMoney(item.item_price)}</span>
+      </div>
     </div>
   `;
 }
 
-function amountRow(label, value) {
-  return `
-    <div class="amount-row">
-      <span>${label}</span>
-      <strong>₱${formatMoney(value)}</strong>
-    </div>
-  `;
+function parseBackendDateTimeAsUtc(value) {
+  if (!value) return null;
+
+  const raw = String(value).trim();
+  if (!raw) return null;
+
+  if (raw.endsWith("Z") || /[+-]\d{2}:\d{2}$/.test(raw)) {
+    const existingDate = new Date(raw);
+    return Number.isNaN(existingDate.getTime()) ? null : existingDate;
+  }
+
+  const normalized = raw.replace(" ", "T");
+  const utcDate = new Date(`${normalized}Z`);
+
+  if (!Number.isNaN(utcDate.getTime())) {
+    return utcDate;
+  }
+
+  const fallbackDate = new Date(raw);
+  return Number.isNaN(fallbackDate.getTime()) ? null : fallbackDate;
 }
 
-// ============================================================
-// SECTION 11: Badge class helpers
-// Returns class names for status and payment labels.
-// ============================================================
+function formatPhilippineDateTime(value) {
+  const date = value instanceof Date ? value : parseBackendDateTimeAsUtc(value);
+  if (!date) return "N/A";
 
-function getStatusClass(status) {
-  if (status === "approved") return "approved";
-  if (status === "rejected") return "rejected";
-  if (status === "completed") return "paid";
-  if (status === "cancelled") return "rejected";
-  return "pending";
+  return date.toLocaleString("en-PH", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  });
 }
 
-function getPaymentClass(status) {
-  if (status === "paid") return "paid";
-  if (status === "partially_paid") return "partial";
-  if (status === "rejected") return "rejected";
-  if (status === "unpaid") return "rejected";
-  return "pending";
+function formatDateOnly(dateValue) {
+  if (!dateValue) return "N/A";
+
+  const raw = String(dateValue).slice(0, 10);
+  const parts = raw.split("-");
+
+  if (parts.length === 3) {
+    return `${Number(parts[1])}/${Number(parts[2])}/${parts[0]}`;
+  }
+
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return String(dateValue);
+
+  return date.toLocaleDateString("en-PH");
 }
 
-// ============================================================
-// SECTION 12: Format helpers
-// Formats payment method, status, dates, time, money, and text.
-// ============================================================
+function formatTime(timeValue) {
+  if (!timeValue) return "N/A";
+
+  const text = String(timeValue).trim();
+  const parts = text.split(":");
+
+  if (parts.length < 2) return text;
+
+  let hours = Number(parts[0]);
+  const minutes = parts[1];
+
+  if (Number.isNaN(hours)) return text;
+
+  const suffix = hours >= 12 ? "PM" : "AM";
+  hours = hours % 12;
+  if (hours === 0) hours = 12;
+
+  return `${hours}:${minutes} ${suffix}`;
+}
+
+function buildFullName(booking) {
+  return [booking.first_name, booking.middle_name, booking.last_name]
+    .filter(Boolean)
+    .join(" ");
+}
 
 function isTruthy(value) {
   return (
@@ -606,8 +382,7 @@ function formatPaymentMethod(method) {
   if (value === "paymaya") return "PayMaya";
   if (value === "cash") return "Cash";
 
-
-  return capitalize(value);
+  return capitalize(value.replaceAll("_", " "));
 }
 
 function formatPaymentStatus(status) {
@@ -619,80 +394,7 @@ function formatPaymentStatus(status) {
   if (value === "rejected") return "Rejected";
   if (value === "unpaid") return "Unpaid";
 
-  return capitalize(value);
-}
-
-function formatDate(dateValue) {
-  if (!dateValue) return "N/A";
-
-  const date = new Date(dateValue);
-
-  if (Number.isNaN(date.getTime())) {
-    return "N/A";
-  }
-
-  return date.toLocaleDateString();
-}
-
-function formatTime(timeValue) {
-  if (!timeValue) return "N/A";
-
-  const text = String(timeValue).trim();
-  const parts = text.split(":");
-
-  if (parts.length < 2) {
-    return text;
-  }
-
-  let hours = Number(parts[0]);
-  const minutes = parts[1];
-
-  if (Number.isNaN(hours)) {
-    return text;
-  }
-
-  const suffix = hours >= 12 ? "PM" : "AM";
-  hours = hours % 12;
-
-  if (hours === 0) {
-    hours = 12;
-  }
-
-  return `${hours}:${minutes} ${suffix}`;
-}
-
-function formatDateTime(dateValue) {
-  if (!dateValue) return "N/A";
-
-  const date = new Date(dateValue);
-
-  if (Number.isNaN(date.getTime())) {
-    return "N/A";
-  }
-
-  return date.toLocaleString();
-}
-
-function formatTimeFromDateTime(dateValue) {
-  if (!dateValue) return "N/A";
-
-  const date = new Date(dateValue);
-
-  if (Number.isNaN(date.getTime())) {
-    return "N/A";
-  }
-
-  let hours = date.getHours();
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  const suffix = hours >= 12 ? "PM" : "AM";
-
-  hours = hours % 12;
-
-  if (hours === 0) {
-    hours = 12;
-  }
-
-  return `${hours}:${minutes} ${suffix}`;
+  return capitalize(value.replaceAll("_", " "));
 }
 
 function formatMoney(value) {
@@ -709,16 +411,11 @@ function capitalize(text) {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-// ============================================================
-// SECTION 13: HTML escaping helper
-// Prevents unsafe text from breaking the receipt layout.
-// ============================================================
-
 function escapeHtml(value) {
-  return String(value || "")
+  return String(value ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")  
+    .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }

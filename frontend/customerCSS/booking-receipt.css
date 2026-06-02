@@ -1,56 +1,52 @@
-/* ======================================================
-   CUSTOMER BOOKING RECEIPT CSS
-   File: frontend/customerCSS/booking-receipt.css
+/* CUSTOMER BOOKING RECEIPT CSS - Minimal customer receipt */
 
-   NOTE:
-   - Navbar CSS removed from this file.
-   - Navbar style is handled by:
-     frontend/sharedCSS/customer-navbar.css
-====================================================== */
+body {
+  background: linear-gradient(135deg, #eefafa 0%, #f8fbfc 55%, #e7f7f5 100%);
+}
 
 .page-header {
-  background:
-    linear-gradient(rgba(15, 23, 42, 0.6), rgba(20, 184, 166, 0.52)),
-    url("https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1600&q=80")
-      center/cover no-repeat;
-  color: white;
+  background: linear-gradient(135deg, #0f172a 0%, #0f766e 55%, #14b8a6 100%);
+  color: #ffffff;
   text-align: center;
-  padding: 68px 18px;
+  padding: 54px 18px;
 }
 
 .page-header h1 {
-  margin: 0 0 10px;
-  font-size: 2.65rem;
+  margin: 0 0 8px;
+  font-size: clamp(2rem, 4vw, 2.65rem);
+  letter-spacing: -0.04em;
 }
 
 .page-header p {
   margin: 0 auto;
   max-width: 680px;
-  font-size: 1rem;
-  opacity: 0.96;
+  font-size: 0.98rem;
+  opacity: 0.94;
   line-height: 1.7;
 }
 
 .receipt-page-wrapper {
   width: 92%;
-  max-width: 1120px;
-  margin: 30px auto 46px;
+  max-width: 880px;
+  margin: 26px auto 46px;
 }
 
 .receipt-top-actions {
   display: flex;
   justify-content: flex-start;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
 .back-btn {
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
   text-decoration: none;
   background: rgba(255, 255, 255, 0.96);
   color: #0f172a;
   padding: 11px 18px;
   border-radius: 999px;
-  font-weight: 700;
+  font-weight: 800;
   transition: 0.2s ease;
   box-shadow: 0 10px 20px rgba(15, 23, 42, 0.06);
   border: 1px solid rgba(219, 231, 239, 0.9);
@@ -62,23 +58,227 @@
 }
 
 .receipt-shell {
-  background: rgba(255, 255, 255, 0.92);
-  border-radius: 32px;
-  padding: 22px;
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 26px;
+  padding: 18px;
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
   border: 1px solid rgba(219, 231, 239, 0.92);
 }
 
-.receipt-loading-box {
-  max-width: 980px;
-  margin: 0 auto;
-  background: rgba(255, 255, 255, 0.96);
-  border-radius: 28px;
-  padding: 26px;
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
-  border: 1px solid rgba(219, 231, 239, 0.92);
+.receipt-loading-box,
+.receipt-error-box {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 24px;
   text-align: center;
   color: #475569;
+  border: 1px solid #dbe7ef;
+}
+
+.receipt-error-box {
+  color: #991b1b;
+  border-color: #fecaca;
+  background: #fff7f7;
+}
+
+.minimal-receipt {
+  background: #ffffff;
+  border: 1px solid #dbe7ef;
+  border-radius: 22px;
+  overflow: hidden;
+}
+
+.receipt-hero {
+  background: linear-gradient(135deg, #0f172a 0%, #16233b 58%, #14b8a6 100%);
+  color: #ffffff;
+  padding: 22px;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.receipt-title h2 {
+  margin: 0 0 6px;
+  font-size: 1.7rem;
+  letter-spacing: -0.03em;
+}
+
+.receipt-title p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.86);
+  line-height: 1.5;
+  font-size: 0.95rem;
+}
+
+.receipt-code-box {
+  min-width: 170px;
+  background: rgba(255, 255, 255, 0.13);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 18px;
+  padding: 12px 15px;
+  text-align: center;
+}
+
+.receipt-code-label {
+  font-size: 0.76rem;
+  opacity: 0.9;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+
+.receipt-code-value {
+  font-size: 1.35rem;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+}
+
+.receipt-content {
+  padding: 20px;
+  display: grid;
+  gap: 16px;
+}
+
+.receipt-section {
+  border: 1px solid #dbe7ef;
+  border-radius: 18px;
+  padding: 16px;
+  background: #fcfeff;
+}
+
+.receipt-section h3,
+.payment-summary h3 {
+  margin: 0 0 12px;
+  color: #0f172a;
+  font-size: 1rem;
+  letter-spacing: -0.02em;
+}
+
+.info-list {
+  display: grid;
+  gap: 0;
+}
+
+.info-row {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.8fr) minmax(0, 1.2fr);
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid #e2e8f0;
+  color: #334155;
+  line-height: 1.45;
+  font-size: 0.94rem;
+}
+
+.info-row:last-child {
+  border-bottom: none;
+}
+
+.info-label {
+  font-weight: 850;
+  color: #0f172a;
+}
+
+.status-pill {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 900;
+  border: 1px solid transparent;
+}
+
+.status-approved,
+.status-paid {
+  background: #dcfce7;
+  color: #166534;
+  border-color: #bbf7d0;
+}
+
+.status-partially_paid {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+
+.status-pending {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #fde68a;
+}
+
+.status-cancelled,
+.status-rejected,
+.status-unpaid {
+  background: #fee2e2;
+  color: #991b1b;
+  border-color: #fecaca;
+}
+
+.items-list {
+  display: grid;
+  gap: 10px;
+}
+
+.receipt-item {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 15px;
+  padding: 12px;
+  color: #475569;
+  line-height: 1.55;
+  font-size: 0.92rem;
+}
+
+.receipt-item strong {
+  display: block;
+  color: #0f172a;
+  margin-bottom: 4px;
+  font-size: 0.98rem;
+}
+
+.payment-summary {
+  background: #0f172a;
+  color: #ffffff;
+  border-radius: 18px;
+  padding: 16px;
+}
+
+.payment-summary h3 {
+  color: #ffffff;
+}
+
+.amount-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+  font-size: 0.94rem;
+}
+
+.amount-row:last-child {
+  border-bottom: none;
+}
+
+.amount-row strong {
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+.receipt-reminder {
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #9a3412;
+  border-radius: 16px;
+  padding: 13px 15px;
+  line-height: 1.6;
+  font-size: 0.92rem;
 }
 
 .receipt-actions {
@@ -86,81 +286,68 @@
   gap: 12px;
   justify-content: center;
   flex-wrap: wrap;
-  margin-top: 22px;
+  margin-top: 18px;
 }
 
-.receipt-actions .btn-primary,
 .receipt-actions .btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   min-width: 210px;
+  text-decoration: none;
+  border-radius: 999px;
+  padding: 12px 18px;
+  background: #0f766e;
+  color: #ffffff;
+  font-weight: 900;
+  box-shadow: 0 10px 20px rgba(20, 184, 166, 0.16);
 }
-
-.download-note {
-  text-align: center;
-  color: #64748b;
-  font-size: 0.92rem;
-  margin-top: 12px;
-  line-height: 1.6;
-}
-
-/* ======================================================
-   RESPONSIVE DESIGN
-====================================================== */
 
 @media (max-width: 768px) {
   .page-header {
-    padding: 52px 16px;
-  }
-
-  .page-header h1 {
-    font-size: 2rem;
-  }
-
-  .page-header p {
-    font-size: 0.96rem;
+    padding: 46px 16px;
   }
 
   .receipt-shell {
+    padding: 14px;
+    border-radius: 22px;
+  }
+
+  .receipt-content {
     padding: 16px;
-    border-radius: 24px;
+  }
+
+  .info-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
   }
 }
 
 @media (max-width: 480px) {
-  .page-header {
-    padding: 36px 14px;
-  }
-
-  .page-header h1 {
-    font-size: 1.8rem;
-  }
-
-  .page-header p {
-    font-size: 0.94rem;
-  }
-
   .receipt-page-wrapper {
     width: 95%;
-    margin: 18px auto 28px;
+    margin: 16px auto 28px;
   }
 
   .receipt-top-actions {
     display: block;
-    margin-bottom: 14px;
+    margin-bottom: 12px;
   }
 
-  .back-btn {
-    width: 100%;
-    justify-content: center;
-    text-align: center;
-  }
-
-  .receipt-shell {
-    padding: 12px;
-    border-radius: 20px;
-  }
-
-  .receipt-actions .btn-primary,
+  .back-btn,
   .receipt-actions .btn-secondary {
     width: 100%;
+  }
+
+  .receipt-hero {
+    padding: 18px;
+  }
+
+  .receipt-code-box {
+    width: 100%;
+  }
+
+  .receipt-section {
+    padding: 14px;
   }
 }

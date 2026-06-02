@@ -1,175 +1,57 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <!-- ======================================================
-       RESPONSIVE VIEWPORT
-       Makes the admin receipt page mobile-friendly.
-    ======================================================= -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Thermal Receipt | SmartResort</title>
 
-    <title>Admin Receipt | SmartResort</title>
+  <link rel="stylesheet" href="../sharedCSS/global.css" />
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../adminCSS/admin-booking-receipt.css" />
+</head>
 
-    <!-- ======================================================
-       PAGE CSS FILES
-       global.css = shared base styles
-       style.css = old navbar/system styles for now
-       admin-booking-receipt.css = receipt page only
-    ======================================================= -->
-    <link rel="stylesheet" href="../sharedCSS/global.css" />
-    <link rel="stylesheet" href="../css/style.css" />
-    <link rel="stylesheet" href="../adminCSS/admin-booking-receipt.css" />
-  </head>
+<body>
+  <header class="navbar">
+    <div class="logo">SmartResort Admin</div>
 
-  <body>
-    <!-- ======================================================
-       ADMIN NAVBAR
-       This page is inside adminHTML.
-       Pages not yet moved still use ../ links.
-    ======================================================= -->
-    <header class="navbar">
-      <div class="logo">SmartResort Admin</div>
+    <nav>
+      <a href="admin.html">Bookings</a>
+      <a href="admin-walkin.html">Manual Reservation</a>
+      <a href="admin-guests-inside.html">Guests Inside</a>
+      <a href="admin-rooms.html">Accommodations</a>
+      <a href="admin-map-editor.html">Map Editor</a>
+      <a href="admin-reports.html">Reports</a>
+      <a href="admin-profile.html">Profile</a>
+      <a href="#" id="logoutBtn">Logout</a>
+    </nav>
+  </header>
 
-      <nav>
-        <a href="admin.html">Bookings</a>
-        <a href="admin-walkin.html">Manual Reservation</a>
-        <a href="admin-guests-inside.html">Guests Inside</a>
-        <a href="admin-rooms.html">Accommodations</a>
-        <a href="admin-map-editor.html">Map Editor</a>
-        <a href="admin-reports.html">Reports</a>
-        <a href="admin-profile.html">Profile</a>
-        <a href="#" id="logoutBtn">Logout</a>
-      </nav>
-    </header>
+  <main class="receipt-page">
+    <div class="top-actions">
+      <a href="admin.html" class="back-btn">← Back to Dashboard</a>
 
-    <!-- ======================================================
-       MAIN RECEIPT PAGE
-       Contains print buttons, A4 receipt, and thermal receipt.
-    ======================================================= -->
-    <main class="receipt-page">
-      <div class="top-actions">
-        <a href="admin.html" class="back-btn">← Back to Dashboard</a>
+      <button id="printThermalBtn" class="print-btn" type="button">
+        Print Thermal Receipt
+      </button>
+    </div>
 
-        <button id="printA4Btn" class="print-btn" type="button">
-          Print A4 Receipt
-        </button>
-
-        <button id="printThermalBtn" class="print-btn secondary" type="button">
-          Print Thermal Receipt
-        </button>
+    <section class="receipt-preview-card">
+      <div class="preview-header">
+        <h1>Thermal Receipt</h1>
+        <p>Front-desk receipt for payment verification and guest check-in processing.</p>
       </div>
 
-      <div id="receiptContainer">
-        <!-- ======================================================
-           A4 RECEIPT
-           Used for full-size admin receipt print.
-        ======================================================= -->
-        <div class="receipt-shell">
-          <div class="receipt-header">
-            <div>
-              <h1>Reservation Receipt</h1>
-              <p>
-                Admin copy for reservation review, front-desk processing, and
-                payment verification.
-              </p>
-            </div>
-
-            <div class="receipt-code-box">
-              <small>Reservation Code</small>
-              <strong id="reservationCode">-</strong>
-            </div>
-          </div>
-
-          <div class="receipt-content">
-            <div class="grid-2">
-              <div class="section-card">
-                <h2>Reservation Information</h2>
-                <div id="reservationInfo"></div>
-              </div>
-
-              <div class="section-card">
-                <h2>Guest Information</h2>
-                <div id="guestInfo"></div>
-              </div>
-            </div>
-
-            <div class="table-shell">
-              <div class="table-title">Reserved Accommodation Items</div>
-
-              <div class="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Accommodation</th>
-                      <th>Category</th>
-                      <th>Slot</th>
-                      <th>Check In</th>
-                      <th>Check Out</th>
-                      <th>Price</th>
-                      <th>Map Label</th>
-                    </tr>
-                  </thead>
-
-                  <tbody id="itemsTableBody"></tbody>
-                </table>
-              </div>
-            </div>
-
-            <div class="grid-bottom">
-              <div class="section-card">
-                <h2>Entrance Fee Deduction Details</h2>
-                <div id="deductionInfo"></div>
-
-                <div class="note-box">
-                  This deduction is based on the free entrance included in the
-                  selected accommodation. Senior, PWD, and kids discounts will
-                  still be verified at the front desk.
-                </div>
-              </div>
-
-              <div class="dark-summary">
-                <h2>Payment Breakdown</h2>
-                <div id="paymentBreakdown"></div>
-              </div>
-            </div>
-
-            <div class="grid-last">
-              <div class="section-card">
-                <h2>Payment Reference / Note</h2>
-                <div id="referenceInfo"></div>
-              </div>
-
-              <div class="section-card">
-                <h2>Reminder</h2>
-
-                <div class="reminder-text">
-                  Present the reservation code if the guest has a concern.<br />
-                  Use this receipt for front-desk verification and payment
-                  checking.<br />
-                  Remaining balance and entrance-related charges are settled
-                  onsite unless already fully paid.
-                </div>
-              </div>
-            </div>
-          </div>
+      <div id="thermalReceipt" class="thermal-receipt-shell">
+        <div class="thermal-inner">
+          <div class="thermal-center">Loading receipt...</div>
         </div>
-
-        <!-- ======================================================
-           THERMAL RECEIPT
-           JS renders the POS-style receipt here.
-        ======================================================= -->
-        <div id="thermalReceipt" class="thermal-receipt-shell"></div>
       </div>
-    </main>
+    </section>
+  </main>
 
-    <!-- ======================================================
-       PAGE SCRIPTS
-       toast.js = optional notification helper
-       admin-booking-receipt.js = receipt loading and printing
-    ======================================================= -->
-    <script src="../sharedJS/toast.js"></script>
-    <script src="../sharedJS/api-config.js"></script>
-    <script src="../adminJS/admin-booking-receipt.js"></script>
-  </body>
+  <script src="../sharedJS/toast.js"></script>
+  <script src="../sharedJS/api-config.js"></script>
+  <script src="../adminJS/admin-booking-receipt.js"></script>
+</body>
 </html>

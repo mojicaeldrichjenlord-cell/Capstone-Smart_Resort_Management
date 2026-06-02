@@ -3,11 +3,10 @@
 // File: frontend/customerJS/booking-receipt.js
 // Purpose:
 // - Check customer access
-// - Load booking receipt
-// - Download receipt as image
-// - Works from frontend/customerHTML/booking-receipt.html
+// - Load a minimalist customer receipt
+// - Show final payment details conditionally after check-in/completion
+// - Display Philippine time accurately
 // ============================================================
-
 
 document.addEventListener("DOMContentLoaded", () => {
   const user = JSON.parse(localStorage.getItem("user"));
@@ -24,7 +23,6 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   setupLogout();
-  setupDownloadButton();
   loadReceipt();
 });
 
@@ -41,7 +39,6 @@ function setupLogout() {
   logoutBtns.forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.preventDefault();
-
       localStorage.removeItem("user");
 
       if (typeof showToast === "function") {
@@ -58,56 +55,7 @@ function setupLogout() {
 }
 
 // ============================================================
-// SECTION 2: Download receipt as image
-// ============================================================
-
-function setupDownloadButton() {
-  const downloadBtn = document.getElementById("downloadReceiptBtn");
-  if (!downloadBtn) return;
-
-  downloadBtn.addEventListener("click", async () => {
-    const receiptBox = document.getElementById("receiptBox");
-    const params = new URLSearchParams(window.location.search);
-    const bookingId = params.get("id") || "receipt";
-
-    if (!receiptBox) {
-      showMessage("Receipt content not found.", "error");
-      return;
-    }
-
-    try {
-      downloadBtn.disabled = true;
-      downloadBtn.textContent = "Preparing Image...";
-
-      const canvas = await html2canvas(receiptBox, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: "#ffffff",
-      });
-
-      const imageUrl = canvas.toDataURL("image/png");
-      const link = document.createElement("a");
-
-      link.href = imageUrl;
-      link.download = `Arvic-Seaside-Receipt-${bookingId}.png`;
-
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      showMessage("Receipt image downloaded successfully.", "success");
-    } catch (error) {
-      console.error("downloadReceipt error:", error);
-      showMessage("Failed to download receipt image.", "error");
-    } finally {
-      downloadBtn.disabled = false;
-      downloadBtn.textContent = "Download Receipt (Image)";
-    }
-  });
-}
-
-// ============================================================
-// SECTION 3: Load receipt
+// SECTION 2: Load receipt
 // ============================================================
 
 async function loadReceipt() {
@@ -123,21 +71,7 @@ async function loadReceipt() {
   }
 
   try {
-    receiptBox.innerHTML = `
-      <div style="
-        max-width: 1100px;
-        margin: 0 auto;
-        background: rgba(255,255,255,0.96);
-        border-radius: 28px;
-        padding: 26px;
-        box-shadow: 0 18px 40px rgba(15,23,42,0.08);
-        border: 1px solid rgba(219,231,239,0.92);
-        text-align: center;
-        color: #475569;
-      ">
-        Loading your receipt...
-      </div>
-    `;
+    receiptBox.innerHTML = `<div class="receipt-loading-box">Loading your receipt...</div>`;
 
     const response = await fetch(`${API_BASE}/bookings/${bookingId}/receipt`);
     const data = await response.json();
@@ -147,307 +81,145 @@ async function loadReceipt() {
     }
 
     const booking = data.booking || data;
+    const items = Array.isArray(booking.items) ? booking.items : [];
+
     const status = String(booking.status || "pending").toLowerCase();
     const paymentStatus = String(booking.payment_status || "pending").toLowerCase();
-    const bookingSource = String(booking.booking_source || "online").toLowerCase();
-    const isManual = bookingSource === "manual" || bookingSource === "walk-in";
 
-    const items = Array.isArray(booking.items) ? booking.items : [];
+    const guestName = booking.fullname || buildFullName(booking) || "N/A";
     const totalGuests = Number(booking.guests || booking.guest_count || 0);
-    const freeEntrancePax = Number(booking.free_entrance_pax || 0);
 
-    const chargeableEntranceGuests = Number(
-      booking.chargeable_entrance_guests ??
-        Math.max(totalGuests - freeEntrancePax, 0)
-    );
-
+    const accommodationTotal = Number(booking.accommodation_total || 0);
+    const paidAmount = Number(booking.paid_amount || 0);
+    const remainingBalance = Number(booking.remaining_balance || 0);
     const estimatedEntranceFee = Number(booking.estimated_entrance_fee || 0);
 
-    const entranceRateUsed =
-      chargeableEntranceGuests > 0
-        ? estimatedEntranceFee / chargeableEntranceGuests
-        : 0;
+    const entranceFeeCollected = Number(booking.entrance_fee_collected || 0);
+    const entranceFeePaid = isTruthy(booking.entrance_fee_paid) || entranceFeeCollected > 0;
 
     const extraBedCount = Number(booking.extra_bed_count || 0);
     const extraBedFee = Number(booking.extra_bed_fee || 0);
-    const extraBedPaid = isExtraBedPaid(booking);
-    const entranceFeePaid = isEntranceFeePaid(booking);
-    const entranceFeeCollected = Number(booking.entrance_fee_collected || 0);
+    const extraBedPaid = isTruthy(booking.extra_bed_paid);
 
-    const extraBedToCollect = extraBedFee > 0 && !extraBedPaid ? extraBedFee : 0;
+    const isCheckedIn = isTruthy(booking.is_checked_in);
+    const isCompleted = status === "completed";
+
+    // Conditional final receipt:
+    // - Before check-in/completion: keep receipt simple.
+    // - After check-in/completion or when onsite charges exist: show final payment details.
+    const shouldShowFinalDetails =
+      isCompleted ||
+      isCheckedIn ||
+      entranceFeePaid ||
+      extraBedCount > 0 ||
+      extraBedFee > 0 ||
+      paymentStatus === "paid";
+
     const entranceToCollect = entranceFeePaid ? 0 : estimatedEntranceFee;
-    const onsiteReminderTotal =
-      Number(booking.remaining_balance || 0) +
-      entranceToCollect +
-      extraBedToCollect;
+    const extraBedToCollect = extraBedPaid ? 0 : extraBedFee;
 
-    const totalCollected =
-      Number(booking.paid_amount || 0) +
-      entranceFeeCollected +
-      (extraBedPaid ? extraBedFee : 0);
+    const simpleOnsiteReminder = remainingBalance + estimatedEntranceFee;
+
+    const finalTotalCollected =
+      paidAmount + entranceFeeCollected + (extraBedPaid ? extraBedFee : 0);
+
+    const finalOnsiteReminder =
+      remainingBalance + entranceToCollect + extraBedToCollect;
 
     receiptBox.innerHTML = `
-      <div style="
-        max-width: 1100px;
-        margin: 0 auto;
-        background: rgba(255,255,255,0.97);
-        border-radius: 30px;
-        overflow: hidden;
-        box-shadow: 0 22px 46px rgba(15,23,42,0.1);
-        border: 1px solid rgba(219,231,239,0.92);
-      ">
-        <div style="
-          background: linear-gradient(135deg, #0f172a 0%, #16233b 55%, #14b8a6 100%);
-          color: white;
-          padding: 22px 24px;
-          display: flex;
-          justify-content: space-between;
-          gap: 16px;
-          align-items: flex-start;
-          flex-wrap: wrap;
-        ">
-          <div>
-            <h1 style="margin:0 0 8px;font-size:2rem;line-height:1.1;">
-              Reservation Receipt
-            </h1>
-
-            <p style="margin:0;opacity:0.95;line-height:1.6;">
-              Customer copy for reservation reference, payment verification,
-              and front-desk presentation.
+      <article class="minimal-receipt">
+        <header class="receipt-hero">
+          <div class="receipt-title">
+            <h2>${isCompleted ? "Final Receipt" : "Reservation Receipt"}</h2>
+            <p>
+              ${
+                isCompleted
+                  ? "Final customer copy after front-desk processing."
+                  : "Customer copy for front-desk verification."
+              }
             </p>
           </div>
 
-          <div style="
-            min-width: 180px;
-            background: rgba(255,255,255,0.12);
-            border: 1px solid rgba(255,255,255,0.14);
-            border-radius: 18px;
-            padding: 12px 16px;
-            text-align: center;
-            backdrop-filter: blur(10px);
-          ">
-            <div style="font-size:0.8rem;opacity:0.9;font-weight:700;">
-              Reservation Code
-            </div>
-
-            <div style="font-size:1.45rem;font-weight:900;letter-spacing:0.4px;">
+          <div class="receipt-code-box">
+            <div class="receipt-code-label">Reservation Code</div>
+            <div class="receipt-code-value">
               ${escapeHtml(booking.reservation_code || `#${booking.id}`)}
             </div>
           </div>
-        </div>
+        </header>
 
-        <div style="padding: 20px;">
-          <div style="
-            display:grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 18px;
-            margin-bottom: 18px;
-          " class="receipt-top-grid">
-            <div style="${sectionCardStyle()}">
-              <h2 style="${sectionTitleStyle()}">Reservation Information</h2>
+        <div class="receipt-content">
+          <section class="receipt-section">
+            <h3>Reservation Details</h3>
 
-              ${infoRow("Reservation ID", `#${escapeHtml(booking.id)}`)}
-              ${infoRow(
-                "Source",
-                `<span style="${getSourceBadgeStyles(bookingSource)}">${
-                  isManual ? "Manual" : "Online"
-                }</span>`
-              )}
+            <div class="info-list">
+              ${infoRow("Guest Name", escapeHtml(guestName))}
+              ${infoRow("Contact No.", escapeHtml(booking.phone || booking.contact_no || "N/A"))}
+              ${infoRow("Guest Count", escapeHtml(totalGuests))}
+              ${infoRow("Reserved At", escapeHtml(formatPhilippineDateTime(booking.reserved_at || booking.created_at)))}
+              ${
+                booking.checked_in_at
+                  ? infoRow("Checked In", escapeHtml(formatPhilippineDateTime(booking.checked_in_at)))
+                  : ""
+              }
               ${infoRow(
                 "Status",
-                `<span style="${getStatusBadgeStyles(status)}">${capitalize(status)}</span>`
+                `<span class="status-pill status-${escapeAttribute(status)}">${escapeHtml(capitalize(status))}</span>`
               )}
               ${infoRow(
-                "Payment Status",
-                `<span style="${getPaymentBadgeStyles(paymentStatus)}">${formatPaymentStatus(paymentStatus)}</span>`
-              )}
-              ${infoRow(
-                "Payment Method",
-                escapeHtml(formatPaymentMethod(booking.payment_method || "cash"))
-              )}
-              ${infoRow(
-                "Reserved At",
-                escapeHtml(formatDateTime(booking.reserved_at || booking.created_at))
-              )}
-              ${infoRow(
-                "Reserved Date",
-                escapeHtml(formatDate(booking.reserved_at || booking.created_at))
-              )}
-              ${infoRow(
-                "Reserved Time",
-                escapeHtml(formatTimeFromDateTime(booking.reserved_at || booking.created_at))
+                "Payment",
+                `<span class="status-pill status-${escapeAttribute(paymentStatus)}">${escapeHtml(formatPaymentStatus(paymentStatus))}</span>`
               )}
             </div>
+          </section>
 
-            <div style="${sectionCardStyle()}">
-              <h2 style="${sectionTitleStyle()}">Guest Information</h2>
+          <section class="receipt-section">
+            <h3>Accommodation</h3>
 
-              ${infoRow("Guest Name", escapeHtml(booking.fullname || "N/A"))}
-              ${infoRow("Phone", escapeHtml(booking.phone || booking.contact_no || "N/A"))}
-              ${infoRow("Email", escapeHtml(booking.email || "-"))}
-              ${infoRow("Guest Count", escapeHtml(totalGuests))}
-              ${infoRow("Entrance Fee Estimate", `₱${formatMoney(estimatedEntranceFee)}`)}
-              ${infoRow("Extra Bed", `${escapeHtml(extraBedCount)} bed(s)`)}
+            <div class="items-list">
+              ${
+                items.length
+                  ? items.map(renderAccommodationItem).join("")
+                  : `<div class="receipt-item">No accommodation items found.</div>`
+              }
             </div>
-          </div>
+          </section>
 
-          <div style="${tableShellStyle()}">
-            <div style="${tableHeaderStyle()}">Reserved Accommodation Items</div>
-
-            <div style="overflow-x:auto;">
-              <table style="width:100%;border-collapse:collapse;min-width:760px;">
-                <thead>
-                  <tr style="background:#f8fafc;color:#0f172a;">
-                    <th style="${thStyle()}">Accommodation</th>
-                    <th style="${thStyle()}">Category</th>
-                    <th style="${thStyle()}">Slot</th>
-                    <th style="${thStyle()}">Check In</th>
-                    <th style="${thStyle()}">Check Out</th>
-                    <th style="${thStyle()}">Price</th>
-                    <th style="${thStyle()}">Map Label</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  ${
-                    items.length
-                      ? items
-                          .map((item) => {
-                            return `
-                              <tr>
-                                <td style="${tdStyle()}">${escapeHtml(item.accommodation_name || "-")}</td>
-                                <td style="${tdStyle()}">${escapeHtml(item.category_name || "-")}</td>
-                                <td style="${tdStyle()}">${escapeHtml(item.slot_label || "-")}</td>
-                                <td style="${tdStyle()}">${formatDate(item.check_in_date)} ${formatTime(item.check_in_time)}</td>
-                                <td style="${tdStyle()}">${formatDate(item.check_out_date)} ${formatTime(item.check_out_time)}</td>
-                                <td style="${tdStyle()}">₱${formatMoney(item.item_price)}</td>
-                                <td style="${tdStyle()}">${escapeHtml(item.map_label || "-")}</td>
-                              </tr>
-                            `;
-                          })
-                          .join("")
-                      : `
-                        <tr>
-                          <td colspan="7" style="${tdStyle()}text-align:center;color:#64748b;">
-                            No reserved items found.
-                          </td>
-                        </tr>
-                      `
-                  }
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <div style="
-            display:grid;
-            grid-template-columns: 1fr 0.95fr;
-            gap: 18px;
-            margin-top: 18px;
-          " class="receipt-bottom-grid">
-            <div style="${sectionCardStyle()}">
-              <h2 style="${sectionTitleStyle()}">Entrance Fee Deduction Details</h2>
-
-              ${infoRow("Total Guests", escapeHtml(totalGuests))}
-              ${infoRow("Free Entrance Included", `${escapeHtml(freeEntrancePax)} pax`)}
-              ${infoRow("Chargeable Entrance Guests", `${escapeHtml(chargeableEntranceGuests)} pax`)}
-              ${infoRow("Entrance Rate Used", `₱${formatMoney(entranceRateUsed)}`)}
-              ${infoRow("Estimated Entrance Fee", `₱${formatMoney(estimatedEntranceFee)}`)}
-
-              <div style="
-                margin-top:14px;
-                background:#fff7ed;
-                border:1px solid #fdba74;
-                border-radius:14px;
-                padding:12px 14px;
-                color:#9a3412;
-                line-height:1.7;
-                font-size:0.93rem;
-              ">
-                This deduction is based on the free entrance included in your
-                selected accommodation. Senior, PWD, and kids discounts will
-                still be verified onsite.
-              </div>
-            </div>
-
-            <div style="
-              background: linear-gradient(180deg, #0f172a 0%, #16233b 100%);
-              color: white;
-              border-radius: 22px;
-              padding: 20px;
-            ">
-              <h2 style="margin:0 0 14px;font-size:1.18rem;">
-                Payment Breakdown
-              </h2>
-
-              ${summaryAmountRow("Accommodation Total", booking.accommodation_total)}
-              ${summaryAmountRow("Required Down Payment", booking.required_downpayment)}
-              ${summaryAmountRow("Accommodation Paid", booking.paid_amount)}
-              ${summaryAmountRow("Remaining Balance", booking.remaining_balance)}
-              ${summaryAmountRow("Entrance Fee", booking.estimated_entrance_fee)}
-              ${summaryTextRow("Entrance Fee Status", entranceFeePaid ? "Collected" : "To collect onsite")}
-              ${summaryAmountRow("Entrance Fee Collected", entranceFeeCollected)}
-              ${summaryAmountRow("Extra Bed Fee", extraBedFee)}
-              ${summaryTextRow("Extra Bed Status", extraBedFee > 0 ? (extraBedPaid ? "Paid" : "To collect onsite") : "No extra bed")}
-              ${extraBedPaid && booking.extra_bed_paid_at ? summaryTextRow("Extra Bed Paid At", formatDateTime(booking.extra_bed_paid_at)) : ""}
-              ${summaryAmountRow("Total Collected", totalCollected)}
-
-              <div style="
-                display:flex;
-                justify-content:space-between;
-                gap:12px;
-                margin-top:12px;
-                padding-top:12px;
-                border-top:1px solid rgba(255,255,255,0.15);
-                font-weight:900;
-                font-size:1.08rem;
-              ">
-                <span>Total Onsite Reminder</span>
-
-                <strong>₱${formatMoney(onsiteReminderTotal)}</strong>
-              </div>
-            </div>
-          </div>
-
-          <div style="
-            display:grid;
-            grid-template-columns: 1fr 1fr;
-            gap:18px;
-            margin-top:18px;
-          " class="receipt-last-grid">
-            <div style="${sectionCardStyle()}">
-              <h2 style="${sectionTitleStyle()}">Payment Reference / Note</h2>
-
-              ${infoRow(
-                "Proof / Reference",
-                formatProofLink(booking.proof_of_payment)
-              )}
-              ${infoRow("Note", escapeHtml(booking.note || "-"))}
-            </div>
-
-            <div style="${sectionCardStyle()}">
-              <h2 style="${sectionTitleStyle()}">Reminder</h2>
-
-              <div style="color:#334155;line-height:1.8;font-size:0.95rem;">
-                Please keep this receipt for your reservation record.<br>
-                Present your reservation code at the front desk.<br>
-                Remaining balance, entrance fee, and extra bed fee are shown as
-                onsite reminders only when not yet collected.
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <style>
-        @media (max-width: 900px) {
-          .receipt-top-grid,
-          .receipt-bottom-grid,
-          .receipt-last-grid {
-            grid-template-columns: 1fr !important;
+          ${
+            shouldShowFinalDetails
+              ? renderFinalPaymentSummary({
+                  accommodationTotal,
+                  paidAmount,
+                  remainingBalance,
+                  estimatedEntranceFee,
+                  entranceFeePaid,
+                  entranceFeeCollected,
+                  extraBedCount,
+                  extraBedFee,
+                  extraBedPaid,
+                  extraBedPaidAt: booking.extra_bed_paid_at,
+                  finalTotalCollected,
+                  finalOnsiteReminder,
+                })
+              : renderSimplePaymentSummary({
+                  accommodationTotal,
+                  paidAmount,
+                  remainingBalance,
+                  estimatedEntranceFee,
+                  simpleOnsiteReminder,
+                })
           }
-        }
-      </style>
+
+          <section class="receipt-reminder">
+            <strong>Reminder:</strong>
+            ${
+              shouldShowFinalDetails
+                ? "This receipt reflects the latest recorded payment details. Please contact the front desk for any questions."
+                : "Present this reservation code at the front desk. Remaining balance, entrance fee, and valid discounts are finalized onsite."
+            }
+          </section>
+        </div>
+      </article>
     `;
   } catch (error) {
     console.error("loadReceipt error:", error);
@@ -458,390 +230,207 @@ async function loadReceipt() {
 }
 
 // ============================================================
-// SECTION 4: Proof link resolver
+// SECTION 3: Receipt sections
 // ============================================================
 
-function formatProofLink(value) {
-  if (!value) return "-";
-
-  const proofPath = String(value).trim();
-  const resolvedPath = resolveFilePath(proofPath);
-
+function renderAccommodationItem(item) {
   return `
-    <a
-      href="${escapeHtml(resolvedPath)}"
-      target="_blank"
-      rel="noopener noreferrer"
-      style="color:#0ea5e9;word-break:break-all;"
-    >
-      ${escapeHtml(proofPath)}
-    </a>
-  `;
-}
-
-function resolveFilePath(value) {
-  const filePath = String(value || "").trim();
-
-  if (!filePath) return "#";
-
-  if (
-    filePath.startsWith("http://") ||
-    filePath.startsWith("https://") ||
-    filePath.startsWith("data:") ||
-    filePath.startsWith("blob:")
-  ) {
-    return filePath;
-  }
-
-  if (filePath.startsWith("/uploads/")) {
-    return `http://127.0.0.1:5000${filePath}`;
-  }
-
-  if (filePath.startsWith("uploads/")) {
-    return `http://127.0.0.1:5000/${filePath}`;
-  }
-
-  return filePath;
-}
-
-// ============================================================
-// SECTION 5: UI render helpers
-// ============================================================
-
-function renderReceiptError(message) {
-  return `
-    <div style="
-      max-width: 920px;
-      margin: 0 auto;
-      background: rgba(255,255,255,0.95);
-      border: 1px solid #fecaca;
-      border-radius: 24px;
-      padding: 24px;
-      color: #991b1b;
-      text-align: center;
-      box-shadow: 0 12px 28px rgba(15,23,42,0.08);
-    ">
-      ${message}
+    <div class="receipt-item">
+      <strong>${escapeHtml(item.accommodation_name || "Accommodation")}</strong>
+      ${escapeHtml(item.category_name || "-")} • ${escapeHtml(item.slot_label || "-")}<br>
+      Check-in: ${escapeHtml(formatDateOnly(item.check_in_date))} • ${escapeHtml(formatTime(item.check_in_time))}<br>
+      Check-out: ${escapeHtml(formatDateOnly(item.check_out_date))} • ${escapeHtml(formatTime(item.check_out_time))}<br>
+      Price: ₱${formatMoney(item.item_price)}
     </div>
   `;
 }
 
-function sectionCardStyle() {
+function renderSimplePaymentSummary(data) {
   return `
-    background: linear-gradient(180deg, #fcfeff 0%, #f4fbfc 100%);
-    border: 1px solid #dbe7ef;
-    border-radius: 22px;
-    padding: 18px;
+    <section class="payment-summary">
+      <h3>Payment Summary</h3>
+
+      ${amountRow("Accommodation Total", data.accommodationTotal)}
+      ${amountRow("Downpayment Paid", data.paidAmount)}
+      ${amountRow("Remaining Balance", data.remainingBalance)}
+      ${amountRow("Entrance Fee Estimate", data.estimatedEntranceFee)}
+      ${amountRow("Estimated Onsite Payment", data.simpleOnsiteReminder)}
+    </section>
   `;
 }
 
-function sectionTitleStyle() {
+function renderFinalPaymentSummary(data) {
   return `
-    margin:0 0 12px;
-    color:#0f172a;
-    font-size:1.12rem;
-    font-weight:800;
+    <section class="payment-summary">
+      <h3>Final Payment Details</h3>
+
+      ${amountRow("Accommodation Total", data.accommodationTotal)}
+      ${amountRow("Accommodation Paid", data.paidAmount)}
+      ${amountRow("Remaining Balance", data.remainingBalance)}
+      ${amountRow("Entrance Fee Estimate", data.estimatedEntranceFee)}
+      ${amountRow("Entrance Fee Collected", data.entranceFeeCollected)}
+      ${textRow("Entrance Fee Status", data.entranceFeePaid ? "Collected" : "To collect onsite")}
+
+      ${
+        data.extraBedCount > 0 || data.extraBedFee > 0
+          ? `
+            ${textRow("Extra Bed", `${data.extraBedCount} bed(s)`)}
+            ${amountRow("Extra Bed Fee", data.extraBedFee)}
+            ${textRow("Extra Bed Status", data.extraBedPaid ? "Paid" : "To collect onsite")}
+            ${
+              data.extraBedPaid && data.extraBedPaidAt
+                ? textRow("Extra Bed Paid At", formatPhilippineDateTime(data.extraBedPaidAt))
+                : ""
+            }
+          `
+          : ""
+      }
+
+      ${amountRow("Total Collected", data.finalTotalCollected)}
+      ${amountRow("Remaining To Collect Onsite", data.finalOnsiteReminder)}
+    </section>
   `;
+}
+
+// ============================================================
+// SECTION 4: UI helpers
+// ============================================================
+
+function renderReceiptError(message) {
+  return `<div class="receipt-error-box">${message}</div>`;
 }
 
 function infoRow(label, value) {
   return `
-    <div style="
-      display:grid;
-      grid-template-columns: 1fr 1.1fr;
-      gap:12px;
-      padding:10px 0;
-      border-bottom:1px solid #dbe7ef;
-      align-items:start;
-      color:#334155;
-      font-size:0.95rem;
-      line-height:1.5;
-    ">
-      <div style="font-weight:700;color:#0f172a;">${label}</div>
+    <div class="info-row">
+      <div class="info-label">${escapeHtml(label)}</div>
       <div>${value}</div>
     </div>
   `;
 }
 
-function tableShellStyle() {
+function amountRow(label, value) {
   return `
-    background:#ffffff;
-    border:1px solid #dbe7ef;
-    border-radius:20px;
-    overflow:hidden;
-  `;
-}
-
-function tableHeaderStyle() {
-  return `
-    background: linear-gradient(180deg, #0f172a 0%, #111c34 100%);
-    color: white;
-    padding: 14px 16px;
-    font-size: 1.02rem;
-    font-weight: 800;
-  `;
-}
-
-function thStyle() {
-  return `
-    padding:12px 10px;
-    border-bottom:1px solid #dbe7ef;
-    text-align:left;
-    font-size:0.9rem;
-    white-space:nowrap;
-  `;
-}
-
-function tdStyle() {
-  return `
-    padding:12px 10px;
-    border-bottom:1px solid #e5e7eb;
-    color:#334155;
-    font-size:0.9rem;
-    vertical-align:top;
-  `;
-}
-
-function summaryAmountRow(label, value) {
-  return `
-    <div style="
-      display:flex;
-      justify-content:space-between;
-      gap:12px;
-      margin-bottom:10px;
-      font-size:0.96rem;
-    ">
-      <span>${label}</span>
+    <div class="amount-row">
+      <span>${escapeHtml(label)}</span>
       <strong>₱${formatMoney(value)}</strong>
     </div>
   `;
 }
 
-function summaryTextRow(label, value) {
+function textRow(label, value) {
   return `
-    <div style="
-      display:flex;
-      justify-content:space-between;
-      gap:12px;
-      margin-bottom:10px;
-      font-size:0.96rem;
-    ">
-      <span>${label}</span>
+    <div class="amount-row">
+      <span>${escapeHtml(label)}</span>
       <strong>${escapeHtml(value)}</strong>
     </div>
   `;
 }
 
-function isEntranceFeePaid(booking) {
-  return (
-    Number(booking.entrance_fee_paid || 0) === 1 ||
-    Number(booking.entrance_fee_collected || 0) > 0 ||
-    String(booking.entrance_fee_paid || "").toLowerCase() === "true"
-  );
+function buildFullName(booking) {
+  return [booking.first_name, booking.middle_name, booking.last_name]
+    .filter(Boolean)
+    .join(" ");
 }
 
-function isExtraBedPaid(booking) {
-  return (
-    Number(booking.extra_bed_paid || 0) === 1 ||
-    String(booking.extra_bed_paid || "").toLowerCase() === "true"
-  );
+// ============================================================
+// SECTION 5: Philippine time helpers
+// ============================================================
+
+function parseBackendDateTimeAsUtc(value) {
+  if (!value) return null;
+
+  const raw = String(value).trim();
+  if (!raw) return null;
+
+  if (raw.endsWith("Z") || /[+-]\d{2}:\d{2}$/.test(raw)) {
+    const existingDate = new Date(raw);
+    return Number.isNaN(existingDate.getTime()) ? null : existingDate;
+  }
+
+  const normalized = raw.replace(" ", "T");
+  const utcDate = new Date(`${normalized}Z`);
+
+  if (!Number.isNaN(utcDate.getTime())) {
+    return utcDate;
+  }
+
+  const fallbackDate = new Date(raw);
+  return Number.isNaN(fallbackDate.getTime()) ? null : fallbackDate;
 }
 
-function getSourceBadgeStyles(source) {
-  const value = String(source || "").toLowerCase();
+function formatPhilippineDateTime(value) {
+  const date = parseBackendDateTimeAsUtc(value);
+  if (!date) return "N/A";
 
-  if (value === "manual" || value === "walk-in") {
-    return `
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      padding:7px 12px;
-      border-radius:999px;
-      background:#dcfce7;
-      color:#166534;
-      border:1px solid #bbf7d0;
-      font-size:0.82rem;
-      font-weight:800;
-    `;
-  }
-
-  return `
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    padding:7px 12px;
-    border-radius:999px;
-    background:#dbeafe;
-    color:#1d4ed8;
-    border:1px solid #bfdbfe;
-    font-size:0.82rem;
-    font-weight:800;
-  `;
-}
-
-function getStatusBadgeStyles(status) {
-  if (status === "approved") {
-    return `
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      padding:7px 12px;
-      border-radius:999px;
-      background:#dcfce7;
-      color:#166534;
-      border:1px solid #bbf7d0;
-      font-size:0.82rem;
-      font-weight:800;
-    `;
-  }
-
-  if (status === "rejected") {
-    return `
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      padding:7px 12px;
-      border-radius:999px;
-      background:#fee2e2;
-      color:#991b1b;
-      border:1px solid #fecaca;
-      font-size:0.82rem;
-      font-weight:800;
-    `;
-  }
-
-  if (status === "cancelled") {
-    return `
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      padding:7px 12px;
-      border-radius:999px;
-      background:#e5e7eb;
-      color:#374151;
-      border:1px solid #d1d5db;
-      font-size:0.82rem;
-      font-weight:800;
-    `;
-  }
-
-  if (status === "completed") {
-    return `
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      padding:7px 12px;
-      border-radius:999px;
-      background:#dbeafe;
-      color:#1d4ed8;
-      border:1px solid #bfdbfe;
-      font-size:0.82rem;
-      font-weight:800;
-    `;
-  }
-
-  return `
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    padding:7px 12px;
-    border-radius:999px;
-    background:#fef3c7;
-    color:#92400e;
-    border:1px solid #fde68a;
-    font-size:0.82rem;
-    font-weight:800;
-  `;
-}
-
-function getPaymentBadgeStyles(status) {
-  if (status === "paid") {
-    return `
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      padding:7px 12px;
-      border-radius:999px;
-      background:#dcfce7;
-      color:#166534;
-      border:1px solid #bbf7d0;
-      font-size:0.82rem;
-      font-weight:800;
-    `;
-  }
-
-  if (status === "pending") {
-    return `
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      padding:7px 12px;
-      border-radius:999px;
-      background:#fef3c7;
-      color:#92400e;
-      border:1px solid #fde68a;
-      font-size:0.82rem;
-      font-weight:800;
-    `;
-  }
-
-  if (status === "partially_paid") {
-    return `
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      padding:7px 12px;
-      border-radius:999px;
-      background:#dbeafe;
-      color:#1d4ed8;
-      border:1px solid #bfdbfe;
-      font-size:0.82rem;
-      font-weight:800;
-    `;
-  }
-
-  if (status === "rejected") {
-    return `
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      padding:7px 12px;
-      border-radius:999px;
-      background:#fee2e2;
-      color:#991b1b;
-      border:1px solid #fecaca;
-      font-size:0.82rem;
-      font-weight:800;
-    `;
-  }
-
-  return `
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    padding:7px 12px;
-    border-radius:999px;
-    background:#e5e7eb;
-    color:#374151;
-    border:1px solid #d1d5db;
-    font-size:0.82rem;
-    font-weight:800;
-  `;
+  return date.toLocaleString("en-PH", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  });
 }
 
 // ============================================================
 // SECTION 6: Format helpers
 // ============================================================
 
-function formatPaymentMethod(method) {
-  const value = String(method || "").toLowerCase();
+function formatDateOnly(dateValue) {
+  if (!dateValue) return "N/A";
 
-  if (value === "gcash") return "GCash";
-  if (value === "paymaya") return "PayMaya";
-  if (value === "cash") return "Cash";
+  const raw = String(dateValue).slice(0, 10);
+  const parts = raw.split("-");
 
+  if (parts.length === 3) {
+    return `${Number(parts[1])}/${Number(parts[2])}/${parts[0]}`;
+  }
 
-  return capitalize(value.replaceAll("_", " "));
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return String(dateValue);
+
+  return date.toLocaleDateString("en-PH");
+}
+
+function formatTime(timeValue) {
+  if (!timeValue) return "N/A";
+
+  const timeText = String(timeValue).trim();
+  const parts = timeText.split(":");
+
+  if (parts.length < 2) return timeText;
+
+  let hours = Number(parts[0]);
+  const minutes = parts[1];
+
+  if (Number.isNaN(hours)) return timeText;
+
+  const suffix = hours >= 12 ? "PM" : "AM";
+
+  hours = hours % 12;
+  if (hours === 0) hours = 12;
+
+  return `${hours}:${minutes} ${suffix}`;
+}
+
+function isTruthy(value) {
+  return (
+    Number(value || 0) === 1 ||
+    String(value || "").toLowerCase() === "true" ||
+    String(value || "").toLowerCase() === "yes"
+  );
+}
+
+function formatMoney(value) {
+  const num = Number(value || 0);
+
+  return num.toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 }
 
 function formatPaymentStatus(status) {
@@ -856,103 +445,24 @@ function formatPaymentStatus(status) {
   return capitalize(value.replaceAll("_", " "));
 }
 
-function formatDate(dateValue) {
-  if (!dateValue) return "N/A";
-
-  const date = new Date(dateValue);
-
-  if (Number.isNaN(date.getTime())) return "N/A";
-
-  return date.toLocaleDateString();
-}
-
-function formatTime(timeValue) {
-  if (!timeValue) return "N/A";
-
-  const timeText = String(timeValue).trim();
-
-  if (!timeText) return "N/A";
-
-  const parts = timeText.split(":");
-
-  if (parts.length < 2) return timeText;
-
-  let hours = Number(parts[0]);
-  const minutes = parts[1];
-
-  if (Number.isNaN(hours)) return timeText;
-
-  const suffix = hours >= 12 ? "PM" : "AM";
-
-  hours = hours % 12;
-
-  if (hours === 0) {
-    hours = 12;
-  }
-
-  return `${hours}:${minutes} ${suffix}`;
-}
-
-function formatDateTime(dateValue) {
-  if (!dateValue) return "N/A";
-
-  const date = new Date(dateValue);
-
-  if (Number.isNaN(date.getTime())) return "N/A";
-
-  return date.toLocaleString();
-}
-
-function formatTimeFromDateTime(dateValue) {
-  if (!dateValue) return "N/A";
-
-  const date = new Date(dateValue);
-
-  if (Number.isNaN(date.getTime())) return "N/A";
-
-  let hours = date.getHours();
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  const suffix = hours >= 12 ? "PM" : "AM";
-
-  hours = hours % 12;
-
-  if (hours === 0) {
-    hours = 12;
-  }
-
-  return `${hours}:${minutes} ${suffix}`;
-}
-
-function formatMoney(value) {
-  const num = Number(value || 0);
-
-  return num.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
-
 function capitalize(text) {
   if (!text) return "";
 
   const value = String(text);
-
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
-function showMessage(message, type = "success") {
-  if (typeof showToast === "function") {
-    showToast(message, type);
-  } else {
-    alert(message);
-  }
-}
-
 function escapeHtml(value) {
-  return String(value || "")
+  return String(value ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
+}
+
+function escapeAttribute(value) {
+  return String(value || "")
+    .replace(/[^a-zA-Z0-9_-]/g, "")
+    .toLowerCase();
 }

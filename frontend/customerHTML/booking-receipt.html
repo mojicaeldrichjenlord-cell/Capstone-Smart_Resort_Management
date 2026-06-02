@@ -2,31 +2,17 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-
-  <!-- ======================================================
-     RESPONSIVE VIEWPORT
-  ======================================================= -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
   <title>Booking Receipt | Arvic Seaside</title>
 
-  <!-- ======================================================
-     PAGE CSS FILES
-  ======================================================= -->
   <link rel="stylesheet" href="../sharedCSS/global.css" />
   <link rel="stylesheet" href="../css/style.css" />
   <link rel="stylesheet" href="../customerCSS/booking-receipt.css" />
   <link rel="stylesheet" href="../sharedCSS/customer-navbar.css" />
-
-  <!-- Receipt image download library -->
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 </head>
 
 <body>
-  <!-- ======================================================
-     CUSTOMER NAVBAR
-     Same customer navbar style.
-  ======================================================= -->
   <header class="navbar">
     <div class="logo">Arvic Seaside</div>
 
@@ -42,21 +28,11 @@
     </nav>
   </header>
 
-  <!-- ======================================================
-     PAGE HEADER
-  ======================================================= -->
   <section class="page-header">
     <h1>Booking Receipt</h1>
-
-    <p>
-      Review your reservation details, payment breakdown, and entrance fee
-      deduction in one clear receipt.
-    </p>
+    <p>Keep this simple receipt as your reservation reference for front-desk verification.</p>
   </section>
 
-  <!-- ======================================================
-     MAIN RECEIPT CONTENT
-  ======================================================= -->
   <main class="receipt-page-wrapper">
     <div class="receipt-top-actions">
       <a href="my-bookings.html" class="back-btn">← Back to My Bookings</a>
@@ -64,28 +40,15 @@
 
     <section class="receipt-shell">
       <div id="receiptBox">
-        <div class="receipt-loading-box">
-          Loading receipt...
-        </div>
+        <div class="receipt-loading-box">Loading receipt...</div>
       </div>
 
       <div class="receipt-actions">
-        <button id="downloadReceiptBtn" class="btn-primary" type="button">
-          Download Receipt (Image)
-        </button>
-
         <a href="my-bookings.html" class="btn-secondary">Back to My Bookings</a>
       </div>
-
-      <p class="download-note">
-        This will download your receipt as an image file.
-      </p>
     </section>
   </main>
 
-  <!-- ======================================================
-     PAGE SCRIPTS
-  ======================================================= -->
   <script src="../sharedJS/toast.js"></script>
   <script src="../sharedJS/api-config.js"></script>
   <script src="../customerJS/booking-receipt.js"></script>
@@ -97,9 +60,7 @@
     if (menuToggle && mobileNav) {
       menuToggle.addEventListener("click", () => {
         mobileNav.classList.toggle("show");
-        menuToggle.textContent = mobileNav.classList.contains("show")
-          ? "×"
-          : "☰";
+        menuToggle.textContent = mobileNav.classList.contains("show") ? "×" : "☰";
       });
     }
   </script>
