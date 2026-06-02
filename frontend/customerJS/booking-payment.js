@@ -29,6 +29,9 @@ const PAYMENT_DETAILS = {
 let bookingDraft = null;
 let availableAccommodations = [];
 let currentDownpaymentAmount = 0;
+let isSubmittingReservation = false;
+
+console.log("[booking-payment] JS loaded. API_BASE:", typeof API_BASE !== "undefined" ? API_BASE : "API_BASE missing");
 
 // ============================================================
 // SECTION 1: Page startup
@@ -306,8 +309,47 @@ function setupPaymentForm() {
     paymentProof.addEventListener("change", updateProofPreview);
   }
 
+  const submitReservationBtn = document.getElementById("submitReservationBtn");
+
   if (paymentForm) {
-    paymentForm.addEventListener("submit", submitReservation);
+    // Hard block native browser submit/reload.
+    paymentForm.setAttribute("novalidate", "novalidate");
+    paymentForm.setAttribute("onsubmit", "return false;");
+
+    paymentForm.addEventListener(
+      "submit",
+      (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation?.();
+        submitReservation(event);
+        return false;
+      },
+      true,
+    );
+
+    console.log("[booking-payment] paymentForm native submit blocked.");
+  } else {
+    console.error("[booking-payment] paymentForm was not found.");
+  }
+
+  if (submitReservationBtn) {
+    submitReservationBtn.addEventListener(
+      "click",
+      (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation?.();
+        console.log("[booking-payment] Submit button clicked.");
+        submitReservation(event);
+        return false;
+      },
+      true,
+    );
+
+    console.log("[booking-payment] submitReservationBtn click handler attached.");
+  } else {
+    console.error("[booking-payment] submitReservationBtn was not found.");
   }
 }
 
@@ -409,34 +451,53 @@ function updateProofPreview() {
 // ============================================================
 
 async function submitReservation(e) {
-  e.preventDefault();
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation?.();
+  }
+
+  console.log("[booking-payment] Submit handler fired.");
+
+  if (isSubmittingReservation) {
+    console.warn("[booking-payment] Duplicate submit blocked.");
+    return false;
+  }
 
   if (!bookingDraft) {
     showMessage("Reservation draft is missing.", "error");
-    return;
+    return false;
   }
 
   const user = JSON.parse(localStorage.getItem("user"));
-  const paymentMethod = document.getElementById("paymentMethod").value;
+
+  if (!user?.id) {
+    showMessage("User session is missing. Please login again.", "error");
+    return false;
+  }
+
+  const paymentMethod = document.getElementById("paymentMethod")?.value || "gcash";
   const paymentReference = document
     .getElementById("paymentReference")
-    .value.trim();
+    ?.value.trim();
 
   const paymentReminderNote = document
     .getElementById("paymentReminderNote")
-    .value.trim();
+    ?.value.trim();
 
   const paymentProofInput = document.getElementById("paymentProof");
   const paymentProofFile = paymentProofInput?.files?.[0];
 
   if (!paymentReference) {
-    showMessage("Payment reference number is required.", "error");
-    return;
+    showMessage("Please enter your payment reference number.", "error");
+    document.getElementById("paymentReference")?.focus();
+    return false;
   }
 
   if (!paymentProofFile) {
     showMessage("Please upload your proof of transaction screenshot.", "error");
-    return;
+    paymentProofInput?.focus();
+    return false;
   }
 
   const allowedTypes = [
@@ -454,7 +515,7 @@ async function submitReservation(e) {
       "Invalid proof image. Please upload PNG, JPG, JPEG, WEBP, HEIC, or HEIF only.",
       "error",
     );
-    return;
+    return false;
   }
 
   if (paymentProofFile.size > maxSize) {
@@ -462,66 +523,161 @@ async function submitReservation(e) {
       "Proof image is too large. Please upload an image below 5MB.",
       "error",
     );
-    return;
+    return false;
   }
 
   const payload = {
     ...bookingDraft,
-    user_id: bookingDraft.user_id || user?.id,
+    user_id: bookingDraft.user_id || user.id,
     payment_method: paymentMethod,
     payment_type: "downpayment",
     proof_reference: paymentReference,
     note: [bookingDraft.note, paymentReminderNote].filter(Boolean).join(" | "),
   };
 
-  const formData = new FormData();
-  formData.append("payload", JSON.stringify(payload));
+  const proofImageData = await fileToBase64(paymentProofFile);
 
-  // Backend route uses upload.single("proof_image"),
-  // so the field name must be proof_image.
-  formData.append("proof_image", paymentProofFile);
+  const jsonPayload = {
+    ...payload,
+    proof_image_data: proofImageData,
+  };
 
-  const submitBtn = document.querySelector(
-    '#paymentForm button[type="submit"]',
-  );
+  const submitBtn =
+    document.getElementById("submitReservationBtn") ||
+    document.querySelector('#paymentForm button[type="submit"]');
   const originalText = submitBtn ? submitBtn.textContent : "Submit Reservation";
 
   try {
+    isSubmittingReservation = true;
+
     if (submitBtn) {
       submitBtn.disabled = true;
       submitBtn.textContent = "Submitting...";
     }
 
+    console.log("[booking-payment] Sending JSON request to:", `${API_BASE}/bookings`);
+
     const response = await fetch(`${API_BASE}/bookings`, {
       method: "POST",
-      body: formData,
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(jsonPayload),
     });
 
-    const data = await safeReadJson(response);
+    const responseText = await response.text();
+    let data = {};
+
+    try {
+      data = responseText ? JSON.parse(responseText) : {};
+    } catch (jsonError) {
+      console.warn("[booking-payment] Backend response was not JSON:", responseText);
+      data = {};
+    }
+
+    console.log("[booking-payment] Backend status:", response.status);
+    console.log("[booking-payment] Backend response:", data);
 
     if (!response.ok) {
-      throw new Error(data.message || "Reservation failed.");
+      throw new Error(data.message || responseText || "Reservation failed.");
     }
 
     sessionStorage.removeItem(BOOKING_DRAFT_KEY);
 
-    if (data.bookingId) {
-      window.location.href = `booking-receipt.html?id=${data.bookingId}`;
-    } else {
-      window.location.href = "my-bookings.html";
-    }
+    console.log("[booking-payment] Reservation created successfully. Redirecting to My Bookings.");
+    showMessage("Reservation submitted successfully. Redirecting to My Bookings...", "success");
+
+    redirectToMyBookings();
+    return false;
   } catch (error) {
+    isSubmittingReservation = false;
     console.error("submitReservation error:", error);
     showMessage(
       error.message || "Something went wrong. Please try again.",
       "error",
     );
-  } finally {
+
     if (submitBtn) {
       submitBtn.disabled = false;
       submitBtn.textContent = originalText;
     }
   }
+
+  return false;
+}
+
+function extractBookingId(data) {
+  return (
+    data?.bookingId ||
+    data?.reservationId ||
+    data?.reservation_id ||
+    data?.id ||
+    data?.booking?.id ||
+    data?.data?.bookingId ||
+    data?.data?.reservationId ||
+    null
+  );
+}
+
+async function fetchLatestUserBookingId(userId) {
+  if (!userId) return null;
+
+  try {
+    const response = await fetch(`${API_BASE}/bookings/user/${userId}`);
+    const data = await safeReadJson(response);
+
+    if (!response.ok) {
+      console.warn("[booking-payment] Failed to fetch latest user booking:", data);
+      return null;
+    }
+
+    const bookings = Array.isArray(data?.bookings)
+      ? data.bookings
+      : Array.isArray(data)
+        ? data
+        : [];
+
+    const latest = bookings[0];
+    console.log("[booking-payment] Latest user booking fallback:", latest);
+
+    return latest?.id || latest?.bookingId || latest?.reservationId || null;
+  } catch (error) {
+    console.warn("[booking-payment] Latest booking fallback failed:", error);
+    return null;
+  }
+}
+
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    if (!file) {
+      resolve(null);
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("Failed to read proof image."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function redirectToMyBookings() {
+  const targetUrl = new URL("my-bookings.html", window.location.href).href;
+
+  console.log("[booking-payment] FORCE REDIRECT TO MY BOOKINGS:", targetUrl);
+
+  window.location.href = targetUrl;
+
+  setTimeout(() => {
+    window.location.assign(targetUrl);
+  }, 200);
+
+  setTimeout(() => {
+    window.location.replace(targetUrl);
+  }, 500);
 }
 
 // ============================================================

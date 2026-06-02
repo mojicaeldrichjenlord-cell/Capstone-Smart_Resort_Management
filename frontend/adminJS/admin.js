@@ -10,6 +10,71 @@
 
 let allBookings = [];
 
+console.log("[admin-dashboard] PH TIME FIX V4 loaded.");
+
+// ============================================================
+// PH TIME FIX V4
+// Treat backend/MySQL DATETIME as UTC, then display as Asia/Manila.
+// ============================================================
+
+function parseBackendDateTimeAsUtc(value) {
+  if (!value) return null;
+
+  const raw = String(value).trim();
+  if (!raw) return null;
+
+  if (raw.endsWith("Z") || /[+-]\d{2}:\d{2}$/.test(raw)) {
+    const existingDate = new Date(raw);
+    return Number.isNaN(existingDate.getTime()) ? null : existingDate;
+  }
+
+  const normalized = raw.replace(" ", "T");
+  const utcDate = new Date(`${normalized}Z`);
+
+  if (!Number.isNaN(utcDate.getTime())) {
+    return utcDate;
+  }
+
+  const fallbackDate = new Date(raw);
+  return Number.isNaN(fallbackDate.getTime()) ? null : fallbackDate;
+}
+
+function formatPhilippineDateTime(value) {
+  const date = parseBackendDateTimeAsUtc(value);
+  if (!date) return "N/A";
+
+  return date.toLocaleString("en-PH", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  });
+}
+
+function getPhilippineDateKey(value) {
+  const date = value ? parseBackendDateTimeAsUtc(value) : new Date();
+  if (!date) return "";
+
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+
+  const year = parts.find((part) => part.type === "year")?.value || "0000";
+  const month = parts.find((part) => part.type === "month")?.value || "00";
+  const day = parts.find((part) => part.type === "day")?.value || "00";
+
+  return `${year}-${month}-${day}`;
+}
+
+
+
 document.addEventListener("DOMContentLoaded", () => {
   checkAdminAccess();
   setupEvents();
@@ -142,7 +207,7 @@ async function loadBookings() {
 // ============================================================
 
 function updateSummaryCards(bookings) {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getPhilippineDateKey();
 
   const totalBookings = bookings.length;
 
@@ -161,14 +226,14 @@ function updateSummaryCards(bookings) {
   }).length;
 
   const onlineToday = bookings.filter((booking) => {
-    const createdDate = String(booking.created_at || "").slice(0, 10);
+    const createdDate = getPhilippineDateKey(booking.created_at);
     const source = String(booking.booking_source || "online").toLowerCase();
 
     return createdDate === today && source !== "manual";
   }).length;
 
   const walkinToday = bookings.filter((booking) => {
-    const createdDate = String(booking.created_at || "").slice(0, 10);
+    const createdDate = getPhilippineDateKey(booking.created_at);
     const source = String(booking.booking_source || "").toLowerCase();
 
     return createdDate === today && source === "manual";
@@ -215,6 +280,25 @@ function setText(id, value) {
   const el = document.getElementById(id);
   if (el) el.textContent = value;
 }
+
+
+function getReservationDateKey(value) {
+  if (!value) return "";
+  return String(value).slice(0, 10);
+}
+
+function getCheckInDateState(booking) {
+  const today = getPhilippineDateKey();
+  const checkInDate = getReservationDateKey(
+    booking.check_in || booking.check_in_date,
+  );
+
+  if (!checkInDate) return "missing";
+  if (checkInDate === today) return "today";
+  if (checkInDate > today) return "future";
+  return "past";
+}
+
 
 // ============================================================
 // SECTION 6: Filters
@@ -443,7 +527,7 @@ function isEntranceFeePaid(booking) {
 
 function isDateToday(value, today) {
   if (!value) return false;
-  return String(value).slice(0, 10) === today;
+  return getPhilippineDateKey(value) === today;
 }
 
 function isExtraBedPaid(booking) {
@@ -492,8 +576,50 @@ function renderCheckInButton(booking, bookingId, bookingStatus) {
         type="button"
         class="action-btn verify-payment-btn muted"
         disabled
+        title="This guest is already inside the resort."
       >
         Already Inside
+      </button>
+    `;
+  }
+
+  const checkInState = getCheckInDateState(booking);
+
+  if (checkInState === "missing") {
+    return `
+      <button
+        type="button"
+        class="action-btn verify-payment-btn muted"
+        disabled
+        title="This reservation has no valid check-in date."
+      >
+        No Check-in Date
+      </button>
+    `;
+  }
+
+  if (checkInState === "future") {
+    return `
+      <button
+        type="button"
+        class="action-btn verify-payment-btn muted"
+        disabled
+        title="Check-in is only allowed on the scheduled check-in date."
+      >
+        Not Yet Check-in Date
+      </button>
+    `;
+  }
+
+  if (checkInState === "past") {
+    return `
+      <button
+        type="button"
+        class="action-btn verify-payment-btn muted"
+        disabled
+        title="The scheduled check-in date has already passed. Review this reservation manually."
+      >
+        Check-in Date Passed
       </button>
     `;
   }
@@ -503,6 +629,7 @@ function renderCheckInButton(booking, bookingId, bookingStatus) {
       type="button"
       class="action-btn verify-payment-btn"
       onclick="checkInReservation(${bookingId}, this)"
+      title="Collect remaining balance and entrance fee, then allow entry."
     >
       Check In / Allow Entry
     </button>
@@ -1024,12 +1151,7 @@ function formatTime(timeValue) {
 }
 
 function formatDateTime(dateValue) {
-  if (!dateValue) return "N/A";
-
-  const date = new Date(dateValue);
-  if (Number.isNaN(date.getTime())) return "N/A";
-
-  return date.toLocaleString();
+  return formatPhilippineDateTime(dateValue);
 }
 
 function formatPaymentMethod(method) {

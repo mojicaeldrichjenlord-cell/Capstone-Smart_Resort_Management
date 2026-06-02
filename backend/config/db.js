@@ -13,6 +13,11 @@ const db = mysql.createPool({
   connectionLimit: 10,
   queueLimit: 0,
 
+  // IMPORTANT:
+  // Keeps MySQL DATE/DATETIME/TIMESTAMP values as raw strings.
+  // This prevents mysql2/Node from shifting times automatically.
+  dateStrings: true,
+
   ssl: useSSL
     ? {
         rejectUnauthorized: false,

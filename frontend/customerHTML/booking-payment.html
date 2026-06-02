@@ -81,7 +81,7 @@
             <section class="section-box">
               <h2>Payment Details</h2>
 
-              <form id="paymentForm" enctype="multipart/form-data">
+              <div id="paymentForm" class="payment-form-wrapper">
                 <div class="payment-form-grid">
                   <div class="payment-form-group">
                     <label for="paymentMethod">Payment Method</label>
@@ -129,7 +129,7 @@
                 </div>
 
                 <div class="payment-actions">
-                  <button type="submit" class="btn-primary full-btn">
+                  <button id="submitReservationBtn" type="button" class="btn-primary full-btn">
                     Submit Reservation
                   </button>
 
@@ -137,7 +137,7 @@
                     Back
                   </a>
                 </div>
-              </form>
+              </div>
 
               <p id="paymentMessage" class="message"></p>
             </section>
@@ -227,7 +227,7 @@
     ======================================================= -->
     <script src="../sharedJS/toast.js"></script>
     <script src="../sharedJS/api-config.js"></script>
-    <script src="../customerJS/booking-payment.js"></script>
+    <script src="../customerJS/booking-payment.js?v=json-proof-redirect-20260602"></script>
 
     <script>
       const menuToggle = document.getElementById("menuToggle");

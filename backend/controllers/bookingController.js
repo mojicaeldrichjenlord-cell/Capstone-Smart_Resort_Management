@@ -37,7 +37,7 @@ function parseRequestReservationBody(req) {
     ? `/uploads/payment-proofs/${req.file.filename}`
     : null;
 
-  let proofImageData = null;
+  let proofImageData = normalizeNullableText(parsedBody.proof_image_data);
 
   if (req.file && req.file.path) {
     const fileBuffer = fs.readFileSync(req.file.path);
