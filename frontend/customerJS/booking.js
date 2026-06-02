@@ -11,6 +11,7 @@
 // ============================================================
 
 const BOOKING_DRAFT_KEY = "smartresort_booking_draft_v2";
+const CUSTOMER_MIN_BOOKING_DAYS_AHEAD = 2;
 
 let availableAccommodations = [];
 let bookingItemCounter = 0;
@@ -225,6 +226,21 @@ function setupBookingForm(user) {
       return;
     }
 
+    const earliestDate = getCustomerEarliestBookingDate();
+
+    const hasInvalidDate = items.some((item) => {
+      return isDateBefore(item.check_in_date, earliestDate);
+    });
+
+    if (hasInvalidDate) {
+      showMessage(
+        `Customer reservations must be booked at least ${CUSTOMER_MIN_BOOKING_DAYS_AHEAD} days ahead. Earliest available date is ${formatDateDisplay(earliestDate)}.`,
+        "error"
+      );
+      resetInvalidDateInputs();
+      return;
+    }
+
     const draft = {
       user_id: user.id,
       first_name,
@@ -255,7 +271,7 @@ function addBookingItem(preselectedId = null) {
   bookingItemCounter += 1;
 
   const itemId = bookingItemCounter;
-  const today = new Date().toISOString().split("T")[0];
+  const earliestBookingDate = getCustomerEarliestBookingDate();
 
   const card = document.createElement("div");
   card.className = "booking-item-card";
@@ -303,9 +319,12 @@ function addBookingItem(preselectedId = null) {
           type="date"
           class="date-input"
           data-item-id="${itemId}"
-          min="${today}"
-          value="${today}"
+          min="${earliestBookingDate}"
+          value="${earliestBookingDate}"
         />
+        <small class="field-help">
+          Customer online reservations must be booked at least ${CUSTOMER_MIN_BOOKING_DAYS_AHEAD} days ahead.
+        </small>
       </div>
 
       <div class="booking-form-group">
@@ -352,6 +371,13 @@ function addBookingItem(preselectedId = null) {
   });
 
   dateInput.addEventListener("input", () => {
+    enforceDateInputMinimum(dateInput);
+    updateItemPreview(itemId);
+    updateSummary();
+  });
+
+  dateInput.addEventListener("change", () => {
+    enforceDateInputMinimum(dateInput);
     updateItemPreview(itemId);
     updateSummary();
   });
@@ -397,7 +423,17 @@ function restoreDraftIfAny() {
         accommodationSelect.value = item.accommodation_id || "";
         populateSlotOptions(index + 1);
         slotSelect.value = item.slot_type || "";
-        dateInput.value = item.check_in_date || dateInput.value;
+
+        const earliestBookingDate = getCustomerEarliestBookingDate();
+
+        if (item.check_in_date && !isDateBefore(item.check_in_date, earliestBookingDate)) {
+          dateInput.value = item.check_in_date;
+        } else {
+          dateInput.value = earliestBookingDate;
+        }
+
+        dateInput.min = earliestBookingDate;
+
         updateItemPreview(index + 1);
       });
     }
@@ -581,6 +617,63 @@ function collectBookingItems() {
 // SECTION 10: Date and entrance fee calculations
 // ============================================================
 
+function getCustomerEarliestBookingDate() {
+  const today = getDateOnlyLocal();
+  today.setDate(today.getDate() + CUSTOMER_MIN_BOOKING_DAYS_AHEAD);
+  return toInputDateValue(today);
+}
+
+function getDateOnlyLocal() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+function toInputDateValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function isDateBefore(dateValue, minimumDateValue) {
+  if (!dateValue || !minimumDateValue) return false;
+
+  const date = new Date(`${dateValue}T00:00:00`);
+  const minimumDate = new Date(`${minimumDateValue}T00:00:00`);
+
+  if (Number.isNaN(date.getTime()) || Number.isNaN(minimumDate.getTime())) {
+    return false;
+  }
+
+  return date < minimumDate;
+}
+
+function enforceDateInputMinimum(dateInput) {
+  if (!dateInput) return;
+
+  const earliestBookingDate = getCustomerEarliestBookingDate();
+
+  dateInput.min = earliestBookingDate;
+
+  if (!dateInput.value || isDateBefore(dateInput.value, earliestBookingDate)) {
+    dateInput.value = earliestBookingDate;
+
+    showMessage(
+      `Earliest available customer booking date is ${formatDateDisplay(earliestBookingDate)}.`,
+      "error"
+    );
+  }
+}
+
+function resetInvalidDateInputs() {
+  const dateInputs = [...document.querySelectorAll(".date-input")];
+
+  dateInputs.forEach((dateInput) => {
+    enforceDateInputMinimum(dateInput);
+  });
+}
+
 function calculateCheckOutDate(checkInDate, startTime, endTime) {
   if (!checkInDate || !startTime || !endTime) return checkInDate || "-";
 
@@ -593,9 +686,9 @@ function calculateCheckOutDate(checkInDate, startTime, endTime) {
   const endMinutes = Number(endParts[0]) * 60 + Number(endParts[1]);
 
   if (endMinutes <= startMinutes) {
-    const date = new Date(checkInDate);
+    const date = new Date(`${checkInDate}T00:00:00`);
     date.setDate(date.getDate() + 1);
-    return date.toISOString().split("T")[0];
+    return toInputDateValue(date);
   }
 
   return checkInDate;
@@ -710,7 +803,7 @@ function formatTimeDisplay(timeValue) {
 function formatDateDisplay(dateValue) {
   if (!dateValue) return "N/A";
 
-  const date = new Date(dateValue);
+  const date = new Date(`${dateValue}T00:00:00`);
 
   if (Number.isNaN(date.getTime())) return dateValue;
 
