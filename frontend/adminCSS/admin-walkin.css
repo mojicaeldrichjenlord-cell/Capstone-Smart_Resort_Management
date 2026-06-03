@@ -3,6 +3,7 @@
    File: frontend/adminCSS/admin-walkin.css
    Purpose:
    - Styles only adminHTML/admin-walkin.html
+   - Minimalist searchable accommodation picker included
 ====================================================== */
 
 /* ======================================================
@@ -72,6 +73,7 @@
   padding: 26px;
   box-shadow: 0 16px 38px rgba(15, 23, 42, 0.08);
   border: 1px solid rgba(219, 231, 239, 0.92);
+  overflow: visible;
 }
 
 .section-box {
@@ -80,6 +82,7 @@
   border-radius: 22px;
   padding: 20px;
   margin-bottom: 20px;
+  overflow: visible;
 }
 
 .section-box h2 {
@@ -123,6 +126,14 @@
   font-size: 1rem;
   outline: none;
   background: #fff;
+  transition: 0.18s ease;
+}
+
+.walkin-group input:focus,
+.walkin-group textarea:focus,
+.walkin-group select:focus {
+  border-color: #14b8a6;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.12);
 }
 
 .walkin-group textarea {
@@ -150,6 +161,7 @@
   border: 1px solid #dbe7ef;
   border-radius: 18px;
   padding: 16px;
+  overflow: visible;
 }
 
 .booking-item-header {
@@ -177,6 +189,10 @@
   color: white;
 }
 
+.remove-item-btn:hover {
+  background: #dc2626;
+}
+
 .slot-preview {
   background: #f8fafc;
   border: 1px solid #dbe7ef;
@@ -188,7 +204,148 @@
 }
 
 /* ======================================================
-   SECTION 7: Summary preview
+   SECTION 7: Searchable accommodation picker
+   Expands inside the card, so it will not overlap preview.
+====================================================== */
+
+.custom-accommodation-picker {
+  position: relative;
+  width: 100%;
+}
+
+.accommodation-picker-button {
+  width: 100%;
+  min-height: 51px;
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #0f172a;
+  padding: 14px 44px 14px 15px;
+  font-size: 1rem;
+  text-align: left;
+  cursor: pointer;
+  transition: 0.18s ease;
+  position: relative;
+}
+
+.accommodation-picker-button:hover,
+.accommodation-picker-button:focus {
+  border-color: #14b8a6;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.12);
+}
+
+.accommodation-picker-label {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.accommodation-picker-arrow {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #64748b;
+  font-size: 0.82rem;
+  pointer-events: none;
+}
+
+.accommodation-picker-panel {
+  display: none;
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid #dbe7ef;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
+}
+
+.accommodation-picker-panel.show {
+  display: block;
+}
+
+.accommodation-search-input {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  padding: 11px 12px;
+  outline: none;
+  font-size: 0.92rem;
+  margin-bottom: 8px;
+}
+
+.accommodation-search-input:focus {
+  border-color: #14b8a6;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.12);
+}
+
+.accommodation-options-list {
+  max-height: 230px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding-right: 4px;
+}
+
+.accommodation-options-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.accommodation-options-list::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 999px;
+}
+
+.accommodation-options-list::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 999px;
+}
+
+.accommodation-option-btn {
+  width: 100%;
+  border: 1px solid #e2e8f0;
+  border-radius: 13px;
+  background: #f8fafc;
+  color: #0f172a;
+  padding: 11px 12px;
+  text-align: left;
+  cursor: pointer;
+  line-height: 1.4;
+  transition: 0.16s ease;
+}
+
+.accommodation-option-btn:hover {
+  background: #ecfeff;
+  border-color: #67e8f9;
+}
+
+.accommodation-option-btn strong {
+  display: block;
+  font-size: 0.94rem;
+  color: #0f172a;
+  margin-bottom: 3px;
+}
+
+.accommodation-option-btn span {
+  display: block;
+  color: #64748b;
+  font-size: 0.82rem;
+}
+
+.accommodation-empty-state {
+  padding: 14px;
+  text-align: center;
+  color: #64748b;
+  background: #f8fafc;
+  border-radius: 12px;
+  font-size: 0.9rem;
+}
+
+/* ======================================================
+   SECTION 8: Summary preview
 ====================================================== */
 
 .summary-grid {
@@ -235,7 +392,7 @@
 }
 
 /* ======================================================
-   SECTION 8: Form actions
+   SECTION 9: Form actions
 ====================================================== */
 
 .walkin-actions {
@@ -246,7 +403,7 @@
 }
 
 /* ======================================================
-   SECTION 9: Mobile layout
+   SECTION 10: Mobile layout
 ====================================================== */
 
 @media (max-width: 780px) {
@@ -263,5 +420,44 @@
   .walkin-actions .btn-secondary,
   .remove-item-btn {
     width: 100%;
+  }
+
+  .accommodation-options-list {
+    max-height: 210px;
+  }
+
+  .accommodation-picker-button,
+  .accommodation-search-input {
+    font-size: 0.92rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .walkin-wrapper {
+    width: 94%;
+  }
+
+  .walkin-card {
+    padding: 18px;
+    border-radius: 22px;
+  }
+
+  .section-box {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .walkin-hero {
+    padding: 26px 20px;
+    border-radius: 22px;
+  }
+
+  .walkin-hero h1 {
+    font-size: 1.65rem;
+  }
+
+  .highlight-row {
+    flex-direction: column;
+    gap: 4px;
   }
 }

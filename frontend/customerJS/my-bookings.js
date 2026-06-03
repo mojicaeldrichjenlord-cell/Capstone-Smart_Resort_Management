@@ -6,13 +6,12 @@
 // - Load customer bookings
 // - View receipt
 // - Cancel reservation at least 1 day before check-in
-// - Modify reservation directly when allowed
+// - Customer can view receipt and cancel reservation when allowed
 // - Works from frontend/customerHTML/my-bookings.html
 // ============================================================
 
 
 let currentUser = null;
-let selectedModifyBookingId = null;
 
 // ============================================================
 // SECTION 1: Page startup
@@ -91,8 +90,6 @@ async function loadMyBookings(userId) {
     }
 
     container.innerHTML = `
-      ${getModificationModal()}
-
       <div style="
         display:grid;
         grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -101,8 +98,6 @@ async function loadMyBookings(userId) {
         ${bookings.map((booking) => renderBookingCard(booking)).join("")}
       </div>
     `;
-
-    setupModificationModalEvents();
   } catch (error) {
     console.error("loadMyBookings error:", error);
     container.innerHTML = getErrorBox(
@@ -124,7 +119,6 @@ function renderBookingCard(booking) {
     resolveImagePath(booking.image || "images/no-image.jpg")
   );
 
-  const canRequestModification = isModificationAllowed(booking);
   const canCancelReservation = isCancellationAllowed(booking);
 
   return `
@@ -232,20 +226,6 @@ function renderBookingCard(booking) {
           </a>
 
           ${
-            canRequestModification
-              ? `
-                <button
-                  class="btn-secondary"
-                  style="flex:1;"
-                  onclick="openModificationModal(${booking.id})"
-                >
-                  Modify Reservation
-                </button>
-              `
-              : ""
-          }
-
-          ${
             canCancelReservation
               ? `
                 <button
@@ -259,275 +239,9 @@ function renderBookingCard(booking) {
               : ""
           }
         </div>
-
-        ${
-          !canRequestModification && !["cancelled", "rejected", "completed"].includes(status)
-            ? `
-              <p style="
-                margin:12px 0 0;
-                color:#64748b;
-                font-size:0.86rem;
-                line-height:1.45;
-              ">
-                Modification is only allowed at least 1 day before check-in.
-              </p>
-            `
-            : ""
-        }
       </div>
     </div>
   `;
-}
-
-// ============================================================
-// SECTION 5: Modification modal
-// ============================================================
-
-function getModificationModal() {
-  return `
-    <div
-      id="modificationModal"
-      style="
-        display:none;
-        position:fixed;
-        inset:0;
-        z-index:9999;
-        background:rgba(15,23,42,0.58);
-        padding:18px;
-        align-items:center;
-        justify-content:center;
-      "
-    >
-      <div style="
-        width:100%;
-        max-width:520px;
-        background:#ffffff;
-        border-radius:24px;
-        border:1px solid #dbe7ef;
-        box-shadow:0 24px 60px rgba(15,23,42,0.25);
-        padding:22px;
-      ">
-        <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:14px;">
-          <div>
-            <h2 style="margin:0 0 4px;color:#0f172a;font-size:1.35rem;">
-              Modify Reservation
-            </h2>
-
-            <p style="margin:0;color:#64748b;line-height:1.5;font-size:0.92rem;">
-              Update your reservation details. Changes apply immediately if allowed.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onclick="closeModificationModal()"
-            style="
-              border:none;
-              background:#e2e8f0;
-              color:#0f172a;
-              width:36px;
-              height:36px;
-              border-radius:999px;
-              cursor:pointer;
-              font-weight:900;
-            "
-          >
-            ×
-          </button>
-        </div>
-
-        <form id="modificationForm">
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-            <div>
-              <label style="${modalLabelStyle()}" for="requestedCheckInDate">
-                New Check-in Date
-              </label>
-
-              <input
-                type="date"
-                id="requestedCheckInDate"
-                style="${modalInputStyle()}"
-              />
-            </div>
-
-            <div>
-              <label style="${modalLabelStyle()}" for="requestedGuestCount">
-                New Guest Count
-              </label>
-
-              <input
-                type="number"
-                min="1"
-                id="requestedGuestCount"
-                placeholder="Example: 10"
-                style="${modalInputStyle()}"
-              />
-            </div>
-
-            <div style="grid-column:1 / -1;">
-              <label style="${modalLabelStyle()}" for="requestedSlotType">
-                New Slot
-              </label>
-
-              <select id="requestedSlotType" style="${modalInputStyle()}">
-                <option value="">No slot change</option>
-                <option value="day_tour">Day Tour</option>
-                <option value="overnight">Overnight</option>
-                <option value="extended">22/23 Hours</option>
-              </select>
-            </div>
-
-            <div style="grid-column:1 / -1;">
-              <label style="${modalLabelStyle()}" for="requestedNote">
-                Other Request / Reason
-              </label>
-
-              <textarea
-                id="requestedNote"
-                placeholder="Example: I want to change date, slot, guest count, or accommodation."
-                style="${modalInputStyle()}min-height:95px;resize:vertical;"
-              ></textarea>
-            </div>
-          </div>
-
-          <div style="
-            margin-top:14px;
-            background:#fff7ed;
-            border:1px solid #fed7aa;
-            color:#9a3412;
-            border-radius:14px;
-            padding:12px;
-            line-height:1.5;
-            font-size:0.9rem;
-          ">
-            Modifications must be made at least 1 day before check-in. Changes will update your reservation immediately.
-          </div>
-
-          <div style="display:flex;gap:10px;margin-top:16px;">
-            <button type="submit" class="btn-primary" style="flex:1;">
-              Save Changes
-            </button>
-
-            <button
-              type="button"
-              class="btn-secondary"
-              style="flex:1;"
-              onclick="closeModificationModal()"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  `;
-}
-
-function setupModificationModalEvents() {
-  const form = document.getElementById("modificationForm");
-
-  if (!form) return;
-
-  form.addEventListener("submit", submitModificationRequest);
-}
-
-function openModificationModal(bookingId) {
-  selectedModifyBookingId = bookingId;
-
-  const modal = document.getElementById("modificationModal");
-
-  if (modal) {
-    modal.style.display = "flex";
-  }
-
-  const form = document.getElementById("modificationForm");
-
-  if (form) {
-    form.reset();
-  }
-}
-
-function closeModificationModal() {
-  selectedModifyBookingId = null;
-
-  const modal = document.getElementById("modificationModal");
-
-  if (modal) {
-    modal.style.display = "none";
-  }
-}
-
-// ============================================================
-// SECTION 6: Submit modification request
-// ============================================================
-
-async function submitModificationRequest(e) {
-  e.preventDefault();
-
-  if (!currentUser || !selectedModifyBookingId) {
-    alert("Missing reservation details.");
-    return;
-  }
-
-  const requestedCheckInDate = document.getElementById("requestedCheckInDate").value;
-  const requestedSlotType = document.getElementById("requestedSlotType").value;
-  const requestedGuestCount = document.getElementById("requestedGuestCount").value;
-  const requestedNote = document.getElementById("requestedNote").value.trim();
-
-  if (
-    !requestedCheckInDate &&
-    !requestedSlotType &&
-    !requestedGuestCount &&
-    !requestedNote
-  ) {
-    alert("Please enter at least one requested change.");
-    return;
-  }
-
-  try {
-    const response = await fetch(
-      `${API_BASE}/bookings/${selectedModifyBookingId}/modification-request`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          user_id: currentUser.id,
-          requested_check_in_date: requestedCheckInDate || null,
-          requested_slot_type: requestedSlotType || null,
-          requested_guest_count: requestedGuestCount || null,
-          requested_note: requestedNote || null,
-        }),
-      }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to submit modification request.");
-    }
-
-    if (typeof showToast === "function") {
-      showToast(data.message || "Reservation updated successfully.", "success");
-    } else {
-      alert(data.message || "Reservation updated successfully.");
-    }
-
-    closeModificationModal();
-    loadMyBookings(currentUser.id);
-  } catch (error) {
-    console.error("submitModificationRequest error:", error);
-
-    if (typeof showToast === "function") {
-      showToast(
-        error.message || "Failed to submit modification request.",
-        "error"
-      );
-    } else {
-      alert(error.message || "Failed to submit modification request.");
-    }
-  }
 }
 
 // ============================================================
@@ -579,30 +293,6 @@ async function cancelBooking(bookingId) {
 // ============================================================
 // SECTION 8: Booking rules
 // ============================================================
-
-function isModificationAllowed(booking) {
-  const status = String(booking.status || "").toLowerCase();
-
-  if (["cancelled", "rejected", "completed"].includes(status)) {
-    return false;
-  }
-
-  const checkIn = new Date(booking.check_in);
-  const today = new Date();
-
-  if (Number.isNaN(checkIn.getTime())) {
-    return false;
-  }
-
-  checkIn.setHours(0, 0, 0, 0);
-  today.setHours(0, 0, 0, 0);
-
-  const daysBeforeCheckIn = Math.floor(
-    (checkIn.getTime() - today.getTime()) / (24 * 60 * 60 * 1000)
-  );
-
-  return daysBeforeCheckIn >= 1;
-}
 
 function isCancellationAllowed(booking) {
   const status = String(booking.status || "").toLowerCase();

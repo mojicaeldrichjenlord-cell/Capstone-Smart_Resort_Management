@@ -4,6 +4,7 @@
 // - Check admin access
 // - Load available accommodations
 // - Build manual reservation items
+// - Searchable accommodation picker
 // - Compute estimated entrance fee and down payment
 // - Save draft to sessionStorage
 // - Continue to manual payment screen
@@ -23,6 +24,7 @@ let bookingItemCounter = 0;
 document.addEventListener("DOMContentLoaded", async () => {
   checkAdminAccess();
   setupLogout();
+  setupGlobalPickerClose();
   await loadAccommodations();
   setupManualForm();
   restoreDraftIfAny();
@@ -139,7 +141,6 @@ function setupManualForm() {
 // ============================================================
 // SECTION 6: Continue to payment screen
 // Saves walk-in reservation draft and redirects to payment page.
-// Payment page is still in old frontend root for now.
 // ============================================================
 
 function goToPaymentScreen(e) {
@@ -214,21 +215,37 @@ function addBookingItem(preselectedId = null) {
       <div class="walkin-group">
         <label>Accommodation</label>
 
-        <select class="accommodation-select" data-item-id="${itemId}">
-          <option value="">Select accommodation</option>
+        <div class="custom-accommodation-picker" data-item-id="${itemId}">
+          <input
+            type="hidden"
+            class="accommodation-value"
+            data-item-id="${itemId}"
+            value=""
+          />
 
-          ${availableAccommodations
-            .map(
-              (item) => `
-                <option value="${item.id}" ${
-                  Number(item.id) === Number(preselectedId) ? "selected" : ""
-                }>
-                  ${escapeHtml(item.name)} (${escapeHtml(item.category_name)})
-                </option>
-              `
-            )
-            .join("")}
-        </select>
+          <button
+            type="button"
+            class="accommodation-picker-button"
+            data-item-id="${itemId}"
+          >
+            <span class="accommodation-picker-label">Select accommodation</span>
+            <span class="accommodation-picker-arrow">▼</span>
+          </button>
+
+          <div class="accommodation-picker-panel" data-item-id="${itemId}">
+            <input
+              type="text"
+              class="accommodation-search-input"
+              data-item-id="${itemId}"
+              placeholder="Search room, cottage, or function area..."
+            />
+
+            <div
+              class="accommodation-options-list"
+              data-item-id="${itemId}"
+            ></div>
+          </div>
+        </div>
       </div>
 
       <div class="walkin-group">
@@ -270,9 +287,10 @@ function addBookingItem(preselectedId = null) {
   wrap.appendChild(card);
 
   const removeBtn = card.querySelector(".remove-item-btn");
-  const accommodationSelect = card.querySelector(".accommodation-select");
   const slotSelect = card.querySelector(".slot-select");
   const dateInput = card.querySelector(".date-input");
+
+  bindAccommodationPicker(card, itemId);
 
   if (removeBtn) {
     removeBtn.addEventListener("click", () => {
@@ -281,12 +299,6 @@ function addBookingItem(preselectedId = null) {
       refreshTitles();
     });
   }
-
-  accommodationSelect.addEventListener("change", () => {
-    populateSlotOptions(itemId);
-    updateItemPreview(itemId);
-    updateSummary();
-  });
 
   slotSelect.addEventListener("change", () => {
     updateItemPreview(itemId);
@@ -298,13 +310,158 @@ function addBookingItem(preselectedId = null) {
     updateSummary();
   });
 
+  dateInput.addEventListener("change", () => {
+    updateItemPreview(itemId);
+    updateSummary();
+  });
+
+  if (preselectedId) {
+    setAccommodationSelection(card, itemId, preselectedId);
+  }
+
   populateSlotOptions(itemId);
   updateItemPreview(itemId);
   refreshTitles();
 }
 
 // ============================================================
-// SECTION 8: Restore draft
+// SECTION 8: Searchable accommodation picker
+// ============================================================
+
+function bindAccommodationPicker(card, itemId) {
+  const pickerButton = card.querySelector(".accommodation-picker-button");
+  const pickerPanel = card.querySelector(".accommodation-picker-panel");
+  const searchInput = card.querySelector(".accommodation-search-input");
+
+  if (!pickerButton || !pickerPanel || !searchInput) return;
+
+  renderAccommodationOptions(card, itemId, "");
+
+  pickerButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+
+    const isOpen = pickerPanel.classList.contains("show");
+    closeAllAccommodationPickers();
+
+    if (!isOpen) {
+      pickerPanel.classList.add("show");
+      searchInput.value = "";
+      renderAccommodationOptions(card, itemId, "");
+
+      setTimeout(() => {
+        searchInput.focus();
+      }, 50);
+    }
+  });
+
+  pickerPanel.addEventListener("click", (event) => {
+    event.stopPropagation();
+  });
+
+  searchInput.addEventListener("input", () => {
+    renderAccommodationOptions(card, itemId, searchInput.value);
+  });
+}
+
+function renderAccommodationOptions(card, itemId, searchText = "") {
+  const list = card.querySelector(".accommodation-options-list");
+  if (!list) return;
+
+  const query = String(searchText || "").trim().toLowerCase();
+
+  const filtered = availableAccommodations.filter((item) => {
+    const haystack = [
+      item.name,
+      item.category_name,
+      item.map_label,
+      item.description,
+    ]
+      .join(" ")
+      .toLowerCase();
+
+    return haystack.includes(query);
+  });
+
+  if (!filtered.length) {
+    list.innerHTML = `
+      <div class="accommodation-empty-state">
+        No accommodation found.
+      </div>
+    `;
+    return;
+  }
+
+  list.innerHTML = filtered
+    .map((item) => {
+      const capacity = Number(item.max_capacity || 0);
+      const category = item.category_name || "Accommodation";
+      const mapLabel = item.map_label || "No map label";
+
+      return `
+        <button
+          type="button"
+          class="accommodation-option-btn"
+          data-accommodation-id="${escapeHtml(item.id)}"
+        >
+          <strong>${escapeHtml(item.name)}</strong>
+          <span>
+            ${escapeHtml(category)} • Capacity ${capacity} • ${escapeHtml(mapLabel)}
+          </span>
+        </button>
+      `;
+    })
+    .join("");
+
+  list.querySelectorAll(".accommodation-option-btn").forEach((button) => {
+    button.addEventListener("click", () => {
+      const selectedId = Number(button.dataset.accommodationId);
+      setAccommodationSelection(card, itemId, selectedId);
+      closeAllAccommodationPickers();
+    });
+  });
+}
+
+function setAccommodationSelection(card, itemId, accommodationId) {
+  const hiddenInput = card.querySelector(".accommodation-value");
+  const label = card.querySelector(".accommodation-picker-label");
+
+  const accommodation = getAccommodationById(accommodationId);
+
+  if (!hiddenInput || !label) return;
+
+  if (!accommodation) {
+    hiddenInput.value = "";
+    label.textContent = "Select accommodation";
+  } else {
+    hiddenInput.value = String(accommodation.id);
+    label.textContent = `${accommodation.name} (${accommodation.category_name})`;
+  }
+
+  populateSlotOptions(itemId);
+  updateItemPreview(itemId);
+  updateSummary();
+}
+
+function closeAllAccommodationPickers() {
+  document.querySelectorAll(".accommodation-picker-panel").forEach((panel) => {
+    panel.classList.remove("show");
+  });
+}
+
+function setupGlobalPickerClose() {
+  document.addEventListener("click", () => {
+    closeAllAccommodationPickers();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeAllAccommodationPickers();
+    }
+  });
+}
+
+// ============================================================
+// SECTION 9: Restore draft
 // Restores data when returning from payment screen.
 // ============================================================
 
@@ -334,12 +491,10 @@ function restoreDraftIfAny() {
         const card = wrap.children[index];
         if (!card) return;
 
-        const accommodationSelect = card.querySelector(".accommodation-select");
         const slotSelect = card.querySelector(".slot-select");
         const dateInput = card.querySelector(".date-input");
 
-        accommodationSelect.value = item.accommodation_id || "";
-        populateSlotOptions(index + 1);
+        setAccommodationSelection(card, index + 1, Number(item.accommodation_id) || null);
 
         slotSelect.value = item.slot_type || "";
         dateInput.value = item.check_in_date || dateInput.value;
@@ -355,7 +510,7 @@ function restoreDraftIfAny() {
 }
 
 // ============================================================
-// SECTION 9: Refresh item titles after remove
+// SECTION 10: Refresh item titles after remove
 // Keeps item numbering readable.
 // ============================================================
 
@@ -363,35 +518,45 @@ function refreshTitles() {
   const cards = [...document.querySelectorAll(".booking-item-card")];
 
   cards.forEach((card, index) => {
+    const newItemId = index + 1;
+
     const title = card.querySelector(".booking-item-title");
 
     if (title) {
-      title.textContent = `Accommodation Item ${index + 1}`;
-      card.dataset.itemId = String(index + 1);
+      title.textContent = `Accommodation Item ${newItemId}`;
+    }
 
-      const preview = card.querySelector(".slot-preview");
+    card.dataset.itemId = String(newItemId);
 
-      if (preview) {
-        preview.id = `slotPreview-${index + 1}`;
-      }
+    card.querySelectorAll("[data-item-id]").forEach((element) => {
+      element.dataset.itemId = String(newItemId);
+    });
+
+    const preview = card.querySelector(".slot-preview");
+
+    if (preview) {
+      preview.id = `slotPreview-${newItemId}`;
     }
   });
 }
 
 // ============================================================
-// SECTION 10: Accommodation helpers
+// SECTION 11: Accommodation helpers
 // Gets selected accommodation and available slot options.
 // ============================================================
 
 function getAccommodationById(id) {
-  return availableAccommodations.find((item) => Number(item.id) === Number(id)) || null;
+  return (
+    availableAccommodations.find((item) => Number(item.id) === Number(id)) ||
+    null
+  );
 }
 
 function getSlotOptions(accommodation) {
   if (!accommodation) return [];
 
   const category = String(accommodation.category_name || "").toLowerCase();
-  const isRoom = category === "room";
+  const isRoom = category === "room" || category.includes("room");
 
   return [
     {
@@ -419,7 +584,7 @@ function getSlotOptions(accommodation) {
 }
 
 // ============================================================
-// SECTION 11: Populate slot dropdown
+// SECTION 12: Populate slot dropdown
 // Updates slot options based on selected accommodation.
 // ============================================================
 
@@ -427,11 +592,11 @@ function populateSlotOptions(itemId) {
   const card = document.querySelector(`.booking-item-card[data-item-id="${itemId}"]`);
   if (!card) return;
 
-  const accommodationSelect = card.querySelector(".accommodation-select");
+  const accommodationValue = card.querySelector(".accommodation-value");
   const slotSelect = card.querySelector(".slot-select");
   const capacityDisplay = card.querySelector(".capacity-display");
 
-  const accommodation = getAccommodationById(accommodationSelect.value);
+  const accommodation = getAccommodationById(accommodationValue?.value);
 
   if (!accommodation) {
     slotSelect.innerHTML = `<option value="">Select slot</option>`;
@@ -459,7 +624,7 @@ function populateSlotOptions(itemId) {
 }
 
 // ============================================================
-// SECTION 12: Update item preview
+// SECTION 13: Update item preview
 // Shows selected accommodation schedule, price, and map label.
 // ============================================================
 
@@ -467,14 +632,21 @@ function updateItemPreview(itemId) {
   const card = document.querySelector(`.booking-item-card[data-item-id="${itemId}"]`);
   if (!card) return;
 
-  const accommodationSelect = card.querySelector(".accommodation-select");
+  const accommodationValue = card.querySelector(".accommodation-value");
   const slotSelect = card.querySelector(".slot-select");
   const dateInput = card.querySelector(".date-input");
   const preview = document.getElementById(`slotPreview-${itemId}`);
 
-  const accommodation = getAccommodationById(accommodationSelect.value);
+  const accommodation = getAccommodationById(accommodationValue?.value);
 
-  if (!accommodation || !preview) return;
+  if (!preview) return;
+
+  if (!accommodation) {
+    preview.innerHTML = `
+      Select an accommodation and slot to preview its schedule and price.
+    `;
+    return;
+  }
 
   const slot = getSlotOptions(accommodation).find(
     (item) => item.value === slotSelect.value
@@ -504,7 +676,7 @@ function updateItemPreview(itemId) {
 }
 
 // ============================================================
-// SECTION 13: Collect booking items
+// SECTION 14: Collect booking items
 // Gets selected accommodation, slot, and date from all cards.
 // ============================================================
 
@@ -513,7 +685,7 @@ function collectBookingItems() {
   const items = [];
 
   for (const card of cards) {
-    const accommodationId = card.querySelector(".accommodation-select")?.value;
+    const accommodationId = card.querySelector(".accommodation-value")?.value;
     const slotType = card.querySelector(".slot-select")?.value;
     const checkInDate = card.querySelector(".date-input")?.value;
 
@@ -532,7 +704,7 @@ function collectBookingItems() {
 }
 
 // ============================================================
-// SECTION 14: Calculate checkout date
+// SECTION 15: Calculate checkout date
 // Handles overnight slots where checkout date becomes next day.
 // ============================================================
 
@@ -558,7 +730,7 @@ function calculateCheckOutDate(checkInDate, startTime, endTime) {
 }
 
 // ============================================================
-// SECTION 15: Entrance fee calculation
+// SECTION 16: Entrance fee calculation
 // Estimates entrance fee after free entrance pax deduction.
 // ============================================================
 
@@ -601,7 +773,7 @@ function getEstimatedEntranceFee() {
 }
 
 // ============================================================
-// SECTION 16: Update summary
+// SECTION 17: Update summary
 // Updates all amount preview boxes.
 // ============================================================
 
@@ -639,7 +811,7 @@ function updateSummary() {
 }
 
 // ============================================================
-// SECTION 17: Format helpers
+// SECTION 18: Format helpers
 // Formats money, time, dates, messages, and safe HTML.
 // ============================================================
 
