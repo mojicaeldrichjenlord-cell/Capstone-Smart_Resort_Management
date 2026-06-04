@@ -5,15 +5,15 @@
 // - Search/filter reservations
 // - Staff-friendly reservation cards
 // - View proof screenshot using Base64/file fallback
-// - Quick admin actions: check in / allow entry and cancel
+// - Quick admin actions: verify payment, check in / allow entry, and cancel
 // ============================================================
 
 let allBookings = [];
 
-console.log("[admin-dashboard] PH TIME FIX V4 loaded.");
+console.log("[admin-dashboard] PH TIME FIX V5 + VERIFY PAYMENT loaded.");
 
 // ============================================================
-// PH TIME FIX V4
+// PH TIME FIX V5
 // Treat backend/MySQL DATETIME as UTC, then display as Asia/Manila.
 // ============================================================
 
@@ -495,6 +495,13 @@ function renderReservationCard(booking) {
           Receipt
         </button>
 
+        ${renderVerifyPaymentButton(
+          booking,
+          bookingId,
+          bookingStatus,
+          paymentStatus,
+        )}
+
         ${renderCheckInButton(booking, bookingId, bookingStatus)}
 
         ${renderCancelButton(bookingId, bookingStatus)}
@@ -558,6 +565,56 @@ function calculateTodayCollectedRevenue(booking, today) {
   return amount;
 }
 
+function renderVerifyPaymentButton(
+  booking,
+  bookingId,
+  bookingStatus,
+  paymentStatus,
+) {
+  const bookingSource = String(booking.booking_source || "online").toLowerCase();
+  const proofSource = getProofSource(booking);
+  const paymentReference = getPaymentReference(booking);
+
+  if (bookingSource === "manual") {
+    return "";
+  }
+
+  if (
+    bookingStatus === "cancelled" ||
+    bookingStatus === "completed" ||
+    bookingStatus === "rejected" ||
+    paymentStatus === "rejected" ||
+    paymentStatus === "partially_paid" ||
+    paymentStatus === "paid"
+  ) {
+    return "";
+  }
+
+  if (!proofSource && !paymentReference) {
+    return `
+      <button
+        type="button"
+        class="action-btn verify-payment-btn muted"
+        disabled
+        title="No uploaded proof or reference number is available for verification."
+      >
+        No Payment Proof
+      </button>
+    `;
+  }
+
+  return `
+    <button
+      type="button"
+      class="action-btn verify-payment-btn"
+      onclick="verifyPayment(${bookingId}, this)"
+      title="Mark the submitted 50% GCash/Maya payment proof as valid."
+    >
+      Verify Payment
+    </button>
+  `;
+}
+
 function renderCheckInButton(booking, bookingId, bookingStatus) {
   const paymentStatus = String(booking.payment_status || "").toLowerCase();
 
@@ -594,6 +651,19 @@ function renderCheckInButton(booking, bookingId, bookingStatus) {
         title="This reservation has no valid check-in date."
       >
         No Check-in Date
+      </button>
+    `;
+  }
+
+  if (paymentStatus === "pending" || paymentStatus === "unpaid") {
+    return `
+      <button
+        type="button"
+        class="action-btn verify-payment-btn muted"
+        disabled
+        title="Verify the customer's 50% downpayment proof first before check-in."
+      >
+        Verify Payment First
       </button>
     `;
   }
@@ -659,6 +729,23 @@ function renderCancelButton(bookingId, bookingStatus) {
 // ============================================================
 // SECTION 9: Quick admin actions
 // ============================================================
+
+async function verifyPayment(bookingId, button) {
+  const confirmed = confirm(
+    "Mark this payment proof as valid? This will approve the reservation and record the 50% downpayment as partially paid.",
+  );
+
+  if (!confirmed) return;
+
+  await runAdminAction(button, "Verifying...", async () => {
+    await updatePaymentStatusOnly(bookingId, "partially_paid");
+
+    showMessage(
+      "Payment verified. Reservation is now approved and partially paid.",
+      "success",
+    );
+  });
+}
 
 async function checkInReservation(bookingId, button) {
   const confirmed = confirm(
@@ -1126,7 +1213,9 @@ function formatDate(dateValue) {
   const date = new Date(dateValue);
   if (Number.isNaN(date.getTime())) return "N/A";
 
-  return date.toLocaleDateString();
+  return date.toLocaleDateString("en-PH", {
+    timeZone: "Asia/Manila",
+  });
 }
 
 function formatTime(timeValue) {
@@ -1156,7 +1245,7 @@ function formatDateTime(dateValue) {
 
 function formatPaymentMethod(method) {
   if (method === "gcash") return "GCash";
-  if (method === "paymaya") return "PayMaya";
+  if (method === "paymaya") return "PayMaya / Maya";
   if (method === "cash") return "Cash";
 
   return capitalize(method);

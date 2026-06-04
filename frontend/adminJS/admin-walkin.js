@@ -12,6 +12,7 @@
 // ============================================================
 
 const ADMIN_WALKIN_DRAFT_KEY = "smartresort_admin_walkin_draft_v2";
+const ADMIN_WALKIN_SUCCESS_RESET_KEY = "smartresort_admin_walkin_success_reset";
 
 let availableAccommodations = [];
 let bookingItemCounter = 0;
@@ -25,9 +26,34 @@ document.addEventListener("DOMContentLoaded", async () => {
   checkAdminAccess();
   setupLogout();
   setupGlobalPickerClose();
-  await loadAccommodations();
+  prepareManualReservationDraft();
   setupManualForm();
-  restoreDraftIfAny();
+  setupContactNumberInputGuard();
+  setupReservationTypeField();
+
+  const restoreDraft = shouldRestoreManualDraft();
+
+  if (!restoreDraft) {
+    forceClearManualForm();
+  }
+
+  await loadAccommodations();
+
+  if (restoreDraft) {
+    restoreDraftIfAny();
+  } else {
+    ensureAtLeastOneBookingItem();
+    refreshAllAccommodationPickers();
+    updateSummary();
+
+    // Some browsers apply autofill after DOMContentLoaded.
+    setTimeout(() => {
+      forceClearManualForm();
+      ensureAtLeastOneBookingItem();
+      refreshAllAccommodationPickers();
+      updateSummary();
+    }, 200);
+  }
 });
 
 // ============================================================
@@ -88,14 +114,24 @@ async function loadAccommodations() {
       throw new Error(data.message || "Failed to load accommodations.");
     }
 
-    availableAccommodations = Array.isArray(data) ? data : data.rooms || [];
+    if (Array.isArray(data)) {
+      availableAccommodations = data;
+    } else if (Array.isArray(data.rooms)) {
+      availableAccommodations = data.rooms;
+    } else if (Array.isArray(data.accommodations)) {
+      availableAccommodations = data.accommodations;
+    } else {
+      availableAccommodations = [];
+    }
+
+    console.log("[admin-walkin] Loaded accommodations:", availableAccommodations.length);
 
     if (!availableAccommodations.length) {
       showMessage("No available accommodations found.", "error");
       return;
     }
 
-    addBookingItem();
+    refreshAllAccommodationPickers();
     updateSummary();
   } catch (error) {
     console.error("loadAccommodations error:", error);
@@ -126,6 +162,7 @@ function setupManualForm() {
     document.getElementById("middleName"),
     document.getElementById("lastName"),
     document.getElementById("contactNo"),
+    document.getElementById("manualReservationType"),
   ].forEach((el) => {
     if (el) {
       el.addEventListener("input", updateSummary);
@@ -136,6 +173,83 @@ function setupManualForm() {
   if (form) {
     form.addEventListener("submit", goToPaymentScreen);
   }
+}
+
+
+// ============================================================
+// SECTION 5.1: Manual reservation type
+// Adds a clear choice between walk-in and Facebook/Messenger booking.
+// ============================================================
+
+function setupReservationTypeField() {
+  if (document.getElementById("manualReservationType")) {
+    return;
+  }
+
+  const guestInfoSection = document.querySelector(".section-box");
+  const firstNameField = document.getElementById("firstName");
+  const targetGrid = firstNameField?.closest(".walkin-grid");
+
+  if (!targetGrid && !guestInfoSection) {
+    return;
+  }
+
+  const wrapper = document.createElement("div");
+  wrapper.className = targetGrid ? "walkin-group full-width" : "manual-type-injected-box";
+  wrapper.innerHTML = `
+    <label for="manualReservationType">Reservation Type</label>
+    <select id="manualReservationType" required>
+      <option value="walkin">Walk-in Guest</option>
+      <option value="facebook">Facebook / Messenger Reservation</option>
+    </select>
+    <small class="field-help">
+      Walk-in is for guests already onsite. Facebook/Messenger is for guests who message the resort instead of using the website.
+    </small>
+  `;
+
+  if (targetGrid) {
+    targetGrid.insertBefore(wrapper, targetGrid.firstElementChild);
+  } else {
+    guestInfoSection.insertBefore(wrapper, guestInfoSection.firstElementChild?.nextSibling || null);
+  }
+
+  const reservationType = document.getElementById("manualReservationType");
+  if (reservationType) {
+    reservationType.addEventListener("change", updateSummary);
+  }
+}
+
+function getManualReservationType() {
+  return document.getElementById("manualReservationType")?.value || "walkin";
+}
+
+function formatManualReservationType(type) {
+  return type === "facebook" ? "Facebook / Messenger Reservation" : "Walk-in Guest";
+}
+
+// ============================================================
+// SECTION 5.1: Contact number validation
+// Keeps contact number numeric and exactly 11 digits, starting with 09.
+// ============================================================
+
+function setupContactNumberInputGuard() {
+  const contactInput = document.getElementById("contactNo");
+  if (!contactInput) return;
+
+  contactInput.setAttribute("inputmode", "numeric");
+  contactInput.setAttribute("maxlength", "11");
+  contactInput.setAttribute("placeholder", "Example: 09123456789");
+  contactInput.setAttribute("autocomplete", "off");
+
+  contactInput.addEventListener("input", () => {
+    contactInput.value = String(contactInput.value || "")
+      .replace(/\D/g, "")
+      .slice(0, 11);
+  });
+}
+
+function isValidPhilippineMobileNumber(contactNo) {
+  return /^09\d{9}$/.test(String(contactNo || "").trim());
 }
 
 // ============================================================
@@ -150,6 +264,7 @@ function goToPaymentScreen(e) {
   const middle_name = document.getElementById("middleName").value.trim();
   const last_name = document.getElementById("lastName").value.trim();
   const contact_no = document.getElementById("contactNo").value.trim();
+  const reservation_type = getManualReservationType();
   const guest_count = Number(document.getElementById("guestCount").value);
   const entrance_type = document.getElementById("entranceType").value;
   const customerNote = document.getElementById("customerNote").value.trim();
@@ -157,6 +272,12 @@ function goToPaymentScreen(e) {
 
   if (!first_name || !last_name || !contact_no || !guest_count) {
     showMessage("Please fill in all required guest information.", "error");
+    return;
+  }
+
+  if (!isValidPhilippineMobileNumber(contact_no)) {
+    showMessage("Contact number must be exactly 11 digits and start with 09.", "error");
+    document.getElementById("contactNo")?.focus();
     return;
   }
 
@@ -170,6 +291,7 @@ function goToPaymentScreen(e) {
     middle_name,
     last_name,
     contact_no,
+    reservation_type,
     guest_count,
     entrance_type,
     note: customerNote,
@@ -461,8 +583,110 @@ function setupGlobalPickerClose() {
 }
 
 // ============================================================
-// SECTION 9: Restore draft
-// Restores data when returning from payment screen.
+// SECTION 9: Manual draft/session handling
+// - New manual reservation from navbar/dashboard starts blank.
+// - Back from payment page restores draft for editing.
+// - Create Another after success starts blank.
+// ============================================================
+
+function refreshAllAccommodationPickers() {
+  document.querySelectorAll(".booking-item-card").forEach((card) => {
+    const itemId = Number(card.dataset.itemId || 0);
+    if (!itemId) return;
+
+    renderAccommodationOptions(card, itemId, "");
+    populateSlotOptions(itemId);
+    updateItemPreview(itemId);
+  });
+}
+
+function prepareManualReservationDraft() {
+  const cameFromPaymentPage = document.referrer.includes(
+    "admin-walkin-payment.html"
+  );
+
+  const forceReset =
+    sessionStorage.getItem(ADMIN_WALKIN_SUCCESS_RESET_KEY) === "1";
+
+  if (forceReset) {
+    sessionStorage.removeItem(ADMIN_WALKIN_DRAFT_KEY);
+    sessionStorage.removeItem(ADMIN_WALKIN_SUCCESS_RESET_KEY);
+    return;
+  }
+
+  if (!cameFromPaymentPage) {
+    sessionStorage.removeItem(ADMIN_WALKIN_DRAFT_KEY);
+  }
+}
+
+function shouldRestoreManualDraft() {
+  const cameFromPaymentPage = document.referrer.includes(
+    "admin-walkin-payment.html"
+  );
+
+  return cameFromPaymentPage && Boolean(sessionStorage.getItem(ADMIN_WALKIN_DRAFT_KEY));
+}
+
+function forceClearManualForm() {
+  const form = document.getElementById("walkInForm");
+
+  if (form) {
+    form.setAttribute("autocomplete", "off");
+    form.reset();
+  }
+
+  const fieldsToClear = [
+    "firstName",
+    "middleName",
+    "lastName",
+    "contactNo",
+    "customerNote",
+  ];
+
+  fieldsToClear.forEach((id) => {
+    const field = document.getElementById(id);
+    if (field) {
+      field.value = "";
+      field.setAttribute("autocomplete", "off");
+    }
+  });
+
+  const reservationType = document.getElementById("manualReservationType");
+  if (reservationType) {
+    reservationType.value = "walkin";
+  }
+
+  const guestCount = document.getElementById("guestCount");
+  if (guestCount) {
+    guestCount.value = "1";
+    guestCount.setAttribute("autocomplete", "off");
+  }
+
+  const entranceType = document.getElementById("entranceType");
+  if (entranceType) {
+    entranceType.value = "pool_beach";
+  }
+
+  const wrap = document.getElementById("bookingItemsWrap");
+  if (wrap) {
+    wrap.innerHTML = "";
+  }
+
+  bookingItemCounter = 0;
+}
+
+function ensureAtLeastOneBookingItem() {
+  const wrap = document.getElementById("bookingItemsWrap");
+  if (!wrap) return;
+
+  if (!wrap.querySelector(".booking-item-card")) {
+    addBookingItem();
+  }
+}
+
+// ============================================================
+// SECTION 10: Restore draft
+// Restores data only when returning from payment screen.
 // ============================================================
 
 function restoreDraftIfAny() {
@@ -476,6 +700,9 @@ function restoreDraftIfAny() {
     if (draft.middle_name) document.getElementById("middleName").value = draft.middle_name;
     if (draft.last_name) document.getElementById("lastName").value = draft.last_name;
     if (draft.contact_no) document.getElementById("contactNo").value = draft.contact_no;
+    if (draft.reservation_type && document.getElementById("manualReservationType")) {
+      document.getElementById("manualReservationType").value = draft.reservation_type;
+    }
     if (draft.guest_count) document.getElementById("guestCount").value = draft.guest_count;
     if (draft.entrance_type) document.getElementById("entranceType").value = draft.entrance_type;
     if (draft.note) document.getElementById("customerNote").value = draft.note;

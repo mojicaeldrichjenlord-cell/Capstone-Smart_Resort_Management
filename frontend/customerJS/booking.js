@@ -45,6 +45,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   setupLogout();
   setupPricingGuideModal();
+  setupContactNumberGuard();
   setupGlobalPickerClose();
   await loadAccommodations();
   prefillUserInfo(user);
@@ -127,6 +128,41 @@ function setupPricingGuideModal() {
 }
 
 // ============================================================
+// SECTION 4: Contact number guard
+// Keeps customer contact number numeric, 11 digits max, and PH mobile format.
+// ============================================================
+
+function setupContactNumberGuard() {
+  const contactInput = document.getElementById("contactNo");
+  if (!contactInput) return;
+
+  contactInput.setAttribute("inputmode", "numeric");
+  contactInput.setAttribute("maxlength", "11");
+  contactInput.setAttribute("autocomplete", "tel");
+  contactInput.setAttribute("placeholder", "Example: 09123456789");
+
+  contactInput.addEventListener("input", () => {
+    contactInput.value = normalizeContactNumber(contactInput.value);
+  });
+
+  contactInput.addEventListener("paste", () => {
+    setTimeout(() => {
+      contactInput.value = normalizeContactNumber(contactInput.value);
+    }, 0);
+  });
+}
+
+function normalizeContactNumber(value) {
+  return String(value || "")
+    .replace(/\D/g, "")
+    .slice(0, 11);
+}
+
+function isValidPhilippineMobileNumber(value) {
+  return /^09\d{9}$/.test(normalizeContactNumber(value));
+}
+
+// ============================================================
 // SECTION 4: Prefill user information
 // ============================================================
 
@@ -151,7 +187,7 @@ function prefillUserInfo(user) {
   }
 
   if (user.phone) {
-    document.getElementById("contactNo").value = user.phone;
+    document.getElementById("contactNo").value = normalizeContactNumber(user.phone);
   }
 }
 
@@ -215,7 +251,9 @@ function setupBookingForm(user) {
     const first_name = document.getElementById("firstName").value.trim();
     const middle_name = document.getElementById("middleName").value.trim();
     const last_name = document.getElementById("lastName").value.trim();
-    const contact_no = document.getElementById("contactNo").value.trim();
+    const contactInput = document.getElementById("contactNo");
+    const contact_no = normalizeContactNumber(contactInput.value);
+    contactInput.value = contact_no;
     const guest_count = Number(document.getElementById("guestCount").value);
     const entrance_type = document.getElementById("entranceType").value;
     const customerNote = document.getElementById("customerNote").value.trim();
@@ -224,6 +262,15 @@ function setupBookingForm(user) {
 
     if (!first_name || !last_name || !contact_no || !guest_count) {
       showMessage("Please fill in all required guest information.", "error");
+      return;
+    }
+
+    if (!isValidPhilippineMobileNumber(contact_no)) {
+      showMessage(
+        "Contact number must be exactly 11 digits and start with 09.",
+        "error"
+      );
+      contactInput.focus();
       return;
     }
 

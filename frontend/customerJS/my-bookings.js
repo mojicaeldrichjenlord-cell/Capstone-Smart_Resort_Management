@@ -10,8 +10,12 @@
 // - Works from frontend/customerHTML/my-bookings.html
 // ============================================================
 
-
 let currentUser = null;
+
+const BACKEND_ORIGIN =
+  typeof API_BASE !== "undefined"
+    ? API_BASE.replace(/\/api\/?$/, "")
+    : "http://127.0.0.1:5000";
 
 // ============================================================
 // SECTION 1: Page startup
@@ -453,11 +457,11 @@ function resolveImagePath(value) {
   }
 
   if (imagePath.startsWith("/uploads/")) {
-    return `http://127.0.0.1:5000${imagePath}`;
+    return `${BACKEND_ORIGIN}${imagePath}`;
   }
 
   if (imagePath.startsWith("uploads/")) {
-    return `http://127.0.0.1:5000/${imagePath}`;
+    return `${BACKEND_ORIGIN}/${imagePath}`;
   }
 
   return `../${imagePath}`;
@@ -476,7 +480,9 @@ function formatDate(dateValue) {
     return "N/A";
   }
 
-  return date.toLocaleDateString();
+  return date.toLocaleDateString("en-PH", {
+    timeZone: "Asia/Manila",
+  });
 }
 
 function formatTime(timeValue) {
@@ -506,20 +512,43 @@ function formatTime(timeValue) {
 function formatDateTime(dateValue) {
   if (!dateValue) return "N/A";
 
-  const date = new Date(dateValue);
+  const rawValue = String(dateValue).trim();
+
+  /*
+    Aiven/MySQL can return created_at as UTC while the browser may read
+    MySQL DATETIME text as local time. If there is no timezone marker,
+    treat it as UTC, then display it in Philippine time.
+  */
+  const hasTimezone =
+    /z$/i.test(rawValue) || /[+-]\d{2}:?\d{2}$/.test(rawValue);
+
+  const normalizedValue = hasTimezone
+    ? rawValue
+    : rawValue.replace(" ", "T") + "Z";
+
+  const date = new Date(normalizedValue);
 
   if (Number.isNaN(date.getTime())) {
     return "N/A";
   }
 
-  return date.toLocaleString();
+  return date.toLocaleString("en-PH", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true,
+  });
 }
 
 function formatPaymentMethod(method) {
   const value = String(method || "").toLowerCase();
 
   if (value === "gcash") return "GCash";
-  if (value === "paymaya") return "Maya / PayMaya";
+  if (value === "paymaya") return "PayMaya / Maya";
   if (value === "cash") return "Cash";
 
   return capitalize(value.replaceAll("_", " "));

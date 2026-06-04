@@ -15,6 +15,14 @@ function toNumber(value, fallback = 0) {
   return Number.isFinite(num) ? num : fallback;
 }
 
+function normalizeContactNumber(value) {
+  return String(value || "").replace(/\D/g, "").trim();
+}
+
+function isValidPhilippineMobileNumber(value) {
+  return /^09\d{9}$/.test(String(value || "").trim());
+}
+
 function getMonthAbbrev(date = new Date()) {
   return date.toLocaleString("en-US", { month: "short" }).toUpperCase();
 }
@@ -58,7 +66,10 @@ function parseRequestReservationBody(req) {
 }
 
 async function generateReservationCode(connection) {
-  const now = new Date();
+  const now = new Date(
+    new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" }),
+  );
+
   const month = getMonthAbbrev(now);
   const day = String(now.getDate()).padStart(2, "0");
   const prefix = `${month}-${day}`;
@@ -67,10 +78,11 @@ async function generateReservationCode(connection) {
     `
     SELECT reservation_code
     FROM reservations
-    WHERE DATE(reserved_at) = CURDATE()
-    ORDER BY id DESC
+    WHERE reservation_code LIKE ?
+    ORDER BY CAST(SUBSTRING_INDEX(reservation_code, '-', -1) AS UNSIGNED) DESC
     LIMIT 1
     `,
+    [`${prefix}-%`],
   );
 
   let nextNumber = 1;
@@ -85,7 +97,28 @@ async function generateReservationCode(connection) {
     }
   }
 
-  return `${prefix}-${String(nextNumber).padStart(3, "0")}`;
+  let reservationCode = `${prefix}-${String(nextNumber).padStart(3, "0")}`;
+
+  while (true) {
+    const [existingRows] = await connection.query(
+      `
+      SELECT id
+      FROM reservations
+      WHERE reservation_code = ?
+      LIMIT 1
+      `,
+      [reservationCode],
+    );
+
+    if (!existingRows.length) {
+      break;
+    }
+
+    nextNumber += 1;
+    reservationCode = `${prefix}-${String(nextNumber).padStart(3, "0")}`;
+  }
+
+  return reservationCode;
 }
 
 function getEntranceRate(entranceType, hasOvernight) {
@@ -327,6 +360,8 @@ async function createReservation({
     note,
     payment_method,
     payment_type,
+    reservation_type,
+    manual_reservation_type,
     proof_of_payment,
     proof_image_data,
     proof_reference,
@@ -336,7 +371,7 @@ async function createReservation({
   const cleanFirstName = normalizeText(first_name);
   const cleanMiddleName = normalizeNullableText(middle_name);
   const cleanLastName = normalizeText(last_name);
-  const cleanContactNo = normalizeText(contact_no);
+  const cleanContactNo = normalizeContactNumber(contact_no);
   const cleanEntranceType = normalizeText(entrance_type || "pool_beach");
   const cleanNote = normalizeNullableText(note);
   const cleanPaymentMethod = normalizeText(payment_method || "gcash");
@@ -346,11 +381,30 @@ async function createReservation({
   const cleanPaymentType = normalizeText(payment_type || "downpayment");
   const totalGuests = toNumber(guest_count, 0);
   const isManualReservation = source === "manual";
+  const rawManualReservationType = normalizeText(
+    reservation_type || manual_reservation_type || "",
+  ).toLowerCase();
+  const manualReservationType = isManualReservation
+    ? rawManualReservationType === "facebook"
+      ? "facebook"
+      : "walkin"
+    : null;
+  const isWalkInManualReservation =
+    isManualReservation && manualReservationType === "walkin";
+  const isFacebookManualReservation =
+    isManualReservation && manualReservationType === "facebook";
 
   if (!cleanFirstName || !cleanLastName || !cleanContactNo || !totalGuests) {
     throw {
       status: 400,
       message: "Please fill in all required guest information fields.",
+    };
+  }
+
+  if (!isValidPhilippineMobileNumber(cleanContactNo)) {
+    throw {
+      status: 400,
+      message: "Contact number must be exactly 11 digits and start with 09.",
     };
   }
 
@@ -362,6 +416,13 @@ async function createReservation({
   }
 
   if (!isManualReservation) {
+    if (!["gcash", "paymaya"].includes(cleanPaymentMethod.toLowerCase())) {
+      throw {
+        status: 400,
+        message: "Online reservations only accept GCash or PayMaya payments.",
+      };
+    }
+
     if (!cleanProofReference) {
       throw {
         status: 400,
@@ -373,6 +434,45 @@ async function createReservation({
       throw {
         status: 400,
         message: "Payment proof or reference is required.",
+      };
+    }
+  }
+
+  if (isWalkInManualReservation) {
+    if (cleanPaymentMethod.toLowerCase() !== "cash") {
+      throw {
+        status: 400,
+        message: "Walk-in manual reservations must use cash payment only.",
+      };
+    }
+
+    if (cleanPaymentType !== "full") {
+      throw {
+        status: 400,
+        message: "Walk-in manual reservations must be full payment only.",
+      };
+    }
+  }
+
+  if (isFacebookManualReservation) {
+    if (!["gcash", "paymaya"].includes(cleanPaymentMethod.toLowerCase())) {
+      throw {
+        status: 400,
+        message: "Facebook/Messenger manual reservations must use GCash or PayMaya only.",
+      };
+    }
+
+    if (!cleanProofReference) {
+      throw {
+        status: 400,
+        message: "Reference number is required for Facebook/Messenger reservations.",
+      };
+    }
+
+    if (!cleanProof && !cleanProofImageData) {
+      throw {
+        status: 400,
+        message: "Proof screenshot is required for Facebook/Messenger reservations.",
       };
     }
   }
@@ -461,10 +561,41 @@ async function createReservation({
 
   const requiredDownpayment = accommodationTotal * 0.5;
 
-  let paidAmount = requiredDownpayment;
-  let remainingBalance = accommodationTotal - requiredDownpayment;
-  let reservationStatus = "approved";
-  let paymentStatus = "partially_paid";
+  // Online customer reservations start as pending until admin verifies proof.
+  // Manual reservations are encoded by staff:
+  // - Walk-in: cash, full payment, auto checked-in.
+  // - Facebook/Messenger: GCash/PayMaya proof, approved but not checked-in.
+  let paidAmount = 0;
+  let remainingBalance = accommodationTotal;
+  let reservationStatus = "pending";
+  let paymentStatus = "pending";
+  let isCheckedIn = 0;
+  let checkedInAtSql = null;
+  let entranceFeePaid = 0;
+  let entranceFeeCollected = 0;
+
+  if (isWalkInManualReservation) {
+    paidAmount = accommodationTotal;
+    remainingBalance = 0;
+    reservationStatus = "approved";
+    paymentStatus = "paid";
+    isCheckedIn = 1;
+    checkedInAtSql = new Date();
+    entranceFeePaid = 1;
+    entranceFeeCollected = estimatedEntranceFee;
+  } else if (isFacebookManualReservation) {
+    reservationStatus = "approved";
+
+    if (cleanPaymentType === "full") {
+      paidAmount = accommodationTotal;
+      remainingBalance = 0;
+      paymentStatus = "paid";
+    } else {
+      paidAmount = requiredDownpayment;
+      remainingBalance = accommodationTotal - paidAmount;
+      paymentStatus = "partially_paid";
+    }
+  }
 
   const noteParts = [];
 
@@ -481,17 +612,18 @@ async function createReservation({
   );
 
   if (isManualReservation) {
-    if (cleanPaymentType === "full") {
-      paidAmount = accommodationTotal;
-      remainingBalance = 0;
-      reservationStatus = "approved";
-      paymentStatus = "paid";
+    noteParts.push(
+      `Manual Reservation Type: ${
+        isWalkInManualReservation ? "Walk-in Guest" : "Facebook / Messenger Reservation"
+      }`,
+    );
+
+    if (isWalkInManualReservation) {
+      noteParts.push("Manual Reservation Payment Type: Full Cash Payment");
+      noteParts.push("Walk-in guest automatically checked in after manual reservation creation.");
+    } else if (cleanPaymentType === "full") {
       noteParts.push("Manual Reservation Payment Type: Full Payment");
     } else {
-      paidAmount = requiredDownpayment;
-      remainingBalance = accommodationTotal - paidAmount;
-      reservationStatus = "approved";
-      paymentStatus = "partially_paid";
       noteParts.push("Manual Reservation Payment Type: 50% Down Payment");
     }
 
@@ -500,6 +632,9 @@ async function createReservation({
     }
   } else {
     noteParts.push(`Reference Number: ${cleanProofReference}`);
+    noteParts.push(
+      "Online Reservation Payment Status: Pending admin verification of submitted GCash/Maya proof.",
+    );
   }
 
   if (cleanNote) {
@@ -539,9 +674,13 @@ async function createReservation({
         reservation_status,
         proof_of_payment,
         proof_image_data,
+        is_checked_in,
+        checked_in_at,
+        entrance_fee_paid,
+        entrance_fee_collected,
         reserved_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
       `,
       [
         reservationCode,
@@ -563,6 +702,10 @@ async function createReservation({
         reservationStatus,
         cleanProof,
         cleanProofImageData,
+        isCheckedIn,
+        checkedInAtSql,
+        entranceFeePaid,
+        entranceFeeCollected,
       ],
     );
 
@@ -608,9 +751,10 @@ async function createReservation({
       accommodationTotal,
       totalFreeEntrancePax,
       chargeableEntranceGuests,
+      isCheckedIn: Boolean(isCheckedIn),
       message: isManualReservation
         ? "Manual reservation created successfully."
-        : "Reservation approved successfully. Your downpayment is recorded as partially paid.",
+        : "Reservation request submitted successfully. Please wait for admin payment verification.",
     };
   } catch (error) {
     await connection.rollback();
@@ -644,6 +788,7 @@ exports.createBooking = async (req, res) => {
       reservationCode: result.reservationCode,
       proofPath: parsedBody.proof_of_payment || null,
       proofImageDataSaved: Boolean(parsedBody.proof_image_data),
+      isCheckedIn: Boolean(result.isCheckedIn),
     });
   } catch (error) {
     console.error("createBooking error:", error);
@@ -672,6 +817,7 @@ exports.createWalkInBooking = async (req, res) => {
       reservationCode: result.reservationCode,
       proofPath: parsedBody.proof_of_payment || null,
       proofImageDataSaved: Boolean(parsedBody.proof_image_data),
+      isCheckedIn: Boolean(result.isCheckedIn),
     });
   } catch (error) {
     console.error("createWalkInBooking error:", error);
@@ -1215,6 +1361,8 @@ exports.updatePaymentStatus = async (req, res) => {
     const { id } = req.params;
     const { payment_status } = req.body;
 
+    const normalizedPaymentStatus = String(payment_status || "").toLowerCase();
+
     const allowedPaymentStatuses = [
       "unpaid",
       "pending",
@@ -1223,20 +1371,25 @@ exports.updatePaymentStatus = async (req, res) => {
       "rejected",
     ];
 
-    if (
-      !allowedPaymentStatuses.includes(String(payment_status).toLowerCase())
-    ) {
+    if (!allowedPaymentStatuses.includes(normalizedPaymentStatus)) {
       return res.status(400).json({
         message: "Invalid payment status.",
       });
     }
 
-    const [rows] = await db
-      .promise()
-      .query(
-        `SELECT id, accommodation_total FROM reservations WHERE id = ? LIMIT 1`,
-        [id],
-      );
+    const [rows] = await db.promise().query(
+      `
+      SELECT
+        id,
+        accommodation_total,
+        required_downpayment,
+        reservation_status
+      FROM reservations
+      WHERE id = ?
+      LIMIT 1
+      `,
+      [id],
+    );
 
     if (!rows.length) {
       return res.status(404).json({
@@ -1244,28 +1397,70 @@ exports.updatePaymentStatus = async (req, res) => {
       });
     }
 
+    const reservation = rows[0];
+    const accommodationTotal = Number(reservation.accommodation_total || 0);
+    const requiredDownpayment = Number(
+      reservation.required_downpayment || accommodationTotal * 0.5,
+    );
+
     let paidAmount = 0;
+    let remainingBalance = accommodationTotal;
+    let nextReservationStatus = String(
+      reservation.reservation_status || "pending",
+    ).toLowerCase();
 
-    if (String(payment_status).toLowerCase() === "paid") {
-      paidAmount = Number(rows[0].accommodation_total || 0);
-    } else if (String(payment_status).toLowerCase() === "partially_paid") {
-      paidAmount = Number(rows[0].accommodation_total || 0) * 0.5;
+    if (normalizedPaymentStatus === "paid") {
+      paidAmount = accommodationTotal;
+      remainingBalance = 0;
+      nextReservationStatus = "approved";
+    } else if (normalizedPaymentStatus === "partially_paid") {
+      paidAmount = requiredDownpayment;
+      remainingBalance = Math.max(accommodationTotal - paidAmount, 0);
+      nextReservationStatus = "approved";
+    } else if (normalizedPaymentStatus === "rejected") {
+      paidAmount = 0;
+      remainingBalance = accommodationTotal;
+      nextReservationStatus = "rejected";
+    } else if (normalizedPaymentStatus === "pending") {
+      paidAmount = 0;
+      remainingBalance = accommodationTotal;
+      nextReservationStatus = "pending";
+    } else if (normalizedPaymentStatus === "unpaid") {
+      paidAmount = 0;
+      remainingBalance = accommodationTotal;
+
+      if (
+        !["cancelled", "completed", "rejected"].includes(nextReservationStatus)
+      ) {
+        nextReservationStatus = "pending";
+      }
     }
-
-    const remainingBalance =
-      Number(rows[0].accommodation_total || 0) - paidAmount;
 
     await db.promise().query(
       `
       UPDATE reservations
-      SET payment_status = ?, paid_amount = ?, remaining_balance = ?
+      SET
+        payment_status = ?,
+        paid_amount = ?,
+        remaining_balance = ?,
+        reservation_status = ?
       WHERE id = ?
       `,
-      [payment_status, paidAmount, remainingBalance, id],
+      [
+        normalizedPaymentStatus,
+        paidAmount,
+        remainingBalance,
+        nextReservationStatus,
+        id,
+      ],
     );
 
     return res.status(200).json({
       message: "Payment status updated successfully.",
+      payment_status: normalizedPaymentStatus,
+      reservation_status: nextReservationStatus,
+      paid_amount: paidAmount,
+      remaining_balance: remainingBalance,
     });
   } catch (error) {
     console.error("updatePaymentStatus error:", error);
@@ -1310,6 +1505,24 @@ exports.checkInBooking = async (req, res) => {
     if (["cancelled", "rejected", "completed"].includes(status)) {
       return res.status(400).json({
         message: "This reservation can no longer be checked in.",
+      });
+    }
+
+    if (status !== "approved") {
+      return res.status(400).json({
+        message:
+          "This reservation must be approved after payment verification before check-in.",
+      });
+    }
+
+    const paymentStatus = String(
+      reservation.payment_status || "",
+    ).toLowerCase();
+
+    if (!["partially_paid", "paid"].includes(paymentStatus)) {
+      return res.status(400).json({
+        message:
+          "Payment proof must be verified before this reservation can be checked in.",
       });
     }
 

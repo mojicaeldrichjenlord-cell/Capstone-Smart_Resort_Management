@@ -11,9 +11,11 @@
 // ============================================================
 
 const ADMIN_WALKIN_DRAFT_KEY = "smartresort_admin_walkin_draft_v2";
+const ADMIN_WALKIN_SUCCESS_RESET_KEY = "smartresort_admin_walkin_success_reset";
 
 let walkInDraft = null;
 let availableAccommodations = [];
+let isSubmittingManualReservation = false;
 
 let computedTotals = {
   accommodationTotal: 0,
@@ -39,6 +41,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     window.location.href = "admin-walkin.html";
     return;
   }
+
+  walkInDraft.reservation_type = getManualReservationType();
 
   await loadAccommodations();
   setupPaymentForm();
@@ -111,6 +115,70 @@ function getWalkInDraft() {
   }
 }
 
+
+// ============================================================
+// SECTION 4.1: Manual reservation type helpers
+// Walk-in = onsite guest, cash full payment, auto check-in.
+// Facebook/Messenger = advance/manual booking, GCash/PayMaya proof required.
+// ============================================================
+
+function getManualReservationType() {
+  const value = String(walkInDraft?.reservation_type || "walkin").toLowerCase();
+  return value === "facebook" ? "facebook" : "walkin";
+}
+
+function isWalkInManualReservation() {
+  return getManualReservationType() === "walkin";
+}
+
+function isFacebookManualReservation() {
+  return getManualReservationType() === "facebook";
+}
+
+function formatManualReservationType(type = getManualReservationType()) {
+  return type === "facebook" ? "Facebook / Messenger Reservation" : "Walk-in Guest";
+}
+
+function enforcePaymentOptionsByReservationType() {
+  const paymentMethod = document.getElementById("paymentMethod");
+  const paymentType = document.getElementById("paymentType");
+
+  if (!paymentMethod || !paymentType) return;
+
+  if (isWalkInManualReservation()) {
+    paymentMethod.innerHTML = `<option value="cash">Cash</option>`;
+    paymentMethod.value = "cash";
+    paymentMethod.disabled = true;
+
+    paymentType.innerHTML = `<option value="full">Full Payment</option>`;
+    paymentType.value = "full";
+    paymentType.disabled = true;
+    paymentType.title = "Walk-in reservations are cash and full payment only.";
+    return;
+  }
+
+  paymentMethod.disabled = false;
+  paymentMethod.innerHTML = `
+    <option value="gcash">GCash</option>
+    <option value="paymaya">PayMaya</option>
+  `;
+
+  if (!["gcash", "paymaya"].includes(paymentMethod.value)) {
+    paymentMethod.value = "gcash";
+  }
+
+  paymentType.disabled = false;
+  paymentType.title = "";
+  paymentType.innerHTML = `
+    <option value="downpayment">50% Down Payment</option>
+    <option value="full">Full Payment</option>
+  `;
+
+  if (!["downpayment", "full"].includes(paymentType.value)) {
+    paymentType.value = "downpayment";
+  }
+}
+
 // ============================================================
 // SECTION 5: Load available accommodations
 // Used to compute item labels, slot prices, and totals.
@@ -142,6 +210,8 @@ function setupPaymentForm() {
   const paymentMethod = document.getElementById("paymentMethod");
   const paymentType = document.getElementById("paymentType");
   const proofImage = document.getElementById("proofImage");
+
+  enforcePaymentOptionsByReservationType();
 
   if (paymentMethod) {
     paymentMethod.addEventListener("change", () => {
@@ -188,7 +258,8 @@ function renderReservationSummary() {
     <div class="summary-item">
       <strong>Guest Name:</strong> ${escapeHtml(fullName || "N/A")}<br />
       <strong>Contact No:</strong> ${escapeHtml(walkInDraft.contact_no || "N/A")}<br />
-      <strong>Guest Count:</strong> ${Number(walkInDraft.guest_count || 0)}
+      <strong>Guest Count:</strong> ${Number(walkInDraft.guest_count || 0)}<br />
+      <strong>Reservation Type:</strong> ${formatManualReservationType()}
     </div>
 
     <div class="summary-item">
@@ -260,54 +331,96 @@ function renderReservationItem(item, index) {
 // ============================================================
 
 function updatePaymentRequirementUI() {
+  enforcePaymentOptionsByReservationType();
+
   const method = document.getElementById("paymentMethod")?.value || "cash";
+  const paymentType = document.getElementById("paymentType");
   const methodHelp = document.getElementById("paymentMethodHelp");
+  const referenceGroup = document.getElementById("referenceGroup");
+  const proofGroup = document.getElementById("proofGroup");
   const referenceRequiredText = document.getElementById("referenceRequiredText");
   const proofRequiredText = document.getElementById("proofRequiredText");
   const proofReference = document.getElementById("proofReference");
   const proofImage = document.getElementById("proofImage");
+  const proofPreview = document.getElementById("proofPreview");
   const paymentRuleNote = document.getElementById("paymentRuleNote");
 
-  const requiresProof = isProofRequired(method);
+  const isWalkIn = isWalkInManualReservation();
+  const requiresProof = !isWalkIn && isProofRequired(method);
+
+  if (paymentType && isWalkIn) {
+    paymentType.value = "full";
+    paymentType.disabled = true;
+    paymentType.title = "Walk-in reservations are cash and full payment only.";
+  }
 
   if (proofReference) {
     proofReference.required = requiresProof;
+    proofReference.disabled = isWalkIn;
+
+    if (isWalkIn) {
+      proofReference.value = "";
+      proofReference.placeholder = "Not required for walk-in cash payment";
+    } else {
+      proofReference.placeholder = "Example: 123456789012";
+    }
   }
 
   if (proofImage) {
     proofImage.required = requiresProof;
+    proofImage.disabled = isWalkIn;
+
+    if (isWalkIn) {
+      proofImage.value = "";
+    }
+  }
+
+  if (proofPreview && isWalkIn) {
+    proofPreview.style.display = "none";
+    proofPreview.src = "";
+  }
+
+  if (referenceGroup) {
+    referenceGroup.style.display = isWalkIn ? "none" : "flex";
+  }
+
+  if (proofGroup) {
+    proofGroup.style.display = isWalkIn ? "none" : "flex";
   }
 
   if (referenceRequiredText) {
-    referenceRequiredText.textContent = requiresProof ? " *Required" : " (Optional)";
+    referenceRequiredText.textContent = requiresProof ? " *Required" : " (Not needed)";
     referenceRequiredText.style.color = requiresProof ? "#dc2626" : "#64748b";
   }
 
   if (proofRequiredText) {
-    proofRequiredText.textContent = requiresProof ? " *Required" : " (Optional)";
+    proofRequiredText.textContent = requiresProof ? " *Required" : " (Not needed)";
     proofRequiredText.style.color = requiresProof ? "#dc2626" : "#64748b";
   }
 
   if (methodHelp) {
-    methodHelp.textContent = requiresProof
-      ? "Reference number and proof screenshot are required for this payment method."
-      : "Cash payment does not require uploaded proof.";
+    methodHelp.textContent = isWalkIn
+      ? "Walk-in reservations use Cash only and are automatically recorded as full payment."
+      : "Facebook/Messenger reservations use GCash or PayMaya and require reference number plus proof screenshot.";
   }
 
   if (paymentRuleNote) {
-    paymentRuleNote.innerHTML = requiresProof
+    paymentRuleNote.innerHTML = isWalkIn
       ? `
-        <strong>Payment Rule:</strong><br />
-        Since ${formatPaymentMethod(method)} is selected, the admin must enter
-        the transaction reference number and upload the proof screenshot sent by
-        the customer.
+        <strong>Walk-in Rule:</strong><br />
+        Walk-in guests are already onsite, so the payment method is Cash only,
+        full payment only, and the reservation will be automatically checked in
+        after submission.
       `
       : `
-        <strong>Payment Rule:</strong><br />
-        Since Cash is selected, proof screenshot and reference number are
-        optional because the payment is personally verified at the front desk.
+        <strong>Facebook/Messenger Rule:</strong><br />
+        Since this is a Facebook/Messenger reservation, only GCash or PayMaya is
+        allowed. The admin must enter the transaction reference number and upload
+        the proof screenshot before submitting.
       `;
   }
+
+  updatePaymentBreakdown();
 }
 
 // ============================================================
@@ -354,21 +467,37 @@ function updatePaymentBreakdown() {
 async function submitManualReservation(e) {
   e.preventDefault();
 
+  if (isSubmittingManualReservation) {
+    return;
+  }
+
   if (!walkInDraft) {
     showMessage("Missing manual reservation draft.", "error");
     return;
   }
 
   const paymentMethod = document.getElementById("paymentMethod").value;
-  const paymentType = document.getElementById("paymentType").value;
+  const paymentTypeSelect = document.getElementById("paymentType");
+  const isWalkIn = isWalkInManualReservation();
+  const paymentType = isWalkIn ? "full" : paymentTypeSelect.value;
   const proofReference = document.getElementById("proofReference").value.trim();
   const proofImage = document.getElementById("proofImage").files[0] || null;
   const paymentNote = document.getElementById("paymentNote").value.trim();
-  const requiresProof = isProofRequired(paymentMethod);
+  const requiresProof = !isWalkIn && isProofRequired(paymentMethod);
+
+  if (isWalkIn && paymentMethod !== "cash") {
+    showMessage("Walk-in reservations must use cash payment only.", "error");
+    return;
+  }
+
+  if (!isWalkIn && !["gcash", "paymaya"].includes(paymentMethod)) {
+    showMessage("Facebook/Messenger reservations must use GCash or PayMaya only.", "error");
+    return;
+  }
 
   if (requiresProof && !proofReference) {
     showMessage(
-      "Reference number is required for PayMaya, or Gcash.",
+      "Reference number is required for PayMaya, or GCash.",
       "error"
     );
     return;
@@ -376,7 +505,7 @@ async function submitManualReservation(e) {
 
   if (requiresProof && !proofImage) {
     showMessage(
-      "Proof screenshot is required for PayMaya, or Gcash.",
+      "Proof screenshot is required for PayMaya, or GCash.",
       "error"
     );
     return;
@@ -384,6 +513,7 @@ async function submitManualReservation(e) {
 
   const payload = {
     ...walkInDraft,
+    reservation_type: getManualReservationType(),
     payment_method: paymentMethod,
     payment_type: paymentType,
     proof_reference: proofReference || null,
@@ -398,9 +528,13 @@ async function submitManualReservation(e) {
   }
 
   const submitBtn = document.getElementById("submitPaymentBtn");
-  const originalText = submitBtn ? submitBtn.textContent : "Submit Manual Reservation";
+  const originalText = submitBtn
+    ? submitBtn.textContent
+    : "Submit Manual Reservation";
 
   try {
+    isSubmittingManualReservation = true;
+
     if (submitBtn) {
       submitBtn.disabled = true;
       submitBtn.textContent = "Submitting...";
@@ -420,16 +554,32 @@ async function submitManualReservation(e) {
     }
 
     sessionStorage.removeItem(ADMIN_WALKIN_DRAFT_KEY);
+    sessionStorage.setItem(ADMIN_WALKIN_SUCCESS_RESET_KEY, "1");
 
-    showMessage(data.message || "Manual reservation created successfully.", "success");
+    showMessage(
+      data.message || "Manual reservation created successfully.",
+      "success"
+    );
 
-    setTimeout(() => {
-      window.location.href = `admin-booking-receipt.html?id=${data.bookingId}`;
-    }, 900);
+    showManualReservationSuccessModal({
+      bookingId: data.bookingId,
+      reservationCode: data.reservationCode,
+      paymentMethod,
+      paymentType,
+      paidAmount: computedTotals.paidAmount,
+      remainingBalance: computedTotals.remainingBalance,
+      reservationType: getManualReservationType(),
+    });
   } catch (error) {
     console.error("submitManualReservation error:", error);
-    showMessage(error.message || "Failed to create manual reservation.", "error");
-  } finally {
+    isSubmittingManualReservation = false;
+
+    const errorMessage =
+      error.message || "Failed to create manual reservation.";
+
+    showMessage(errorMessage, "error");
+    showReservationErrorModal(errorMessage);
+
     if (submitBtn) {
       submitBtn.disabled = false;
       submitBtn.textContent = originalText;
@@ -439,14 +589,445 @@ async function submitManualReservation(e) {
   }
 }
 
+
 // ============================================================
-// SECTION 12: Payment method rule
+// SECTION 12: Success popup
+// Confirms that the manual reservation was saved.
+// ============================================================
+
+function showManualReservationSuccessModal(details = {}) {
+  ensureSuccessModalStyles();
+
+  const existingModal = document.getElementById("manualReservationSuccessModal");
+  if (existingModal) {
+    existingModal.remove();
+  }
+
+  const bookingId = details.bookingId;
+  const reservationCode = details.reservationCode || `#${bookingId || "-"}`;
+  const paymentType =
+    details.paymentType === "full" ? "Full Payment" : "50% Down Payment";
+
+  const modal = document.createElement("div");
+  modal.id = "manualReservationSuccessModal";
+  modal.className = "manual-success-modal show";
+
+  modal.innerHTML = `
+    <div class="manual-success-backdrop"></div>
+
+    <div class="manual-success-box" role="dialog" aria-modal="true">
+      <div class="manual-success-icon">✓</div>
+
+      <h2>Manual Reservation Created</h2>
+
+      <p>
+        The manual reservation has been successfully saved in the system.
+      </p>
+
+      <div class="manual-success-details">
+        <div>
+          <span>Reservation Code</span>
+          <strong>${escapeHtml(reservationCode)}</strong>
+        </div>
+
+        <div>
+          <span>Reservation Type</span>
+          <strong>${escapeHtml(formatManualReservationType(details.reservationType || getManualReservationType()))}</strong>
+        </div>
+
+        <div>
+          <span>Payment Type</span>
+          <strong>${escapeHtml(paymentType)}</strong>
+        </div>
+
+        <div>
+          <span>Paid Amount</span>
+          <strong>₱${formatMoney(details.paidAmount || 0)}</strong>
+        </div>
+
+        <div>
+          <span>Remaining Balance</span>
+          <strong>₱${formatMoney(details.remainingBalance || 0)}</strong>
+        </div>
+      </div>
+
+      <div class="manual-success-actions">
+        <button type="button" class="manual-success-primary" id="successViewReceiptBtn">
+          View Receipt
+        </button>
+
+        <button type="button" class="manual-success-secondary" id="successCreateAnotherBtn">
+          Create Another
+        </button>
+
+        <button type="button" class="manual-success-secondary" id="successDashboardBtn">
+          Back to Dashboard
+        </button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+  document.body.style.overflow = "hidden";
+
+  const viewReceiptBtn = document.getElementById("successViewReceiptBtn");
+  const createAnotherBtn = document.getElementById("successCreateAnotherBtn");
+  const dashboardBtn = document.getElementById("successDashboardBtn");
+
+  if (viewReceiptBtn) {
+    viewReceiptBtn.addEventListener("click", () => {
+      if (bookingId) {
+        window.location.href = `admin-booking-receipt.html?id=${bookingId}`;
+      } else {
+        window.location.href = "admin.html";
+      }
+    });
+  }
+
+  if (createAnotherBtn) {
+    createAnotherBtn.addEventListener("click", () => {
+      sessionStorage.removeItem(ADMIN_WALKIN_DRAFT_KEY);
+      sessionStorage.setItem(ADMIN_WALKIN_SUCCESS_RESET_KEY, "1");
+      window.location.href = "admin-walkin.html?new=1";
+    });
+  }
+
+  if (dashboardBtn) {
+    dashboardBtn.addEventListener("click", () => {
+      window.location.href = "admin.html";
+    });
+  }
+}
+
+function ensureSuccessModalStyles() {
+  if (document.getElementById("manualReservationSuccessModalStyle")) {
+    return;
+  }
+
+  const style = document.createElement("style");
+  style.id = "manualReservationSuccessModalStyle";
+
+  style.textContent = `
+    .manual-success-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+    }
+
+    .manual-success-modal.show {
+      display: flex;
+    }
+
+    .manual-success-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.72);
+      backdrop-filter: blur(6px);
+    }
+
+    .manual-success-box {
+      position: relative;
+      z-index: 1;
+      width: min(94vw, 520px);
+      background: #ffffff;
+      border-radius: 28px;
+      padding: 28px;
+      text-align: center;
+      border: 1px solid rgba(226, 232, 240, 0.96);
+      box-shadow: 0 26px 70px rgba(15, 23, 42, 0.28);
+    }
+
+    .manual-success-icon {
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 14px;
+      border-radius: 999px;
+      background: #dcfce7;
+      color: #166534;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      font-weight: 950;
+      border: 1px solid #bbf7d0;
+    }
+
+    .manual-success-box h2 {
+      margin: 0 0 8px;
+      color: #0f172a;
+      font-size: 1.55rem;
+    }
+
+    .manual-success-box p {
+      margin: 0;
+      color: #64748b;
+      line-height: 1.55;
+    }
+
+    .manual-success-details {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 20px 0;
+      text-align: left;
+    }
+
+    .manual-success-details div {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 12px;
+    }
+
+    .manual-success-details span {
+      display: block;
+      color: #64748b;
+      font-size: 0.78rem;
+      font-weight: 800;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .manual-success-details strong {
+      color: #0f172a;
+      font-size: 0.96rem;
+    }
+
+    .manual-success-actions {
+      display: grid;
+      gap: 10px;
+    }
+
+    .manual-success-primary,
+    .manual-success-secondary {
+      border: none;
+      border-radius: 999px;
+      padding: 12px 16px;
+      font-weight: 950;
+      cursor: pointer;
+      transition: 0.2s ease;
+    }
+
+    .manual-success-primary {
+      background: linear-gradient(135deg, #0f766e, #14b8a6);
+      color: #ffffff;
+      box-shadow: 0 12px 22px rgba(20, 184, 166, 0.18);
+    }
+
+    .manual-success-secondary {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+
+    .manual-success-primary:hover,
+    .manual-success-secondary:hover {
+      transform: translateY(-1px);
+    }
+
+    @media (max-width: 520px) {
+      .manual-success-box {
+        padding: 22px;
+        border-radius: 22px;
+      }
+
+      .manual-success-details {
+        grid-template-columns: 1fr;
+      }
+    }
+  `;
+
+  document.head.appendChild(style);
+}
+
+// ============================================================
+// SECTION 12: Error popup
+// Clearly shows why manual reservation was not created.
+// ============================================================
+
+function showReservationErrorModal(message) {
+  ensureReservationErrorModalStyles();
+
+  let modal = document.getElementById("manualReservationErrorModal");
+
+  if (!modal) {
+    modal = document.createElement("div");
+    modal.id = "manualReservationErrorModal";
+    modal.className = "manual-error-modal";
+
+    modal.innerHTML = `
+      <div class="manual-error-backdrop"></div>
+
+      <div class="manual-error-box" role="dialog" aria-modal="true">
+        <div class="manual-error-icon">!</div>
+
+        <h2>Reservation Not Created</h2>
+
+        <p id="manualReservationErrorText"></p>
+
+        <div class="manual-error-actions">
+          <button type="button" id="closeManualErrorBtn">
+            Okay, I Understand
+          </button>
+
+          <a href="admin-walkin.html" id="editManualReservationBtn">
+            Edit Reservation
+          </a>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const closeBtn = document.getElementById("closeManualErrorBtn");
+    const backdrop = modal.querySelector(".manual-error-backdrop");
+
+    if (closeBtn) {
+      closeBtn.addEventListener("click", () => {
+        modal.classList.remove("show");
+        document.body.style.overflow = "";
+      });
+    }
+
+    if (backdrop) {
+      backdrop.addEventListener("click", () => {
+        modal.classList.remove("show");
+        document.body.style.overflow = "";
+      });
+    }
+  }
+
+  const messageText = document.getElementById("manualReservationErrorText");
+
+  if (messageText) {
+    messageText.textContent =
+      message ||
+      "The reservation could not be created. Please review the reservation details.";
+  }
+
+  modal.classList.add("show");
+  document.body.style.overflow = "hidden";
+}
+
+function ensureReservationErrorModalStyles() {
+  if (document.getElementById("manualReservationErrorModalStyle")) {
+    return;
+  }
+
+  const style = document.createElement("style");
+  style.id = "manualReservationErrorModalStyle";
+
+  style.textContent = `
+    .manual-error-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+    }
+
+    .manual-error-modal.show {
+      display: flex;
+    }
+
+    .manual-error-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.72);
+      backdrop-filter: blur(6px);
+    }
+
+    .manual-error-box {
+      position: relative;
+      z-index: 1;
+      width: min(440px, 94vw);
+      background: #ffffff;
+      border-radius: 26px;
+      padding: 26px;
+      text-align: center;
+      box-shadow: 0 24px 70px rgba(15, 23, 42, 0.3);
+      border: 1px solid #fee2e2;
+    }
+
+    .manual-error-icon {
+      width: 56px;
+      height: 56px;
+      margin: 0 auto 14px;
+      border-radius: 999px;
+      background: #fee2e2;
+      color: #991b1b;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.8rem;
+      font-weight: 950;
+    }
+
+    .manual-error-box h2 {
+      margin: 0 0 10px;
+      color: #0f172a;
+      font-size: 1.45rem;
+    }
+
+    .manual-error-box p {
+      margin: 0;
+      color: #475569;
+      line-height: 1.6;
+      font-size: 0.96rem;
+    }
+
+    .manual-error-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 22px;
+    }
+
+    .manual-error-actions button,
+    .manual-error-actions a {
+      flex: 1;
+      border: none;
+      border-radius: 999px;
+      padding: 12px 14px;
+      font-weight: 900;
+      cursor: pointer;
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+
+    #closeManualErrorBtn {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    #editManualReservationBtn {
+      background: linear-gradient(135deg, #0f766e, #14b8a6);
+      color: white;
+    }
+
+    @media (max-width: 520px) {
+      .manual-error-actions {
+        flex-direction: column;
+      }
+    }
+  `;
+
+  document.head.appendChild(style);
+}
+
+// ============================================================
+// SECTION 13: Payment method rule
 // Returns true if transaction reference/proof is required.
 // ============================================================
 
 function isProofRequired(method) {
   const value = String(method || "").toLowerCase();
-  return ["gcash", "paymaya", "bank_transfer"].includes(value);
+  return ["gcash", "paymaya"].includes(value);
 }
 
 // ============================================================
