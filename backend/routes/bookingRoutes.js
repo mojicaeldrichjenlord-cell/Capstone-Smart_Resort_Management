@@ -14,6 +14,7 @@ const {
   updateBookingStatus,
   updatePaymentStatus,
   checkInBooking,
+  addAccommodationToReservation,
   requestBookingModification,
 } = require("../controllers/bookingController");
 
@@ -74,6 +75,7 @@ router.put("/:id/cancel", cancelBooking);
 router.put("/:id/status", updateBookingStatus);
 router.put("/:id/payment-status", updatePaymentStatus);
 router.put("/:id/check-in", checkInBooking);
+router.post("/:id/add-accommodation", addAccommodationToReservation);
 
 router.post("/:id/modification-request", requestBookingModification);
 

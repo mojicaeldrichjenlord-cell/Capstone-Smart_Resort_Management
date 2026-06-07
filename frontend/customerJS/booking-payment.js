@@ -31,7 +31,10 @@ let availableAccommodations = [];
 let currentDownpaymentAmount = 0;
 let isSubmittingReservation = false;
 
-console.log("[booking-payment] JS loaded. API_BASE:", typeof API_BASE !== "undefined" ? API_BASE : "API_BASE missing");
+console.log(
+  "[booking-payment] JS loaded. API_BASE:",
+  typeof API_BASE !== "undefined" ? API_BASE : "API_BASE missing",
+);
 
 // ============================================================
 // SECTION 1: Page startup
@@ -178,6 +181,10 @@ function getSlotOptions(accommodation) {
 // SECTION 6: Render draft summary and payment breakdown
 // ============================================================
 
+function getStayDuration(item) {
+  return Math.max(1, Math.min(5, Number(item?.stay_duration || 1)));
+}
+
 function renderDraftSummary() {
   if (!bookingDraft) return;
 
@@ -200,18 +207,29 @@ function renderDraftSummary() {
         `;
       }
 
+      const slotType = String(item.slot_type || "").toLowerCase();
+
       const slot = getSlotOptions(accommodation).find((s) => {
-        return s.value === item.slot_type;
+        return s.value === slotType;
       });
 
+      const stayDuration = getStayDuration(item);
       const slotPrice = Number(slot?.price || 0);
-      accommodationTotal += slotPrice;
+      const itemTotal = slotPrice * stayDuration;
+      accommodationTotal += itemTotal;
 
       const checkOutDate = calculateCheckOutDate(
         item.check_in_date,
         slot?.start,
         slot?.end,
+        stayDuration,
       );
+      const durationLabel =
+        item.slot_type === "extended"
+          ? `${stayDuration} ${stayDuration === 1 ? "day" : "days"}`
+          : item.slot_type === "overnight"
+            ? "1 night only"
+            : "1 day only";
 
       return `
         <div class="summary-item">
@@ -220,8 +238,9 @@ function renderDraftSummary() {
           Slot: ${escapeHtml(slot?.label || "-")} (${formatTimeDisplay(slot?.start)} - ${formatTimeDisplay(slot?.end)})<br />
           Reservation Date: ${formatDateDisplay(item.check_in_date)}<br />
           Check-out Date: ${formatDateDisplay(checkOutDate)}<br />
+          Stay Duration: ${escapeHtml(durationLabel)}<br />
           Max Capacity: ${accommodation.max_capacity || 0} guest(s)<br />
-          Price: ₱${formatMoney(slotPrice)}
+          Price: ₱${formatMoney(slotPrice)}${item.slot_type === "extended" ? ` × ${stayDuration} = ₱${formatMoney(itemTotal)}` : ""}
         </div>
       `;
     })
@@ -347,7 +366,9 @@ function setupPaymentForm() {
       true,
     );
 
-    console.log("[booking-payment] submitReservationBtn click handler attached.");
+    console.log(
+      "[booking-payment] submitReservationBtn click handler attached.",
+    );
   } else {
     console.error("[booking-payment] submitReservationBtn was not found.");
   }
@@ -476,7 +497,8 @@ async function submitReservation(e) {
     return false;
   }
 
-  const paymentMethod = document.getElementById("paymentMethod")?.value || "gcash";
+  const paymentMethod =
+    document.getElementById("paymentMethod")?.value || "gcash";
   const paymentReference = document
     .getElementById("paymentReference")
     ?.value.trim();
@@ -555,7 +577,10 @@ async function submitReservation(e) {
       submitBtn.textContent = "Submitting...";
     }
 
-    console.log("[booking-payment] Sending JSON request to:", `${API_BASE}/bookings`);
+    console.log(
+      "[booking-payment] Sending JSON request to:",
+      `${API_BASE}/bookings`,
+    );
 
     const response = await fetch(`${API_BASE}/bookings`, {
       method: "POST",
@@ -572,7 +597,10 @@ async function submitReservation(e) {
     try {
       data = responseText ? JSON.parse(responseText) : {};
     } catch (jsonError) {
-      console.warn("[booking-payment] Backend response was not JSON:", responseText);
+      console.warn(
+        "[booking-payment] Backend response was not JSON:",
+        responseText,
+      );
       data = {};
     }
 
@@ -585,8 +613,13 @@ async function submitReservation(e) {
 
     sessionStorage.removeItem(BOOKING_DRAFT_KEY);
 
-    console.log("[booking-payment] Reservation created successfully. Redirecting to My Bookings.");
-    showMessage("Reservation submitted successfully. Redirecting to My Bookings...", "success");
+    console.log(
+      "[booking-payment] Reservation created successfully. Redirecting to My Bookings.",
+    );
+    showMessage(
+      "Reservation submitted successfully. Redirecting to My Bookings...",
+      "success",
+    );
 
     redirectToMyBookings();
     return false;
@@ -628,7 +661,10 @@ async function fetchLatestUserBookingId(userId) {
     const data = await safeReadJson(response);
 
     if (!response.ok) {
-      console.warn("[booking-payment] Failed to fetch latest user booking:", data);
+      console.warn(
+        "[booking-payment] Failed to fetch latest user booking:",
+        data,
+      );
       return null;
     }
 
@@ -647,7 +683,6 @@ async function fetchLatestUserBookingId(userId) {
     return null;
   }
 }
-
 
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
@@ -703,7 +738,12 @@ async function safeReadJson(response) {
 // SECTION 13: Date and format helpers
 // ============================================================
 
-function calculateCheckOutDate(checkInDate, startTime, endTime) {
+function calculateCheckOutDate(
+  checkInDate,
+  startTime,
+  endTime,
+  stayDuration = 1,
+) {
   if (!checkInDate || !startTime || !endTime) return checkInDate || "-";
 
   const startParts = String(startTime).split(":");
@@ -713,10 +753,13 @@ function calculateCheckOutDate(checkInDate, startTime, endTime) {
 
   const startMinutes = Number(startParts[0]) * 60 + Number(startParts[1]);
   const endMinutes = Number(endParts[0]) * 60 + Number(endParts[1]);
+  const cleanDuration = Math.max(1, Math.min(5, Number(stayDuration || 1)));
+  const daysToAdd =
+    cleanDuration > 1 ? cleanDuration : endMinutes <= startMinutes ? 1 : 0;
 
-  if (endMinutes <= startMinutes) {
-    const date = new Date(checkInDate);
-    date.setDate(date.getDate() + 1);
+  if (daysToAdd > 0) {
+    const date = new Date(`${checkInDate}T00:00:00`);
+    date.setDate(date.getDate() + daysToAdd);
     return date.toISOString().split("T")[0];
   }
 

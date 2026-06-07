@@ -196,6 +196,72 @@
       </div>
     </div>
 
+
+    <!-- ======================================================
+       ADD ACCOMMODATION MODAL
+       Used when a checked-in guest wants another room/cottage onsite.
+    ======================================================= -->
+    <div class="add-accommodation-modal" id="addAccommodationModal">
+      <div class="add-accommodation-modal-box">
+        <h2>Add Accommodation</h2>
+
+        <p id="addAccommodationReservationText">
+          Add an onsite accommodation under the same reservation code. Payment
+          is recorded as cash paid now.
+        </p>
+
+        <div class="add-accommodation-form-group">
+          <label for="addAccommodationSelect">Accommodation</label>
+
+          <select id="addAccommodationSelect">
+            <option value="">Loading accommodations...</option>
+          </select>
+        </div>
+
+        <div class="add-accommodation-form-group">
+          <label for="addAccommodationSlot">Slot Type</label>
+
+          <select id="addAccommodationSlot">
+            <option value="">Select slot</option>
+          </select>
+        </div>
+
+        <div class="add-accommodation-form-group">
+          <label for="addAccommodationDate">Reservation Date</label>
+
+          <input type="date" id="addAccommodationDate" />
+        </div>
+
+        <div class="add-accommodation-form-group">
+          <label for="addAccommodationStayDuration">Stay Duration</label>
+
+          <select id="addAccommodationStayDuration">
+            <option value="1">1 day/night only</option>
+          </select>
+
+          <small>
+            Day Tour and Overnight are 1 day/night only. 22 Hours / 23 Hours can
+            be 1 to 5 days.
+          </small>
+        </div>
+
+        <div class="add-accommodation-preview" id="addAccommodationPreview">
+          Select an accommodation to preview the add-on.
+        </div>
+
+        <div class="add-accommodation-modal-actions">
+          <button type="button" class="modal-btn save" id="saveAddAccommodationBtn">
+            Add Accommodation
+          </button>
+
+          <button type="button" class="modal-btn cancel" id="cancelAddAccommodationBtn">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
+
     <!-- ======================================================
        PAGE SCRIPTS
     ======================================================= -->

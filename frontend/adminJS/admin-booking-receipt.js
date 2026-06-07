@@ -279,12 +279,27 @@ function renderThermalItem(item) {
       <div class="thermal-small">
         OUT: ${escapeHtml(formatDateOnly(item.check_out_date))} ${escapeHtml(formatTime(item.check_out_time))}
       </div>
+      <div class="thermal-small">
+        DURATION: ${escapeHtml(formatItemStayDuration(item))}
+      </div>
       <div class="thermal-row">
         <span>Price</span>
         <span>₱${formatMoney(item.item_price)}</span>
       </div>
     </div>
   `;
+}
+
+function formatItemStayDuration(item) {
+  const duration = Number(item.stay_duration || 1);
+  const slotLabel = String(item.slot_label || "").toLowerCase();
+
+  if (slotLabel.includes("22") || slotLabel.includes("23")) {
+    return `${duration} ${duration === 1 ? "day" : "days"}`;
+  }
+
+  if (slotLabel.includes("overnight")) return "1 night only";
+  return "1 day only";
 }
 
 function parseBackendDateTimeAsUtc(value) {

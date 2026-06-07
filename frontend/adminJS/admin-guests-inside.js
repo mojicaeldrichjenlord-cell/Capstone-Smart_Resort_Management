@@ -14,7 +14,9 @@
 const EXTRA_BED_RATE = 200;
 
 let allBookings = [];
+let availableAccommodations = [];
 let selectedExtraBedBookingId = null;
+let selectedAddAccommodationBookingId = null;
 let currentSearchTerm = "";
 
 // ============================================================
@@ -25,6 +27,7 @@ let currentSearchTerm = "";
 document.addEventListener("DOMContentLoaded", () => {
   checkAdminAccess();
   setupEvents();
+  loadAvailableAccommodations();
   loadGuestsInside();
 });
 
@@ -61,6 +64,13 @@ function setupEvents() {
   const cancelExtraBedBtn = document.getElementById("cancelExtraBedBtn");
   const extraBedModal = document.getElementById("extraBedModal");
   const guestSearchInput = document.getElementById("guestSearchInput");
+  const addAccommodationSelect = document.getElementById("addAccommodationSelect");
+  const addAccommodationSlot = document.getElementById("addAccommodationSlot");
+  const addAccommodationDate = document.getElementById("addAccommodationDate");
+  const addAccommodationStayDuration = document.getElementById("addAccommodationStayDuration");
+  const saveAddAccommodationBtn = document.getElementById("saveAddAccommodationBtn");
+  const cancelAddAccommodationBtn = document.getElementById("cancelAddAccommodationBtn");
+  const addAccommodationModal = document.getElementById("addAccommodationModal");
 
   if (logoutBtn) {
     logoutBtn.addEventListener("click", (e) => {
@@ -102,6 +112,46 @@ function setupEvents() {
     extraBedModal.addEventListener("click", (e) => {
       if (e.target === extraBedModal) {
         closeExtraBedModal();
+      closeAddAccommodationModal();
+      }
+    });
+  }
+
+  if (addAccommodationSelect) {
+    addAccommodationSelect.addEventListener("change", () => {
+      populateAddAccommodationSlotOptions();
+      updateAddAccommodationPreview();
+    });
+  }
+
+  if (addAccommodationSlot) {
+    addAccommodationSlot.addEventListener("change", () => {
+      updateAddAccommodationStayDurationOptions();
+      updateAddAccommodationPreview();
+    });
+  }
+
+  if (addAccommodationDate) {
+    addAccommodationDate.addEventListener("change", updateAddAccommodationPreview);
+    addAccommodationDate.addEventListener("input", updateAddAccommodationPreview);
+  }
+
+  if (addAccommodationStayDuration) {
+    addAccommodationStayDuration.addEventListener("change", updateAddAccommodationPreview);
+  }
+
+  if (saveAddAccommodationBtn) {
+    saveAddAccommodationBtn.addEventListener("click", submitAddAccommodation);
+  }
+
+  if (cancelAddAccommodationBtn) {
+    cancelAddAccommodationBtn.addEventListener("click", closeAddAccommodationModal);
+  }
+
+  if (addAccommodationModal) {
+    addAccommodationModal.addEventListener("click", (e) => {
+      if (e.target === addAccommodationModal) {
+        closeAddAccommodationModal();
       }
     });
   }
@@ -112,6 +162,34 @@ function setupEvents() {
     }
   });
 }
+
+
+async function loadAvailableAccommodations() {
+  try {
+    const response = await fetch(`${API_BASE}/rooms/available`);
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to load accommodations.");
+    }
+
+    if (Array.isArray(data)) {
+      availableAccommodations = data;
+    } else if (Array.isArray(data.rooms)) {
+      availableAccommodations = data.rooms;
+    } else if (Array.isArray(data.accommodations)) {
+      availableAccommodations = data.accommodations;
+    } else {
+      availableAccommodations = [];
+    }
+
+    populateAddAccommodationOptions();
+  } catch (error) {
+    console.error("loadAvailableAccommodations error:", error);
+    showMessage(error.message || "Failed to load accommodations.", "error");
+  }
+}
+
 
 // ============================================================
 // SECTION 4: Load guests inside
@@ -437,6 +515,12 @@ function renderGuestsInside(bookings) {
                 Extra Bed
               </button>
 
+              <button class="action-btn add-accommodation-btn" onclick="openAddAccommodationModal(${Number(
+                booking.id
+              )})">
+                Add Accommodation
+              </button>
+
               ${extraBedPaymentButton}
 
               <button class="action-btn save-booking-btn" onclick="markAsCheckedOut(${Number(
@@ -667,6 +751,345 @@ async function markExtraBedPaid(bookingId) {
 // from the Admin Dashboard. Extra bed fee is shown here as a front-desk reminder.
 // ============================================================
 
+
+// ============================================================
+// SECTION 14.1: Add accommodation to active reservation
+// Adds an onsite accommodation under the same reservation code.
+// ============================================================
+
+async function openAddAccommodationModal(bookingId) {
+  const booking = allBookings.find(
+    (item) => Number(item.id) === Number(bookingId)
+  );
+
+  const modal = document.getElementById("addAccommodationModal");
+  const guestText = document.getElementById("addAccommodationReservationText");
+  const dateInput = document.getElementById("addAccommodationDate");
+
+  if (!booking || !modal) {
+    showMessage("Booking not found.", "error");
+    return;
+  }
+
+  selectedAddAccommodationBookingId = Number(bookingId);
+
+  if (!availableAccommodations.length) {
+    await loadAvailableAccommodations();
+  }
+
+  if (guestText) {
+    guestText.textContent = `Add an onsite accommodation for ${
+      booking.fullname || "this guest"
+    } under reservation ${booking.reservation_code || `#${booking.id}`}. This add-on is recorded as cash paid now.`;
+  }
+
+  if (dateInput) {
+    dateInput.min = getTodayInputDate();
+    dateInput.value = getTodayInputDate();
+  }
+
+  populateAddAccommodationOptions();
+  populateAddAccommodationSlotOptions();
+  updateAddAccommodationStayDurationOptions();
+  updateAddAccommodationPreview();
+
+  modal.classList.add("show");
+}
+
+function closeAddAccommodationModal() {
+  const modal = document.getElementById("addAccommodationModal");
+
+  selectedAddAccommodationBookingId = null;
+
+  if (modal) {
+    modal.classList.remove("show");
+  }
+}
+
+function populateAddAccommodationOptions() {
+  const select = document.getElementById("addAccommodationSelect");
+  if (!select) return;
+
+  if (!availableAccommodations.length) {
+    select.innerHTML = `<option value="">No accommodation available</option>`;
+    return;
+  }
+
+  select.innerHTML = `
+    <option value="">Select accommodation</option>
+    ${availableAccommodations
+      .map(
+        (item) => `
+          <option value="${Number(item.id)}">
+            ${escapeHtml(item.name)} (${escapeHtml(item.category_name || "Accommodation")})
+          </option>
+        `
+      )
+      .join("")}
+  `;
+}
+
+function populateAddAccommodationSlotOptions() {
+  const accommodationSelect = document.getElementById("addAccommodationSelect");
+  const slotSelect = document.getElementById("addAccommodationSlot");
+
+  if (!slotSelect) return;
+
+  const accommodation = getAccommodationById(accommodationSelect?.value);
+
+  if (!accommodation) {
+    slotSelect.innerHTML = `<option value="">Select slot</option>`;
+    updateAddAccommodationStayDurationOptions();
+    return;
+  }
+
+  const options = getSlotOptions(accommodation);
+
+  slotSelect.innerHTML = `
+    <option value="">Select slot</option>
+    ${options
+      .map(
+        (slot) => `
+          <option value="${slot.value}">
+            ${slot.label} (${formatTime(slot.start)} - ${formatTime(slot.end)}) - ₱${formatMoney(slot.price)}
+          </option>
+        `
+      )
+      .join("")}
+  `;
+
+  updateAddAccommodationStayDurationOptions();
+}
+
+function updateAddAccommodationStayDurationOptions() {
+  const slotSelect = document.getElementById("addAccommodationSlot");
+  const durationSelect = document.getElementById("addAccommodationStayDuration");
+
+  if (!durationSelect) return;
+
+  const slotType = String(slotSelect?.value || "").toLowerCase();
+
+  if (slotType === "extended") {
+    durationSelect.disabled = false;
+    durationSelect.innerHTML = [1, 2, 3, 4, 5]
+      .map((day) => `<option value="${day}">${day} day${day > 1 ? "s" : ""}</option>`)
+      .join("");
+    return;
+  }
+
+  durationSelect.disabled = true;
+  durationSelect.innerHTML = `<option value="1">1 day/night only</option>`;
+}
+
+function updateAddAccommodationPreview() {
+  const preview = document.getElementById("addAccommodationPreview");
+  const accommodationSelect = document.getElementById("addAccommodationSelect");
+  const slotSelect = document.getElementById("addAccommodationSlot");
+  const dateInput = document.getElementById("addAccommodationDate");
+  const durationSelect = document.getElementById("addAccommodationStayDuration");
+
+  if (!preview) return;
+
+  const accommodation = getAccommodationById(accommodationSelect?.value);
+
+  if (!accommodation) {
+    preview.innerHTML = "Select an accommodation to preview the add-on.";
+    return;
+  }
+
+  const slot = getSlotOptions(accommodation).find(
+    (item) => item.value === slotSelect?.value
+  );
+
+  if (!slot) {
+    preview.innerHTML = `
+      <strong>${escapeHtml(accommodation.name)}</strong><br>
+      Category: ${escapeHtml(accommodation.category_name || "Accommodation")}<br>
+      Select a slot to continue.
+    `;
+    return;
+  }
+
+  const checkInDate = dateInput?.value || getTodayInputDate();
+  const stayDuration = getValidStayDuration(
+    durationSelect?.value,
+    slot.value
+  );
+  const checkOutDate = calculateAddOnCheckOutDate(
+    checkInDate,
+    slot.start,
+    slot.end,
+    stayDuration
+  );
+  const total = Number(slot.price || 0) * stayDuration;
+
+  preview.innerHTML = `
+    <strong>${escapeHtml(accommodation.name)}</strong><br>
+    Category: ${escapeHtml(accommodation.category_name || "Accommodation")}<br>
+    Schedule: ${escapeHtml(slot.label)} (${formatTime(slot.start)} - ${formatTime(slot.end)})<br>
+    Stay Duration: ${stayDuration} day${stayDuration > 1 ? "s" : ""}<br>
+    Check-in: ${formatDate(checkInDate)} ${formatTime(slot.start)}<br>
+    Check-out: ${formatDate(checkOutDate)} ${formatTime(slot.end)}<br>
+    Cash to collect now: <strong>₱${formatMoney(total)}</strong>
+  `;
+}
+
+async function submitAddAccommodation() {
+  if (!selectedAddAccommodationBookingId) {
+    showMessage("No selected reservation.", "error");
+    return;
+  }
+
+  const accommodationId = Number(
+    document.getElementById("addAccommodationSelect")?.value || 0
+  );
+  const slotType = document.getElementById("addAccommodationSlot")?.value || "";
+  const checkInDate = document.getElementById("addAccommodationDate")?.value || "";
+  const stayDuration = getValidStayDuration(
+    document.getElementById("addAccommodationStayDuration")?.value,
+    slotType
+  );
+
+  if (!accommodationId || !slotType || !checkInDate) {
+    showMessage("Please complete the add accommodation form.", "error");
+    return;
+  }
+
+  const confirmed = confirm(
+    "Add this accommodation to the active reservation? This will be recorded as cash paid now."
+  );
+
+  if (!confirmed) return;
+
+  const saveBtn = document.getElementById("saveAddAccommodationBtn");
+  const originalText = saveBtn ? saveBtn.textContent : "Add Accommodation";
+
+  try {
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = "Adding...";
+    }
+
+    const response = await fetch(
+      `${API_BASE}/bookings/${selectedAddAccommodationBookingId}/add-accommodation`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          accommodation_id: accommodationId,
+          slot_type: slotType,
+          check_in_date: checkInDate,
+          stay_duration: stayDuration,
+        }),
+      }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to add accommodation.");
+    }
+
+    closeAddAccommodationModal();
+    await loadGuestsInside();
+
+    showMessage(data.message || "Accommodation added successfully.", "success");
+  } catch (error) {
+    console.error("submitAddAccommodation error:", error);
+    showMessage(error.message || "Failed to add accommodation.", "error");
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = originalText;
+    }
+  }
+}
+
+function getAccommodationById(id) {
+  return (
+    availableAccommodations.find((item) => Number(item.id) === Number(id)) ||
+    null
+  );
+}
+
+function getSlotOptions(accommodation) {
+  if (!accommodation) return [];
+
+  const category = String(accommodation.category_name || "").toLowerCase();
+  const isRoom = category === "room" || category.includes("room");
+
+  return [
+    {
+      value: "day_tour",
+      label: "Day Tour",
+      price: Number(accommodation.day_price || 0),
+      start: accommodation.day_start_time,
+      end: accommodation.day_end_time,
+    },
+    {
+      value: "overnight",
+      label: "Overnight",
+      price: Number(accommodation.overnight_price || 0),
+      start: accommodation.overnight_start_time,
+      end: accommodation.overnight_end_time,
+    },
+    {
+      value: "extended",
+      label: isRoom ? "22 Hours" : "23 Hours",
+      price: Number(accommodation.extended_price || 0),
+      start: accommodation.extended_start_time,
+      end: accommodation.extended_end_time,
+    },
+  ];
+}
+
+function getValidStayDuration(value, slotType) {
+  const duration = Math.max(1, Math.min(5, Math.floor(Number(value || 1))));
+  return slotType === "extended" ? duration : 1;
+}
+
+function calculateAddOnCheckOutDate(checkInDate, startTime, endTime, stayDuration = 1) {
+  if (!checkInDate || !startTime || !endTime) return checkInDate || "";
+
+  const startParts = String(startTime).split(":");
+  const endParts = String(endTime).split(":");
+
+  if (startParts.length < 2 || endParts.length < 2) {
+    return checkInDate;
+  }
+
+  const startMinutes = Number(startParts[0]) * 60 + Number(startParts[1]);
+  const endMinutes = Number(endParts[0]) * 60 + Number(endParts[1]);
+
+  const daysToAdd =
+    Number(stayDuration || 1) > 1
+      ? Number(stayDuration || 1)
+      : endMinutes <= startMinutes
+        ? 1
+        : 0;
+
+  const date = new Date(`${checkInDate}T00:00:00`);
+  date.setDate(date.getDate() + daysToAdd);
+
+  return toInputDateValue(date);
+}
+
+function getTodayInputDate() {
+  const now = new Date();
+  return toInputDateValue(now);
+}
+
+function toInputDateValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+
 // ============================================================
 // SECTION 15: Check out guest
 // Marks booking as completed.
@@ -739,25 +1162,31 @@ function viewReceipt(bookingId) {
 function formatAccommodationDisplay(name) {
   const text = String(name || "-").trim();
 
-  const match = text.match(/^(.*?)\s*\+(\d+)\s*more$/i);
+  if (!text || text === "-") {
+    return `<div class="guest-accommodation-list">-</div>`;
+  }
 
-  if (match) {
-    const mainAccommodation = match[1].trim();
-    const otherCount = Number(match[2]);
+  const accommodations = text
+    .split(/,|\n|\+/)
+    .map((item) => item.replace(/\d+\s*more/gi, "").trim())
+    .filter(Boolean);
 
-    return `
-      <div style="font-weight:800;color:#0f172a;">
-        ${escapeHtml(mainAccommodation)}
-      </div>
-      <div style="margin-top:4px;color:#64748b;font-size:0.82rem;font-weight:700;">
-        + ${otherCount} other accommodation${otherCount > 1 ? "s" : ""}
-      </div>
-    `;
+  if (!accommodations.length) {
+    return `<div class="guest-accommodation-list">${escapeHtml(text)}</div>`;
   }
 
   return `
-    <div style="font-weight:800;color:#0f172a;">
-      ${escapeHtml(text)}
+    <div class="guest-accommodation-list">
+      ${accommodations
+        .map(
+          (item, index) => `
+            <div class="guest-accommodation-item">
+              <span class="guest-accommodation-number">${index + 1}.</span>
+              <span>${escapeHtml(item)}</span>
+            </div>
+          `,
+        )
+        .join("")}
     </div>
   `;
 }

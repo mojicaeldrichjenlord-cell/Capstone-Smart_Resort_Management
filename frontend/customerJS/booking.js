@@ -12,7 +12,7 @@
 // ============================================================
 
 const BOOKING_DRAFT_KEY = "smartresort_booking_draft_v2";
-const CUSTOMER_MIN_BOOKING_DAYS_AHEAD = 2;
+const CUSTOMER_MIN_BOOKING_DAYS_AHEAD = 0;
 
 let availableAccommodations = [];
 let bookingItemCounter = 0;
@@ -438,6 +438,16 @@ function addBookingItem(preselectedId = null) {
       </div>
 
       <div class="booking-form-group">
+        <label>Stay Duration</label>
+        <select class="stay-duration-select" data-item-id="${itemId}">
+          <option value="1">1 day only</option>
+        </select>
+        <small class="field-help">
+          Day Tour and Overnight are 1 day/night only. 22 Hours / 23 Hours can be 1 to 5 days.
+        </small>
+      </div>
+
+      <div class="booking-form-group">
         <label>Reservation Date</label>
         <input
           type="date"
@@ -472,6 +482,7 @@ function addBookingItem(preselectedId = null) {
 
   const removeBtn = card.querySelector(".remove-item-btn");
   const slotSelect = card.querySelector(".slot-select");
+  const stayDurationSelect = card.querySelector(".stay-duration-select");
   const dateInput = card.querySelector(".date-input");
 
   bindAccommodationPicker(card, itemId);
@@ -485,9 +496,17 @@ function addBookingItem(preselectedId = null) {
   }
 
   slotSelect.addEventListener("change", () => {
+    populateStayDurationOptions(itemId);
     updateItemPreview(itemId);
     updateSummary();
   });
+
+  if (stayDurationSelect) {
+    stayDurationSelect.addEventListener("change", () => {
+      updateItemPreview(itemId);
+      updateSummary();
+    });
+  }
 
   dateInput.addEventListener("input", () => {
     enforceDateInputMinimum(dateInput);
@@ -506,6 +525,7 @@ function addBookingItem(preselectedId = null) {
   }
 
   populateSlotOptions(itemId);
+  populateStayDurationOptions(itemId);
   updateItemPreview(itemId);
   refreshTitles();
 }
@@ -698,6 +718,9 @@ function restoreDraftIfAny() {
         setAccommodationSelection(card, index + 1, Number(item.accommodation_id) || null);
 
         slotSelect.value = item.slot_type || "";
+        populateStayDurationOptions(index + 1);
+        const stayDurationSelect = card.querySelector(".stay-duration-select");
+        if (stayDurationSelect) stayDurationSelect.value = String(item.stay_duration || 1);
 
         const earliestBookingDate = getCustomerEarliestBookingDate();
 
@@ -787,6 +810,41 @@ function getSlotOptions(accommodation) {
   ];
 }
 
+
+function getStayDuration(item) {
+  return Math.max(1, Math.min(5, Number(item?.stay_duration || 1)));
+}
+
+function getAllowedStayDurations(slotType) {
+  return slotType === "extended" ? [1, 2, 3, 4, 5] : [1];
+}
+
+function populateStayDurationOptions(itemId) {
+  const card = document.querySelector(`.booking-item-card[data-item-id="${itemId}"]`);
+  if (!card) return;
+
+  const slotType = card.querySelector(".slot-select")?.value || "";
+  const staySelect = card.querySelector(".stay-duration-select");
+  if (!staySelect) return;
+
+  const previousValue = Number(staySelect.value || 1);
+  const allowed = getAllowedStayDurations(slotType);
+
+  staySelect.innerHTML = allowed
+    .map((days) => {
+      const label = slotType === "extended"
+        ? `${days} ${days === 1 ? "day" : "days"}`
+        : slotType === "overnight"
+          ? "1 night only"
+          : "1 day only";
+      return `<option value="${days}">${label}</option>`;
+    })
+    .join("");
+
+  staySelect.value = allowed.includes(previousValue) ? String(previousValue) : "1";
+  staySelect.disabled = slotType !== "extended";
+}
+
 function populateSlotOptions(itemId) {
   const card = document.querySelector(
     `.booking-item-card[data-item-id="${itemId}"]`
@@ -803,6 +861,7 @@ function populateSlotOptions(itemId) {
   if (!accommodation) {
     slotSelect.innerHTML = `<option value="">Select slot</option>`;
     capacityDisplay.value = "-";
+    populateStayDurationOptions(itemId);
     return;
   }
 
@@ -823,6 +882,8 @@ function populateSlotOptions(itemId) {
       )
       .join("")}
   `;
+
+  populateStayDurationOptions(itemId);
 }
 
 function updateItemPreview(itemId) {
@@ -834,6 +895,7 @@ function updateItemPreview(itemId) {
 
   const accommodationValue = card.querySelector(".accommodation-value");
   const slotSelect = card.querySelector(".slot-select");
+  const stayDurationSelect = card.querySelector(".stay-duration-select");
   const dateInput = card.querySelector(".date-input");
   const preview = document.getElementById(`slotPreview-${itemId}`);
 
@@ -862,20 +924,29 @@ function updateItemPreview(itemId) {
     return;
   }
 
+  const stayDuration = Number(stayDurationSelect?.value || 1);
   const checkOutDate = calculateCheckOutDate(
     dateInput.value,
     slot.start,
-    slot.end
+    slot.end,
+    stayDuration
   );
+  const totalPrice = Number(slot.price || 0) * stayDuration;
+  const durationLabel = slot.value === "extended"
+    ? `${stayDuration} ${stayDuration === 1 ? "day" : "days"}`
+    : slot.value === "overnight"
+      ? "1 night only"
+      : "1 day only";
 
   preview.innerHTML = `
     <strong>${escapeHtml(accommodation.name)}</strong><br>
     Category: ${escapeHtml(accommodation.category_name)}<br>
     Map Label: ${escapeHtml(accommodation.map_label || "Not set")}<br>
     Schedule: ${escapeHtml(slot.label)} (${formatTimeDisplay(slot.start)} - ${formatTimeDisplay(slot.end)})<br>
+    Stay Duration: ${escapeHtml(durationLabel)}<br>
     Reservation Date: ${formatDateDisplay(dateInput.value)}<br>
     Check-out Date: ${formatDateDisplay(checkOutDate)}<br>
-    Price: ₱${formatMoney(slot.price)}
+    Price: ₱${formatMoney(slot.price)}${slot.value === "extended" ? ` × ${stayDuration} = ₱${formatMoney(totalPrice)}` : ""}
   `;
 }
 
@@ -887,6 +958,7 @@ function collectBookingItems() {
     const accommodationId = card.querySelector(".accommodation-value")?.value;
     const slotType = card.querySelector(".slot-select")?.value;
     const checkInDate = card.querySelector(".date-input")?.value;
+    const stayDuration = Number(card.querySelector(".stay-duration-select")?.value || 1);
 
     if (!accommodationId || !slotType || !checkInDate) {
       continue;
@@ -896,6 +968,7 @@ function collectBookingItems() {
       accommodation_id: Number(accommodationId),
       slot_type: slotType,
       check_in_date: checkInDate,
+      stay_duration: slotType === "extended" ? Math.max(1, Math.min(5, stayDuration)) : 1,
     });
   }
 
@@ -963,7 +1036,7 @@ function resetInvalidDateInputs() {
   });
 }
 
-function calculateCheckOutDate(checkInDate, startTime, endTime) {
+function calculateCheckOutDate(checkInDate, startTime, endTime, stayDuration = 1) {
   if (!checkInDate || !startTime || !endTime) return checkInDate || "-";
 
   const startParts = String(startTime).split(":");
@@ -974,9 +1047,12 @@ function calculateCheckOutDate(checkInDate, startTime, endTime) {
   const startMinutes = Number(startParts[0]) * 60 + Number(startParts[1]);
   const endMinutes = Number(endParts[0]) * 60 + Number(endParts[1]);
 
-  if (endMinutes <= startMinutes) {
+  const cleanDuration = Math.max(1, Math.min(5, Number(stayDuration || 1)));
+  const daysToAdd = cleanDuration > 1 ? cleanDuration : endMinutes <= startMinutes ? 1 : 0;
+
+  if (daysToAdd > 0) {
     const date = new Date(`${checkInDate}T00:00:00`);
-    date.setDate(date.getDate() + 1);
+    date.setDate(date.getDate() + daysToAdd);
     return toInputDateValue(date);
   }
 
@@ -1036,7 +1112,7 @@ function updateSummary() {
 
     if (!slot) return;
 
-    accommodationTotal += Number(slot.price || 0);
+    accommodationTotal += Number(slot.price || 0) * getStayDuration(item);
   });
 
   const requiredDownpayment = accommodationTotal * 0.5;

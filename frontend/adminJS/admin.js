@@ -455,6 +455,7 @@ function renderReservationCard(booking) {
             <div class="info-strong">${escapeHtml(booking.room_name || "N/A")}</div>
             <div>Check-in: ${formatDate(booking.check_in)} • ${formatTime(booking.check_in_time)}</div>
             <div>Check-out: ${formatDate(booking.check_out)} • ${formatTime(booking.check_out_time)}</div>
+            <div>Stay Duration: ${escapeHtml(formatStayDuration(booking))}</div>
             <div>Guests: ${Number(booking.guests || 0)}</div>
           </section>
 
@@ -1241,6 +1242,18 @@ function formatTime(timeValue) {
 
 function formatDateTime(dateValue) {
   return formatPhilippineDateTime(dateValue);
+}
+
+function formatStayDuration(booking) {
+  const duration = Number(booking.stay_duration || 1);
+  const slotLabel = String(booking.slot_label || "").toLowerCase();
+
+  if (slotLabel.includes("22") || slotLabel.includes("23")) {
+    return `${duration} ${duration === 1 ? "day" : "days"}`;
+  }
+
+  if (slotLabel.includes("overnight")) return "1 night only";
+  return "1 day only";
 }
 
 function formatPaymentMethod(method) {

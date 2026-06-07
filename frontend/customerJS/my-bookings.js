@@ -199,6 +199,11 @@ function renderBookingCard(booking) {
           </div>
 
           <div style="${detailBoxStyle()}">
+            <strong>Stay Duration</strong><br>
+            ${formatStayDuration(booking)}
+          </div>
+
+          <div style="${detailBoxStyle()}">
             <strong>Created</strong><br>
             ${formatDateTime(booking.created_at)}
           </div>
@@ -542,6 +547,18 @@ function formatDateTime(dateValue) {
     second: "2-digit",
     hour12: true,
   });
+}
+
+function formatStayDuration(booking) {
+  const duration = Number(booking.stay_duration || 1);
+  const slotLabel = String(booking.slot_label || "").toLowerCase();
+
+  if (slotLabel.includes("22") || slotLabel.includes("23")) {
+    return `${duration} ${duration === 1 ? "day" : "days"}`;
+  }
+
+  if (slotLabel.includes("overnight")) return "1 night only";
+  return "1 day only";
 }
 
 function formatPaymentMethod(method) {

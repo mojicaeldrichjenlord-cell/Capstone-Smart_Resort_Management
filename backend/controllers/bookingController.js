@@ -1572,6 +1572,246 @@ exports.checkInBooking = async (req, res) => {
 };
 
 
+
+exports.addAccommodationToReservation = async (req, res) => {
+  const connection = await db.promise().getConnection();
+
+  try {
+    const reservationId = Number(req.params.id);
+    const accommodationId = Number(req.body.accommodation_id);
+    const slotType = normalizeText(req.body.slot_type || "day_tour");
+    const checkInDate = normalizeText(req.body.check_in_date);
+    const requestedStayDuration = Math.max(
+      1,
+      Math.min(5, Math.floor(toNumber(req.body.stay_duration, 1))),
+    );
+
+    if (!reservationId) {
+      throw {
+        status: 400,
+        message: "Reservation ID is required.",
+      };
+    }
+
+    if (
+      !accommodationId ||
+      !checkInDate ||
+      !["day_tour", "overnight", "extended"].includes(slotType)
+    ) {
+      throw {
+        status: 400,
+        message:
+          "Please select a valid accommodation, slot type, and reservation date.",
+      };
+    }
+
+    const stayDuration = slotType === "extended" ? requestedStayDuration : 1;
+
+    if (slotType !== "extended" && requestedStayDuration > 1) {
+      throw {
+        status: 400,
+        message:
+          "Day Tour and Overnight add-ons are limited to 1 day/night only.",
+      };
+    }
+
+    await connection.beginTransaction();
+
+    const [reservationRows] = await connection.query(
+      `
+      SELECT
+        id,
+        reservation_code,
+        reservation_status,
+        payment_status,
+        is_checked_in,
+        accommodation_total,
+        required_downpayment,
+        paid_amount,
+        remaining_balance,
+        note
+      FROM reservations
+      WHERE id = ?
+      LIMIT 1
+      `,
+      [reservationId],
+    );
+
+    if (!reservationRows.length) {
+      throw {
+        status: 404,
+        message: "Reservation not found.",
+      };
+    }
+
+    const reservation = reservationRows[0];
+    const reservationStatus = String(
+      reservation.reservation_status || "",
+    ).toLowerCase();
+
+    if (["cancelled", "rejected", "completed"].includes(reservationStatus)) {
+      throw {
+        status: 400,
+        message:
+          "Cannot add accommodation to a cancelled, rejected, or completed reservation.",
+      };
+    }
+
+    if (reservationStatus !== "approved") {
+      throw {
+        status: 400,
+        message: "Only approved reservations can receive onsite add-ons.",
+      };
+    }
+
+    if (Number(reservation.is_checked_in || 0) !== 1) {
+      throw {
+        status: 400,
+        message:
+          "Guest must be checked in before adding an onsite accommodation.",
+      };
+    }
+
+    const accommodationMap = await getAccommodationsMapByIds([accommodationId]);
+    const accommodation = accommodationMap[accommodationId];
+
+    if (!accommodation) {
+      throw {
+        status: 404,
+        message: "Selected accommodation was not found.",
+      };
+    }
+
+    if (String(accommodation.status || "").toLowerCase() !== "available") {
+      throw {
+        status: 400,
+        message: `${accommodation.name} is currently unavailable.`,
+      };
+    }
+
+    const slotConfig = buildSlotConfig(accommodation, slotType);
+    const checkOutDate = buildCheckOutDate(
+      checkInDate,
+      slotConfig.start_time,
+      slotConfig.end_time,
+      stayDuration,
+    );
+
+    const newItem = {
+      accommodation_id: accommodation.id,
+      slot_type: slotType,
+      slot_label: slotConfig.slot_label,
+      stay_duration: stayDuration,
+      check_in_date: checkInDate,
+      check_in_time: slotConfig.start_time,
+      check_out_date: checkOutDate,
+      check_out_time: slotConfig.end_time,
+      item_price: Number(slotConfig.price || 0) * stayDuration,
+    };
+
+    await checkReservationConflicts(connection, [newItem]);
+
+    await connection.query(
+      `
+      INSERT INTO reservation_items (
+        reservation_id,
+        accommodation_id,
+        slot_type,
+        slot_label,
+        stay_duration,
+        check_in_date,
+        check_in_time,
+        check_out_date,
+        check_out_time,
+        item_price
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+      [
+        reservationId,
+        newItem.accommodation_id,
+        newItem.slot_type,
+        newItem.slot_label,
+        newItem.stay_duration,
+        newItem.check_in_date,
+        newItem.check_in_time,
+        newItem.check_out_date,
+        newItem.check_out_time,
+        newItem.item_price,
+      ],
+    );
+
+    const oldAccommodationTotal = Number(reservation.accommodation_total || 0);
+    const oldPaidAmount = Number(reservation.paid_amount || 0);
+    const oldRemainingBalance = Number(reservation.remaining_balance || 0);
+
+    const newAccommodationTotal = oldAccommodationTotal + newItem.item_price;
+    const newPaidAmount = oldPaidAmount + newItem.item_price;
+    const newRemainingBalance = Math.max(oldRemainingBalance, 0);
+    const newRequiredDownpayment = newAccommodationTotal * 0.5;
+
+    const addOnNote =
+      `Onsite add-on: ${accommodation.name} - ${newItem.slot_label}` +
+      ` (${newItem.check_in_date} ${newItem.check_in_time} to ${newItem.check_out_date} ${newItem.check_out_time})` +
+      `, Stay Duration: ${newItem.stay_duration} day(s), Cash Paid: ₱${newItem.item_price.toFixed(2)}`;
+
+    const updatedNote = [reservation.note, addOnNote].filter(Boolean).join(" | ");
+
+    await connection.query(
+      `
+      UPDATE reservations
+      SET
+        accommodation_total = ?,
+        required_downpayment = ?,
+        paid_amount = ?,
+        remaining_balance = ?,
+        payment_status = ?,
+        note = ?
+      WHERE id = ?
+      `,
+      [
+        newAccommodationTotal,
+        newRequiredDownpayment,
+        newPaidAmount,
+        newRemainingBalance,
+        newRemainingBalance > 0 ? "partially_paid" : "paid",
+        updatedNote,
+        reservationId,
+      ],
+    );
+
+    await connection.commit();
+
+    return res.status(201).json({
+      message: "Accommodation added to active reservation successfully.",
+      reservationId,
+      accommodation_name: accommodation.name,
+      slot_label: newItem.slot_label,
+      stay_duration: newItem.stay_duration,
+      check_in_date: newItem.check_in_date,
+      check_in_time: newItem.check_in_time,
+      check_out_date: newItem.check_out_date,
+      check_out_time: newItem.check_out_time,
+      item_price: newItem.item_price,
+      accommodation_total: newAccommodationTotal,
+      paid_amount: newPaidAmount,
+      remaining_balance: newRemainingBalance,
+    });
+  } catch (error) {
+    await connection.rollback();
+
+    console.error("addAccommodationToReservation error:", error);
+
+    return res.status(error.status || 500).json({
+      message: error.message || "Failed to add accommodation.",
+      error: error.message,
+    });
+  } finally {
+    connection.release();
+  }
+};
+
+
 exports.requestBookingModification = async (req, res) => {
   const connection = await db.promise().getConnection();
 

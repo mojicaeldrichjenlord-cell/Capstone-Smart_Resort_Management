@@ -240,9 +240,22 @@ function renderAccommodationItem(item) {
       ${escapeHtml(item.category_name || "-")} • ${escapeHtml(item.slot_label || "-")}<br>
       Check-in: ${escapeHtml(formatDateOnly(item.check_in_date))} • ${escapeHtml(formatTime(item.check_in_time))}<br>
       Check-out: ${escapeHtml(formatDateOnly(item.check_out_date))} • ${escapeHtml(formatTime(item.check_out_time))}<br>
+      Stay Duration: ${escapeHtml(formatItemStayDuration(item))}<br>
       Price: ₱${formatMoney(item.item_price)}
     </div>
   `;
+}
+
+function formatItemStayDuration(item) {
+  const duration = Number(item.stay_duration || 1);
+  const slotLabel = String(item.slot_label || "").toLowerCase();
+
+  if (slotLabel.includes("22") || slotLabel.includes("23")) {
+    return `${duration} ${duration === 1 ? "day" : "days"}`;
+  }
+
+  if (slotLabel.includes("overnight")) return "1 night only";
+  return "1 day only";
 }
 
 function renderSimplePaymentSummary(data) {

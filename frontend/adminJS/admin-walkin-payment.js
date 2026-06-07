@@ -293,11 +293,19 @@ function renderReservationItem(item, index) {
     (slotItem) => slotItem.value === item.slot_type
   );
 
+  const stayDuration = getStayDuration(item);
   const checkOutDate = calculateCheckOutDate(
     item.check_in_date,
     slot?.start,
-    slot?.end
+    slot?.end,
+    stayDuration
   );
+  const totalPrice = Number(slot?.price || 0) * stayDuration;
+  const durationLabel = item.slot_type === "extended"
+    ? `${stayDuration} ${stayDuration === 1 ? "day" : "days"}`
+    : item.slot_type === "overnight"
+      ? "1 night only"
+      : "1 day only";
 
   return `
     <div class="summary-item">
@@ -319,8 +327,11 @@ function renderReservationItem(item, index) {
       <strong>Check-out:</strong>
       ${formatDateDisplay(checkOutDate)}<br />
 
+      <strong>Stay Duration:</strong>
+      ${escapeHtml(durationLabel)}<br />
+
       <strong>Price:</strong>
-      ₱${formatMoney(slot?.price || 0)}
+      ₱${formatMoney(slot?.price || 0)}${item.slot_type === "extended" ? ` × ${stayDuration} = ₱${formatMoney(totalPrice)}` : ""}
     </div>
   `;
 }
@@ -1058,6 +1069,10 @@ function previewProofImage() {
 // Computes accommodation total, downpayment, entrance fee.
 // ============================================================
 
+function getStayDuration(item) {
+  return Math.max(1, Math.min(5, Number(item?.stay_duration || 1)));
+}
+
 function computeTotals() {
   const items = Array.isArray(walkInDraft?.items) ? walkInDraft.items : [];
   const guestCount = Number(walkInDraft?.guest_count || 0);
@@ -1076,7 +1091,7 @@ function computeTotals() {
 
     if (!slot) return;
 
-    accommodationTotal += Number(slot.price || 0);
+    accommodationTotal += Number(slot.price || 0) * getStayDuration(item);
 
     if (item.slot_type === "overnight" || item.slot_type === "extended") {
       hasOvernightStyle = true;
@@ -1173,7 +1188,7 @@ function getSlotOptions(accommodation) {
 // Handles overnight/extended schedules crossing midnight.
 // ============================================================
 
-function calculateCheckOutDate(checkInDate, startTime, endTime) {
+function calculateCheckOutDate(checkInDate, startTime, endTime, stayDuration = 1) {
   if (!checkInDate || !startTime || !endTime) {
     return checkInDate || "-";
   }
@@ -1187,10 +1202,12 @@ function calculateCheckOutDate(checkInDate, startTime, endTime) {
 
   const startMinutes = Number(startParts[0]) * 60 + Number(startParts[1]);
   const endMinutes = Number(endParts[0]) * 60 + Number(endParts[1]);
+  const cleanDuration = Math.max(1, Math.min(5, Number(stayDuration || 1)));
+  const daysToAdd = cleanDuration > 1 ? cleanDuration : endMinutes <= startMinutes ? 1 : 0;
 
-  if (endMinutes <= startMinutes) {
-    const date = new Date(checkInDate);
-    date.setDate(date.getDate() + 1);
+  if (daysToAdd > 0) {
+    const date = new Date(`${checkInDate}T00:00:00`);
+    date.setDate(date.getDate() + daysToAdd);
     return date.toISOString().split("T")[0];
   }
 
