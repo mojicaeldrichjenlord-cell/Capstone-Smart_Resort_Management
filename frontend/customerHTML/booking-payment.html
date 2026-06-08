@@ -98,9 +98,15 @@
                     <input
                       type="text"
                       id="paymentReference"
-                      placeholder="Enter reference number"
+                      placeholder="GCash: 1234-5678-9012-3"
+                      inputmode="numeric"
+                      autocomplete="off"
                       required
                     />
+
+                    <small id="paymentReferenceHelp" class="field-help">
+                      GCash requires exactly 13 digits. Maya / PayMaya allows 6 to 30 digits.
+                    </small>
                   </div>
 
                   <div class="payment-form-group full-width">

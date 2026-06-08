@@ -186,8 +186,9 @@
 
 .guests-table {
   width: 100%;
-  min-width: 1750px;
+  min-width: 1480px;
   border-collapse: collapse;
+  table-layout: fixed;
 }
 
 .guests-table th {
@@ -200,11 +201,80 @@
 }
 
 .guests-table td {
-  padding: 14px 12px;
+  padding: 12px 10px;
   border-bottom: 1px solid #e2e8f0;
   color: #1e293b;
-  font-size: 0.92rem;
+  font-size: 0.9rem;
   vertical-align: top;
+  word-break: break-word;
+}
+
+.guests-table th {
+  padding: 12px 10px;
+}
+
+.guests-table th:nth-child(1),
+.guests-table td:nth-child(1) {
+  width: 145px;
+}
+
+.guests-table th:nth-child(2),
+.guests-table td:nth-child(2) {
+  width: 145px;
+}
+
+.guests-table th:nth-child(3),
+.guests-table td:nth-child(3) {
+  width: 105px;
+}
+
+.guests-table th:nth-child(4),
+.guests-table td:nth-child(4) {
+  width: 180px;
+}
+
+.guests-table th:nth-child(5),
+.guests-table td:nth-child(5),
+.guests-table th:nth-child(6),
+.guests-table td:nth-child(6) {
+  width: 95px;
+}
+
+.guests-table th:nth-child(7),
+.guests-table td:nth-child(7) {
+  width: 70px;
+}
+
+.guests-table th:nth-child(8),
+.guests-table td:nth-child(8) {
+  width: 115px;
+}
+
+.guests-table th:nth-child(9),
+.guests-table td:nth-child(9) {
+  width: 100px;
+}
+
+.guests-table th:nth-child(10),
+.guests-table td:nth-child(10),
+.guests-table th:nth-child(12),
+.guests-table td:nth-child(12) {
+  width: 120px;
+}
+
+.guests-table th:nth-child(11),
+.guests-table td:nth-child(11) {
+  width: 95px;
+}
+
+.guests-table th:nth-child(13),
+.guests-table td:nth-child(13) {
+  width: 135px;
+}
+
+.guests-table th:nth-child(14),
+.guests-table td:nth-child(14) {
+  width: 155px;
 }
 
 .guests-table tr:nth-child(even) {
@@ -255,12 +325,22 @@
 }
 
 .money-warning {
-  font-weight: 900;
-  color: #b45309;
+  display: inline-block;
+  padding: 7px 10px;
+  border-radius: 12px;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  font-weight: 950;
+  color: #c2410c;
 }
 
 .money-ok {
-  font-weight: 900;
+  display: inline-block;
+  padding: 7px 10px;
+  border-radius: 12px;
+  background: #dcfce7;
+  border: 1px solid #bbf7d0;
+  font-weight: 950;
   color: #166534;
 }
 
@@ -284,19 +364,23 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  min-width: 125px;
+  min-width: 135px;
+  max-width: 150px;
 }
 
 .action-btn {
+  width: 100%;
   border: none;
   border-radius: 999px;
-  padding: 9px 12px;
+  padding: 9px 10px;
   font-weight: 900;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   cursor: pointer;
   text-decoration: none;
   text-align: center;
   transition: 0.2s ease;
+  white-space: normal;
+  line-height: 1.25;
 }
 
 .action-btn:hover {
@@ -575,8 +659,8 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  min-width: 170px;
-  max-width: 230px;
+  min-width: 145px;
+  max-width: 180px;
 }
 
 .guest-accommodation-item {
@@ -596,4 +680,925 @@
   color: #0f766e;
   font-weight: 950;
   flex: 0 0 auto;
+}
+
+.guest-accommodation-item.detailed {
+  flex-direction: column;
+  gap: 5px;
+  padding: 9px 10px;
+}
+
+.guest-accommodation-title {
+  display: flex;
+  gap: 7px;
+  align-items: flex-start;
+  font-weight: 950;
+}
+
+.guest-accommodation-meta {
+  color: #0f766e;
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.guest-accommodation-time {
+  color: #475569;
+  font-size: 0.76rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+
+/* Compact per-accommodation details: names stay in Accommodation,
+   schedules stay aligned in Check In / Check Out columns. */
+.guest-item-list,
+.guest-date-list {
+  display: grid;
+  gap: 8px;
+}
+
+.guest-item-line,
+.guest-date-line {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 7px;
+  align-items: start;
+  min-height: 48px;
+}
+
+.guest-item-line {
+  padding: 8px 9px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.guest-item-number,
+.guest-date-line span {
+  color: #0f766e;
+  font-weight: 950;
+}
+
+.guest-item-line strong,
+.guest-date-line strong {
+  display: block;
+  color: #0f172a;
+  font-weight: 950;
+  line-height: 1.25;
+}
+
+.guest-item-line small,
+.guest-date-line small {
+  display: block;
+  margin-top: 3px;
+  color: #0f766e;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.guest-date-line {
+  padding: 8px 0;
+  border-bottom: 1px dashed #cbd5e1;
+}
+
+.guest-date-line:last-child {
+  border-bottom: none;
+}
+
+/* Keep old accommodation classes compatible but less bulky. */
+.guest-accommodation-list {
+  min-width: 0 !important;
+  max-width: none !important;
+}
+
+.guest-accommodation-item {
+  padding: 6px 8px !important;
+}
+
+
+/* SIMPLE GUESTS INSIDE ACCOMMODATION DISPLAY */
+.guest-simple-accommodation-list {
+  display: grid;
+  gap: 7px;
+  min-width: 150px;
+}
+
+.guest-simple-accommodation-item {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 7px;
+  align-items: start;
+  padding: 7px 9px;
+  border-radius: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.guest-simple-accommodation-item span {
+  color: #0f766e;
+  font-weight: 950;
+}
+
+.guest-simple-accommodation-item strong {
+  color: #0f172a;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.single-item-note {
+  color: #0f766e;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.view-items-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: #e0f2fe;
+  color: #075985;
+  font-weight: 950;
+  cursor: pointer;
+  text-align: center;
+}
+
+.view-items-btn:hover {
+  filter: brightness(0.98);
+}
+
+/* MODAL FOR DETAILED ITEM SCHEDULES */
+.accommodation-details-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 6000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(15, 23, 42, 0.72);
+}
+
+.accommodation-details-modal.show {
+  display: flex;
+}
+
+.accommodation-details-box {
+  width: min(100%, 620px);
+  max-height: 88vh;
+  overflow-y: auto;
+  background: white;
+  border-radius: 24px;
+  padding: 22px;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.32);
+}
+
+.accommodation-details-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.accommodation-details-header h2 {
+  margin: 0 0 5px;
+  color: #0f172a;
+}
+
+.accommodation-details-header p {
+  margin: 0;
+  color: #64748b;
+  font-weight: 800;
+}
+
+.accommodation-details-header button {
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 999px;
+  background: #ef4444;
+  color: white;
+  font-size: 1.4rem;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.accommodation-details-list {
+  display: grid;
+  gap: 12px;
+}
+
+.accommodation-detail-card {
+  border: 1px solid #dbe7ef;
+  border-radius: 18px;
+  padding: 14px;
+  background: #f8fafc;
+  color: #334155;
+  line-height: 1.55;
+}
+
+.accommodation-detail-card strong {
+  display: block;
+  color: #0f172a;
+  font-size: 1rem;
+  margin-bottom: 5px;
+}
+
+.accommodation-detail-card p {
+  margin: 0 0 8px;
+  color: #0f766e;
+  font-weight: 950;
+}
+
+/* Keep date columns calm and readable */
+.guest-date-list,
+.guest-date-line {
+  display: initial !important;
+}
+
+.guests-table td small {
+  color: #0f766e;
+  font-weight: 800;
+}
+
+.guests-table {
+  min-width: 1380px !important;
+}
+
+.guests-table th:nth-child(4),
+.guests-table td:nth-child(4) {
+  width: 175px !important;
+}
+
+.guests-table th:nth-child(5),
+.guests-table td:nth-child(5),
+.guests-table th:nth-child(6),
+.guests-table td:nth-child(6) {
+  width: 100px !important;
+}
+
+
+/* TIME STATUS INSIDE ACCOMMODATION DETAILS MODAL */
+.item-time-status-row {
+  margin: 8px 0;
+}
+
+.item-time-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 11px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 950;
+}
+
+.item-time-status.active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.item-time-status.warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.item-time-status.danger {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.item-time-status.pending,
+.item-time-status.info {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+
+/* Early-entry policy note in Accommodation Details */
+.early-entry-note {
+  margin-top: 10px;
+  padding: 9px 11px;
+  border-radius: 12px;
+  background: #ecfeff;
+  border: 1px solid #a5f3fc;
+  color: #155e75;
+  font-weight: 850;
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+
+
+/* ======================================================
+   NO HORIZONTAL SCROLL GUESTS INSIDE TABLE
+   Removed low-value columns:
+   - Source
+   - Payment
+   - Front Desk Note
+
+   Remaining columns:
+   1 Reservation Code
+   2 Guest Name
+   3 Accommodation
+   4 Check In
+   5 Check Out
+   6 Guests
+   7 Time Status
+   8 Extra Bed
+   9 Extra Bed Fee
+   10 Actions
+====================================================== */
+
+.table-wrap {
+  overflow-x: visible !important;
+  overflow-y: visible !important;
+  width: 100% !important;
+}
+
+.guests-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+  border-collapse: collapse !important;
+}
+
+.guests-table th,
+.guests-table td {
+  padding: 12px 10px !important;
+  vertical-align: top !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
+}
+
+.guests-table th {
+  white-space: normal !important;
+  line-height: 1.2 !important;
+  font-size: 0.84rem !important;
+}
+
+.guests-table td {
+  font-size: 0.86rem !important;
+}
+
+/* 10-column width plan */
+.guests-table th:nth-child(1),
+.guests-table td:nth-child(1) {
+  width: 10% !important;
+}
+
+.guests-table th:nth-child(2),
+.guests-table td:nth-child(2) {
+  width: 11% !important;
+}
+
+.guests-table th:nth-child(3),
+.guests-table td:nth-child(3) {
+  width: 16% !important;
+}
+
+.guests-table th:nth-child(4),
+.guests-table td:nth-child(4),
+.guests-table th:nth-child(5),
+.guests-table td:nth-child(5) {
+  width: 8% !important;
+}
+
+.guests-table th:nth-child(6),
+.guests-table td:nth-child(6) {
+  width: 5% !important;
+  text-align: center;
+}
+
+.guests-table th:nth-child(7),
+.guests-table td:nth-child(7) {
+  width: 10% !important;
+}
+
+.guests-table th:nth-child(8),
+.guests-table td:nth-child(8) {
+  width: 9% !important;
+  text-align: center;
+}
+
+.guests-table th:nth-child(9),
+.guests-table td:nth-child(9) {
+  width: 10% !important;
+  text-align: center;
+}
+
+.guests-table th:nth-child(10),
+.guests-table td:nth-child(10) {
+  width: 13% !important;
+}
+
+/* Compact badges and money boxes */
+.badge {
+  padding: 7px 9px !important;
+  font-size: 0.76rem !important;
+  white-space: normal !important;
+  text-align: center;
+}
+
+.money-warning,
+.money-ok {
+  display: inline-flex !important;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 0 !important;
+  width: 100% !important;
+  min-height: 38px;
+  padding: 7px 8px !important;
+  text-align: center;
+}
+
+.extra-bed-box {
+  min-width: 0 !important;
+  text-align: center !important;
+}
+
+.extra-bed-box small,
+.guests-table td small {
+  font-size: 0.74rem !important;
+}
+
+.action-buttons {
+  min-width: 0 !important;
+  max-width: none !important;
+  width: 100% !important;
+  gap: 7px !important;
+}
+
+.action-btn {
+  padding: 8px 8px !important;
+  font-size: 0.75rem !important;
+}
+
+/* Make accommodation cells cleaner */
+.guest-simple-accommodation-list {
+  min-width: 0 !important;
+}
+
+.guest-simple-accommodation-item {
+  padding: 7px 8px !important;
+}
+
+.view-items-btn {
+  width: 100%;
+  padding: 7px 8px !important;
+}
+
+/* Mobile/tablet fallback: turn rows into cards instead of horizontal scroll */
+@media (max-width: 980px) {
+  .table-wrap {
+    border: none !important;
+    background: transparent !important;
+  }
+
+  .guests-table,
+  .guests-table thead,
+  .guests-table tbody,
+  .guests-table th,
+  .guests-table td,
+  .guests-table tr {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  .guests-table thead {
+    display: none !important;
+  }
+
+  .guests-table tr {
+    margin-bottom: 14px;
+    border: 1px solid #dbe7ef;
+    border-radius: 18px;
+    background: white;
+    overflow: hidden;
+  }
+
+  .guests-table td {
+    display: grid !important;
+    grid-template-columns: 130px 1fr;
+    gap: 10px;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 12px !important;
+  }
+
+  .guests-table td::before {
+    font-weight: 950;
+    color: #0f172a;
+  }
+
+  .guests-table td:nth-child(1)::before { content: "Reservation"; }
+  .guests-table td:nth-child(2)::before { content: "Guest"; }
+  .guests-table td:nth-child(3)::before { content: "Accommodation"; }
+  .guests-table td:nth-child(4)::before { content: "Check In"; }
+  .guests-table td:nth-child(5)::before { content: "Check Out"; }
+  .guests-table td:nth-child(6)::before { content: "Guests"; }
+  .guests-table td:nth-child(7)::before { content: "Time Status"; }
+  .guests-table td:nth-child(8)::before { content: "Extra Bed"; }
+  .guests-table td:nth-child(9)::before { content: "Extra Bed Fee"; }
+  .guests-table td:nth-child(10)::before { content: "Actions"; }
+
+  .action-buttons {
+    max-width: 240px !important;
+  }
+}
+
+
+
+/* ======================================================
+   FINAL 9-COLUMN NO-SCROLL GUESTS INSIDE TABLE
+   Merged Extra Bed + Extra Bed Fee to avoid cramped vertical text.
+====================================================== */
+
+.table-wrap {
+  overflow-x: visible !important;
+  overflow-y: visible !important;
+  width: 100% !important;
+}
+
+.guests-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+  border-collapse: collapse !important;
+}
+
+.guests-table th,
+.guests-table td {
+  padding: 12px 10px !important;
+  vertical-align: top !important;
+  word-break: normal !important;
+  overflow-wrap: break-word !important;
+}
+
+.guests-table th {
+  white-space: normal !important;
+  line-height: 1.2 !important;
+  font-size: 0.84rem !important;
+}
+
+.guests-table td {
+  font-size: 0.86rem !important;
+}
+
+/* 9-column width plan */
+.guests-table th:nth-child(1),
+.guests-table td:nth-child(1) {
+  width: 11% !important;
+}
+
+.guests-table th:nth-child(2),
+.guests-table td:nth-child(2) {
+  width: 12% !important;
+}
+
+.guests-table th:nth-child(3),
+.guests-table td:nth-child(3) {
+  width: 17% !important;
+}
+
+.guests-table th:nth-child(4),
+.guests-table td:nth-child(4),
+.guests-table th:nth-child(5),
+.guests-table td:nth-child(5) {
+  width: 8.5% !important;
+}
+
+.guests-table th:nth-child(6),
+.guests-table td:nth-child(6) {
+  width: 5% !important;
+  text-align: center;
+}
+
+.guests-table th:nth-child(7),
+.guests-table td:nth-child(7) {
+  width: 10% !important;
+}
+
+.guests-table th:nth-child(8),
+.guests-table td:nth-child(8) {
+  width: 12% !important;
+}
+
+.guests-table th:nth-child(9),
+.guests-table td:nth-child(9) {
+  width: 16% !important;
+}
+
+.extra-bed-combined {
+  display: grid;
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: 13px;
+  text-align: center;
+  line-height: 1.25;
+}
+
+.extra-bed-combined.paid {
+  background: #dcfce7;
+  border: 1px solid #bbf7d0;
+  color: #14532d;
+}
+
+.extra-bed-combined.unpaid {
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  color: #9a3412;
+}
+
+.extra-bed-combined strong {
+  font-weight: 950;
+  color: #0f172a;
+}
+
+.extra-bed-combined small {
+  color: #0f766e;
+  font-weight: 900;
+}
+
+.extra-bed-combined span {
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.extra-bed-combined em {
+  font-style: normal;
+  font-weight: 950;
+}
+
+.paid-text {
+  color: #166534;
+}
+
+.unpaid-text {
+  color: #991b1b;
+}
+
+.badge {
+  padding: 7px 9px !important;
+  font-size: 0.76rem !important;
+  white-space: normal !important;
+  text-align: center;
+}
+
+.action-buttons {
+  min-width: 0 !important;
+  max-width: none !important;
+  width: 100% !important;
+  gap: 7px !important;
+}
+
+.action-btn {
+  padding: 8px 8px !important;
+  font-size: 0.75rem !important;
+}
+
+.guest-simple-accommodation-list {
+  min-width: 0 !important;
+}
+
+.guest-simple-accommodation-item {
+  padding: 7px 8px !important;
+}
+
+.view-items-btn {
+  width: 100%;
+  padding: 7px 8px !important;
+}
+
+@media (max-width: 980px) {
+  .table-wrap {
+    border: none !important;
+    background: transparent !important;
+  }
+
+  .guests-table,
+  .guests-table thead,
+  .guests-table tbody,
+  .guests-table th,
+  .guests-table td,
+  .guests-table tr {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  .guests-table thead {
+    display: none !important;
+  }
+
+  .guests-table tr {
+    margin-bottom: 14px;
+    border: 1px solid #dbe7ef;
+    border-radius: 18px;
+    background: white;
+    overflow: hidden;
+  }
+
+  .guests-table td {
+    display: grid !important;
+    grid-template-columns: 130px 1fr;
+    gap: 10px;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 12px !important;
+  }
+
+  .guests-table td::before {
+    font-weight: 950;
+    color: #0f172a;
+  }
+
+  .guests-table td:nth-child(1)::before { content: "Reservation"; }
+  .guests-table td:nth-child(2)::before { content: "Guest"; }
+  .guests-table td:nth-child(3)::before { content: "Accommodation"; }
+  .guests-table td:nth-child(4)::before { content: "Check In"; }
+  .guests-table td:nth-child(5)::before { content: "Check Out"; }
+  .guests-table td:nth-child(6)::before { content: "Guests"; }
+  .guests-table td:nth-child(7)::before { content: "Time Status"; }
+  .guests-table td:nth-child(8)::before { content: "Extra Bed / Fee"; }
+  .guests-table td:nth-child(9)::before { content: "Actions"; }
+
+  .action-buttons {
+    max-width: 240px !important;
+  }
+}
+
+
+
+/* ======================================================
+   FINAL SAFE NO-SCROLL OVERRIDE
+   Purpose:
+   - Keeps the stable 9-column layout
+   - Prevents Actions buttons from collapsing vertically
+   - Keeps availability message highlighted
+====================================================== */
+
+.table-wrap {
+  overflow-x: visible !important;
+  overflow-y: visible !important;
+  width: 100% !important;
+}
+
+.guests-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: 100% !important;
+  table-layout: fixed !important;
+}
+
+/* Stable 9-column width plan */
+.guests-table th:nth-child(1),
+.guests-table td:nth-child(1) {
+  width: 10% !important;
+}
+
+.guests-table th:nth-child(2),
+.guests-table td:nth-child(2) {
+  width: 11% !important;
+}
+
+.guests-table th:nth-child(3),
+.guests-table td:nth-child(3) {
+  width: 18% !important;
+}
+
+.guests-table th:nth-child(4),
+.guests-table td:nth-child(4),
+.guests-table th:nth-child(5),
+.guests-table td:nth-child(5) {
+  width: 8% !important;
+}
+
+.guests-table th:nth-child(6),
+.guests-table td:nth-child(6) {
+  width: 5% !important;
+  text-align: center !important;
+}
+
+.guests-table th:nth-child(7),
+.guests-table td:nth-child(7) {
+  width: 9% !important;
+}
+
+.guests-table th:nth-child(8),
+.guests-table td:nth-child(8) {
+  width: 12% !important;
+}
+
+/* Actions gets enough width so buttons never become vertical letters */
+.guests-table th:nth-child(9),
+.guests-table td:nth-child(9) {
+  width: 19% !important;
+  min-width: 190px !important;
+}
+
+.action-buttons {
+  width: 100% !important;
+  min-width: 170px !important;
+  max-width: 220px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 8px !important;
+}
+
+.action-btn {
+  width: 100% !important;
+  min-width: 160px !important;
+  white-space: normal !important;
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  padding: 9px 10px !important;
+  font-size: 0.78rem !important;
+  line-height: 1.2 !important;
+}
+
+.guests-table th,
+.guests-table td {
+  word-break: normal !important;
+  overflow-wrap: break-word !important;
+}
+
+.extra-bed-combined span {
+  white-space: normal !important;
+}
+
+/* Strong availability highlight without touching table layout */
+.availability-status {
+  margin-top: 14px !important;
+  padding: 14px 16px !important;
+  border-radius: 16px !important;
+  font-weight: 950 !important;
+  font-size: 0.96rem !important;
+  line-height: 1.45 !important;
+  border-width: 2px !important;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
+}
+
+.availability-status.available {
+  background: #dcfce7 !important;
+  border-color: #22c55e !important;
+  color: #14532d !important;
+}
+
+.availability-status.unavailable {
+  background: #fee2e2 !important;
+  border-color: #ef4444 !important;
+  color: #7f1d1d !important;
+}
+
+.availability-status.checking,
+.availability-status.muted {
+  background: #eff6ff !important;
+  border-color: #3b82f6 !important;
+  color: #1e3a8a !important;
+}
+
+.disabled-by-availability {
+  background: #94a3b8 !important;
+  cursor: not-allowed !important;
+  opacity: 0.75 !important;
+  box-shadow: none !important;
+}
+
+.disabled-by-availability:hover {
+  transform: none !important;
+  filter: none !important;
+}
+
+
+
+/* FINAL AVAILABILITY HIGHLIGHT ONLY */
+.availability-status {
+  margin-top: 14px !important;
+  padding: 14px 16px !important;
+  border-radius: 16px !important;
+  font-weight: 950 !important;
+  font-size: 0.96rem !important;
+  line-height: 1.45 !important;
+  border-width: 2px !important;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.08);
+}
+
+.availability-status.available {
+  background: #dcfce7 !important;
+  border-color: #22c55e !important;
+  color: #14532d !important;
+}
+
+.availability-status.unavailable {
+  background: #fee2e2 !important;
+  border-color: #ef4444 !important;
+  color: #7f1d1d !important;
+}
+
+.availability-status.checking,
+.availability-status.muted {
+  background: #eff6ff !important;
+  border-color: #3b82f6 !important;
+  color: #1e3a8a !important;
 }

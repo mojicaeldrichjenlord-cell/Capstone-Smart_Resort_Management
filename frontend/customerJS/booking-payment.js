@@ -60,6 +60,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderDraftSummary();
   setupPaymentForm();
   updateQrPlaceholder();
+  updatePaymentReferenceUI();
 });
 
 // ============================================================
@@ -228,7 +229,7 @@ function renderDraftSummary() {
         item.slot_type === "extended"
           ? `${stayDuration} ${stayDuration === 1 ? "day" : "days"}`
           : item.slot_type === "overnight"
-            ? "1 night only"
+            ? `${stayDuration} ${stayDuration === 1 ? "night" : "nights"}`
             : "1 day only";
 
       return `
@@ -240,7 +241,7 @@ function renderDraftSummary() {
           Check-out Date: ${formatDateDisplay(checkOutDate)}<br />
           Stay Duration: ${escapeHtml(durationLabel)}<br />
           Max Capacity: ${accommodation.max_capacity || 0} guest(s)<br />
-          Price: ₱${formatMoney(slotPrice)}${item.slot_type === "extended" ? ` × ${stayDuration} = ₱${formatMoney(itemTotal)}` : ""}
+          Price: ₱${formatMoney(slotPrice)}${["overnight", "extended"].includes(item.slot_type) ? ` × ${stayDuration} = ₱${formatMoney(itemTotal)}` : ""}
         </div>
       `;
     })
@@ -311,6 +312,59 @@ function getTotalFreeEntrancePax(items, guestCount) {
   return Math.min(total, Number(guestCount || 0));
 }
 
+
+// ============================================================
+// SECTION: Payment reference number helpers
+// Rules:
+// - GCash: exactly 13 digits
+// - Maya / PayMaya: 6 to 30 digits
+// - Dashes are display only; backend receives digits only.
+// ============================================================
+
+function normalizeReferenceNumber(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function getReferenceMaxDigits(method) {
+  const cleanMethod = String(method || "").toLowerCase();
+  return cleanMethod === "gcash" ? 13 : 30;
+}
+
+function formatReferenceNumberForDisplay(value, method) {
+  const maxDigits = getReferenceMaxDigits(method);
+  const digits = normalizeReferenceNumber(value).slice(0, maxDigits);
+  const groups = digits.match(/.{1,4}/g) || [];
+
+  return groups.join("-");
+}
+
+function validateReferenceNumberByMethod(referenceNumber, method) {
+  const cleanMethod = String(method || "").toLowerCase();
+  const digits = normalizeReferenceNumber(referenceNumber);
+
+  if (cleanMethod === "gcash") {
+    return {
+      valid: /^\d{13}$/.test(digits),
+      message: "GCash reference number must be exactly 13 digits.",
+      digits,
+    };
+  }
+
+  if (cleanMethod === "paymaya") {
+    return {
+      valid: /^\d{6,30}$/.test(digits),
+      message: "Maya / PayMaya reference number must be numbers only, 6 to 30 digits.",
+      digits,
+    };
+  }
+
+  return {
+    valid: true,
+    message: "",
+    digits,
+  };
+}
+
 // ============================================================
 // SECTION 8: Payment form setup
 // ============================================================
@@ -318,10 +372,32 @@ function getTotalFreeEntrancePax(items, guestCount) {
 function setupPaymentForm() {
   const paymentMethod = document.getElementById("paymentMethod");
   const paymentProof = document.getElementById("paymentProof");
+  const paymentReference = document.getElementById("paymentReference");
   const paymentForm = document.getElementById("paymentForm");
 
   if (paymentMethod) {
-    paymentMethod.addEventListener("change", updateQrPlaceholder);
+    paymentMethod.addEventListener("change", () => {
+      updateQrPlaceholder();
+      updatePaymentReferenceUI();
+    });
+  }
+
+  if (paymentReference) {
+    paymentReference.addEventListener("input", () => {
+      paymentReference.value = formatReferenceNumberForDisplay(
+        paymentReference.value,
+        paymentMethod?.value || "gcash"
+      );
+    });
+
+    paymentReference.addEventListener("paste", () => {
+      setTimeout(() => {
+        paymentReference.value = formatReferenceNumberForDisplay(
+          paymentReference.value,
+          paymentMethod?.value || "gcash"
+        );
+      }, 0);
+    });
   }
 
   if (paymentProof) {
@@ -419,6 +495,33 @@ function updateQrPlaceholder() {
   `;
 }
 
+
+function updatePaymentReferenceUI() {
+  const method = document.getElementById("paymentMethod")?.value || "gcash";
+  const referenceInput = document.getElementById("paymentReference");
+  const helpText = document.getElementById("paymentReferenceHelp");
+
+  if (referenceInput) {
+    referenceInput.placeholder =
+      method === "gcash"
+        ? "GCash: 1234-5678-9012-3"
+        : "Maya: 1234-5678-9012";
+
+    referenceInput.setAttribute("maxlength", method === "gcash" ? "16" : "37");
+    referenceInput.value = formatReferenceNumberForDisplay(
+      referenceInput.value,
+      method
+    );
+  }
+
+  if (helpText) {
+    helpText.textContent =
+      method === "gcash"
+        ? "GCash reference number must be exactly 13 digits."
+        : "Maya / PayMaya reference number must be numbers only, 6 to 30 digits.";
+  }
+}
+
 // ============================================================
 // SECTION 10: Proof preview and validation
 // ============================================================
@@ -499,9 +602,8 @@ async function submitReservation(e) {
 
   const paymentMethod =
     document.getElementById("paymentMethod")?.value || "gcash";
-  const paymentReference = document
-    .getElementById("paymentReference")
-    ?.value.trim();
+  const paymentReferenceInput = document.getElementById("paymentReference");
+  const paymentReference = normalizeReferenceNumber(paymentReferenceInput?.value || "");
 
   const paymentReminderNote = document
     .getElementById("paymentReminderNote")
@@ -510,9 +612,14 @@ async function submitReservation(e) {
   const paymentProofInput = document.getElementById("paymentProof");
   const paymentProofFile = paymentProofInput?.files?.[0];
 
-  if (!paymentReference) {
-    showMessage("Please enter your payment reference number.", "error");
-    document.getElementById("paymentReference")?.focus();
+  const referenceValidation = validateReferenceNumberByMethod(
+    paymentReference,
+    paymentMethod
+  );
+
+  if (!referenceValidation.valid) {
+    showMessage(referenceValidation.message, "error");
+    paymentReferenceInput?.focus();
     return false;
   }
 

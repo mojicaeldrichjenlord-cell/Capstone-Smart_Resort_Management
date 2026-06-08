@@ -15,6 +15,8 @@ const {
   updatePaymentStatus,
   checkInBooking,
   addAccommodationToReservation,
+  extendReservationItem,
+  checkItemAvailability,
   requestBookingModification,
 } = require("../controllers/bookingController");
 
@@ -68,6 +70,7 @@ router.post("/", upload.single("proof_image"), createBooking);
 router.post("/walk-in", upload.single("proof_image"), createWalkInBooking);
 
 router.get("/", getAllBookings);
+router.post("/check-item-availability", checkItemAvailability);
 router.get("/user/:userId", getUserBookings);
 router.get("/:id/receipt", getBookingReceipt);
 
@@ -76,6 +79,7 @@ router.put("/:id/status", updateBookingStatus);
 router.put("/:id/payment-status", updatePaymentStatus);
 router.put("/:id/check-in", checkInBooking);
 router.post("/:id/add-accommodation", addAccommodationToReservation);
+router.post("/:id/extend-stay", extendReservationItem);
 
 router.post("/:id/modification-request", requestBookingModification);
 

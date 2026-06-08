@@ -157,15 +157,17 @@ function enforcePaymentOptionsByReservationType() {
     return;
   }
 
+  const selectedPaymentMethod = paymentMethod.value;
+
   paymentMethod.disabled = false;
   paymentMethod.innerHTML = `
     <option value="gcash">GCash</option>
     <option value="paymaya">PayMaya</option>
   `;
 
-  if (!["gcash", "paymaya"].includes(paymentMethod.value)) {
-    paymentMethod.value = "gcash";
-  }
+  paymentMethod.value = ["gcash", "paymaya"].includes(selectedPaymentMethod)
+    ? selectedPaymentMethod
+    : "gcash";
 
   paymentType.disabled = false;
   paymentType.title = "";
@@ -200,6 +202,59 @@ async function loadAccommodations() {
   }
 }
 
+
+// ============================================================
+// SECTION: Payment reference number helpers
+// Rules:
+// - GCash: exactly 13 digits
+// - Maya / PayMaya: 6 to 30 digits
+// - Dashes are display only; backend receives digits only.
+// ============================================================
+
+function normalizeReferenceNumber(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function getReferenceMaxDigits(method) {
+  const cleanMethod = String(method || "").toLowerCase();
+  return cleanMethod === "gcash" ? 13 : 30;
+}
+
+function formatReferenceNumberForDisplay(value, method) {
+  const maxDigits = getReferenceMaxDigits(method);
+  const digits = normalizeReferenceNumber(value).slice(0, maxDigits);
+  const groups = digits.match(/.{1,4}/g) || [];
+
+  return groups.join("-");
+}
+
+function validateReferenceNumberByMethod(referenceNumber, method) {
+  const cleanMethod = String(method || "").toLowerCase();
+  const digits = normalizeReferenceNumber(referenceNumber);
+
+  if (cleanMethod === "gcash") {
+    return {
+      valid: /^\d{13}$/.test(digits),
+      message: "GCash reference number must be exactly 13 digits.",
+      digits,
+    };
+  }
+
+  if (cleanMethod === "paymaya") {
+    return {
+      valid: /^\d{6,30}$/.test(digits),
+      message: "Maya / PayMaya reference number must be numbers only, 6 to 30 digits.",
+      digits,
+    };
+  }
+
+  return {
+    valid: true,
+    message: "",
+    digits,
+  };
+}
+
 // ============================================================
 // SECTION 6: Setup payment form
 // Connects method/type changes, proof preview, and form submit.
@@ -210,6 +265,7 @@ function setupPaymentForm() {
   const paymentMethod = document.getElementById("paymentMethod");
   const paymentType = document.getElementById("paymentType");
   const proofImage = document.getElementById("proofImage");
+  const proofReference = document.getElementById("proofReference");
 
   enforcePaymentOptionsByReservationType();
 
@@ -217,6 +273,31 @@ function setupPaymentForm() {
     paymentMethod.addEventListener("change", () => {
       updatePaymentRequirementUI();
       updatePaymentBreakdown();
+
+      if (proofReference) {
+        proofReference.value = formatReferenceNumberForDisplay(
+          proofReference.value,
+          paymentMethod.value
+        );
+      }
+    });
+  }
+
+  if (proofReference) {
+    proofReference.addEventListener("input", () => {
+      proofReference.value = formatReferenceNumberForDisplay(
+        proofReference.value,
+        paymentMethod?.value || "gcash"
+      );
+    });
+
+    proofReference.addEventListener("paste", () => {
+      setTimeout(() => {
+        proofReference.value = formatReferenceNumberForDisplay(
+          proofReference.value,
+          paymentMethod?.value || "gcash"
+        );
+      }, 0);
     });
   }
 
@@ -228,8 +309,21 @@ function setupPaymentForm() {
     proofImage.addEventListener("change", previewProofImage);
   }
 
+  const submitBtn = document.getElementById("submitPaymentBtn");
+
   if (form) {
-    form.addEventListener("submit", submitManualReservation);
+    form.setAttribute("novalidate", "novalidate");
+    form.onsubmit = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation?.();
+      return false;
+    };
+  }
+
+  if (submitBtn) {
+    submitBtn.type = "button";
+    submitBtn.onclick = submitManualReservation;
   }
 }
 
@@ -293,19 +387,11 @@ function renderReservationItem(item, index) {
     (slotItem) => slotItem.value === item.slot_type
   );
 
-  const stayDuration = getStayDuration(item);
   const checkOutDate = calculateCheckOutDate(
     item.check_in_date,
     slot?.start,
-    slot?.end,
-    stayDuration
+    slot?.end
   );
-  const totalPrice = Number(slot?.price || 0) * stayDuration;
-  const durationLabel = item.slot_type === "extended"
-    ? `${stayDuration} ${stayDuration === 1 ? "day" : "days"}`
-    : item.slot_type === "overnight"
-      ? "1 night only"
-      : "1 day only";
 
   return `
     <div class="summary-item">
@@ -327,11 +413,8 @@ function renderReservationItem(item, index) {
       <strong>Check-out:</strong>
       ${formatDateDisplay(checkOutDate)}<br />
 
-      <strong>Stay Duration:</strong>
-      ${escapeHtml(durationLabel)}<br />
-
       <strong>Price:</strong>
-      ₱${formatMoney(slot?.price || 0)}${item.slot_type === "extended" ? ` × ${stayDuration} = ₱${formatMoney(totalPrice)}` : ""}
+      ₱${formatMoney(slot?.price || 0)}
     </div>
   `;
 }
@@ -352,11 +435,13 @@ function updatePaymentRequirementUI() {
   const referenceRequiredText = document.getElementById("referenceRequiredText");
   const proofRequiredText = document.getElementById("proofRequiredText");
   const proofReference = document.getElementById("proofReference");
+  const referenceHelpText = document.getElementById("referenceHelpText");
   const proofImage = document.getElementById("proofImage");
   const proofPreview = document.getElementById("proofPreview");
   const paymentRuleNote = document.getElementById("paymentRuleNote");
 
   const isWalkIn = isWalkInManualReservation();
+  const isCash = method === "cash";
   const requiresProof = !isWalkIn && isProofRequired(method);
 
   if (paymentType && isWalkIn) {
@@ -367,36 +452,48 @@ function updatePaymentRequirementUI() {
 
   if (proofReference) {
     proofReference.required = requiresProof;
-    proofReference.disabled = isWalkIn;
+    proofReference.disabled = isCash || isWalkIn;
 
-    if (isWalkIn) {
+    if (isCash || isWalkIn) {
       proofReference.value = "";
-      proofReference.placeholder = "Not required for walk-in cash payment";
+      proofReference.placeholder = "Not required for cash payment";
+      proofReference.removeAttribute("maxlength");
     } else {
-      proofReference.placeholder = "Example: 123456789012";
+      proofReference.placeholder =
+        method === "gcash"
+          ? "GCash: 1234-5678-9012-3"
+          : "Maya: 1234-5678-9012";
+      proofReference.setAttribute(
+        "maxlength",
+        method === "gcash" ? "16" : "37"
+      );
+      proofReference.value = formatReferenceNumberForDisplay(
+        proofReference.value,
+        method
+      );
     }
   }
 
   if (proofImage) {
     proofImage.required = requiresProof;
-    proofImage.disabled = isWalkIn;
+    proofImage.disabled = isCash || isWalkIn;
 
-    if (isWalkIn) {
+    if (isCash || isWalkIn) {
       proofImage.value = "";
     }
   }
 
-  if (proofPreview && isWalkIn) {
+  if (proofPreview && (isCash || isWalkIn)) {
     proofPreview.style.display = "none";
     proofPreview.src = "";
   }
 
   if (referenceGroup) {
-    referenceGroup.style.display = isWalkIn ? "none" : "flex";
+    referenceGroup.style.display = isCash || isWalkIn ? "none" : "flex";
   }
 
   if (proofGroup) {
-    proofGroup.style.display = isWalkIn ? "none" : "flex";
+    proofGroup.style.display = isCash || isWalkIn ? "none" : "flex";
   }
 
   if (referenceRequiredText) {
@@ -409,10 +506,21 @@ function updatePaymentRequirementUI() {
     proofRequiredText.style.color = requiresProof ? "#dc2626" : "#64748b";
   }
 
+  if (referenceHelpText) {
+    referenceHelpText.textContent =
+      isCash || isWalkIn
+        ? "Reference number is not required for cash payment."
+        : method === "gcash"
+          ? "GCash reference number must be exactly 13 digits."
+          : "Maya / PayMaya reference number must be numbers only, 6 to 30 digits.";
+  }
+
   if (methodHelp) {
     methodHelp.textContent = isWalkIn
       ? "Walk-in reservations use Cash only and are automatically recorded as full payment."
-      : "Facebook/Messenger reservations use GCash or PayMaya and require reference number plus proof screenshot.";
+      : isCash
+        ? "Cash payments do not require uploaded proof."
+        : "Facebook/Messenger reservations use GCash or PayMaya and require reference number plus proof screenshot.";
   }
 
   if (paymentRuleNote) {
@@ -423,12 +531,18 @@ function updatePaymentRequirementUI() {
         full payment only, and the reservation will be automatically checked in
         after submission.
       `
-      : `
-        <strong>Facebook/Messenger Rule:</strong><br />
-        Since this is a Facebook/Messenger reservation, only GCash or PayMaya is
-        allowed. The admin must enter the transaction reference number and upload
-        the proof screenshot before submitting.
-      `;
+      : isCash
+        ? `
+          <strong>Cash Rule:</strong><br />
+          Cash payments can be submitted without transaction reference number
+          and without proof screenshot.
+        `
+        : `
+          <strong>Facebook/Messenger Rule:</strong><br />
+          Since this is a Facebook/Messenger reservation, only GCash or PayMaya is
+          allowed. The admin must enter the transaction reference number and upload
+          the proof screenshot before submitting.
+        `;
   }
 
   updatePaymentBreakdown();
@@ -476,7 +590,11 @@ function updatePaymentBreakdown() {
 // ============================================================
 
 async function submitManualReservation(e) {
-  e.preventDefault();
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation?.();
+  }
 
   if (isSubmittingManualReservation) {
     return;
@@ -491,7 +609,8 @@ async function submitManualReservation(e) {
   const paymentTypeSelect = document.getElementById("paymentType");
   const isWalkIn = isWalkInManualReservation();
   const paymentType = isWalkIn ? "full" : paymentTypeSelect.value;
-  const proofReference = document.getElementById("proofReference").value.trim();
+  const proofReferenceInput = document.getElementById("proofReference");
+  const proofReference = normalizeReferenceNumber(proofReferenceInput?.value || "");
   const proofImage = document.getElementById("proofImage").files[0] || null;
   const paymentNote = document.getElementById("paymentNote").value.trim();
   const requiresProof = !isWalkIn && isProofRequired(paymentMethod);
@@ -506,12 +625,17 @@ async function submitManualReservation(e) {
     return;
   }
 
-  if (requiresProof && !proofReference) {
-    showMessage(
-      "Reference number is required for PayMaya, or GCash.",
-      "error"
+  if (requiresProof) {
+    const referenceValidation = validateReferenceNumberByMethod(
+      proofReference,
+      paymentMethod
     );
-    return;
+
+    if (!referenceValidation.valid) {
+      showMessage(referenceValidation.message, "error");
+      proofReferenceInput?.focus();
+      return;
+    }
   }
 
   if (requiresProof && !proofImage) {
@@ -522,21 +646,17 @@ async function submitManualReservation(e) {
     return;
   }
 
+  const proofImageData = proofImage ? await fileToBase64(proofImage) : null;
+
   const payload = {
     ...walkInDraft,
     reservation_type: getManualReservationType(),
     payment_method: paymentMethod,
     payment_type: paymentType,
     proof_reference: proofReference || null,
+    proof_image_data: proofImageData,
     note: combineNotes(walkInDraft.note, paymentNote),
   };
-
-  const formData = new FormData();
-  formData.append("payload", JSON.stringify(payload));
-
-  if (proofImage) {
-    formData.append("proof_image", proofImage);
-  }
 
   const submitBtn = document.getElementById("submitPaymentBtn");
   const originalText = submitBtn
@@ -555,10 +675,22 @@ async function submitManualReservation(e) {
 
     const response = await fetch(`${API_BASE}/bookings/walk-in`, {
       method: "POST",
-      body: formData,
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(payload),
     });
 
-    const data = await response.json();
+    const responseText = await response.text();
+    let data = {};
+
+    try {
+      data = responseText ? JSON.parse(responseText) : {};
+    } catch (jsonError) {
+      console.warn("Manual reservation response was not JSON:", responseText);
+      data = {};
+    }
 
     if (!response.ok) {
       throw new Error(data.message || "Failed to create manual reservation.");
@@ -568,19 +700,17 @@ async function submitManualReservation(e) {
     sessionStorage.setItem(ADMIN_WALKIN_SUCCESS_RESET_KEY, "1");
 
     showMessage(
-      data.message || "Manual reservation created successfully.",
+      data.message || "Manual reservation created successfully. Redirecting to dashboard...",
       "success"
     );
 
-    showManualReservationSuccessModal({
-      bookingId: data.bookingId,
-      reservationCode: data.reservationCode,
-      paymentMethod,
-      paymentType,
-      paidAmount: computedTotals.paidAmount,
-      remainingBalance: computedTotals.remainingBalance,
-      reservationType: getManualReservationType(),
-    });
+    if (typeof showToast === "function") {
+      showToast("Manual reservation created successfully. Redirecting to dashboard...", "success");
+    }
+
+    const dashboardUrl = new URL("admin.html", window.location.href).href;
+    window.location.assign(dashboardUrl);
+    return;
   } catch (error) {
     console.error("submitManualReservation error:", error);
     isSubmittingManualReservation = false;
@@ -1064,14 +1194,26 @@ function previewProofImage() {
   preview.style.display = "block";
 }
 
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    if (!file) {
+      resolve(null);
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("Failed to read proof image."));
+    reader.readAsDataURL(file);
+  });
+}
+
 // ============================================================
 // SECTION 14: Compute totals
 // Computes accommodation total, downpayment, entrance fee.
 // ============================================================
-
-function getStayDuration(item) {
-  return Math.max(1, Math.min(5, Number(item?.stay_duration || 1)));
-}
 
 function computeTotals() {
   const items = Array.isArray(walkInDraft?.items) ? walkInDraft.items : [];
@@ -1091,7 +1233,7 @@ function computeTotals() {
 
     if (!slot) return;
 
-    accommodationTotal += Number(slot.price || 0) * getStayDuration(item);
+    accommodationTotal += Number(slot.price || 0);
 
     if (item.slot_type === "overnight" || item.slot_type === "extended") {
       hasOvernightStyle = true;
@@ -1188,7 +1330,7 @@ function getSlotOptions(accommodation) {
 // Handles overnight/extended schedules crossing midnight.
 // ============================================================
 
-function calculateCheckOutDate(checkInDate, startTime, endTime, stayDuration = 1) {
+function calculateCheckOutDate(checkInDate, startTime, endTime) {
   if (!checkInDate || !startTime || !endTime) {
     return checkInDate || "-";
   }
@@ -1202,12 +1344,10 @@ function calculateCheckOutDate(checkInDate, startTime, endTime, stayDuration = 1
 
   const startMinutes = Number(startParts[0]) * 60 + Number(startParts[1]);
   const endMinutes = Number(endParts[0]) * 60 + Number(endParts[1]);
-  const cleanDuration = Math.max(1, Math.min(5, Number(stayDuration || 1)));
-  const daysToAdd = cleanDuration > 1 ? cleanDuration : endMinutes <= startMinutes ? 1 : 0;
 
-  if (daysToAdd > 0) {
-    const date = new Date(`${checkInDate}T00:00:00`);
-    date.setDate(date.getDate() + daysToAdd);
+  if (endMinutes <= startMinutes) {
+    const date = new Date(checkInDate);
+    date.setDate(date.getDate() + 1);
     return date.toISOString().split("T")[0];
   }
 

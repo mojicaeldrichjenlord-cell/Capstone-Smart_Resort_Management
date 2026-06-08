@@ -73,8 +73,6 @@ function getPhilippineDateKey(value) {
   return `${year}-${month}-${day}`;
 }
 
-
-
 document.addEventListener("DOMContentLoaded", () => {
   checkAdminAccess();
   setupEvents();
@@ -268,7 +266,6 @@ function updateSummaryCards(bookings) {
   setText("todayRevenue", `₱${formatMoney(todayRevenue)}`);
 }
 
-
 function isBookingCheckedIn(booking) {
   return (
     Number(booking.is_checked_in || 0) === 1 ||
@@ -280,7 +277,6 @@ function setText(id, value) {
   const el = document.getElementById(id);
   if (el) el.textContent = value;
 }
-
 
 function getReservationDateKey(value) {
   if (!value) return "";
@@ -298,7 +294,6 @@ function getCheckInDateState(booking) {
   if (checkInDate > today) return "future";
   return "past";
 }
-
 
 // ============================================================
 // SECTION 6: Filters
@@ -464,8 +459,7 @@ function renderReservationCard(booking) {
             <div>Total: <strong>₱${formatMoney(booking.accommodation_total)}</strong></div>
             <div>Downpayment: <strong>₱${formatMoney(booking.required_downpayment)}</strong></div>
             <div>Paid: <strong>₱${formatMoney(booking.paid_amount)}</strong></div>
-            <div>Remaining: <strong>₱${formatMoney(booking.remaining_balance)}</strong></div>
-            <div>Entrance Fee: <strong>₱${formatMoney(booking.estimated_entrance_fee)}</strong></div>
+<div>Remaining: <strong class="remaining-highlight">₱${formatMoney(booking.remaining_balance)}</strong></div>            <div>Entrance Fee: <strong>₱${formatMoney(booking.estimated_entrance_fee)}</strong></div>
             <div>Entrance Paid: <strong>${isEntranceFeePaid(booking) ? "Yes" : "No"}</strong></div>
             <div>Method: ${formatPaymentMethod(paymentMethod)}</div>
           </section>
@@ -505,7 +499,7 @@ function renderReservationCard(booking) {
 
         ${renderCheckInButton(booking, bookingId, bookingStatus)}
 
-        ${renderCancelButton(bookingId, bookingStatus)}
+        ${renderCancelButton(booking, bookingId, bookingStatus)}
       </div>
     </article>
   `;
@@ -572,7 +566,9 @@ function renderVerifyPaymentButton(
   bookingStatus,
   paymentStatus,
 ) {
-  const bookingSource = String(booking.booking_source || "online").toLowerCase();
+  const bookingSource = String(
+    booking.booking_source || "online",
+  ).toLowerCase();
   const proofSource = getProofSource(booking);
   const paymentReference = getPaymentReference(booking);
 
@@ -707,8 +703,12 @@ function renderCheckInButton(booking, bookingId, bookingStatus) {
   `;
 }
 
-function renderCancelButton(bookingId, bookingStatus) {
+function renderCancelButton(booking, bookingId, bookingStatus) {
+  // Once the guest is already checked in / inside the resort,
+  // cancellation is no longer the correct action.
+  // Staff should use Guests Inside → Check Out instead.
   if (
+    isBookingCheckedIn(booking) ||
     bookingStatus === "cancelled" ||
     bookingStatus === "completed" ||
     bookingStatus === "rejected"
@@ -1252,7 +1252,10 @@ function formatStayDuration(booking) {
     return `${duration} ${duration === 1 ? "day" : "days"}`;
   }
 
-  if (slotLabel.includes("overnight")) return "1 night only";
+  if (slotLabel.includes("overnight")) {
+    return `${duration} ${duration === 1 ? "night" : "nights"}`;
+  }
+
   return "1 day only";
 }
 

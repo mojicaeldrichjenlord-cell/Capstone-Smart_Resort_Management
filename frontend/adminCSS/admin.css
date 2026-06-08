@@ -576,6 +576,67 @@
   filter: none;
 }
 
+
+/* PAYMENT REMAINING HIGHLIGHT */
+.payment-info-box {
+  position: relative;
+}
+
+.remaining-balance-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 7px 0;
+  padding: 9px 10px;
+  border-radius: 12px;
+  font-weight: 900;
+}
+
+.remaining-balance-line span {
+  color: #334155;
+}
+
+.remaining-balance-line strong {
+  font-size: 1rem;
+}
+
+.remaining-balance-line small {
+  width: 100%;
+  font-size: 0.76rem;
+  font-weight: 900;
+}
+
+.remaining-balance-alert {
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  color: #c2410c;
+}
+
+.remaining-balance-alert strong,
+.remaining-balance-alert small {
+  color: #c2410c;
+}
+
+.remaining-balance-clear {
+  background: #dcfce7;
+  border: 1px solid #bbf7d0;
+  color: #166534;
+}
+
+.remaining-balance-clear strong,
+.remaining-balance-clear small {
+  color: #166534;
+}
+
+.remaining-highlight {
+  background-color: #fff3cd;
+  color: #8a5a00;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
 /* RESPONSIVE */
 @media (max-width: 1200px) {
   .admin-table-wrap {

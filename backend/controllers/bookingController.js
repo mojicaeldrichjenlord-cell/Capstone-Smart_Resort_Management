@@ -1,6 +1,16 @@
+// ============================================================
+// COMMENTED VERSION
+// This copy keeps the same logic and adds block comments so groupmates can follow the code easier.
+// ============================================================
+
 const db = require("../config/db");
 const fs = require("fs");
 
+
+// ============================================================
+// BLOCK: Normalize text
+// Purpose: Handles the normalize text part of this file.
+// ============================================================
 function normalizeText(value) {
   return String(value || "").trim();
 }
@@ -10,10 +20,67 @@ function normalizeNullableText(value) {
   return text ? text : null;
 }
 
+
+// ============================================================
+// BLOCK: To number
+// Purpose: Handles the to number part of this file.
+// ============================================================
 function toNumber(value, fallback = 0) {
   const num = Number(value);
   return Number.isFinite(num) ? num : fallback;
 }
+
+
+// ============================================================
+// BLOCK: Normalize contact number
+// Purpose: Handles the normalize contact number part of this file.
+// ============================================================
+
+function formatLocalDateOnly(date) {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+
+
+function normalizeReferenceNumber(value) {
+  return String(value || "").replace(/\D/g, "");
+}
+
+function validateReferenceNumberByMethod(referenceNumber, paymentMethod) {
+  const cleanMethod = String(paymentMethod || "").toLowerCase();
+  const digits = normalizeReferenceNumber(referenceNumber);
+
+  if (cleanMethod === "gcash") {
+    return {
+      valid: /^\d{13}$/.test(digits),
+      message: "GCash reference number must be exactly 13 digits.",
+      digits,
+    };
+  }
+
+  if (cleanMethod === "paymaya") {
+    return {
+      valid: /^\d{6,30}$/.test(digits),
+      message: "Maya / PayMaya reference number must be numbers only, 6 to 30 digits.",
+      digits,
+    };
+  }
+
+  return {
+    valid: true,
+    message: "",
+    digits,
+  };
+}
+
 
 function normalizeContactNumber(value) {
   return String(value || "").replace(/\D/g, "").trim();
@@ -23,6 +90,11 @@ function isValidPhilippineMobileNumber(value) {
   return /^09\d{9}$/.test(String(value || "").trim());
 }
 
+
+// ============================================================
+// BLOCK: Get month abbrev
+// Purpose: Handles the get month abbrev part of this file.
+// ============================================================
 function getMonthAbbrev(date = new Date()) {
   return date.toLocaleString("en-US", { month: "short" }).toUpperCase();
 }
@@ -45,16 +117,20 @@ function parseRequestReservationBody(req) {
     ? `/uploads/payment-proofs/${req.file.filename}`
     : null;
 
-  let proofImageData = normalizeNullableText(parsedBody.proof_image_data);
+  /*
+    Uploaded proof screenshots are already saved by multer inside:
+    backend/uploads/payment-proofs
 
-  if (req.file && req.file.path) {
-    const fileBuffer = fs.readFileSync(req.file.path);
-    const mimeType = req.file.mimetype || "image/jpeg";
-    proofImageData = `data:${mimeType};base64,${fileBuffer.toString("base64")}`;
-  }
+    Important:
+    Do not convert uploaded proof files to Base64 here.
+    Large screenshots can make the /walk-in request stay pending before the
+    frontend receives the success response. The database will store the file
+    path in proof_of_payment instead, which is enough for View Proof.
+  */
+  const proofImageData = normalizeNullableText(parsedBody.proof_image_data);
 
   const proofReference = normalizeNullableText(
-    parsedBody.proof_reference || parsedBody.proof_of_payment,
+    normalizeReferenceNumber(parsedBody.proof_reference || parsedBody.proof_of_payment),
   );
 
   return {
@@ -65,6 +141,11 @@ function parseRequestReservationBody(req) {
   };
 }
 
+
+// ============================================================
+// BLOCK: Generate reservation code
+// Purpose: Handles the generate reservation code part of this file.
+// ============================================================
 async function generateReservationCode(connection) {
   const now = new Date(
     new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" }),
@@ -121,6 +202,11 @@ async function generateReservationCode(connection) {
   return reservationCode;
 }
 
+
+// ============================================================
+// BLOCK: Get entrance rate
+// Purpose: Handles the get entrance rate part of this file.
+// ============================================================
 function getEntranceRate(entranceType, hasOvernight) {
   const type = String(entranceType || "pool_beach").toLowerCase();
 
@@ -131,6 +217,11 @@ function getEntranceRate(entranceType, hasOvernight) {
   return hasOvernight ? 300 : 250;
 }
 
+
+// ============================================================
+// BLOCK: Get total free entrance pax from items
+// Purpose: Handles the get total free entrance pax from items part of this file.
+// ============================================================
 function getTotalFreeEntrancePaxFromItems(items, accommodationMap, guestCount) {
   let totalFreePax = 0;
 
@@ -146,6 +237,11 @@ function getTotalFreeEntrancePaxFromItems(items, accommodationMap, guestCount) {
   return Math.min(totalFreePax, Number(guestCount || 0));
 }
 
+
+// ============================================================
+// BLOCK: Build slot config
+// Purpose: Handles the build slot config part of this file.
+// ============================================================
 function buildSlotConfig(accommodation, slotType) {
   const categoryName = String(accommodation.category_name || "").toLowerCase();
   const isRoom = categoryName === "room";
@@ -182,7 +278,12 @@ function buildSlotConfig(accommodation, slotType) {
   };
 }
 
-function buildCheckOutDate(checkInDate, startTime, endTime) {
+
+// ============================================================
+// BLOCK: Build check out date
+// Purpose: Handles the build check out date part of this file.
+// ============================================================
+function buildCheckOutDate(checkInDate, startTime, endTime, stayDuration = 1) {
   const start = String(startTime || "");
   const end = String(endTime || "");
 
@@ -200,15 +301,217 @@ function buildCheckOutDate(checkInDate, startTime, endTime) {
     return checkInDate;
   }
 
-  if (endMinutes <= startMinutes) {
-    const date = new Date(checkInDate);
-    date.setDate(date.getDate() + 1);
-    return date.toISOString().split("T")[0];
+  const cleanDuration = Math.max(
+    1,
+    Math.min(5, Math.floor(Number(stayDuration || 1))),
+  );
+
+  /*
+    Final defense rule:
+    - Day Tour is forced to duration 1 before this function is called.
+    - Overnight can use 1 to 5 nights.
+    - Extended / 22 Hours / 23 Hours can use 1 to 5 days.
+    - If the schedule ends earlier than it starts, it crosses midnight.
+  */
+  const daysToAdd =
+    cleanDuration > 1 ? cleanDuration : endMinutes <= startMinutes ? 1 : 0;
+
+  if (daysToAdd > 0) {
+    const date = new Date(`${checkInDate}T00:00:00`);
+    date.setDate(date.getDate() + daysToAdd);
+    return formatLocalDateOnly(date);
   }
 
   return checkInDate;
 }
 
+
+
+function toDateOnlyString(value) {
+  if (!value) return "";
+
+  if (value instanceof Date) {
+    return value.toISOString().slice(0, 10);
+  }
+
+  return String(value).slice(0, 10);
+}
+
+function addDaysToDateOnly(dateValue, daysToAdd = 0) {
+  const cleanDate = toDateOnlyString(dateValue);
+
+  if (!cleanDate) return "";
+
+  const date = new Date(`${cleanDate}T00:00:00`);
+
+  if (Number.isNaN(date.getTime())) return cleanDate;
+
+  date.setDate(date.getDate() + Number(daysToAdd || 0));
+  return formatLocalDateOnly(date);
+}
+
+function getDurationUnitLabel(slotType, amount = 1) {
+  const cleanSlotType = String(slotType || "").toLowerCase();
+  const isPlural = Number(amount || 0) !== 1;
+
+  if (cleanSlotType === "overnight") {
+    return isPlural ? "nights" : "night";
+  }
+
+  return isPlural ? "days" : "day";
+}
+
+function normalizeExtensionType(value) {
+  const cleanType = normalizeText(value || "full_day").toLowerCase();
+
+  if (cleanType === "overnight_half" || cleanType === "day_half") {
+    return cleanType;
+  }
+
+  return "full_day";
+}
+
+function buildExtensionWindowFromItem(item, extensionDuration = 1, extensionType = "full_day") {
+  const oldCheckOutDate = toDateOnlyString(item.check_out_date);
+  const oldCheckOutTime = String(item.check_out_time || "00:00:00");
+  const cleanExtensionType = normalizeExtensionType(extensionType);
+  const cleanDuration = Math.max(
+    1,
+    Math.min(5, Math.floor(toNumber(extensionDuration, 1))),
+  );
+
+  if (!oldCheckOutDate) {
+    return null;
+  }
+
+  if (cleanExtensionType === "overnight_half") {
+    return {
+      accommodation_id: item.accommodation_id,
+      check_in_date: oldCheckOutDate,
+      check_in_time: oldCheckOutTime,
+      check_out_date: addDaysToDateOnly(oldCheckOutDate, 1),
+      check_out_time: "05:00:00",
+      extension_type: cleanExtensionType,
+      extension_duration: 1,
+    };
+  }
+
+  if (cleanExtensionType === "day_half") {
+    return {
+      accommodation_id: item.accommodation_id,
+      check_in_date: oldCheckOutDate,
+      check_in_time: oldCheckOutTime,
+      check_out_date: oldCheckOutDate,
+      check_out_time: "17:00:00",
+      extension_type: cleanExtensionType,
+      extension_duration: 1,
+    };
+  }
+
+  return {
+    accommodation_id: item.accommodation_id,
+    check_in_date: oldCheckOutDate,
+    check_in_time: oldCheckOutTime,
+    check_out_date: addDaysToDateOnly(oldCheckOutDate, cleanDuration),
+    check_out_time: oldCheckOutTime,
+    extension_type: cleanExtensionType,
+    extension_duration: cleanDuration,
+  };
+}
+
+function getExtensionFeeFromItem(item, extensionDuration = 1, extensionType = "full_day") {
+  const cleanExtensionType = normalizeExtensionType(extensionType);
+
+  if (cleanExtensionType === "overnight_half") {
+    return Number(item.overnight_price || 0);
+  }
+
+  if (cleanExtensionType === "day_half") {
+    return Number(item.day_price || 0);
+  }
+
+  const fallbackUnitPrice =
+    Number(item.item_price || 0) / Math.max(1, Number(item.stay_duration || 1));
+
+  const slotConfig = buildSlotConfig(item, String(item.slot_type || "day_tour"));
+  const unitPrice = Number(slotConfig.price || 0) || fallbackUnitPrice || 0;
+
+  return unitPrice * Math.max(
+    1,
+    Math.min(5, Math.floor(toNumber(extensionDuration, 1))),
+  );
+}
+
+function getExtensionUnitText(extensionType, amount = 1) {
+  const cleanExtensionType = normalizeExtensionType(extensionType);
+
+  if (cleanExtensionType === "overnight_half") {
+    return "half-day / overnight";
+  }
+
+  if (cleanExtensionType === "day_half") {
+    return "half-day / day extension";
+  }
+
+  return getDurationUnitLabel("extended", amount);
+}
+
+
+// ============================================================
+// BLOCK: Philippine "now" helper for schedule validation
+// Purpose: Blocks add-on bookings whose selected start date/time is already in the past.
+// ============================================================
+function getPhilippineNow() {
+  return new Date(
+    new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" }),
+  );
+}
+
+function buildLocalDateTime(dateValue, timeValue) {
+  const cleanDate = normalizeText(dateValue);
+  const cleanTime = normalizeText(timeValue || "00:00:00");
+
+  if (!cleanDate || !cleanTime) return null;
+
+  const dateTime = new Date(`${cleanDate}T${cleanTime}`);
+
+  return Number.isNaN(dateTime.getTime()) ? null : dateTime;
+}
+
+function isScheduleStartInPast(dateValue, timeValue) {
+  const startDateTime = buildLocalDateTime(dateValue, timeValue);
+
+  if (!startDateTime) return true;
+
+  return startDateTime < getPhilippineNow();
+}
+
+function isScheduleWindowAlreadyEnded(item) {
+  if (!item) return true;
+
+  const endDateTime = buildLocalDateTime(item.check_out_date, item.check_out_time);
+
+  if (!endDateTime) return true;
+
+  /*
+    Important business rule:
+    - Do not block only because the start time already passed.
+    - Staff may still allow late entry while the schedule window is still active.
+    - Block only when the whole selected time frame has already ended.
+  */
+  return endDateTime <= getPhilippineNow();
+}
+
+function getScheduleEndedMessage(accommodationName = "Selected accommodation") {
+  return `${accommodationName} is no longer available for this time frame because the selected schedule has already ended. Please choose a schedule that has not ended yet.`;
+}
+
+
+
+// ============================================================
+// BLOCK: Check reservation conflicts
+// Purpose: Handles the check reservation conflicts part of this file.
+// ============================================================
 async function checkReservationConflicts(
   connection,
   reservationItems,
@@ -267,6 +570,11 @@ async function checkReservationConflicts(
   }
 }
 
+
+// ============================================================
+// BLOCK: Get accommodations map by ids
+// Purpose: Handles the get accommodations map by ids part of this file.
+// ============================================================
 async function getAccommodationsMapByIds(ids) {
   const uniqueIds = [...new Set(ids.map((id) => Number(id)).filter(Boolean))];
 
@@ -312,6 +620,11 @@ async function getAccommodationsMapByIds(ids) {
   return map;
 }
 
+
+// ============================================================
+// BLOCK: Get reservation items
+// Purpose: Handles the get reservation items part of this file.
+// ============================================================
 async function getReservationItems(reservationId) {
   const [rows] = await db.promise().query(
     `
@@ -326,6 +639,7 @@ async function getReservationItems(reservationId) {
       ri.check_out_date,
       ri.check_out_time,
       ri.item_price,
+      COALESCE(ri.stay_duration, 1) AS stay_duration,
       a.name AS accommodation_name,
       a.image,
       a.map_label,
@@ -344,6 +658,11 @@ async function getReservationItems(reservationId) {
   return rows;
 }
 
+
+// ============================================================
+// BLOCK: Create reservation
+// Purpose: Handles the create reservation part of this file.
+// ============================================================
 async function createReservation({
   source = "online",
   user_id = null,
@@ -377,7 +696,11 @@ async function createReservation({
   const cleanPaymentMethod = normalizeText(payment_method || "gcash");
   const cleanProof = normalizeNullableText(proof_of_payment);
   const cleanProofImageData = normalizeNullableText(proof_image_data);
-  const cleanProofReference = normalizeText(proof_reference);
+  const cleanProofReference = normalizeReferenceNumber(proof_reference);
+  const proofReferenceValidation = validateReferenceNumberByMethod(
+    cleanProofReference,
+    cleanPaymentMethod,
+  );
   const cleanPaymentType = normalizeText(payment_type || "downpayment");
   const totalGuests = toNumber(guest_count, 0);
   const isManualReservation = source === "manual";
@@ -430,6 +753,13 @@ async function createReservation({
       };
     }
 
+    if (!proofReferenceValidation.valid) {
+      throw {
+        status: 400,
+        message: proofReferenceValidation.message,
+      };
+    }
+
     if (!cleanProof && !cleanProofImageData) {
       throw {
         status: 400,
@@ -469,6 +799,13 @@ async function createReservation({
       };
     }
 
+    if (!proofReferenceValidation.valid) {
+      throw {
+        status: 400,
+        message: proofReferenceValidation.message,
+      };
+    }
+
     if (!cleanProof && !cleanProofImageData) {
       throw {
         status: 400,
@@ -489,6 +826,10 @@ async function createReservation({
     const accommodationId = Number(rawItem.accommodation_id);
     const slotType = normalizeText(rawItem.slot_type || "day_tour");
     const checkInDate = normalizeText(rawItem.check_in_date);
+    const requestedStayDuration = Math.max(
+      1,
+      Math.min(5, Math.floor(toNumber(rawItem.stay_duration, 1))),
+    );
 
     if (
       !accommodationId ||
@@ -520,13 +861,26 @@ async function createReservation({
 
     const slotConfig = buildSlotConfig(accommodation, slotType);
 
+    const stayDuration = ["overnight", "extended"].includes(slotType)
+      ? requestedStayDuration
+      : 1;
+
+    if (slotType === "day_tour" && requestedStayDuration > 1) {
+      throw {
+        status: 400,
+        message:
+          "Day Tour reservations are limited to 1 day only. Use Overnight for multi-night evening check-in or Extended / 22 Hours for multi-day stays.",
+      };
+    }
+
     const checkOutDate = buildCheckOutDate(
       checkInDate,
       slotConfig.start_time,
       slotConfig.end_time,
+      stayDuration,
     );
 
-    reservationItems.push({
+    const newReservationItem = {
       accommodation_id: accommodation.id,
       slot_type: slotType,
       slot_label: slotConfig.slot_label,
@@ -534,10 +888,20 @@ async function createReservation({
       check_in_time: slotConfig.start_time,
       check_out_date: checkOutDate,
       check_out_time: slotConfig.end_time,
-      item_price: slotConfig.price,
-    });
+      stay_duration: stayDuration,
+      item_price: slotConfig.price * stayDuration,
+    };
 
-    accommodationTotal += slotConfig.price;
+    if (isScheduleWindowAlreadyEnded(newReservationItem)) {
+      throw {
+        status: 400,
+        message: getScheduleEndedMessage(accommodation.name),
+      };
+    }
+
+    reservationItems.push(newReservationItem);
+
+    accommodationTotal += slotConfig.price * stayDuration;
 
     if (slotType === "overnight" || slotType === "extended") {
       hasOvernightStyle = true;
@@ -719,19 +1083,21 @@ async function createReservation({
           accommodation_id,
           slot_type,
           slot_label,
+          stay_duration,
           check_in_date,
           check_in_time,
           check_out_date,
           check_out_time,
           item_price
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `,
         [
           reservationId,
           item.accommodation_id,
           item.slot_type,
           item.slot_label,
+          item.stay_duration,
           item.check_in_date,
           item.check_in_time,
           item.check_out_date,
@@ -764,6 +1130,11 @@ async function createReservation({
   }
 }
 
+
+// ============================================================
+// BACKEND/API HANDLER: Create booking
+// Purpose: Handles the create booking part of this file.
+// ============================================================
 exports.createBooking = async (req, res) => {
   try {
     const parsedBody = parseRequestReservationBody(req);
@@ -800,6 +1171,11 @@ exports.createBooking = async (req, res) => {
   }
 };
 
+
+// ============================================================
+// BACKEND/API HANDLER: Create walk in booking
+// Purpose: Handles the create walk in booking part of this file.
+// ============================================================
 exports.createWalkInBooking = async (req, res) => {
   try {
     const parsedBody = parseRequestReservationBody(req);
@@ -829,6 +1205,11 @@ exports.createWalkInBooking = async (req, res) => {
   }
 };
 
+
+// ============================================================
+// BACKEND/API HANDLER: Get user bookings
+// Purpose: Handles the get user bookings part of this file.
+// ============================================================
 exports.getUserBookings = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -873,6 +1254,7 @@ exports.getUserBookings = async (req, res) => {
         first_item.check_out_date,
         first_item.check_out_time,
         first_item.item_price,
+        COALESCE(first_item.stay_duration, 1) AS stay_duration,
 
         a.name AS room_name,
         a.image,
@@ -931,6 +1313,11 @@ exports.getUserBookings = async (req, res) => {
   }
 };
 
+
+// ============================================================
+// BACKEND/API HANDLER: Cancel booking
+// Purpose: Handles the cancel booking part of this file.
+// ============================================================
 exports.cancelBooking = async (req, res) => {
   try {
     const { id } = req.params;
@@ -1009,6 +1396,11 @@ exports.cancelBooking = async (req, res) => {
   }
 };
 
+
+// ============================================================
+// BACKEND/API HANDLER: Get booking receipt
+// Purpose: Handles the get booking receipt part of this file.
+// ============================================================
 exports.getBookingReceipt = async (req, res) => {
   try {
     const { id } = req.params;
@@ -1053,6 +1445,7 @@ exports.getBookingReceipt = async (req, res) => {
         first_item.check_in_time,
         first_item.check_out_date,
         first_item.check_out_time,
+        COALESCE(first_item.stay_duration, 1) AS stay_duration,
 
         a.name AS room_name,
         a.image,
@@ -1137,6 +1530,11 @@ exports.getBookingReceipt = async (req, res) => {
   }
 };
 
+
+// ============================================================
+// BACKEND/API HANDLER: Get all bookings
+// Purpose: Handles the get all bookings part of this file.
+// ============================================================
 exports.getAllBookings = async (req, res) => {
   try {
     const scope = String(req.query.scope || "today").toLowerCase();
@@ -1158,9 +1556,25 @@ exports.getAllBookings = async (req, res) => {
           DATE(CONVERT_TZ(r.created_at, '+00:00', '+08:00')) BETWEEN ? AND ?
           OR DATE(CONVERT_TZ(r.checked_in_at, '+00:00', '+08:00')) BETWEEN ? AND ?
           OR DATE(CONVERT_TZ(r.extra_bed_paid_at, '+00:00', '+08:00')) BETWEEN ? AND ?
+          OR EXISTS (
+            SELECT 1
+            FROM reservation_items ri_active
+            WHERE ri_active.reservation_id = r.id
+              AND ri_active.check_in_date <= ?
+              AND ri_active.check_out_date >= ?
+          )
         )
       `;
-      dateParams.push(startDate, endDate, startDate, endDate, startDate, endDate);
+      dateParams.push(
+        startDate,
+        endDate,
+        startDate,
+        endDate,
+        startDate,
+        endDate,
+        endDate,
+        startDate,
+      );
     } else if (scope === "dashboard_today") {
       dateWhereClause = `
         WHERE (
@@ -1170,9 +1584,12 @@ exports.getAllBookings = async (req, res) => {
             DATE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))
           OR DATE(CONVERT_TZ(r.extra_bed_paid_at, '+00:00', '+08:00')) =
             DATE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))
-          OR (
-            first_item.check_in_date <= DATE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))
-            AND first_item.check_out_date >= DATE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))
+          OR EXISTS (
+            SELECT 1
+            FROM reservation_items ri_active
+            WHERE ri_active.reservation_id = r.id
+              AND ri_active.check_in_date <= DATE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))
+              AND ri_active.check_out_date >= DATE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))
           )
         )
       `;
@@ -1199,6 +1616,13 @@ exports.getAllBookings = async (req, res) => {
             DATE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))
           OR DATE(CONVERT_TZ(r.extra_bed_paid_at, '+00:00', '+08:00')) =
             DATE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))
+          OR EXISTS (
+            SELECT 1
+            FROM reservation_items ri_active
+            WHERE ri_active.reservation_id = r.id
+              AND ri_active.check_in_date <= DATE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))
+              AND ri_active.check_out_date >= DATE(CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+08:00'))
+          )
         )
       `;
     }
@@ -1243,6 +1667,7 @@ exports.getAllBookings = async (req, res) => {
         first_item.check_in_time,
         first_item.check_out_date,
         first_item.check_out_time,
+        COALESCE(first_item.stay_duration, 1) AS stay_duration,
 
         a.name AS room_name,
         a.image,
@@ -1289,7 +1714,61 @@ exports.getAllBookings = async (req, res) => {
       check_out_time: row.check_out_time,
       guests: row.guest_count,
       room_name: row.accommodation_list || row.room_name || "N/A",
+      items: [],
     }));
+
+    /*
+      Detailed reservation items for admin pages:
+      - Needed by Guests Inside so added accommodations show their own schedule.
+      - Example: main room has Overnight 2 nights, added shade has Day Tour 1 day.
+      - The table can now display each accommodation with check-in/out date and time.
+    */
+    const reservationIds = bookings.map((booking) => Number(booking.id)).filter(Boolean);
+
+    if (reservationIds.length) {
+      const placeholders = reservationIds.map(() => "?").join(",");
+
+      const [itemRows] = await db.promise().query(
+        `
+        SELECT
+          ri.id,
+          ri.reservation_id,
+          ri.accommodation_id,
+          ri.slot_type,
+          ri.slot_label,
+          COALESCE(ri.stay_duration, 1) AS stay_duration,
+          ri.check_in_date,
+          ri.check_in_time,
+          ri.check_out_date,
+          ri.check_out_time,
+          ri.item_price,
+          a.name AS accommodation_name,
+          c.name AS category_name
+        FROM reservation_items ri
+        INNER JOIN accommodations a ON ri.accommodation_id = a.id
+        INNER JOIN accommodation_categories c ON a.category_id = c.id
+        WHERE ri.reservation_id IN (${placeholders})
+        ORDER BY ri.reservation_id ASC, ri.id ASC
+        `,
+        reservationIds,
+      );
+
+      const itemsByReservationId = {};
+
+      itemRows.forEach((item) => {
+        const reservationId = Number(item.reservation_id);
+
+        if (!itemsByReservationId[reservationId]) {
+          itemsByReservationId[reservationId] = [];
+        }
+
+        itemsByReservationId[reservationId].push(item);
+      });
+
+      bookings.forEach((booking) => {
+        booking.items = itemsByReservationId[Number(booking.id)] || [];
+      });
+    }
 
     return res.status(200).json({
       scope,
@@ -1307,6 +1786,11 @@ exports.getAllBookings = async (req, res) => {
   }
 };
 
+
+// ============================================================
+// BACKEND/API HANDLER: Update booking status
+// Purpose: Handles the update booking status part of this file.
+// ============================================================
 exports.updateBookingStatus = async (req, res) => {
   try {
     const { id } = req.params;
@@ -1356,6 +1840,11 @@ exports.updateBookingStatus = async (req, res) => {
   }
 };
 
+
+// ============================================================
+// BACKEND/API HANDLER: Update payment status
+// Purpose: Handles the update payment status part of this file.
+// ============================================================
 exports.updatePaymentStatus = async (req, res) => {
   try {
     const { id } = req.params;
@@ -1473,6 +1962,11 @@ exports.updatePaymentStatus = async (req, res) => {
 };
 
 
+
+// ============================================================
+// BACKEND/API HANDLER: Check in booking
+// Purpose: Handles the check in booking part of this file.
+// ============================================================
 exports.checkInBooking = async (req, res) => {
   try {
     const { id } = req.params;
@@ -1573,6 +2067,225 @@ exports.checkInBooking = async (req, res) => {
 
 
 
+
+// ============================================================
+// BACKEND/API HANDLER: Check item availability
+// Purpose:
+// - Used by Guests Inside modals before saving Add Accommodation / Extend Stay.
+// - Add Accommodation checks the selected accommodation/date/slot/duration.
+// - Extend Stay checks the extension window from current checkout to new checkout.
+// ============================================================
+exports.checkItemAvailability = async (req, res) => {
+  try {
+    const mode = normalizeText(req.body.mode || "add").toLowerCase();
+    const reservationId = Number(req.body.reservation_id || req.body.booking_id || 0);
+
+    let availabilityItem = null;
+    let ignoreReservationId = null;
+    let accommodationName = "Selected accommodation";
+
+    if (mode === "extend") {
+      const reservationItemId = Number(
+        req.body.reservation_item_id || req.body.item_id || 0,
+      );
+      const extensionDuration = Math.max(
+        1,
+        Math.min(
+          5,
+          Math.floor(toNumber(req.body.extension_duration || req.body.stay_duration, 1)),
+        ),
+      );
+
+      if (!reservationId || !reservationItemId) {
+        return res.status(400).json({
+          available: false,
+          message: "Reservation and accommodation item are required.",
+        });
+      }
+
+      const [rows] = await db.promise().query(
+        `
+        SELECT
+          r.id AS reservation_id,
+          r.reservation_status,
+          r.is_checked_in,
+          ri.id AS reservation_item_id,
+          ri.accommodation_id,
+          ri.slot_type,
+          ri.slot_label,
+          ri.check_out_date,
+          ri.check_out_time,
+          a.name AS accommodation_name,
+          a.day_price,
+          a.overnight_price,
+          a.extended_price,
+          a.day_start_time,
+          a.day_end_time,
+          a.overnight_start_time,
+          a.overnight_end_time,
+          a.extended_start_time,
+          a.extended_end_time,
+          c.name AS category_name
+        FROM reservation_items ri
+        INNER JOIN reservations r ON ri.reservation_id = r.id
+        INNER JOIN accommodations a ON ri.accommodation_id = a.id
+        INNER JOIN accommodation_categories c ON a.category_id = c.id
+        WHERE r.id = ? AND ri.id = ?
+        LIMIT 1
+        `,
+        [reservationId, reservationItemId],
+      );
+
+      if (!rows.length) {
+        return res.status(404).json({
+          available: false,
+          message: "Selected accommodation item was not found.",
+        });
+      }
+
+      const item = rows[0];
+      const extensionType = normalizeExtensionType(req.body.extension_type);
+      const extensionWindow = buildExtensionWindowFromItem(
+        item,
+        extensionDuration,
+        extensionType,
+      );
+
+      if (!extensionWindow) {
+        return res.status(400).json({
+          available: false,
+          message: "This item has no valid checkout date to extend.",
+        });
+      }
+
+      availabilityItem = {
+        accommodation_id: extensionWindow.accommodation_id,
+        check_in_date: extensionWindow.check_in_date,
+        check_in_time: extensionWindow.check_in_time,
+        check_out_date: extensionWindow.check_out_date,
+        check_out_time: extensionWindow.check_out_time,
+      };
+
+      ignoreReservationId = reservationId;
+      accommodationName = item.accommodation_name || accommodationName;
+    } else {
+      const accommodationId = Number(req.body.accommodation_id || 0);
+      const slotType = normalizeText(req.body.slot_type || "day_tour");
+      const checkInDate = normalizeText(req.body.check_in_date);
+      const requestedStayDuration = Math.max(
+        1,
+        Math.min(5, Math.floor(toNumber(req.body.stay_duration, 1))),
+      );
+
+      if (
+        !accommodationId ||
+        !checkInDate ||
+        !["day_tour", "overnight", "extended"].includes(slotType)
+      ) {
+        return res.status(400).json({
+          available: false,
+          message: "Please select accommodation, slot, date, and duration.",
+        });
+      }
+
+      const stayDuration = ["overnight", "extended"].includes(slotType)
+        ? requestedStayDuration
+        : 1;
+
+      if (slotType === "day_tour" && requestedStayDuration > 1) {
+        return res.status(400).json({
+          available: false,
+          message: "Day Tour add-ons are limited to 1 day only.",
+        });
+      }
+
+      const accommodationMap = await getAccommodationsMapByIds([accommodationId]);
+      const accommodation = accommodationMap[accommodationId];
+
+      if (!accommodation) {
+        return res.status(404).json({
+          available: false,
+          message: "Selected accommodation was not found.",
+        });
+      }
+
+      if (String(accommodation.status || "").toLowerCase() !== "available") {
+        return res.status(400).json({
+          available: false,
+          message: `${accommodation.name} is currently unavailable.`,
+        });
+      }
+
+      const slotConfig = buildSlotConfig(accommodation, slotType);
+
+      const checkOutDate = buildCheckOutDate(
+        checkInDate,
+        slotConfig.start_time,
+        slotConfig.end_time,
+        stayDuration,
+      );
+
+      availabilityItem = {
+        accommodation_id: accommodation.id,
+        check_in_date: checkInDate,
+        check_in_time: slotConfig.start_time,
+        check_out_date: checkOutDate,
+        check_out_time: slotConfig.end_time,
+      };
+
+      accommodationName = accommodation.name || accommodationName;
+    }
+
+    if (isScheduleWindowAlreadyEnded(availabilityItem)) {
+      return res.status(200).json({
+        available: false,
+        message: getScheduleEndedMessage(accommodationName),
+        schedule: availabilityItem,
+      });
+    }
+
+    const connection = await db.promise().getConnection();
+
+    try {
+      await checkReservationConflicts(
+        connection,
+        [availabilityItem],
+        ignoreReservationId,
+      );
+    } finally {
+      connection.release();
+    }
+
+    return res.status(200).json({
+      available: true,
+      message: `${accommodationName} is available for the selected schedule.`,
+      schedule: availabilityItem,
+    });
+  } catch (error) {
+    if (Number(error.status) === 409) {
+      return res.status(200).json({
+        available: false,
+        message: error.message || "Selected accommodation is not available.",
+      });
+    }
+
+    console.error("checkItemAvailability error:", error);
+
+    return res.status(error.status || 500).json({
+      available: false,
+      message: error.message || "Failed to check availability.",
+      error: error.message,
+    });
+  }
+};
+
+
+
+
+// ============================================================
+// BACKEND/API HANDLER: Add accommodation to reservation
+// Purpose: Handles the add accommodation to reservation part of this file.
+// ============================================================
 exports.addAccommodationToReservation = async (req, res) => {
   const connection = await db.promise().getConnection();
 
@@ -1605,13 +2318,15 @@ exports.addAccommodationToReservation = async (req, res) => {
       };
     }
 
-    const stayDuration = slotType === "extended" ? requestedStayDuration : 1;
+    const stayDuration = ["overnight", "extended"].includes(slotType)
+      ? requestedStayDuration
+      : 1;
 
-    if (slotType !== "extended" && requestedStayDuration > 1) {
+    if (slotType === "day_tour" && requestedStayDuration > 1) {
       throw {
         status: 400,
         message:
-          "Day Tour and Overnight add-ons are limited to 1 day/night only.",
+          "Day Tour add-ons are limited to 1 day only. Use Overnight or Extended for multi-day/night add-ons.",
       };
     }
 
@@ -1709,6 +2424,13 @@ exports.addAccommodationToReservation = async (req, res) => {
       item_price: Number(slotConfig.price || 0) * stayDuration,
     };
 
+    if (isScheduleWindowAlreadyEnded(newItem)) {
+      throw {
+        status: 400,
+        message: getScheduleEndedMessage(accommodation.name),
+      };
+    }
+
     await checkReservationConflicts(connection, [newItem]);
 
     await connection.query(
@@ -1753,7 +2475,7 @@ exports.addAccommodationToReservation = async (req, res) => {
     const addOnNote =
       `Onsite add-on: ${accommodation.name} - ${newItem.slot_label}` +
       ` (${newItem.check_in_date} ${newItem.check_in_time} to ${newItem.check_out_date} ${newItem.check_out_time})` +
-      `, Stay Duration: ${newItem.stay_duration} day(s), Cash Paid: ₱${newItem.item_price.toFixed(2)}`;
+      `, Stay Duration: ${newItem.stay_duration} ${newItem.slot_type === "overnight" ? "night(s)" : "day(s)"}, Cash Paid: ₱${newItem.item_price.toFixed(2)}`;
 
     const updatedNote = [reservation.note, addOnNote].filter(Boolean).join(" | ");
 
@@ -1812,6 +2534,280 @@ exports.addAccommodationToReservation = async (req, res) => {
 };
 
 
+
+
+// ============================================================
+// BACKEND/API HANDLER: Extend reservation item
+// Purpose:
+// - Allows front desk to extend the same accommodation if no conflict exists
+// - Extension is recorded as onsite cash paid
+// - Updates receipt/reports through reservation_items and reservation totals
+// ============================================================
+exports.extendReservationItem = async (req, res) => {
+  const connection = await db.promise().getConnection();
+
+  try {
+    const reservationId = Number(req.params.id);
+    const reservationItemId = Number(
+      req.body.reservation_item_id || req.body.item_id || 0,
+    );
+    const extensionType = normalizeExtensionType(req.body.extension_type);
+    const extensionDuration = Math.max(
+      1,
+      Math.min(5, Math.floor(toNumber(req.body.extension_duration || req.body.stay_duration, 1))),
+    );
+
+    if (!reservationId) {
+      throw {
+        status: 400,
+        message: "Reservation ID is required.",
+      };
+    }
+
+    if (!reservationItemId) {
+      throw {
+        status: 400,
+        message: "Please select the accommodation item to extend.",
+      };
+    }
+
+    await connection.beginTransaction();
+
+    const [rows] = await connection.query(
+      `
+      SELECT
+        r.id AS reservation_id,
+        r.reservation_code,
+        r.reservation_status,
+        r.payment_status,
+        r.is_checked_in,
+        r.accommodation_total,
+        r.required_downpayment,
+        r.paid_amount,
+        r.remaining_balance,
+        r.note,
+
+        ri.id AS reservation_item_id,
+        ri.accommodation_id,
+        ri.slot_type,
+        ri.slot_label,
+        COALESCE(ri.stay_duration, 1) AS stay_duration,
+        ri.check_in_date,
+        ri.check_in_time,
+        ri.check_out_date,
+        ri.check_out_time,
+        ri.item_price,
+
+        a.name AS accommodation_name,
+        a.status AS accommodation_status,
+        a.day_price,
+        a.overnight_price,
+        a.extended_price,
+        a.day_start_time,
+        a.day_end_time,
+        a.overnight_start_time,
+        a.overnight_end_time,
+        a.extended_start_time,
+        a.extended_end_time,
+        c.name AS category_name
+      FROM reservation_items ri
+      INNER JOIN reservations r ON ri.reservation_id = r.id
+      INNER JOIN accommodations a ON ri.accommodation_id = a.id
+      INNER JOIN accommodation_categories c ON a.category_id = c.id
+      WHERE r.id = ? AND ri.id = ?
+      LIMIT 1
+      `,
+      [reservationId, reservationItemId],
+    );
+
+    if (!rows.length) {
+      throw {
+        status: 404,
+        message: "Selected accommodation item was not found for this reservation.",
+      };
+    }
+
+    const item = rows[0];
+    const reservationStatus = String(item.reservation_status || "").toLowerCase();
+
+    if (["cancelled", "completed", "rejected"].includes(reservationStatus)) {
+      throw {
+        status: 400,
+        message: "This reservation can no longer be extended.",
+      };
+    }
+
+    if (reservationStatus !== "approved") {
+      throw {
+        status: 400,
+        message: "Only approved reservations can be extended.",
+      };
+    }
+
+    if (Number(item.is_checked_in || 0) !== 1) {
+      throw {
+        status: 400,
+        message: "Guest must be checked in before extending stay.",
+      };
+    }
+
+    const paymentStatus = String(item.payment_status || "").toLowerCase();
+
+    if (!["partially_paid", "paid"].includes(paymentStatus)) {
+      throw {
+        status: 400,
+        message: "Reservation payment must be verified before extending stay.",
+      };
+    }
+
+    const oldCheckOutDate = toDateOnlyString(item.check_out_date);
+    const oldCheckOutTime = String(item.check_out_time || "00:00:00");
+    const extensionWindowDetails = buildExtensionWindowFromItem(
+      item,
+      extensionDuration,
+      extensionType,
+    );
+
+    if (!extensionWindowDetails) {
+      throw {
+        status: 400,
+        message: "This reservation item has no valid checkout date to extend.",
+      };
+    }
+
+    const newCheckOutDate = extensionWindowDetails.check_out_date;
+    const newCheckOutTime = extensionWindowDetails.check_out_time;
+
+    const extensionWindow = {
+      accommodation_id: extensionWindowDetails.accommodation_id,
+      check_in_date: extensionWindowDetails.check_in_date,
+      check_in_time: extensionWindowDetails.check_in_time,
+      check_out_date: extensionWindowDetails.check_out_date,
+      check_out_time: extensionWindowDetails.check_out_time,
+    };
+
+    if (isScheduleWindowAlreadyEnded(extensionWindow)) {
+      throw {
+        status: 400,
+        message: getScheduleEndedMessage(item.accommodation_name),
+      };
+    }
+
+    await checkReservationConflicts(connection, [extensionWindow], reservationId);
+
+    const extensionFee = getExtensionFeeFromItem(
+      item,
+      extensionWindowDetails.extension_duration,
+      extensionWindowDetails.extension_type,
+    );
+
+    const oldStayDuration = Math.max(1, Number(item.stay_duration || 1));
+    const addedStayDuration =
+      ["overnight_half", "day_half"].includes(normalizeExtensionType(extensionType))
+        ? 1
+        : extensionDuration;
+    const newStayDuration = oldStayDuration + addedStayDuration;
+    const newItemPrice = Number(item.item_price || 0) + extensionFee;
+
+    const oldAccommodationTotal = Number(item.accommodation_total || 0);
+    const oldPaidAmount = Number(item.paid_amount || 0);
+    const oldRemainingBalance = Number(item.remaining_balance || 0);
+
+    const newAccommodationTotal = oldAccommodationTotal + extensionFee;
+    const newPaidAmount = oldPaidAmount + extensionFee;
+    const newRemainingBalance = Math.max(oldRemainingBalance, 0);
+    const newRequiredDownpayment = newAccommodationTotal * 0.5;
+
+    await connection.query(
+      `
+      UPDATE reservation_items
+      SET
+        stay_duration = ?,
+        check_out_date = ?,
+        check_out_time = ?,
+        item_price = ?
+      WHERE id = ? AND reservation_id = ?
+      `,
+      [
+        newStayDuration,
+        newCheckOutDate,
+        newCheckOutTime,
+        newItemPrice,
+        reservationItemId,
+        reservationId,
+      ],
+    );
+
+    const unitLabel = getExtensionUnitText(extensionType, addedStayDuration);
+    const extensionNote =
+      `Onsite stay extension: ${item.accommodation_name} - ${item.slot_label}` +
+      `, Added ${addedStayDuration} ${unitLabel}` +
+      ` (${oldCheckOutDate} ${oldCheckOutTime} to ${newCheckOutDate} ${newCheckOutTime})` +
+      `, Cash Paid: ₱${extensionFee.toFixed(2)}`;
+
+    const updatedNote = [item.note, extensionNote].filter(Boolean).join(" | ");
+
+    await connection.query(
+      `
+      UPDATE reservations
+      SET
+        accommodation_total = ?,
+        required_downpayment = ?,
+        paid_amount = ?,
+        remaining_balance = ?,
+        payment_status = ?,
+        note = ?
+      WHERE id = ?
+      `,
+      [
+        newAccommodationTotal,
+        newRequiredDownpayment,
+        newPaidAmount,
+        newRemainingBalance,
+        newRemainingBalance > 0 ? "partially_paid" : "paid",
+        updatedNote,
+        reservationId,
+      ],
+    );
+
+    await connection.commit();
+
+    return res.status(200).json({
+      message: "Stay extended successfully. Extension was recorded as cash paid.",
+      reservationId,
+      reservation_item_id: reservationItemId,
+      accommodation_name: item.accommodation_name,
+      slot_label: item.slot_label,
+      extension_type: extensionType,
+      extension_duration: addedStayDuration,
+      added_unit: unitLabel,
+      old_check_out_date: oldCheckOutDate,
+      old_check_out_time: oldCheckOutTime,
+      new_check_out_date: newCheckOutDate,
+      new_check_out_time: newCheckOutTime,
+      extension_fee: extensionFee,
+      accommodation_total: newAccommodationTotal,
+      paid_amount: newPaidAmount,
+      remaining_balance: newRemainingBalance,
+    });
+  } catch (error) {
+    await connection.rollback();
+
+    console.error("extendReservationItem error:", error);
+
+    return res.status(error.status || 500).json({
+      message: error.message || "Failed to extend stay.",
+      error: error.message,
+    });
+  } finally {
+    connection.release();
+  }
+};
+
+// ============================================================
+// BACKEND/API HANDLER: Request booking modification
+// Purpose: Handles the request booking modification part of this file.
+// ============================================================
 exports.requestBookingModification = async (req, res) => {
   const connection = await db.promise().getConnection();
 
@@ -1950,6 +2946,7 @@ exports.requestBookingModification = async (req, res) => {
         ri.reservation_id,
         ri.accommodation_id,
         ri.slot_type,
+        COALESCE(ri.stay_duration, 1) AS stay_duration,
         ri.check_in_date,
         a.category_id,
         c.name AS category_name,
@@ -1991,11 +2988,16 @@ exports.requestBookingModification = async (req, res) => {
     for (const currentItem of currentItems) {
       const slotType = cleanRequestedSlot || currentItem.slot_type;
       const checkInDateValue = cleanRequestedDate || currentItem.check_in_date;
+      const stayDuration =
+        ["overnight", "extended"].includes(slotType)
+          ? Math.max(1, Math.min(5, Number(currentItem.stay_duration || 1)))
+          : 1;
       const slotConfig = buildSlotConfig(currentItem, slotType);
       const checkOutDate = buildCheckOutDate(
         checkInDateValue,
         slotConfig.start_time,
         slotConfig.end_time,
+        stayDuration,
       );
 
       updatedItems.push({
@@ -2003,14 +3005,15 @@ exports.requestBookingModification = async (req, res) => {
         accommodation_id: currentItem.accommodation_id,
         slot_type: slotType,
         slot_label: slotConfig.slot_label,
+        stay_duration: stayDuration,
         check_in_date: checkInDateValue,
         check_in_time: slotConfig.start_time,
         check_out_date: checkOutDate,
         check_out_time: slotConfig.end_time,
-        item_price: slotConfig.price,
+        item_price: slotConfig.price * stayDuration,
       });
 
-      accommodationTotal += slotConfig.price;
+      accommodationTotal += slotConfig.price * stayDuration;
     }
 
     await checkReservationConflicts(connection, updatedItems, reservationId);
@@ -2022,6 +3025,7 @@ exports.requestBookingModification = async (req, res) => {
         SET
           slot_type = ?,
           slot_label = ?,
+          stay_duration = ?,
           check_in_date = ?,
           check_in_time = ?,
           check_out_date = ?,
@@ -2033,6 +3037,7 @@ exports.requestBookingModification = async (req, res) => {
         [
           item.slot_type,
           item.slot_label,
+          item.stay_duration,
           item.check_in_date,
           item.check_in_time,
           item.check_out_date,

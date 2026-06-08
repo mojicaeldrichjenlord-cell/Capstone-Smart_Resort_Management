@@ -557,7 +557,10 @@ function formatStayDuration(booking) {
     return `${duration} ${duration === 1 ? "day" : "days"}`;
   }
 
-  if (slotLabel.includes("overnight")) return "1 night only";
+  if (slotLabel.includes("overnight")) {
+    return `${duration} ${duration === 1 ? "night" : "nights"}`;
+  }
+
   return "1 day only";
 }
 

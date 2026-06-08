@@ -75,7 +75,7 @@
             <section class="section-box">
               <h2>Payment Details</h2>
 
-              <form id="adminPaymentForm">
+              <div id="adminPaymentForm">
                 <div class="payment-form-grid">
                   <div class="payment-form-group">
                     <label for="paymentMethod">Mode of Payment</label>
@@ -156,16 +156,17 @@
 
                 <div class="payment-actions">
                   <button
-                    type="submit"
+                    type="button"
                     class="btn-primary"
                     id="submitPaymentBtn"
+                    onclick="submitManualReservation(event)"
                   >
                     Submit Manual Reservation
                   </button>
 
                   <a href="admin-walkin.html" class="btn-secondary">Back</a>
                 </div>
-              </form>
+              </div>
 
               <p id="adminPaymentMessage" class="message"></p>
             </section>

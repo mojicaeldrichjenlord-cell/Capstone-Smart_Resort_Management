@@ -384,7 +384,7 @@ function addBookingItem(preselectedId = null) {
           <option value="1">1 day only</option>
         </select>
         <small class="field-help">
-          Day Tour and Overnight are 1 day/night only. 22 Hours / 23 Hours can be 1 to 5 days.
+          Day Tour is 1 day only. Overnight can be 1 to 5 nights. 22 Hours / 23 Hours can be 1 to 5 days.
         </small>
       </div>
 
@@ -844,7 +844,9 @@ function getStayDuration(item) {
 }
 
 function getAllowedStayDurations(slotType) {
-  return slotType === "extended" ? [1, 2, 3, 4, 5] : [1];
+  return slotType === "extended" || slotType === "overnight"
+    ? [1, 2, 3, 4, 5]
+    : [1];
 }
 
 function populateStayDurationOptions(itemId) {
@@ -863,14 +865,14 @@ function populateStayDurationOptions(itemId) {
       const label = slotType === "extended"
         ? `${days} ${days === 1 ? "day" : "days"}`
         : slotType === "overnight"
-          ? "1 night only"
+          ? `${days} ${days === 1 ? "night" : "nights"}`
           : "1 day only";
       return `<option value="${days}">${label}</option>`;
     })
     .join("");
 
   staySelect.value = allowed.includes(previousValue) ? String(previousValue) : "1";
-  staySelect.disabled = slotType !== "extended";
+  staySelect.disabled = !["overnight", "extended"].includes(slotType);
 }
 
 function populateSlotOptions(itemId) {
@@ -957,7 +959,7 @@ function updateItemPreview(itemId) {
   const durationLabel = slot.value === "extended"
     ? `${stayDuration} ${stayDuration === 1 ? "day" : "days"}`
     : slot.value === "overnight"
-      ? "1 night only"
+      ? `${stayDuration} ${stayDuration === 1 ? "night" : "nights"}`
       : "1 day only";
 
   preview.innerHTML = `
@@ -968,7 +970,7 @@ function updateItemPreview(itemId) {
     Stay Duration: ${escapeHtml(durationLabel)}<br>
     Reservation Date: ${formatDateDisplay(dateInput.value)}<br>
     Check-out Date: ${formatDateDisplay(checkOutDate)}<br>
-    Price: ₱${formatMoney(slot.price)}${slot.value === "extended" ? ` × ${stayDuration} = ₱${formatMoney(totalPrice)}` : ""}
+    Price: ₱${formatMoney(slot.price)}${["overnight", "extended"].includes(slot.value) ? ` × ${stayDuration} = ₱${formatMoney(totalPrice)}` : ""}
   `;
 }
 
@@ -995,7 +997,9 @@ function collectBookingItems() {
       accommodation_id: Number(accommodationId),
       slot_type: slotType,
       check_in_date: checkInDate,
-      stay_duration: slotType === "extended" ? Math.max(1, Math.min(5, stayDuration)) : 1,
+      stay_duration: ["overnight", "extended"].includes(slotType)
+        ? Math.max(1, Math.min(5, stayDuration))
+        : 1,
     });
   }
 
