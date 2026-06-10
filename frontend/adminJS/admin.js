@@ -169,15 +169,20 @@ async function loadBookings() {
   try {
     setReservationsContent(`
       <div class="reservation-state-box">
-        Loading today's reservations...
+        Loading reservation records...
       </div>
     `);
 
-    const response = await fetch(`${API_BASE}/bookings?scope=dashboard_today`);
+    /*
+      Load all reservation records so the search bar and status filter can still
+      find completed/cancelled/rejected bookings. The dashboard will hide those
+      closed bookings by default in applyFilters().
+    */
+    const response = await fetch(`${API_BASE}/bookings?scope=all`);
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.message || "Failed to fetch today's reservations.");
+      throw new Error(data.message || "Failed to fetch reservation records.");
     }
 
     allBookings = Array.isArray(data) ? data : data.bookings || [];
@@ -189,12 +194,12 @@ async function loadBookings() {
 
     setReservationsContent(`
       <div class="reservation-state-box error">
-        Failed to load today's reservations.
+        Failed to load reservation records.
       </div>
     `);
 
     showMessage(
-      error.message || "Failed to load today's reservations.",
+      error.message || "Failed to load reservation records.",
       "error",
     );
   }
@@ -297,7 +302,24 @@ function getCheckInDateState(booking) {
 
 // ============================================================
 // SECTION 6: Filters
+// Default behavior:
+// - Hide completed, cancelled, and rejected records on first load.
+// - Still allow search and status filters to find those hidden records.
 // ============================================================
+
+function isClosedReservationStatus(status) {
+  return ["completed", "cancelled", "rejected"].includes(
+    String(status || "").toLowerCase(),
+  );
+}
+
+function isActiveDashboardRecord(booking) {
+  return !isClosedReservationStatus(booking.status);
+}
+
+function shouldUseDefaultActiveView(searchValue, statusValue) {
+  return !searchValue && (!statusValue || statusValue === "active");
+}
 
 function applyFilters() {
   const searchValue = String(
@@ -307,7 +329,7 @@ function applyFilters() {
     .toLowerCase();
 
   const statusValue = String(
-    document.getElementById("statusFilter")?.value || "",
+    document.getElementById("statusFilter")?.value || "active",
   )
     .trim()
     .toLowerCase();
@@ -326,6 +348,17 @@ function applyFilters() {
 
   let filtered = [...allBookings];
 
+  /*
+    Default dashboard view:
+    - No search + Active/Current filter = hide completed/cancelled/rejected.
+    Search behavior:
+    - If the admin types in the search bar, search across all loaded records,
+      including completed/cancelled/rejected, unless a specific status filter is selected.
+  */
+  if (shouldUseDefaultActiveView(searchValue, statusValue)) {
+    filtered = filtered.filter(isActiveDashboardRecord);
+  }
+
   if (searchValue) {
     filtered = filtered.filter((booking) => {
       const searchableText = `
@@ -333,8 +366,10 @@ function applyFilters() {
         ${booking.reservation_code || ""}
         ${getBookingDisplayName(booking) || ""}
         ${booking.phone || ""}
+        ${booking.contact_no || ""}
         ${booking.email || ""}
         ${booking.room_name || ""}
+        ${booking.accommodation_name || ""}
         ${booking.booking_source || ""}
         ${booking.payment_method || ""}
         ${booking.payment_status || ""}
@@ -346,7 +381,7 @@ function applyFilters() {
     });
   }
 
-  if (statusValue) {
+  if (statusValue && statusValue !== "active" && statusValue !== "all") {
     filtered = filtered.filter((booking) => {
       return String(booking.status || "").toLowerCase() === statusValue;
     });
@@ -381,7 +416,7 @@ function renderBookings(bookings) {
   if (!bookings.length) {
     setReservationsContent(`
       <div class="reservation-state-box">
-        No reservations found.
+        No reservations found for the selected search/filter.
       </div>
     `);
     return;
@@ -457,9 +492,10 @@ function renderReservationCard(booking) {
           <section class="reservation-info-box">
             <div class="info-label">Payment</div>
             <div>Total: <strong>₱${formatMoney(booking.accommodation_total)}</strong></div>
-            <div>Downpayment: <strong>₱${formatMoney(booking.required_downpayment)}</strong></div>
+            <div>Downpayment: <strong class="${getPaymentAmountHighlightClass(booking, booking.required_downpayment)}">₱${formatMoney(booking.required_downpayment)}</strong></div>
             <div>Paid: <strong>₱${formatMoney(booking.paid_amount)}</strong></div>
-<div>Remaining: <strong class="remaining-highlight">₱${formatMoney(booking.remaining_balance)}</strong></div>            <div>Entrance Fee: <strong>₱${formatMoney(booking.estimated_entrance_fee)}</strong></div>
+            <div>Remaining: <strong class="${getPaymentAmountHighlightClass(booking, booking.remaining_balance)}">₱${formatMoney(booking.remaining_balance)}</strong></div>            
+            <div>Entrance Fee: <strong>₱${formatMoney(booking.estimated_entrance_fee)}</strong></div>
             <div>Entrance Paid: <strong>${isEntranceFeePaid(booking) ? "Yes" : "No"}</strong></div>
             <div>Method: ${formatPaymentMethod(paymentMethod)}</div>
           </section>
@@ -1265,6 +1301,22 @@ function formatPaymentMethod(method) {
   if (method === "cash") return "Cash";
 
   return capitalize(method);
+}
+
+
+function getPaymentAmountHighlightClass(booking, amountValue) {
+  const amount = Number(amountValue || 0);
+  const paymentStatus = String(booking?.payment_status || "").toLowerCase();
+
+  if (amount <= 0 || paymentStatus === "paid") {
+    return "payment-amount-green";
+  }
+
+  if (paymentStatus === "partially_paid") {
+    return "payment-amount-yellow";
+  }
+
+  return "payment-amount-red";
 }
 
 function formatPaymentStatus(status) {

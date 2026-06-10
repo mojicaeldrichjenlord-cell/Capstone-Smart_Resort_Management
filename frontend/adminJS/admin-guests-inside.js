@@ -236,7 +236,9 @@ async function loadAvailableAccommodations() {
 
 // ============================================================
 // SECTION 4: Load guests inside
-// Gets all admin bookings, then filters active guests today.
+// Gets reservation records, then filters checked-in guests.
+// Important: overdue checked-in guests should still appear here
+// until staff clicks Check Out.
 // ============================================================
 
 async function loadGuestsInside() {
@@ -246,12 +248,14 @@ async function loadGuestsInside() {
     if (tbody) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="9" class="table-message">Loading guests inside...</td>
+          <td colspan="9" class="table-message">Loading checked-in guests...</td>
         </tr>
       `;
     }
 
-    let response = await fetch(`${API_BASE}/bookings?scope=today`);
+    // Use scope=all so checked-in guests still appear even if their checkout time already passed.
+    // The table filter below will still hide completed/cancelled/rejected reservations.
+    let response = await fetch(`${API_BASE}/bookings?scope=all`);
     let data = await response.json();
 
     // Fallback for older backend routes.
@@ -341,31 +345,29 @@ function filterGuestsInside(bookings) {
 
 // ============================================================
 // SECTION 7: Active guests logic
-// Shows approved bookings active for today's date.
+// Shows checked-in guests that are not yet completed/cancelled/rejected.
 // ============================================================
 
 function getActiveGuestsToday(bookings) {
-  const now = new Date();
-
   return bookings.filter((booking) => {
     const status = getReservationStatus(booking);
     const isCheckedIn = isBookingCheckedIn(booking);
 
-    // Guests Inside should show guests once admin/staff already clicked Check In / Allow Entry.
-    // Do not hide the guest just because the scheduled check-in time is later than the current time.
-    if (status !== "approved" || !isCheckedIn) {
+    /*
+      Guests Inside rule:
+      - Once admin/staff clicked Check In / Allow Entry, the guest should stay here.
+      - Even if checkout time already passed, keep the guest visible as Overdue.
+      - Remove only after staff clicks Check Out, which changes status to completed.
+    */
+    if (!isCheckedIn) {
       return false;
     }
 
-    const checkOutDateTime = getLatestCheckOutDateTime(booking);
-
-    // If checkout date/time is missing, still show the checked-in guest so staff can monitor it.
-    if (!checkOutDateTime) {
-      return true;
+    if (["completed", "cancelled", "rejected"].includes(status)) {
+      return false;
     }
 
-    // Hide only when all reservation items are already past their checkout time.
-    return checkOutDateTime >= now;
+    return status === "approved";
   });
 }
 
@@ -442,7 +444,7 @@ function renderGuestsInside(bookings) {
   if (!bookings.length) {
     const message = currentSearchTerm
       ? `No active guest found for "${escapeHtml(currentSearchTerm)}".`
-      : "No active guests inside the resort today.";
+      : "No checked-in guests currently inside or pending checkout.";
 
     tbody.innerHTML = `
       <tr>

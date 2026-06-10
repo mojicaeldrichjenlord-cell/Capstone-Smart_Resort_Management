@@ -2,36 +2,16 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-
-    <!-- ======================================================
-       RESPONSIVE VIEWPORT
-       Makes the admin dashboard responsive.
-    ======================================================= -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
     <title>Admin Dashboard | SmartResort</title>
-
-    <!-- ======================================================
-       PAGE CSS FILES
-       global.css = shared base styles
-       style.css = old shared navbar/system styles for now
-       admin.css = admin dashboard page only
-    ======================================================= -->
     <link rel="stylesheet" href="../sharedCSS/global.css" />
     <link rel="stylesheet" href="../css/style.css" />
     <link rel="stylesheet" href="../adminCSS/admin.css" />
   </head>
 
   <body class="has-fixed-navbar">
-    <!-- ======================================================
-       ADMIN NAVBAR
-       This admin dashboard is already inside adminHTML.
-       Other admin pages are still in the old frontend root for now,
-       so their links use ../ until we move those pages too.
-    ======================================================= -->
     <header class="navbar">
       <div class="logo">SmartResort Admin</div>
-
       <nav>
         <a href="admin.html">Bookings</a>
         <a href="admin-walkin.html">Manual Reservation</a>
@@ -44,104 +24,40 @@
       </nav>
     </header>
 
-    <!-- ======================================================
-       MAIN ADMIN DASHBOARD WRAPPER
-       Contains hero, summary cards, filters, and table.
-    ======================================================= -->
     <main class="admin-wrapper">
-      <!-- ======================================================
-         HERO SECTION
-         Dashboard title and quick action buttons.
-      ======================================================= -->
       <section class="admin-hero">
         <h1>Admin Reservation Dashboard</h1>
-
         <p>
           Manage online and manual reservations, monitor today’s resort
-          activity, check in arriving guests, track payment progress, and review all reservation records
-          in one dashboard.
+          activity, check in arriving guests, track payment progress, and review
+          all reservation records in one dashboard.
         </p>
-
         <div class="hero-actions">
-          <a href="admin-walkin.html" class="hero-btn primary">
-            + Create Manual Reservation
-          </a>
-
-          <a href="admin-guests-inside.html" class="hero-btn secondary">
-            View Guests Inside
-          </a>
-
-          <a href="admin-rooms.html" class="hero-btn secondary">
-            Manage Accommodations
-          </a>
+          <a href="admin-walkin.html" class="hero-btn primary">+ Create Manual Reservation</a>
+          <a href="admin-guests-inside.html" class="hero-btn secondary">View Guests Inside</a>
+          <a href="admin-rooms.html" class="hero-btn secondary">Manage Accommodations</a>
         </div>
       </section>
 
-      <!-- ======================================================
-         OVERVIEW CARDS
-         Summary numbers loaded by admin.js.
-      ======================================================= -->
       <section class="admin-overview-grid">
-        <div class="overview-card">
-          <div class="overview-label">Total Reservations</div>
-          <div class="overview-value" id="totalBookings">0</div>
-          <div class="overview-note">Today's online and manual records</div>
-        </div>
-
-        <div class="overview-card">
-          <div class="overview-label">Partially Paid</div>
-          <div class="overview-value" id="partiallyPaidCount">0</div>
-          <div class="overview-note">Downpayment paid / balance onsite</div>
-        </div>
-
-        <div class="overview-card">
-          <div class="overview-label">Approved</div>
-          <div class="overview-value" id="approvedCount">0</div>
-          <div class="overview-note">Confirmed reservations</div>
-        </div>
-
-        <div class="overview-card">
-          <div class="overview-label">Paid</div>
-          <div class="overview-value" id="paidCount">0</div>
-          <div class="overview-note">Fully paid bookings</div>
-        </div>
-
-        <div class="overview-card">
-          <div class="overview-label">Online Today</div>
-          <div class="overview-value" id="onlineToday">0</div>
-          <div class="overview-note">Customer online reservations today</div>
-        </div>
-
-        <div class="overview-card">
-          <div class="overview-label">Walk-ins Today</div>
-          <div class="overview-value" id="walkinToday">0</div>
-          <div class="overview-note">Manual reservations today</div>
-        </div>
-
-        <div class="overview-card">
-          <div class="overview-label">Guests Inside</div>
-          <div class="overview-value" id="guestsInside">0</div>
-          <div class="overview-note">Checked-in guests currently inside</div>
-        </div>
-
-        <div class="overview-card">
-          <div class="overview-label">Today Revenue</div>
-          <div class="overview-value" id="todayRevenue">₱0</div>
-          <div class="overview-note">Based on paid amount today</div>
-        </div>
+        <div class="overview-card"><div class="overview-label">Total Reservations</div><div class="overview-value" id="totalBookings">0</div><div class="overview-note">Today's online and manual records</div></div>
+        <div class="overview-card"><div class="overview-label">Partially Paid</div><div class="overview-value" id="partiallyPaidCount">0</div><div class="overview-note">Downpayment paid / balance onsite</div></div>
+        <div class="overview-card"><div class="overview-label">Approved</div><div class="overview-value" id="approvedCount">0</div><div class="overview-note">Confirmed reservations</div></div>
+        <div class="overview-card"><div class="overview-label">Paid</div><div class="overview-value" id="paidCount">0</div><div class="overview-note">Fully paid bookings</div></div>
+        <div class="overview-card"><div class="overview-label">Online Today</div><div class="overview-value" id="onlineToday">0</div><div class="overview-note">Customer online reservations today</div></div>
+        <div class="overview-card"><div class="overview-label">Walk-ins Today</div><div class="overview-value" id="walkinToday">0</div><div class="overview-note">Manual reservations today</div></div>
+        <div class="overview-card"><div class="overview-label">Guests Inside</div><div class="overview-value" id="guestsInside">0</div><div class="overview-note">Checked-in guests currently inside</div></div>
+        <div class="overview-card"><div class="overview-label">Today Revenue</div><div class="overview-value" id="todayRevenue">₱0</div><div class="overview-note">Based on paid amount today</div></div>
       </section>
 
-      <!-- ======================================================
-         SEARCH AND FILTER PANEL
-         Used to filter reservation table records.
-      ======================================================= -->
       <section class="admin-panel">
         <div class="panel-header">
           <div>
             <h2>Search and Filter</h2>
             <p>
-              Quickly find reservations by code, customer, source, payment, or
-              accommodation.
+              Default view shows active/current reservations only. Completed,
+              cancelled, and rejected records are still searchable and available
+              through the status filter.
             </p>
           </div>
         </div>
@@ -149,34 +65,31 @@
         <div class="filter-grid">
           <div class="filter-item">
             <label for="searchInput">Search</label>
-            <input
-              type="text"
-              id="searchInput"
-              placeholder="Search reservation code, name, phone, email, accommodation..."
-            />
+            <input type="text" id="searchInput" placeholder="Search reservation code, name, phone, email, accommodation..." />
           </div>
-
           <div class="filter-item">
             <label for="statusFilter">Reservation Status</label>
             <select id="statusFilter">
-              <option value="">All</option>
+              <option value="active" selected>Active / Current</option>
+              <option value="pending">Pending</option>
               <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
-              <option value="cancelled">Cancelled</option>
               <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="rejected">Rejected</option>
+              <option value="all">All Records</option>
             </select>
           </div>
-
           <div class="filter-item">
             <label for="paymentStatusFilter">Payment Status</label>
             <select id="paymentStatusFilter">
               <option value="">All</option>
+              <option value="pending">Pending</option>
+              <option value="unpaid">Unpaid</option>
               <option value="paid">Paid</option>
               <option value="partially_paid">Partially Paid</option>
               <option value="rejected">Rejected</option>
             </select>
           </div>
-
           <div class="filter-item">
             <label for="paymentMethodFilter">Payment Method</label>
             <select id="paymentMethodFilter">
@@ -189,20 +102,16 @@
         </div>
       </section>
 
-      <!-- ======================================================
-         RESERVATION TABLE PANEL
-         Displays all online and manual reservation records.
-      ======================================================= -->
       <section class="admin-panel">
         <div class="panel-header">
           <div>
-            <h2>Today's Reservations</h2>
+            <h2>Reservation Records</h2>
             <p>
-              Shows online reservations, manual reservations, and walk-in
-              records created today.
+              Active/current reservations are shown by default. Use search or
+              filters to review completed, cancelled, rejected, pending, and
+              approved records.
             </p>
           </div>
-
           <button id="refreshBtn" class="refresh-btn">Refresh</button>
         </div>
 
@@ -210,46 +119,17 @@
           <table class="admin-table">
             <thead>
               <tr>
-                <th>ID</th>
-                <th>Reservation Code</th>
-                <th>Source</th>
-                <th>Customer</th>
-                <th>Phone</th>
-                <th>Email</th>
-                <th>Accommodation</th>
-                <th>Check In Date</th>
-                <th>Check In Time</th>
-                <th>Check Out Date</th>
-                <th>Check Out Time</th>
-                <th>Guests</th>
-                <th>Total</th>
-                <th>Down Payment</th>
-                <th>Reservation Status</th>
-                <th>Payment Method</th>
-                <th>Payment Reference</th>
-                <th>Proof</th>
-                <th>Payment Status</th>
-                <th>Created</th>
-                <th>Actions</th>
+                <th>ID</th><th>Reservation Code</th><th>Source</th><th>Customer</th><th>Phone</th><th>Email</th><th>Accommodation</th><th>Check In Date</th><th>Check In Time</th><th>Check Out Date</th><th>Check Out Time</th><th>Guests</th><th>Total</th><th>Down Payment</th><th>Reservation Status</th><th>Payment Method</th><th>Payment Reference</th><th>Proof</th><th>Payment Status</th><th>Created</th><th>Actions</th>
               </tr>
             </thead>
-
             <tbody id="adminBookingsTableBody">
-              <tr>
-                <td colspan="21" class="table-message">
-                  Loading reservations...
-                </td>
-              </tr>
+              <tr><td colspan="21" class="table-message">Loading reservations...</td></tr>
             </tbody>
           </table>
         </div>
       </section>
     </main>
 
-    <!-- ======================================================
-       PAGE SCRIPTS
-       Paths are adjusted because this file is inside adminHTML.
-    ======================================================= -->
     <script src="../sharedJS/toast.js"></script>
     <script src="../sharedJS/api-config.js"></script>
     <script src="../js/active-nav.js"></script>
