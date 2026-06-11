@@ -8,6 +8,17 @@
 // - Display Philippine time accurately
 // ============================================================
 
+const RESORT_INFO = {
+  name: "Arvic Seaside Beach Resort and Hotel",
+  shortName: "ARVIC SEASIDE",
+  address: "17 Mahogany Street, Brgy. Bagong Karsada, Naic, Cavite",
+  contact: "0956-912-5625 / 0967-817-0662",
+  email: "resortarvicseaside@gmail.com",
+  facebook: "https://www.facebook.com/share/1E1kZLtrV4/?mibextid=wwXIfr",
+  tiktok: "https://www.tiktok.com/@arvicseaside?_r=1&_t=ZS-9780VTxjMxB",
+  operatingHours: "Open 24 hours, Monday to Sunday",
+};
+
 document.addEventListener("DOMContentLoaded", () => {
   checkAdminAccess();
   setupLogoutButton();
@@ -132,8 +143,12 @@ function renderThermalReceipt(booking) {
   thermal.innerHTML = `
     <div class="thermal-inner">
       <div class="thermal-center">
-        <div class="thermal-title">ARVIC SEASIDE</div>
+        <div class="thermal-title">${escapeHtml(RESORT_INFO.shortName)}</div>
         <div class="thermal-sub">BEACH RESORT & HOTEL</div>
+        <div class="thermal-small">${escapeHtml(RESORT_INFO.address)}</div>
+        <div class="thermal-small">${escapeHtml(RESORT_INFO.contact)}</div>
+        <div class="thermal-small">${escapeHtml(RESORT_INFO.email)}</div>
+        <div class="thermal-small">${escapeHtml(RESORT_INFO.operatingHours)}</div>
         <div class="thermal-sub">ADMIN THERMAL RECEIPT</div>
         <div class="thermal-code">${escapeHtml(
           booking.reservation_code || `#${booking.id}`
@@ -261,6 +276,8 @@ function renderThermalReceipt(booking) {
       <div class="thermal-divider"></div>
 
       <div class="thermal-center thermal-small">
+        Facebook: Arvic Seaside Beach Resort and Hotel<br>
+        TikTok: @arvicseaside<br>
         SmartResort System<br>
         Keep for front-desk verification
       </div>

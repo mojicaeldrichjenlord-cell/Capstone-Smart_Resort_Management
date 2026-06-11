@@ -8,6 +8,17 @@
 // - Display Philippine time accurately
 // ============================================================
 
+const RESORT_INFO = {
+  name: "Arvic Seaside Beach Resort and Hotel",
+  shortName: "ARVIC SEASIDE",
+  address: "17 Mahogany Street, Brgy. Bagong Karsada, Naic, Cavite",
+  contact: "0956-912-5625 / 0967-817-0662",
+  email: "resortarvicseaside@gmail.com",
+  facebook: "https://www.facebook.com/share/1E1kZLtrV4/?mibextid=wwXIfr",
+  tiktok: "https://www.tiktok.com/@arvicseaside?_r=1&_t=ZS-9780VTxjMxB",
+  operatingHours: "Open 24 hours, Monday to Sunday",
+};
+
 document.addEventListener("DOMContentLoaded", () => {
   const user = JSON.parse(localStorage.getItem("user"));
 
@@ -131,6 +142,15 @@ async function loadReceipt() {
         <header class="receipt-hero">
           <div class="receipt-title">
             <h2>${isCompleted ? "Final Receipt" : "Reservation Receipt"}</h2>
+
+            <p>
+              <strong>${escapeHtml(RESORT_INFO.name)}</strong><br>
+              ${escapeHtml(RESORT_INFO.address)}<br>
+              Contact: ${escapeHtml(RESORT_INFO.contact)}<br>
+              Email: ${escapeHtml(RESORT_INFO.email)}<br>
+              ${escapeHtml(RESORT_INFO.operatingHours)}
+            </p>
+
             <p>
               ${
                 isCompleted
@@ -217,6 +237,9 @@ async function loadReceipt() {
                 ? "This receipt reflects the latest recorded payment details. Please contact the front desk for any questions."
                 : "Present this reservation code at the front desk. Remaining balance, entrance fee, and valid discounts are finalized onsite."
             }
+            <br><br>
+            Facebook: <a href="${RESORT_INFO.facebook}" target="_blank" rel="noopener noreferrer">Arvic Seaside Beach Resort and Hotel</a><br>
+            TikTok: <a href="${RESORT_INFO.tiktok}" target="_blank" rel="noopener noreferrer">@arvicseaside</a>
           </section>
         </div>
       </article>
