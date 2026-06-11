@@ -18,3 +18,8 @@
 - Online Payment Integration
 - Voice AI
 - Staff Role
+
+
+pang change ng early reservation date 
+             |
+frontend/customerJS/booking.js =  const CUSTOMER_MIN_BOOKING_DAYS_AHEAD = 

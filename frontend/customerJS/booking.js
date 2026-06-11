@@ -12,7 +12,7 @@
 // ============================================================
 
 const BOOKING_DRAFT_KEY = "smartresort_booking_draft_v2";
-const CUSTOMER_MIN_BOOKING_DAYS_AHEAD = 2;
+const CUSTOMER_MIN_BOOKING_DAYS_AHEAD = 0;
 
 let availableAccommodations = [];
 let bookingItemCounter = 0;
