@@ -17,6 +17,7 @@
   justify-content: center;
   padding: 24px 16px;
   color: #0f172a;
+  position: relative;
 }
 
 .register-container {
@@ -569,8 +570,8 @@
 /* ======================================================
    BACK TO LANDING PAGE LINK
    Purpose:
-   - Minimal link that lets users return to the landing page
-   - Designed to be subtle so it does not distract from login/register form
+   - Small blurred button that returns users to the landing page
+   - Uses a soft background so the text is readable but not distracting
 ====================================================== */
 
 .back-landing-btn {
@@ -581,12 +582,16 @@
   padding: 7px 12px;
   border-radius: 999px;
   background: rgba(15, 23, 42, 0.28);
-  color: rgba(255, 255, 255, 0.82);
+  color: rgba(255, 255, 255, 0.86);
   font-size: 0.82rem;
   font-weight: 700;
   text-decoration: none;
+  line-height: 1;
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.12);
+  transition: 0.2s ease;
 }
 
 .back-landing-btn:hover {
@@ -597,14 +602,64 @@
 /* ======================================================
    BACK TO LANDING PAGE LINK - MOBILE
    Purpose:
-   - Keeps the link readable and unobtrusive on small screens
+   - Prevents the button from covering the mobile form
+   - Places it neatly above the card instead of fixed overlay
 ====================================================== */
 
 @media (max-width: 768px) {
   .back-landing-btn {
-    top: 12px;
-    left: 12px;
-    font-size: 0.76rem;
+    position: static;
+    display: inline-flex;
+    width: fit-content;
+    margin: 0 auto 10px 0;
     padding: 6px 10px;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.32);
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 0.72rem;
+    font-weight: 700;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+}
+
+/* ======================================================
+   FINAL MOBILE FIX FOR AUTH PAGES
+====================================================== */
+
+@media (max-width: 768px) {
+  .auth-page {
+    align-items: center;
+    padding-top: 54px;
+  }
+
+  .auth-showcase,
+  .register-showcase {
+    display: none !important;
+  }
+
+  .auth-container,
+  .register-container {
+    grid-template-columns: 1fr !important;
+    max-width: 430px;
+  }
+
+  .back-landing-btn {
+    position: fixed !important;
+    top: 12px !important;
+    left: 12px !important;
+    z-index: 9999 !important;
+    display: inline-flex !important;
+    width: auto !important;
+    margin: 0 !important;
+    padding: 6px 10px !important;
+    border-radius: 999px !important;
+    background: rgba(15, 23, 42, 0.38) !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+    text-decoration: none !important;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
   }
 }
