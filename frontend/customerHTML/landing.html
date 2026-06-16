@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- ======================================================
+      PUBLIC LANDING PAGE
+      File: frontend/customerHTML/landing.html
+      Purpose:
+      - First page visitors see before login/register
+      - Show resort introduction, facilities, policies, map, and contact
+      - Does not affect customer dashboard, booking, payment, or admin features
+    ======================================================= -->
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Arvic Seaside Beach Resort and Hotel</title>
+
+    <!-- Shared/global styles -->
+    <link rel="stylesheet" href="../sharedCSS/global.css" />
+
+    <!-- Landing page only styles -->
+    <link rel="stylesheet" href="../customerCSS/landing.css" />
+  </head>
+
+  <body>
+    <!-- ======================================================
+      LANDING NAVBAR
+    ======================================================= -->
+    <header class="landing-navbar">
+      <a href="landing.html" class="landing-logo">
+        <img src="../images/arvic-logo.png" alt="Arvic Seaside Logo" />
+        <span>Arvic Seaside</span>
+      </a>
+
+      <button id="landingMenuToggle" class="landing-menu-toggle" type="button">
+        ☰
+      </button>
+
+      <nav id="landingNavLinks" class="landing-nav-links">
+        <a href="#about">About</a>
+        <a href="#facilities">Facilities</a>
+        <a href="#policies">Policies</a>
+        <a href="#location">Location</a>
+        <a href="../authHTML/login.html" class="nav-login">Login</a>
+        <a href="../authHTML/register.html" class="nav-register">Register</a>
+      </nav>
+    </header>
+
+    <!-- ======================================================
+      HERO SECTION
+      Replace background image in landing.css if you have drone shot.
+    ======================================================= -->
+    <section class="landing-hero">
+      <!--Drone Shot-->
+
+      <video class="hero-video" autoplay muted loop playsinline>
+        <source src="../videos/drone-shot.mp4" type="video/mp4" />
+      </video>
+      <div class="landing-hero-overlay"></div>
+
+      <div class="landing-hero-content">
+        <span class="hero-badge"
+          >Always Open • Beach Resort • Naic, Cavite</span
+        >
+
+        <h1>Experience a relaxing seaside getaway at Arvic Seaside.</h1>
+
+        <p>
+          Discover a peaceful resort destination for family outings, overnight
+          stays, cottages, rooms, and special events at Arvic Seaside Beach
+          Resort and Hotel.
+        </p>
+
+        <div class="hero-buttons">
+          <a href="../authHTML/login.html" class="btn-main">Book Your Stay</a>
+          <a href="#about" class="btn-outline">Explore Resort</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================
+      ABOUT / INTRODUCTION SECTION
+    ======================================================= -->
+    <main>
+      <section id="about" class="landing-section about-section">
+        <div class="section-title">
+          <span>Welcome to Arvic Seaside</span>
+          <h2>A beachfront destination made for relaxation and gatherings.</h2>
+        </div>
+
+        <p class="about-text">
+          Arvic Seaside Beach Resort and Hotel is located at
+          <strong>17 Mahogany Street, Brgy. Bagong Karsada, Naic, Cavite</strong
+          >. The resort offers accommodations and facilities for guests who want
+          a comfortable stay, family bonding, swimming, events, and a relaxing
+          seaside experience.
+        </p>
+      </section>
+
+      <!-- ======================================================
+        RESORT SHOWCASE / GALLERY SECTION
+        Replace the image src values with actual resort photos.
+      ======================================================= -->
+      <section class="landing-section showcase-section">
+        <div class="section-title">
+          <span>Resort Showcase</span>
+          <h2>See the beauty of the resort before you book.</h2>
+        </div>
+
+        <div class="showcase-grid">
+          <div class="showcase-card large-card">
+            <img
+              src="../images/resort-drone.jpg"
+              alt="Drone shot of Arvic Seaside Resort"
+            />
+            <div>
+              <h3>Drone View</h3>
+              <p>
+                Enjoy a wider view of the resort area and seaside atmosphere.
+              </p>
+            </div>
+          </div>
+
+          <div class="showcase-card">
+            <img src="../images/pool-landing.jpg" alt="Swimming pool area" />
+            <div>
+              <h3>Swimming Area</h3>
+              <p>Relax and enjoy the pool with your family and friends.</p>
+            </div>
+          </div>
+
+          <div class="showcase-card">
+            <img
+              src="../images/room-landing.jpg"
+              alt="Resort room accommodation"
+            />
+            <div>
+              <h3>Comfortable Rooms</h3>
+              <p>Stay comfortably with available room accommodations.</p>
+            </div>
+          </div>
+
+          <div class="showcase-card">
+            <img src="../images/function-landing.jpg" alt="Function area" />
+            <div>
+              <h3>Function Areas</h3>
+              <p>Ideal for gatherings, celebrations, and private events.</p>
+            </div>
+          </div>
+        </div>
+
+        <p class="image-note">Note: Those are taken from the resort.</p>
+      </section>
+
+      <!-- ======================================================
+        FACILITIES SECTION
+      ======================================================= -->
+      <section id="facilities" class="landing-section facilities-section">
+        <div class="section-title">
+          <span>Facilities</span>
+          <h2>Everything guests need for a comfortable resort stay.</h2>
+        </div>
+
+        <div class="facility-grid">
+          <div class="facility-card">
+            <span>🏖</span>
+            <h3>Seaside Experience</h3>
+            <p>Enjoy the relaxing beach resort atmosphere.</p>
+          </div>
+
+          <div class="facility-card">
+            <span>🏊</span>
+            <h3>Swimming Pool</h3>
+            <p>Perfect for family bonding and group activities.</p>
+          </div>
+
+          <div class="facility-card">
+            <span>🏠</span>
+            <h3>Rooms and Cottages</h3>
+            <p>Choose from available accommodations for your stay.</p>
+          </div>
+
+          <div class="facility-card">
+            <span>🎉</span>
+            <h3>Function Areas</h3>
+            <p>Suitable for events, celebrations, and gatherings.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================
+        RESORT POLICIES SECTION
+        This also supports the panel recommendation.
+      ======================================================= -->
+      <section id="policies" class="landing-section policies-section">
+        <div class="section-title">
+          <span>Resort Policies</span>
+          <h2>Please review the important reminders before booking.</h2>
+        </div>
+
+        <div class="policy-box">
+          <ul>
+            <li>
+              Online reservations require a 50% downpayment for processing.
+            </li>
+            <li>
+              GCash and Maya proof of payment must be verified by the admin.
+            </li>
+            <li>
+              Remaining balance must be settled upon arrival or before
+              check-out.
+            </li>
+            <li>
+              Extra person fees may apply depending on accommodation policy.
+            </li>
+            <li>
+              Guests are responsible for damaged items, missing items, stained
+              sheets, towels, or other resort property.
+            </li>
+            <li>
+              Additional charges may be added by the admin or staff before final
+              payment or check-out.
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ======================================================
+        LOCATION AND CONTACT SECTION
+      ======================================================= -->
+      <section id="location" class="landing-section contact-section">
+        <div class="section-title">
+          <span>Visit Us</span>
+          <h2>Located in Naic, Cavite and open 24 hours.</h2>
+        </div>
+
+        <div class="contact-grid">
+          <div class="contact-card map-card">
+            <iframe
+              src="https://www.google.com/maps?q=17%20Mahogany%20Street%2C%20Brgy.%20Bagong%20Karsada%2C%20Naic%2C%20Cavite&output=embed"
+              loading="lazy"
+              referrerpolicy="no-referrer-when-downgrade"
+            ></iframe>
+          </div>
+
+          <div class="contact-card">
+            <h3>Arvic Seaside Beach Resort and Hotel</h3>
+
+            <p>
+              <strong>Address:</strong><br />
+              17 Mahogany Street, Brgy. Bagong Karsada, Naic, Cavite
+            </p>
+
+            <p>
+              <strong>Contact Numbers:</strong><br />
+              0956-912-5625 / 0967-817-0662
+            </p>
+
+            <p>
+              <strong>Email:</strong><br />
+              resortarvicseaside@gmail.com
+            </p>
+
+            <p>
+              <strong>Operating Hours:</strong><br />
+              Always open, Monday to Sunday, 24 hours
+            </p>
+
+            <a
+              href="https://www.google.com/maps/place/Arvic+SeaSide+Beach+Resort/@14.3208998,120.7354653,15z/data=!4m9!3m8!1s0x3396282de7cc3e97:0x92a1cbde8ed5d9f0!5m2!4m1!1i2!8m2!3d14.321746!4d120.7526246!16s%2Fg%2F1tmph13z?entry=ttu&g_ep=EgoyMDI2MDYwMy4xIKXMDSoASAFQAw%3D%3D"
+              class="btn-main small-btn"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Open Google Maps
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================
+        FINAL CTA SECTION
+      ======================================================= -->
+      <section class="landing-section final-cta">
+        <h2>Ready to plan your resort stay?</h2>
+        <p>Create an account or log in to start your reservation.</p>
+
+        <div class="hero-buttons">
+          <a href="../authHTML/login.html" class="btn-main">Login</a>
+          <a href="../authHTML/register.html" class="btn-outline dark-outline"
+            >Register</a
+          >
+        </div>
+      </section>
+    </main>
+
+    <!-- ======================================================
+      FOOTER
+    ======================================================= -->
+    <footer class="landing-footer">
+      <p>
+        © 2026 Arvic Seaside Beach Resort and Hotel. Smart Resort Booking
+        System.
+      </p>
+    </footer>
+    <script>
+      const landingMenuToggle = document.getElementById("landingMenuToggle");
+      const landingNavLinks = document.getElementById("landingNavLinks");
+
+      if (landingMenuToggle && landingNavLinks) {
+        landingMenuToggle.addEventListener("click", () => {
+          landingNavLinks.classList.toggle("show");
+          landingMenuToggle.textContent = landingNavLinks.classList.contains(
+            "show",
+          )
+            ? "×"
+            : "☰";
+        });
+      }
+    </script>
+  </body>
+</html>

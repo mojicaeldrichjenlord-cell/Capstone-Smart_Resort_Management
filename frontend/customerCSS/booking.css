@@ -749,3 +749,39 @@
     font-size: 0.9rem !important;
   }
 }
+/* ======================================================
+   RESORT POLICY REMINDER
+   Added for panel recommendation on payment page.
+====================================================== */
+
+.resort-policy-reminder {
+  background: linear-gradient(135deg, #fff7ed, #ffffff);
+  border: 1px solid #fed7aa;
+}
+
+.resort-policy-reminder h2 {
+  color: #9a3412;
+}
+
+.resort-policy-reminder ul {
+  margin: 0;
+  padding-left: 20px;
+  color: #7c2d12;
+}
+
+.resort-policy-reminder li {
+  margin-bottom: 8px;
+  line-height: 1.55;
+  font-size: 0.84rem;
+}
+
+.policy-acknowledgement {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #ffedd5;
+  color: #9a3412;
+  font-weight: 850;
+  font-size: 0.82rem;
+  line-height: 1.45;
+}

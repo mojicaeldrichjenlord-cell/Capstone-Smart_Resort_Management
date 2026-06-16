@@ -1,0 +1,653 @@
+/* ======================================================
+   PUBLIC LANDING PAGE CSS
+   File: frontend/customerCSS/landing.css
+====================================================== */
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    margin: 0;
+    color: #0f172a;
+    background:
+        radial-gradient(circle at top left, rgba(20, 184, 166, 0.1), transparent 28%),
+        linear-gradient(180deg, #f8fafc, #eef8f7);
+}
+
+/* ======================================================
+   NAVBAR
+====================================================== */
+
+.landing-navbar {
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    min-height: 82px;
+    padding: 0 3%;
+    background: linear-gradient(135deg, #0f766e, #0f172a);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.landing-logo {
+    text-decoration: none;
+    color: #ffffff;
+    font-size: 1.25rem;
+    font-weight: 950;
+    display: inline-flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.landing-logo img {
+    width: 58px;
+    height: 58px;
+    object-fit: contain;
+    padding: 6px;
+    border-radius: 18px;
+    background: #ffffff;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.22);
+}
+
+.landing-nav-links {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+
+.landing-nav-links a {
+    text-decoration: none;
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 850;
+    font-size: 0.94rem;
+}
+
+.landing-nav-links a:hover {
+    color: #ffffff;
+}
+
+.nav-login {
+    padding: 11px 18px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.16);
+    color: #ffffff !important;
+}
+
+.nav-register {
+    padding: 11px 18px;
+    border-radius: 999px;
+    background: #14b8a6;
+    color: #ffffff !important;
+}
+
+/* ======================================================
+   HERO SECTION
+====================================================== */
+
+.landing-hero {
+    position: relative;
+    min-height: 680px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start !important;
+    padding: 70px 7%;
+    color: white;
+    background:
+        linear-gradient(rgba(15, 23, 42, 0.4), rgba(15, 23, 42, 0.58)),
+        url("../images/background.jpg") center/cover no-repeat;
+    overflow: hidden;
+}
+
+.hero-video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 0;
+}
+
+.landing-hero-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    background:
+        radial-gradient(circle at top left, rgba(20, 184, 166, 0.28), transparent 36%),
+        linear-gradient(90deg, rgba(15, 23, 42, 0.76), rgba(15, 23, 42, 0.22));
+}
+
+.landing-hero-content {
+    position: relative;
+    z-index: 2;
+    max-width: 780px;
+    margin-left: 0 !important;
+    margin-right: auto !important;
+    text-align: left !important;
+}
+
+.hero-badge {
+    display: inline-flex;
+    padding: 10px 16px;
+    border-radius: 999px;
+    margin-bottom: 20px;
+    background: rgba(255, 255, 255, 0.16);
+    border: 1px solid rgba(255, 255, 255, 0.24);
+    backdrop-filter: blur(10px);
+    font-weight: 850;
+    font-size: 0.92rem;
+}
+
+.landing-hero h1 {
+    margin: 0 0 18px;
+    font-size: clamp(2.45rem, 6vw, 5rem);
+    line-height: 1.04;
+    letter-spacing: -0.06em;
+}
+
+.landing-hero p {
+    max-width: 680px;
+    margin: 0 0 30px;
+    font-size: 1.12rem;
+    line-height: 1.75;
+    color: rgba(255, 255, 255, 0.94);
+}
+
+.hero-buttons {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    justify-content: flex-start !important;
+}
+
+/* ======================================================
+   BUTTONS
+====================================================== */
+
+.btn-main,
+.btn-outline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
+    padding: 0 22px;
+    border-radius: 999px;
+    text-decoration: none;
+    font-weight: 900;
+}
+
+.btn-main {
+    color: white;
+    background: linear-gradient(135deg, #14b8a6, #0f766e);
+    box-shadow: 0 16px 34px rgba(20, 184, 166, 0.28);
+}
+
+.btn-outline {
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    background: rgba(255, 255, 255, 0.13);
+    backdrop-filter: blur(8px);
+}
+
+.dark-outline {
+    color: #0f766e;
+    border: 1px solid rgba(20, 184, 166, 0.35);
+    background: rgba(236, 254, 255, 0.9);
+}
+
+.small-btn {
+    min-height: 44px;
+    padding: 0 18px;
+}
+
+/* ======================================================
+   GENERAL SECTIONS
+====================================================== */
+
+.landing-section {
+    width: 86%;
+    max-width: 1200px;
+    margin: 34px auto 0;
+    padding: 54px 44px;
+    background: rgba(255, 255, 255, 0.72);
+    border-radius: 32px;
+    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.04);
+    border: 1px solid rgba(226, 232, 240, 0.7);
+}
+
+.section-title {
+    max-width: 780px;
+    margin-bottom: 28px;
+}
+
+.section-title span {
+    display: inline-block;
+    color: #0f766e;
+    font-weight: 950;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 0.82rem;
+    margin-bottom: 10px;
+}
+
+.section-title h2 {
+    margin: 0;
+    color: #0f172a;
+    font-size: clamp(1.9rem, 4vw, 3rem);
+    line-height: 1.12;
+    letter-spacing: -0.04em;
+}
+
+/* ======================================================
+   ABOUT
+====================================================== */
+
+.about-text {
+    max-width: 920px;
+    color: #475569;
+    font-size: 1.05rem;
+    line-height: 1.85;
+    margin: 0;
+}
+
+/* ======================================================
+   SHOWCASE
+====================================================== */
+
+.showcase-grid {
+    display: grid;
+    grid-template-columns: 1.25fr 1fr;
+    gap: 20px;
+}
+
+.showcase-card {
+    min-height: 280px;
+    position: relative;
+    overflow: hidden;
+    border-radius: 28px;
+    background: #e2e8f0;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+}
+
+.showcase-card.large-card {
+    grid-row: span 2;
+    min-height: 580px;
+}
+
+.showcase-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    position: absolute;
+    inset: 0;
+}
+
+.showcase-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(transparent 35%, rgba(15, 23, 42, 0.82));
+}
+
+.showcase-card div {
+    position: absolute;
+    left: 24px;
+    right: 24px;
+    bottom: 22px;
+    z-index: 1;
+    color: white;
+}
+
+.showcase-card h3 {
+    margin: 0 0 8px;
+    font-size: 1.35rem;
+}
+
+.showcase-card p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.88);
+    line-height: 1.55;
+}
+
+.image-note {
+    margin-top: 16px;
+    color: #64748b;
+    font-size: 0.92rem;
+}
+
+/* ======================================================
+   FACILITIES
+====================================================== */
+
+.facility-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 18px;
+}
+
+.facility-card {
+    padding: 24px;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.94);
+    border: 1px solid rgba(226, 232, 240, 0.96);
+    box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+}
+
+.facility-card span {
+    display: inline-grid;
+    place-items: center;
+    width: 54px;
+    height: 54px;
+    margin-bottom: 16px;
+    border-radius: 18px;
+    background: #ecfeff;
+    font-size: 1.65rem;
+}
+
+.facility-card h3 {
+    margin: 0 0 10px;
+}
+
+.facility-card p {
+    margin: 0;
+    color: #475569;
+    line-height: 1.65;
+}
+
+/* ======================================================
+   POLICIES
+====================================================== */
+
+.policy-box {
+    padding: 28px;
+    border-radius: 28px;
+    background: linear-gradient(135deg, rgba(236, 254, 255, 0.95), rgba(255, 255, 255, 0.95));
+    border: 1px solid rgba(125, 211, 252, 0.4);
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+}
+
+.policy-box ul {
+    margin: 0;
+    padding-left: 22px;
+    color: #334155;
+}
+
+.policy-box li {
+    margin-bottom: 12px;
+    line-height: 1.7;
+}
+
+/* ======================================================
+   CONTACT
+====================================================== */
+
+.contact-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr;
+    gap: 22px;
+}
+
+.contact-card {
+    border-radius: 28px;
+    background: white;
+    border: 1px solid rgba(226, 232, 240, 0.96);
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
+    overflow: hidden;
+    padding: 26px;
+}
+
+.map-card {
+    padding: 0;
+    min-height: 420px;
+}
+
+.map-card iframe {
+    width: 100%;
+    height: 100%;
+    min-height: 420px;
+    border: 0;
+}
+
+.contact-card h3 {
+    margin: 0 0 18px;
+    font-size: 1.4rem;
+}
+
+.contact-card p {
+    color: #475569;
+    line-height: 1.7;
+    margin: 0 0 16px;
+}
+
+/* ======================================================
+   FINAL CTA
+====================================================== */
+
+.final-cta {
+    text-align: center;
+    margin-bottom: 70px;
+    background:
+        radial-gradient(circle at top left, rgba(20, 184, 166, 0.18), transparent 36%),
+        linear-gradient(135deg, #ffffff, #ecfeff);
+}
+
+.final-cta h2 {
+    margin: 0 0 10px;
+    font-size: clamp(1.8rem, 4vw, 2.8rem);
+}
+
+.final-cta p {
+    margin: 0 0 24px;
+    color: #475569;
+}
+
+.final-cta .hero-buttons {
+    justify-content: center !important;
+}
+
+/* ======================================================
+   FOOTER
+====================================================== */
+
+.landing-footer {
+    padding: 26px 7%;
+    text-align: center;
+    background: #0f172a;
+    color: rgba(255, 255, 255, 0.78);
+}
+
+.landing-footer p {
+    margin: 0;
+}
+
+/* ======================================================
+   TABLET
+====================================================== */
+
+@media (max-width: 992px) {
+    .landing-navbar {
+        padding: 0 5%;
+    }
+
+    .landing-nav-links {
+        gap: 12px;
+    }
+
+    .showcase-grid,
+    .contact-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .showcase-card.large-card {
+        min-height: 420px;
+    }
+
+    .facility-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* ======================================================
+   MOBILE - BURGER MENU
+====================================================== */
+
+.landing-menu-toggle {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .landing-navbar {
+        position: sticky;
+        top: 0;
+        min-height: 76px;
+        padding: 12px 16px;
+        flex-direction: row;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .landing-logo {
+        font-size: 1.05rem;
+        gap: 10px;
+    }
+
+    .landing-logo img {
+        width: 44px;
+        height: 44px;
+        padding: 5px;
+        border-radius: 15px;
+    }
+
+    .landing-menu-toggle {
+        display: inline-flex;
+        margin-left: auto;
+        width: 44px;
+        height: 44px;
+        border: none;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.14);
+        color: #ffffff;
+        font-size: 1.45rem;
+        font-weight: 900;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+    }
+
+    .landing-nav-links {
+        display: none;
+        position: absolute;
+        top: 82px;
+        right: 12px;
+        width: 210px;
+        padding: 10px;
+        border-radius: 18px;
+        background: linear-gradient(135deg, #0f766e, #0f172a);
+        box-shadow: 0 18px 38px rgba(15, 23, 42, 0.22);
+        grid-template-columns: 1fr;
+        gap: 7px;
+    }
+
+    .landing-nav-links.show {
+        display: grid;
+    }
+
+    .landing-nav-links a {
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.12);
+        color: #ffffff !important;
+        text-align: center;
+        font-size: 0.82rem;
+        font-weight: 850;
+    }
+
+    .nav-login,
+    .nav-register {
+        background: #14b8a6 !important;
+    }
+
+    .landing-hero {
+        min-height: 620px;
+        padding: 38px 20px 48px;
+    }
+
+    .landing-hero-content {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .landing-hero h1 {
+        font-size: 2.15rem;
+        line-height: 1.08;
+        letter-spacing: -0.05em;
+    }
+
+    .landing-hero p {
+        max-width: 100%;
+        font-size: 0.96rem;
+        line-height: 1.7;
+    }
+
+    .hero-badge {
+        max-width: 100%;
+        white-space: normal;
+        font-size: 0.74rem;
+        padding: 9px 12px;
+    }
+
+    .hero-buttons {
+        width: 100%;
+    }
+
+    .hero-buttons .btn-main,
+    .hero-buttons .btn-outline {
+        width: 100%;
+    }
+
+    .landing-section {
+        width: 90%;
+        padding: 38px 20px;
+        margin-top: 24px;
+        border-radius: 24px;
+    }
+
+    .facility-grid,
+    .showcase-grid,
+    .contact-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .showcase-card,
+    .showcase-card.large-card {
+        min-height: 340px;
+    }
+}
+
+@media (max-width: 480px) {
+    .landing-navbar {
+        padding: 12px;
+    }
+
+    .landing-logo {
+        font-size: 1rem;
+    }
+
+    .landing-logo img {
+        width: 42px;
+        height: 42px;
+    }
+
+    .landing-hero h1 {
+        font-size: 2rem;
+    }
+
+    .policy-box,
+    .contact-card,
+    .facility-card {
+        padding: 20px;
+        border-radius: 22px;
+    }
+}

@@ -74,7 +74,42 @@
               <h2>Reservation Summary</h2>
               <div id="reservationSummaryList" class="summary-list"></div>
             </section>
+            <!-- ======================================================
+   RESORT POLICY REMINDER
+   Added for panel recommendation:
+   - Shows payment and damage/stain policy before customer submits.
+======================================================= -->
+            <section class="section-box resort-policy-reminder">
+              <h2>Resort Policy Reminder</h2>
 
+              <ul>
+                <li>
+                  Online reservations require a 50% downpayment for processing.
+                </li>
+                <li>
+                  Your reservation will remain pending until the admin verifies
+                  your payment proof.
+                </li>
+                <li>
+                  The remaining balance, entrance fee, and other applicable
+                  charges must be settled at the resort.
+                </li>
+                <li>
+                  Guests are responsible for damaged items, missing items,
+                  stained bed sheets, towels, or other resort property.
+                </li>
+                <li>
+                  Additional charges may be added by the admin or staff before
+                  final payment or check-out if damage, stains, or missing items
+                  are found.
+                </li>
+              </ul>
+
+              <div class="policy-acknowledgement">
+                By submitting your reservation, you acknowledge and agree to the
+                resort policies above.
+              </div>
+            </section>
             <!-- ======================================================
                PAYMENT FORM
             ======================================================= -->
@@ -105,7 +140,8 @@
                     />
 
                     <small id="paymentReferenceHelp" class="field-help">
-                      GCash requires exactly 13 digits. Maya / PayMaya allows 6 to 30 digits.
+                      GCash requires exactly 13 digits. Maya / PayMaya allows 6
+                      to 30 digits.
                     </small>
                   </div>
 
@@ -125,7 +161,9 @@
                   </div>
 
                   <div class="payment-form-group full-width">
-                    <label for="paymentReminderNote">Optional Payment Note</label>
+                    <label for="paymentReminderNote"
+                      >Optional Payment Note</label
+                    >
 
                     <textarea
                       id="paymentReminderNote"
@@ -135,11 +173,18 @@
                 </div>
 
                 <div class="payment-actions">
-                  <button id="submitReservationBtn" type="button" class="btn-primary full-btn">
+                  <button
+                    id="submitReservationBtn"
+                    type="button"
+                    class="btn-primary full-btn"
+                  >
                     Submit Reservation
                   </button>
 
-                  <a href="booking.html" class="back-btn-full confirm-transaction-exit">
+                  <a
+                    href="booking.html"
+                    class="back-btn-full confirm-transaction-exit"
+                  >
                     Back
                   </a>
                 </div>
@@ -217,11 +262,19 @@
         </p>
 
         <div class="cancel-transaction-actions">
-          <button type="button" class="continue-booking-btn" id="continueBookingBtn">
+          <button
+            type="button"
+            class="continue-booking-btn"
+            id="continueBookingBtn"
+          >
             Continue Payment
           </button>
 
-          <button type="button" class="cancel-transaction-btn" id="confirmCancelTransactionBtn">
+          <button
+            type="button"
+            class="cancel-transaction-btn"
+            id="confirmCancelTransactionBtn"
+          >
             Cancel Transaction
           </button>
         </div>
@@ -249,11 +302,11 @@
       }
 
       const cancelTransactionModal = document.getElementById(
-        "cancelTransactionModal"
+        "cancelTransactionModal",
       );
       const continueBookingBtn = document.getElementById("continueBookingBtn");
       const confirmCancelTransactionBtn = document.getElementById(
-        "confirmCancelTransactionBtn"
+        "confirmCancelTransactionBtn",
       );
 
       let pendingExitUrl = null;
