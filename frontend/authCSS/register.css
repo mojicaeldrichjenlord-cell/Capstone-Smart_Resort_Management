@@ -563,3 +563,48 @@
     grid-template-columns: 1fr;
   }
 }
+
+@media (max-width: 768px) {}
+
+/* ======================================================
+   BACK TO LANDING PAGE LINK
+   Purpose:
+   - Minimal link that lets users return to the landing page
+   - Designed to be subtle so it does not distract from login/register form
+====================================================== */
+
+.back-landing-btn {
+  position: fixed;
+  top: 18px;
+  left: 18px;
+  z-index: 100;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.28);
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.back-landing-btn:hover {
+  background: rgba(15, 23, 42, 0.42);
+  color: #ffffff;
+}
+
+/* ======================================================
+   BACK TO LANDING PAGE LINK - MOBILE
+   Purpose:
+   - Keeps the link readable and unobtrusive on small screens
+====================================================== */
+
+@media (max-width: 768px) {
+  .back-landing-btn {
+    top: 12px;
+    left: 12px;
+    font-size: 0.76rem;
+    padding: 6px 10px;
+  }
+}

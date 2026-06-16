@@ -227,6 +227,7 @@ function setupBookingForm(user) {
   if (addItemBtn) {
     addItemBtn.addEventListener("click", () => {
       addBookingItem();
+      scrollToLatestBookingItem();
     });
   }
 
@@ -443,7 +444,7 @@ function addBookingItem(preselectedId = null) {
           <option value="1">1 day only</option>
         </select>
         <small class="field-help">
-          Day Tour is 1 day only. Overnight can be 1 to 5 nights. 22 Hours / 23 Hours can be 1 to 5 days.
+          Day Tour and Night are fixed schedules. Day/Night 22 Hours or 23 Hours can be 1 to 5 days depending on category.
         </small>
       </div>
 
@@ -528,6 +529,27 @@ function addBookingItem(preselectedId = null) {
   populateStayDurationOptions(itemId);
   updateItemPreview(itemId);
   refreshTitles();
+}
+
+
+function scrollToLatestBookingItem() {
+  const cards = document.querySelectorAll(".booking-item-card");
+  const latestCard = cards[cards.length - 1];
+
+  if (!latestCard) return;
+
+  setTimeout(() => {
+    latestCard.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+
+    latestCard.classList.add("new-booking-item-highlight");
+
+    setTimeout(() => {
+      latestCard.classList.remove("new-booking-item-highlight");
+    }, 1400);
+  }, 80);
 }
 
 // ============================================================
@@ -783,29 +805,78 @@ function getSlotOptions(accommodation) {
   if (!accommodation) return [];
 
   const category = String(accommodation.category_name || "").toLowerCase();
-  const isRoom = category === "room" || category.includes("room");
+
+  const isRoom = category.includes("room");
+  const isCottage =
+    category.includes("cottage") ||
+    category.includes("shade") ||
+    category.includes("hut");
+  const isFunction =
+    category.includes("function") ||
+    category.includes("pavilion");
+
+  let dayStart = "08:00:00";
+  let dayEnd = "18:00:00";
+  let nightStart = "20:00:00";
+  let nightEnd = "06:00:00";
+  let dayExtendedEnd = "06:00:00";
+  let nightExtendedEnd = "18:00:00";
+  let extendedLabel = "23 Hours";
+
+  if (isRoom) {
+    dayStart = "07:00:00";
+    dayEnd = "17:00:00";
+    nightStart = "19:00:00";
+    nightEnd = "05:00:00";
+    dayExtendedEnd = "05:00:00";
+    nightExtendedEnd = "17:00:00";
+    extendedLabel = "22 Hours";
+  } else if (isCottage) {
+    dayStart = "06:00:00";
+    dayEnd = "17:00:00";
+    nightStart = "18:00:00";
+    nightEnd = "05:00:00";
+    dayExtendedEnd = "05:00:00";
+    nightExtendedEnd = "17:00:00";
+    extendedLabel = "23 Hours";
+  } else if (isFunction) {
+    dayStart = "08:00:00";
+    dayEnd = "18:00:00";
+    nightStart = "20:00:00";
+    nightEnd = "06:00:00";
+    dayExtendedEnd = "06:00:00";
+    nightExtendedEnd = "18:00:00";
+    extendedLabel = "23 Hours";
+  }
 
   return [
     {
       value: "day_tour",
       label: "Day Tour",
       price: Number(accommodation.day_price || 0),
-      start: accommodation.day_start_time,
-      end: accommodation.day_end_time,
+      start: dayStart,
+      end: dayEnd,
     },
     {
-      value: "overnight",
-      label: "Overnight",
+      value: "night",
+      label: "Night",
       price: Number(accommodation.overnight_price || 0),
-      start: accommodation.overnight_start_time,
-      end: accommodation.overnight_end_time,
+      start: nightStart,
+      end: nightEnd,
     },
     {
-      value: "extended",
-      label: isRoom ? "22 Hours" : "23 Hours",
+      value: "day_extended",
+      label: `Day ${extendedLabel}`,
       price: Number(accommodation.extended_price || 0),
-      start: accommodation.extended_start_time,
-      end: accommodation.extended_end_time,
+      start: dayStart,
+      end: dayExtendedEnd,
+    },
+    {
+      value: "night_extended",
+      label: `Night ${extendedLabel}`,
+      price: Number(accommodation.extended_price || 0),
+      start: nightStart,
+      end: nightExtendedEnd,
     },
   ];
 }
@@ -816,7 +887,7 @@ function getStayDuration(item) {
 }
 
 function getAllowedStayDurations(slotType) {
-  return slotType === "extended" || slotType === "overnight"
+  return ["day_extended", "night_extended"].includes(slotType)
     ? [1, 2, 3, 4, 5]
     : [1];
 }
@@ -831,20 +902,20 @@ function populateStayDurationOptions(itemId) {
 
   const previousValue = Number(staySelect.value || 1);
   const allowed = getAllowedStayDurations(slotType);
+  const canExtendStay = ["day_extended", "night_extended"].includes(slotType);
 
   staySelect.innerHTML = allowed
     .map((days) => {
-      const label = slotType === "extended"
+      const label = canExtendStay
         ? `${days} ${days === 1 ? "day" : "days"}`
-        : slotType === "overnight"
-          ? `${days} ${days === 1 ? "night" : "nights"}`
-          : "1 day only";
+        : "1 day/night only";
+
       return `<option value="${days}">${label}</option>`;
     })
     .join("");
 
   staySelect.value = allowed.includes(previousValue) ? String(previousValue) : "1";
-  staySelect.disabled = !["overnight", "extended"].includes(slotType);
+  staySelect.disabled = !canExtendStay;
 }
 
 function populateSlotOptions(itemId) {
@@ -926,19 +997,22 @@ function updateItemPreview(itemId) {
     return;
   }
 
-  const stayDuration = Number(stayDurationSelect?.value || 1);
+  const isLongStaySlot = ["day_extended", "night_extended"].includes(slot.value);
+  const stayDuration = isLongStaySlot
+    ? Number(stayDurationSelect?.value || 1)
+    : 1;
+
   const checkOutDate = calculateCheckOutDate(
     dateInput.value,
     slot.start,
     slot.end,
     stayDuration
   );
+
   const totalPrice = Number(slot.price || 0) * stayDuration;
-  const durationLabel = slot.value === "extended"
+  const durationLabel = isLongStaySlot
     ? `${stayDuration} ${stayDuration === 1 ? "day" : "days"}`
-    : slot.value === "overnight"
-      ? `${stayDuration} ${stayDuration === 1 ? "night" : "nights"}`
-      : "1 day only";
+    : "Fixed schedule only";
 
   preview.innerHTML = `
     <strong>${escapeHtml(accommodation.name)}</strong><br>
@@ -948,7 +1022,7 @@ function updateItemPreview(itemId) {
     Stay Duration: ${escapeHtml(durationLabel)}<br>
     Reservation Date: ${formatDateDisplay(dateInput.value)}<br>
     Check-out Date: ${formatDateDisplay(checkOutDate)}<br>
-    Price: ₱${formatMoney(slot.price)}${["overnight", "extended"].includes(slot.value) ? ` × ${stayDuration} = ₱${formatMoney(totalPrice)}` : ""}
+    Price: ₱${formatMoney(slot.price)}${isLongStaySlot ? ` × ${stayDuration} = ₱${formatMoney(totalPrice)}` : ""}
   `;
 }
 
@@ -970,7 +1044,7 @@ function collectBookingItems() {
       accommodation_id: Number(accommodationId),
       slot_type: slotType,
       check_in_date: checkInDate,
-      stay_duration: ["overnight", "extended"].includes(slotType)
+      stay_duration: ["day_extended", "night_extended"].includes(slotType)
         ? Math.max(1, Math.min(5, stayDuration))
         : 1,
     });
@@ -1083,7 +1157,7 @@ function getEstimatedEntranceFee() {
   const items = collectBookingItems();
 
   const hasOvernightStyle = items.some((item) => {
-    return item.slot_type === "overnight" || item.slot_type === "extended";
+    return item.slot_type === "night" || item.slot_type === "day_extended" || item.slot_type === "night_extended";
   });
 
   const totalFreeEntrancePax = getTotalFreeEntrancePax(items, guestCount);

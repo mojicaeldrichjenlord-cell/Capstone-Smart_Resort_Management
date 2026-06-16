@@ -1,6 +1,10 @@
 <!-- ======================================================
   COMMENTED VERSION
-  Same HTML structure with extra comments for easier group explanation.
+  File: frontend/adminHTML/admin-guests-inside.html
+  Purpose:
+  - Shows all currently checked-in guests
+  - Allows admin/staff to add extra bed, add accommodation, manage charges,
+    check out guests, and view receipt
 ====================================================== -->
 
 <!doctype html>
@@ -10,7 +14,6 @@
 
     <!-- ======================================================
        RESPONSIVE VIEWPORT
-       Makes guests-inside page mobile-friendly.
     ======================================================= -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
@@ -18,9 +21,6 @@
 
     <!-- ======================================================
        PAGE CSS FILES
-       global.css = shared base styles
-       style.css = old navbar/button styles for now
-       admin-guests-inside.css = guests inside page only
     ======================================================= -->
     <link rel="stylesheet" href="../sharedCSS/global.css" />
     <link rel="stylesheet" href="../css/style.css" />
@@ -30,8 +30,6 @@
   <body class="has-fixed-navbar">
     <!-- ======================================================
        ADMIN NAVBAR
-       This page is inside adminHTML.
-       Pages not yet moved still use ../ links.
     ======================================================= -->
     <header class="navbar">
       <div class="logo">Arvic Seaside Admin</div>
@@ -50,7 +48,6 @@
 
     <!-- ======================================================
        MAIN GUESTS INSIDE PAGE
-       Shows currently active guests and front-desk reminders.
     ======================================================= -->
     <main class="guests-shell">
       <div class="top-actions">
@@ -65,9 +62,9 @@
         <h1>Guests Inside Resort</h1>
 
         <p>
-          Shows guests who are already checked in / allowed to enter the resort today. Use
-          this for front-desk monitoring, check-out awareness, extra bed
-          charges, and manual guest check-out.
+          Shows guests who are already checked in / allowed to enter the resort
+          today. Use this for front-desk monitoring, check-out awareness, extra
+          bed charges, additional charges, and manual guest check-out.
         </p>
       </section>
 
@@ -106,8 +103,8 @@
 
             <p>
               Red means overdue, yellow means ending soon, and green means
-              currently active. Use action buttons to add extra bed, check out
-              guests, or view receipts.
+              currently active. Use action buttons to add extra bed, add
+              accommodation, manage charges, check out guests, or view receipts.
             </p>
           </div>
         </div>
@@ -152,7 +149,6 @@
 
     <!-- ======================================================
        EXTRA BED MODAL
-       Used to add/update extra bed count and fee.
     ======================================================= -->
     <div class="extra-bed-modal" id="extraBedModal">
       <div class="extra-bed-modal-box">
@@ -195,10 +191,8 @@
       </div>
     </div>
 
-
     <!-- ======================================================
        ADD ACCOMMODATION MODAL
-       Used when a checked-in guest wants another room/cottage onsite.
     ======================================================= -->
     <div class="add-accommodation-modal" id="addAccommodationModal">
       <div class="add-accommodation-modal-box">
@@ -239,8 +233,8 @@
           </select>
 
           <small>
-            Day Tour is 1 day only. Overnight can be 1 to 5 nights.
-            22 Hours / 23 Hours can be 1 to 5 days.
+            Day Tour is 1 day only. Overnight can be 1 to 5 nights. 22 Hours /
+            23 Hours can be 1 to 5 days.
           </small>
         </div>
 
@@ -249,17 +243,101 @@
         </div>
 
         <div class="add-accommodation-modal-actions">
-          <button type="button" class="modal-btn save" id="saveAddAccommodationBtn">
+          <button
+            type="button"
+            class="modal-btn save"
+            id="saveAddAccommodationBtn"
+          >
             Add Accommodation
           </button>
 
-          <button type="button" class="modal-btn cancel" id="cancelAddAccommodationBtn">
+          <button
+            type="button"
+            class="modal-btn cancel"
+            id="cancelAddAccommodationBtn"
+          >
             Cancel
           </button>
         </div>
       </div>
     </div>
 
+    <!-- ======================================================
+       BOOKING CHARGES MODAL
+       Added for panel recommendation:
+       - Admin/staff can record damage, stain, missing item, or other charges
+       - Connected to booking_charges table through /api/bookings/:id/charges
+    ======================================================= -->
+    <div class="charges-modal" id="chargesModal">
+      <div class="charges-modal-box">
+        <div class="charges-header">
+          <div>
+            <h2>Manage Additional Charges</h2>
+
+            <p id="chargesGuestText">
+              Add damage, stain, missing item, or other charges for this guest.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="charges-close-btn"
+            onclick="closeChargesModal()"
+            aria-label="Close charges modal"
+          >
+            ×
+          </button>
+        </div>
+
+        <div class="charges-total-box">
+          <span>Total Additional Charges</span>
+          <strong id="chargesTotalText">₱0.00</strong>
+        </div>
+
+        <div id="chargesListContainer" class="charges-list-container">
+          No charges found.
+        </div>
+
+        <div class="charges-divider"></div>
+
+        <div class="charges-form">
+          <div class="charges-form-group">
+            <label for="chargeNameInput">Charge Name / Reason</label>
+
+            <input
+              type="text"
+              id="chargeNameInput"
+              placeholder="Example: Stained Bedsheet"
+            />
+          </div>
+
+          <div class="charges-form-group">
+            <label for="chargeAmountInput">Amount</label>
+
+            <input
+              type="number"
+              id="chargeAmountInput"
+              min="0"
+              step="0.01"
+              placeholder="0.00"
+            />
+          </div>
+
+          <div class="charges-form-group">
+            <label for="chargeNoteInput">Note (Optional)</label>
+
+            <textarea
+              id="chargeNoteInput"
+              placeholder="Example: Large stain found during room inspection."
+            ></textarea>
+          </div>
+
+          <button type="button" class="add-charge-btn" id="saveChargeBtn">
+            Add Charge
+          </button>
+        </div>
+      </div>
+    </div>
 
     <!-- ======================================================
        PAGE SCRIPTS

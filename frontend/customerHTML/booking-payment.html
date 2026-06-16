@@ -17,12 +17,123 @@
     <link rel="stylesheet" href="../css/style.css" />
     <link rel="stylesheet" href="../customerCSS/booking-payment.css" />
     <link rel="stylesheet" href="../sharedCSS/customer-navbar.css" />
+
+    <!-- ======================================================
+       QR MODAL CSS
+       Kept here so you can copy-paste this HTML without touching CSS first.
+    ======================================================= -->
+    <style>
+      .qr-open-card {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 16px;
+        border: 1px solid #dbeafe;
+        border-radius: 18px;
+        background: linear-gradient(135deg, #ecfeff, #ffffff);
+      }
+
+      .qr-open-card p {
+        margin: 0;
+        color: #475569;
+        line-height: 1.5;
+      }
+
+      .qr-open-btn {
+        width: 100%;
+        border: none;
+        border-radius: 14px;
+        padding: 13px 16px;
+        background: linear-gradient(135deg, #14b8a6, #0891b2);
+        color: #ffffff;
+        font-weight: 900;
+        cursor: pointer;
+        box-shadow: 0 14px 30px rgba(8, 145, 178, 0.22);
+      }
+
+      .qr-open-btn:hover {
+        filter: brightness(0.98);
+        transform: translateY(-1px);
+      }
+
+      .qr-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 9000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 18px;
+        background: rgba(15, 23, 42, 0.78);
+        backdrop-filter: blur(4px);
+      }
+
+      .qr-modal.show {
+        display: flex;
+      }
+
+      .qr-modal-box {
+        position: relative;
+        width: min(440px, 94vw);
+        max-height: 90vh;
+        overflow-y: auto;
+        background: #ffffff;
+        border-radius: 24px;
+        padding: 20px;
+        box-shadow: 0 26px 70px rgba(15, 23, 42, 0.32);
+      }
+
+      .qr-modal-close {
+        position: absolute;
+        top: 14px;
+        right: 14px;
+        width: 42px;
+        height: 42px;
+        border: none;
+        border-radius: 999px;
+        background: #fee2e2;
+        color: #b91c1c;
+        font-size: 1.4rem;
+        font-weight: 900;
+        cursor: pointer;
+      }
+
+      .qr-modal-header {
+        padding-right: 46px;
+        margin-bottom: 14px;
+      }
+
+      .qr-modal-header h2 {
+        margin: 0 0 4px;
+        color: #0f172a;
+      }
+
+      .qr-modal-header p {
+        margin: 0;
+        color: #64748b;
+        line-height: 1.45;
+      }
+
+      .qr-modal .qr-payment-card {
+        margin-top: 12px;
+      }
+
+      @media (max-width: 768px) {
+        .payment-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .qr-modal {
+          align-items: flex-start;
+          padding-top: 70px;
+        }
+      }
+    </style>
   </head>
 
   <body>
     <!-- ======================================================
        CUSTOMER NAVBAR
-       Same Resort Map navbar style.
     ======================================================= -->
     <header class="navbar">
       <div class="logo">Arvic Seaside</div>
@@ -60,7 +171,7 @@
           <h1>Reservation Payment</h1>
 
           <p>
-            Review your reservation, scan the selected payment QR code, then
+            Review your reservation, open the selected payment QR code, then
             upload your proof of transaction for admin verification.
           </p>
         </div>
@@ -74,42 +185,7 @@
               <h2>Reservation Summary</h2>
               <div id="reservationSummaryList" class="summary-list"></div>
             </section>
-            <!-- ======================================================
-   RESORT POLICY REMINDER
-   Added for panel recommendation:
-   - Shows payment and damage/stain policy before customer submits.
-======================================================= -->
-            <section class="section-box resort-policy-reminder">
-              <h2>Resort Policy Reminder</h2>
 
-              <ul>
-                <li>
-                  Online reservations require a 50% downpayment for processing.
-                </li>
-                <li>
-                  Your reservation will remain pending until the admin verifies
-                  your payment proof.
-                </li>
-                <li>
-                  The remaining balance, entrance fee, and other applicable
-                  charges must be settled at the resort.
-                </li>
-                <li>
-                  Guests are responsible for damaged items, missing items,
-                  stained bed sheets, towels, or other resort property.
-                </li>
-                <li>
-                  Additional charges may be added by the admin or staff before
-                  final payment or check-out if damage, stains, or missing items
-                  are found.
-                </li>
-              </ul>
-
-              <div class="policy-acknowledgement">
-                By submitting your reservation, you acknowledge and agree to the
-                resort policies above.
-              </div>
-            </section>
             <!-- ======================================================
                PAYMENT FORM
             ======================================================= -->
@@ -151,7 +227,7 @@
                     <input
                       type="file"
                       id="paymentProof"
-                      accept="image/png,image/jpeg,image/jpg,image/webp"
+                      accept="image/png,image/jpeg,image/jpg,image/webp,image/heic,image/heif"
                       required
                     />
 
@@ -161,9 +237,9 @@
                   </div>
 
                   <div class="payment-form-group full-width">
-                    <label for="paymentReminderNote"
-                      >Optional Payment Note</label
-                    >
+                    <label for="paymentReminderNote">
+                      Optional Payment Note
+                    </label>
 
                     <textarea
                       id="paymentReminderNote"
@@ -229,23 +305,132 @@
               </div>
 
               <div class="payment-note">
-                <strong>Reminder:</strong> Down payment is based on the
-                accommodation total only. Entrance fee and remaining balance are
-                paid onsite.
+                <strong>Reminder:</strong>
+                Down payment is based on the accommodation total only. Entrance
+                fee and remaining balance are paid onsite.
+
+                <br /><br />
+
+                <strong>Important:</strong>
+                The displayed entrance fee is only an estimate for the first day
+                of your stay. Guests who will continue using the pool or beach
+                facilities on succeeding days may be charged an additional
+                entrance fee of ₱100 per guest per day. This charge will be
+                assessed and collected at the front desk if applicable.
               </div>
             </section>
 
             <!-- ======================================================
-               QR PAYMENT BOX
+               QR PAYMENT BUTTON
+               QR itself opens in a modal to keep the layout clean.
             ======================================================= -->
             <section class="section-box">
               <h2>Scan to Pay</h2>
-              <div id="qrPlaceholderBox" class="qr-payment-card"></div>
+
+              <div class="qr-open-card">
+                <p>
+                  Open the QR code for your selected payment method, then upload
+                  the transaction screenshot below.
+                </p>
+
+                <button id="openQrModalBtn" type="button" class="qr-open-btn">
+                  View Payment QR
+                </button>
+
+                <small id="qrMethodPreview" class="field-help">
+                  Selected method: GCash
+                </small>
+              </div>
+            </section>
+
+            <!-- ======================================================
+               RESORT POLICY REMINDER
+            ======================================================= -->
+            <section class="section-box resort-policy-reminder">
+              <h2>Resort Policy Reminder</h2>
+
+              <div class="policy-list">
+                <div class="policy-item">
+                  <span>01</span>
+                  <p>Online reservations require a 50% downpayment.</p>
+                </div>
+
+                <div class="policy-item">
+                  <span>02</span>
+                  <p>
+                    Reservation remains pending until admin verifies your
+                    payment proof.
+                  </p>
+                </div>
+
+                <div class="policy-item">
+                  <span>03</span>
+                  <p>
+                    Remaining balance, entrance fee, and other charges must be
+                    settled at the resort.
+                  </p>
+                </div>
+
+                <div class="policy-item">
+                  <span>04</span>
+                  <p>
+                    Guests are responsible for damaged items, missing items,
+                    stained sheets, towels, or resort property.
+                  </p>
+                </div>
+
+                <div class="policy-item">
+                  <span>05</span>
+                  <p>
+                    Additional charges may be added by admin/staff before final
+                    payment or check-out.
+                  </p>
+                </div>
+
+                <div class="policy-item">
+                  <span>06</span>
+                  <p>
+                    Guests who use pool or beach facilities on succeeding days
+                    of their stay may incur an additional entrance fee of ₱100
+                    per guest per day, subject to resort assessment.
+                  </p>
+                </div>
+              </div>
+
+              <div class="policy-acknowledgement">
+                By submitting, you agree to these resort policies.
+              </div>
             </section>
           </aside>
         </div>
       </div>
     </main>
+
+    <!-- ======================================================
+       QR PAYMENT MODAL
+    ====================================================== -->
+    <div class="qr-modal" id="qrPaymentModal">
+      <div class="qr-modal-box">
+        <button
+          type="button"
+          class="qr-modal-close"
+          id="closeQrModalBtn"
+          aria-label="Close QR modal"
+        >
+          ×
+        </button>
+
+        <div class="qr-modal-header">
+          <h2>Scan Payment QR</h2>
+          <p>
+            Scan this QR using your selected payment app. After payment, enter
+            your reference number and upload the screenshot.
+          </p>
+        </div>
+
+        <div id="qrPlaceholderBox" class="qr-payment-card"></div>
+      </div>
+    </div>
 
     <!-- ======================================================
        CANCEL TRANSACTION CONFIRMATION MODAL
@@ -286,7 +471,7 @@
     ======================================================= -->
     <script src="../sharedJS/toast.js"></script>
     <script src="../sharedJS/api-config.js"></script>
-    <script src="../customerJS/booking-payment.js?v=json-proof-redirect-20260602"></script>
+    <script src="../customerJS/booking-payment.js?v=qr-modal-4slots-20260617"></script>
 
     <script>
       const menuToggle = document.getElementById("menuToggle");

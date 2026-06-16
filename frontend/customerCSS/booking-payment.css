@@ -510,3 +510,63 @@ body {
     flex-direction: column;
   }
 }
+
+/* ======================================================
+   RESORT POLICY REMINDER
+   Right-column compact reminder for payment page.
+====================================================== */
+
+.resort-policy-reminder {
+  background: linear-gradient(135deg, #fff7ed, #ffffff);
+  border: 1px solid #fed7aa;
+}
+
+.resort-policy-reminder h2 {
+  color: #9a3412;
+  margin-bottom: 12px;
+}
+
+.policy-list {
+  display: grid;
+  gap: 8px;
+}
+
+.policy-item {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 9px;
+  align-items: flex-start;
+  padding: 9px;
+  border-radius: 12px;
+  background: rgba(255, 237, 213, 0.72);
+  color: #7c2d12;
+}
+
+.policy-item span {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: #fb923c;
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  font-size: 0.72rem;
+  font-weight: 950;
+}
+
+.policy-item p {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.policy-acknowledgement {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #ffedd5;
+  color: #9a3412;
+  font-weight: 850;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}

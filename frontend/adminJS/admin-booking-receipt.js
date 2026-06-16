@@ -119,6 +119,20 @@ function renderThermalReceipt(booking) {
   const extraBedFee = Number(booking.extra_bed_fee || 0);
   const extraBedPaid = isTruthy(booking.extra_bed_paid);
 
+  /*
+    Additional charges are created from Guests Inside:
+    damaged bedsheet, missing towel, stains, lost key, and other resort charges.
+    Backend should return these from /api/bookings/:id/receipt.
+  */
+  const additionalCharges = Array.isArray(booking.additional_charges)
+    ? booking.additional_charges
+    : [];
+
+  const additionalChargesTotal = Number(booking.additional_charges_total || 0);
+  const unpaidAdditionalChargesTotal = Number(
+    booking.unpaid_additional_charges_total || 0,
+  );
+
   const accommodationTotal = Number(booking.accommodation_total || 0);
   const paidAmount = Number(booking.paid_amount || 0);
   const remainingBalance = Number(booking.remaining_balance || 0);
@@ -129,12 +143,18 @@ function renderThermalReceipt(booking) {
   const totalCollected =
     paidAmount + entranceFeeCollected + (extraBedPaid ? extraBedFee : 0);
 
-  const onsiteTotal = remainingBalance + entranceToCollect + extraBedToCollect;
+  const onsiteTotal =
+    remainingBalance +
+    entranceToCollect +
+    extraBedToCollect +
+    unpaidAdditionalChargesTotal;;
 
   const status = formatPaymentStatus(booking.payment_status || "pending");
   const guestName = booking.fullname || buildFullName(booking) || "-";
   const phone = booking.phone || booking.contact_no || "-";
-  const reservedAt = formatPhilippineDateTime(booking.reserved_at || booking.created_at);
+  const reservedAt = formatPhilippineDateTime(
+    booking.reserved_at || booking.created_at,
+  );
   const printedAt = formatPhilippineDateTime(new Date().toISOString());
 
   const thermal = document.getElementById("thermalReceipt");
@@ -151,7 +171,7 @@ function renderThermalReceipt(booking) {
         <div class="thermal-small">${escapeHtml(RESORT_INFO.operatingHours)}</div>
         <div class="thermal-sub">ADMIN THERMAL RECEIPT</div>
         <div class="thermal-code">${escapeHtml(
-          booking.reservation_code || `#${booking.id}`
+          booking.reservation_code || `#${booking.id}`,
         )}</div>
       </div>
 
@@ -255,6 +275,22 @@ function renderThermalReceipt(booking) {
         <span>${extraBedPaid ? "Yes" : "No"}</span>
       </div>
 
+      <div class="thermal-row">
+        <span>Add. Charges</span>
+        <span>₱${formatMoney(additionalChargesTotal)}</span>
+      </div>
+
+      ${
+        additionalCharges.length
+          ? `
+            <div class="thermal-divider"></div>
+            <div class="thermal-section-title">Additional Charges</div>
+
+            ${additionalCharges.map(renderAdditionalCharge).join("")}
+          `
+          : ""
+      }
+
       <div class="thermal-divider"></div>
 
       <div class="thermal-row thermal-bold">
@@ -304,6 +340,20 @@ function renderThermalItem(item) {
         <span>₱${formatMoney(item.item_price)}</span>
       </div>
     </div>
+  `;
+}
+
+function renderAdditionalCharge(charge) {
+  return `
+    <div class="thermal-row">
+      <span>${escapeHtml(charge.charge_name || "Additional Charge")}</span>
+      <span>₱${formatMoney(charge.charge_amount)}</span>
+    </div>
+    ${
+      charge.charge_note
+        ? `<div class="thermal-small">Note: ${escapeHtml(charge.charge_note)}</div>`
+        : ""
+    }
   `;
 }
 

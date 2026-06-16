@@ -20,6 +20,17 @@ const {
   requestBookingModification,
 } = require("../controllers/bookingController");
 
+/* ======================================================
+   BOOKING CHARGE CONTROLLER
+   Used for admin/staff additional charges before checkout.
+====================================================== */
+const {
+  getBookingCharges,
+  addBookingCharge,
+  markBookingChargesPaid,
+  deleteBookingCharge,
+} = require("../controllers/bookingChargeController");
+
 const uploadDir = path.join(__dirname, "..", "uploads", "payment-proofs");
 fs.mkdirSync(uploadDir, { recursive: true });
 
@@ -66,21 +77,44 @@ const upload = multer({
   },
 });
 
+/* ======================================================
+   BOOKING CREATE ROUTES
+====================================================== */
 router.post("/", upload.single("proof_image"), createBooking);
 router.post("/walk-in", upload.single("proof_image"), createWalkInBooking);
 
+/* ======================================================
+   GENERAL BOOKING ROUTES
+====================================================== */
 router.get("/", getAllBookings);
 router.post("/check-item-availability", checkItemAvailability);
 router.get("/user/:userId", getUserBookings);
+
+/* ======================================================
+   ADDITIONAL CHARGES ROUTES
+   Important:
+   - Put these before /:id/receipt so Express handles them correctly.
+   - /:id/charges/paid marks all unpaid charges for this reservation as paid.
+====================================================== */
+router.get("/:id/charges", getBookingCharges);
+router.post("/:id/charges", addBookingCharge);
+router.put("/:id/charges/paid", markBookingChargesPaid);
+router.delete("/charges/:chargeId", deleteBookingCharge);
+
+/* ======================================================
+   RECEIPT ROUTE
+====================================================== */
 router.get("/:id/receipt", getBookingReceipt);
 
+/* ======================================================
+   BOOKING UPDATE ROUTES
+====================================================== */
 router.put("/:id/cancel", cancelBooking);
 router.put("/:id/status", updateBookingStatus);
 router.put("/:id/payment-status", updatePaymentStatus);
 router.put("/:id/check-in", checkInBooking);
 router.post("/:id/add-accommodation", addAccommodationToReservation);
 router.post("/:id/extend-stay", extendReservationItem);
-
 router.post("/:id/modification-request", requestBookingModification);
 
 module.exports = router;

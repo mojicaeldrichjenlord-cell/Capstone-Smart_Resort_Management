@@ -8,7 +8,9 @@
 
 /* ======================================================
    SECTION 1: Login page background layout
-   Centers the login card and adds resort background.
+   Purpose:
+   - Shows the resort background image
+   - Centers the login layout
 ====================================================== */
 
 .auth-page {
@@ -22,6 +24,12 @@
   padding: 30px 16px;
 }
 
+/* ======================================================
+   SECTION 2: Main login container
+   Purpose:
+   - Creates two-column layout for showcase and login card
+====================================================== */
+
 .auth-container {
   width: 100%;
   max-width: 1080px;
@@ -32,8 +40,9 @@
 }
 
 /* ======================================================
-   SECTION 2: Left marketing/showcase panel
-   Shows short explanation about the system.
+   SECTION 3: Left marketing/showcase panel
+   Purpose:
+   - Displays intro text and feature highlights
 ====================================================== */
 
 .auth-showcase {
@@ -51,6 +60,12 @@
   justify-content: center;
 }
 
+/* ======================================================
+   SECTION 4: Showcase decorative circle
+   Purpose:
+   - Adds soft premium decoration to the left panel
+====================================================== */
+
 .auth-showcase::after {
   content: "";
   position: absolute;
@@ -62,6 +77,12 @@
   background: rgba(255, 255, 255, 0.08);
   filter: blur(6px);
 }
+
+/* ======================================================
+   SECTION 5: Showcase badge
+   Purpose:
+   - Small label above the welcome heading
+====================================================== */
 
 .auth-badge {
   display: inline-flex;
@@ -77,6 +98,12 @@
   position: relative;
   z-index: 1;
 }
+
+/* ======================================================
+   SECTION 6: Showcase heading and paragraph
+   Purpose:
+   - Main welcome message for guests
+====================================================== */
 
 .auth-showcase h1 {
   font-size: 2.5rem;
@@ -94,6 +121,12 @@
   position: relative;
   z-index: 1;
 }
+
+/* ======================================================
+   SECTION 7: Showcase highlights
+   Purpose:
+   - Shows benefits of logging in
+====================================================== */
 
 .auth-highlights {
   margin-top: 24px;
@@ -117,8 +150,9 @@
 }
 
 /* ======================================================
-   SECTION 3: Right login form card
-   Contains email/password login form.
+   SECTION 8: Right login form card
+   Purpose:
+   - Contains email/password fields and login action
 ====================================================== */
 
 .auth-card {
@@ -144,10 +178,22 @@
   line-height: 1.65;
 }
 
+/* ======================================================
+   SECTION 9: Login form fields
+   Purpose:
+   - Styles labels, inputs, and spacing
+====================================================== */
+
 .auth-card form {
   display: flex;
   flex-direction: column;
   gap: 14px;
+}
+
+.auth-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .auth-card label {
@@ -173,8 +219,47 @@
 }
 
 /* ======================================================
-   SECTION 4: Login button
-   Main submit button for login form.
+   SECTION 10: Password field with eye button
+   Purpose:
+   - Keeps show/hide password button inside input
+====================================================== */
+
+.password-input-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.password-input-wrap input {
+  width: 100%;
+  padding-right: 58px;
+}
+
+.password-eye-btn {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 999px;
+  background: #dff7f4;
+  color: #0f766e;
+  font-size: 1rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.password-eye-btn:hover {
+  background: #ccfbf1;
+}
+
+/* ======================================================
+   SECTION 11: Login button
+   Purpose:
+   - Main submit button for login form
 ====================================================== */
 
 .auth-submit {
@@ -197,8 +282,9 @@
 }
 
 /* ======================================================
-   SECTION 5: Forgot password and register links
-   Links for account recovery and account creation.
+   SECTION 12: Forgot password link
+   Purpose:
+   - Gives user access to account recovery
 ====================================================== */
 
 .forgot-link {
@@ -216,6 +302,12 @@
 .forgot-link a:hover {
   text-decoration: underline;
 }
+
+/* ======================================================
+   SECTION 13: Register link and messages
+   Purpose:
+   - Displays navigation to register page and login feedback
+====================================================== */
 
 .auth-link {
   margin-top: 18px;
@@ -237,69 +329,26 @@
 }
 
 /* ======================================================
-   SECTION 6: Mobile responsiveness
-   Converts layout into one-column design on smaller screens.
+   SECTION 14: Login message toast fix
+   Purpose:
+   - Prevents login message from pushing the login card layout
 ====================================================== */
 
-@media (max-width: 900px) {
-  .auth-container {
-    grid-template-columns: 1fr;
-  }
-
-  .auth-showcase {
-    order: 2;
-    padding: 28px 22px;
-  }
-
-  .auth-card {
-    order: 1;
-  }
-
-  .auth-showcase h1 {
-    font-size: 2rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .auth-page {
-    padding: 18px 12px;
-  }
-
-  .auth-card,
-  .auth-showcase {
-    border-radius: 22px;
-  }
-
-  .auth-card {
-    padding: 24px 18px;
-  }
-
-  .auth-showcase {
-    padding: 24px 18px;
-  }
-
-  .auth-card h2 {
-    font-size: 1.6rem;
-  }
-
-  .auth-showcase h1 {
-    font-size: 1.7rem;
-  }
-
-  .forgot-link {
-    text-align: center;
-  }
+#loginMessage {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 9999;
+  max-width: 420px;
+  width: auto;
+  margin: 0;
 }
 
 /* ======================================================
-   LOGIN PASSWORD SHOW / HIDE
+   SECTION 15: Legacy password button support
+   Purpose:
+   - Keeps older password toggle class names styled if still used
 ====================================================== */
-
-.auth-form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
 
 .password-group {
   display: flex;
@@ -335,21 +384,94 @@
 }
 
 /* ======================================================
-   LOGIN MESSAGE FIX
-   Prevents message from pushing the login card sideways
+   SECTION 16: Back to landing page link
+   Purpose:
+   - Minimal return link that does not distract from the login form
 ====================================================== */
 
-#loginMessage {
+.back-landing-btn {
   position: fixed;
-  top: 24px;
-  right: 24px;
-  z-index: 9999;
-  max-width: 420px;
-  width: auto;
-  margin: 0;
+  top: 18px;
+  left: 18px;
+  z-index: 100;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.28);
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-decoration: none;
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
 }
 
+.back-landing-btn:hover {
+  background: rgba(15, 23, 42, 0.42);
+  color: #ffffff;
+}
+
+
+/* ======================================================
+   SECTION 17: Tablet responsiveness
+   Purpose:
+   - Converts login layout to single-column on smaller screens
+====================================================== */
+
+@media (max-width: 900px) {
+  .auth-container {
+    grid-template-columns: 1fr;
+  }
+
+  .auth-showcase {
+    order: 2;
+    padding: 28px 22px;
+  }
+
+  .auth-card {
+    order: 1;
+  }
+
+  .auth-showcase h1 {
+    font-size: 2rem;
+  }
+}
+
+/* ======================================================
+   SECTION 18: Mobile responsiveness
+   Purpose:
+   - Makes form comfortable on narrow screens
+====================================================== */
+
 @media (max-width: 480px) {
+  .auth-page {
+    padding: 18px 12px;
+  }
+
+  .auth-card,
+  .auth-showcase {
+    border-radius: 22px;
+  }
+
+  .auth-card {
+    padding: 24px 18px;
+  }
+
+  .auth-showcase {
+    padding: 24px 18px;
+  }
+
+  .auth-card h2 {
+    font-size: 1.6rem;
+  }
+
+  .auth-showcase h1 {
+    font-size: 1.7rem;
+  }
+
+  .forgot-link {
+    text-align: center;
+  }
+
   .password-group {
     flex-direction: column;
     align-items: stretch;
@@ -369,37 +491,17 @@
 }
 
 /* ======================================================
-   PASSWORD EYE BUTTON INSIDE INPUT
+   SECTION 19: Back link mobile adjustment
+   Purpose:
+   - Keeps the return link readable but still subtle on mobile
 ====================================================== */
 
-.password-input-wrap {
-  position: relative;
-  width: 100%;
-}
 
-.password-input-wrap input {
-  width: 100%;
-  padding-right: 58px;
-}
-
-.password-eye-btn {
-  position: absolute;
-  top: 50%;
-  right: 12px;
-  transform: translateY(-50%);
-  width: 38px;
-  height: 38px;
-  border: none;
-  border-radius: 999px;
-  background: #dff7f4;
-  color: #0f766e;
-  font-size: 1rem;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.password-eye-btn:hover {
-  background: #ccfbf1;
+@media (max-width: 768px) {
+  .back-landing-btn {
+    top: 12px;
+    left: 12px;
+    font-size: 0.76rem;
+    padding: 6px 10px;
+  }
 }

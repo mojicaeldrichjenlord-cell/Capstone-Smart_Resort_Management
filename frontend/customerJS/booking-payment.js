@@ -1,12 +1,13 @@
 // ============================================================
-// CUSTOMER BOOKING PAYMENT SCRIPT
+// SMARTRESORT BOOKING PAYMENT SCRIPT
 // File: frontend/customerJS/booking-payment.js
 // Purpose:
 // - Read booking draft from sessionStorage
 // - Show reservation summary and payment breakdown
-// - Show GCash/Maya QR details
+// - Show GCash/Maya QR in modal
 // - Submit reservation with payment proof
-// - Works from frontend/customerHTML/booking-payment.html
+// - Supports 4 slot types:
+//   day_tour, night, day_extended, night_extended
 // ============================================================
 
 const BOOKING_DRAFT_KEY = "smartresort_booking_draft_v2";
@@ -31,11 +32,6 @@ let availableAccommodations = [];
 let currentDownpaymentAmount = 0;
 let isSubmittingReservation = false;
 
-console.log(
-  "[booking-payment] JS loaded. API_BASE:",
-  typeof API_BASE !== "undefined" ? API_BASE : "API_BASE missing",
-);
-
 // ============================================================
 // SECTION 1: Page startup
 // ============================================================
@@ -55,6 +51,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   setupLogout();
+  setupQrModal();
   await loadAccommodations();
   loadDraft();
   renderDraftSummary();
@@ -76,7 +73,6 @@ function setupLogout() {
   logoutBtns.forEach((btn) => {
     btn.addEventListener("click", (e) => {
       e.preventDefault();
-
       localStorage.removeItem("user");
 
       if (typeof showToast === "function") {
@@ -93,7 +89,44 @@ function setupLogout() {
 }
 
 // ============================================================
-// SECTION 3: Load accommodations
+// SECTION 3: QR modal
+// ============================================================
+
+function setupQrModal() {
+  const openBtn = document.getElementById("openQrModalBtn");
+  const closeBtn = document.getElementById("closeQrModalBtn");
+  const modal = document.getElementById("qrPaymentModal");
+
+  if (openBtn && modal) {
+    openBtn.addEventListener("click", () => {
+      updateQrPlaceholder();
+      modal.classList.add("show");
+    });
+  }
+
+  if (closeBtn && modal) {
+    closeBtn.addEventListener("click", () => {
+      modal.classList.remove("show");
+    });
+  }
+
+  if (modal) {
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) {
+        modal.classList.remove("show");
+      }
+    });
+  }
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && modal) {
+      modal.classList.remove("show");
+    }
+  });
+}
+
+// ============================================================
+// SECTION 4: Load accommodations
 // ============================================================
 
 async function loadAccommodations() {
@@ -113,7 +146,7 @@ async function loadAccommodations() {
 }
 
 // ============================================================
-// SECTION 4: Load booking draft
+// SECTION 5: Load booking draft
 // ============================================================
 
 function loadDraft() {
@@ -137,7 +170,7 @@ function loadDraft() {
 }
 
 // ============================================================
-// SECTION 5: Accommodation helpers
+// SECTION 6: Accommodation and slot helpers
 // ============================================================
 
 function getAccommodationById(id) {
@@ -151,40 +184,99 @@ function getSlotOptions(accommodation) {
   if (!accommodation) return [];
 
   const category = String(accommodation.category_name || "").toLowerCase();
-  const isRoom = category === "room" || category.includes("room");
+
+  const isRoom = category.includes("room");
+  const isCottage =
+    category.includes("cottage") ||
+    category.includes("shade") ||
+    category.includes("hut");
+  const isFunction =
+    category.includes("function") ||
+    category.includes("pavilion");
+
+  let dayStart = "08:00:00";
+  let dayEnd = "18:00:00";
+  let nightStart = "20:00:00";
+  let nightEnd = "06:00:00";
+  let dayExtendedEnd = "06:00:00";
+  let nightExtendedEnd = "18:00:00";
+  let extendedLabel = "23 Hours";
+
+  if (isRoom) {
+    dayStart = "07:00:00";
+    dayEnd = "17:00:00";
+    nightStart = "19:00:00";
+    nightEnd = "05:00:00";
+    dayExtendedEnd = "05:00:00";
+    nightExtendedEnd = "17:00:00";
+    extendedLabel = "22 Hours";
+  } else if (isCottage) {
+    dayStart = "06:00:00";
+    dayEnd = "17:00:00";
+    nightStart = "18:00:00";
+    nightEnd = "05:00:00";
+    dayExtendedEnd = "05:00:00";
+    nightExtendedEnd = "17:00:00";
+    extendedLabel = "23 Hours";
+  } else if (isFunction) {
+    dayStart = "08:00:00";
+    dayEnd = "18:00:00";
+    nightStart = "20:00:00";
+    nightEnd = "06:00:00";
+    dayExtendedEnd = "06:00:00";
+    nightExtendedEnd = "18:00:00";
+    extendedLabel = "23 Hours";
+  }
 
   return [
     {
       value: "day_tour",
       label: "Day Tour",
       price: Number(accommodation.day_price || 0),
-      start: accommodation.day_start_time,
-      end: accommodation.day_end_time,
+      start: dayStart,
+      end: dayEnd,
     },
     {
-      value: "overnight",
-      label: "Overnight",
+      value: "night",
+      label: "Night",
       price: Number(accommodation.overnight_price || 0),
-      start: accommodation.overnight_start_time,
-      end: accommodation.overnight_end_time,
+      start: nightStart,
+      end: nightEnd,
     },
     {
-      value: "extended",
-      label: isRoom ? "22 Hours" : "23 Hours",
+      value: "day_extended",
+      label: `Day ${extendedLabel}`,
       price: Number(accommodation.extended_price || 0),
-      start: accommodation.extended_start_time,
-      end: accommodation.extended_end_time,
+      start: dayStart,
+      end: dayExtendedEnd,
+    },
+    {
+      value: "night_extended",
+      label: `Night ${extendedLabel}`,
+      price: Number(accommodation.extended_price || 0),
+      start: nightStart,
+      end: nightExtendedEnd,
     },
   ];
 }
 
-// ============================================================
-// SECTION 6: Render draft summary and payment breakdown
-// ============================================================
-
 function getStayDuration(item) {
   return Math.max(1, Math.min(5, Number(item?.stay_duration || 1)));
 }
+
+function isLongStaySlot(slotType) {
+  return ["day_extended", "night_extended"].includes(String(slotType || ""));
+}
+
+function isOvernightStyleSlot(slotType) {
+  return ["night", "day_extended", "night_extended"].includes(
+    String(slotType || ""),
+  );
+}
+
+// ============================================================
+// SECTION 7: Render draft summary and payment breakdown
+// ============================================================
 
 function renderDraftSummary() {
   if (!bookingDraft) return;
@@ -214,7 +306,7 @@ function renderDraftSummary() {
         return s.value === slotType;
       });
 
-      const stayDuration = getStayDuration(item);
+      const stayDuration = isLongStaySlot(slotType) ? getStayDuration(item) : 1;
       const slotPrice = Number(slot?.price || 0);
       const itemTotal = slotPrice * stayDuration;
       accommodationTotal += itemTotal;
@@ -225,12 +317,10 @@ function renderDraftSummary() {
         slot?.end,
         stayDuration,
       );
-      const durationLabel =
-        item.slot_type === "extended"
-          ? `${stayDuration} ${stayDuration === 1 ? "day" : "days"}`
-          : item.slot_type === "overnight"
-            ? `${stayDuration} ${stayDuration === 1 ? "night" : "nights"}`
-            : "1 day only";
+
+      const durationLabel = isLongStaySlot(slotType)
+        ? `${stayDuration} ${stayDuration === 1 ? "day" : "days"}`
+        : "Fixed schedule only";
 
       return `
         <div class="summary-item">
@@ -241,7 +331,7 @@ function renderDraftSummary() {
           Check-out Date: ${formatDateDisplay(checkOutDate)}<br />
           Stay Duration: ${escapeHtml(durationLabel)}<br />
           Max Capacity: ${accommodation.max_capacity || 0} guest(s)<br />
-          Price: ₱${formatMoney(slotPrice)}${["overnight", "extended"].includes(item.slot_type) ? ` × ${stayDuration} = ₱${formatMoney(itemTotal)}` : ""}
+          Price: ₱${formatMoney(slotPrice)}${isLongStaySlot(slotType) ? ` × ${stayDuration} = ₱${formatMoney(itemTotal)}` : ""}
         </div>
       `;
     })
@@ -267,10 +357,12 @@ function renderDraftSummary() {
 
   document.getElementById("paymentFrontDeskReminder").textContent =
     `₱${formatMoney(remaining + entranceFee)}`;
+
+  updateQrPlaceholder();
 }
 
 // ============================================================
-// SECTION 7: Entrance fee estimate
+// SECTION 8: Entrance fee estimate
 // ============================================================
 
 function getEstimatedEntranceFee() {
@@ -281,7 +373,7 @@ function getEstimatedEntranceFee() {
   const items = Array.isArray(bookingDraft.items) ? bookingDraft.items : [];
 
   const hasOvernightStyle = items.some((item) => {
-    return item.slot_type === "overnight" || item.slot_type === "extended";
+    return isOvernightStyleSlot(item.slot_type);
   });
 
   const totalFreeEntrancePax = getTotalFreeEntrancePax(items, guestCount);
@@ -312,13 +404,8 @@ function getTotalFreeEntrancePax(items, guestCount) {
   return Math.min(total, Number(guestCount || 0));
 }
 
-
 // ============================================================
-// SECTION: Payment reference number helpers
-// Rules:
-// - GCash: exactly 13 digits
-// - Maya / PayMaya: 6 to 30 digits
-// - Dashes are display only; backend receives digits only.
+// SECTION 9: Payment reference number helpers
 // ============================================================
 
 function normalizeReferenceNumber(value) {
@@ -353,7 +440,8 @@ function validateReferenceNumberByMethod(referenceNumber, method) {
   if (cleanMethod === "paymaya") {
     return {
       valid: /^\d{6,30}$/.test(digits),
-      message: "Maya / PayMaya reference number must be numbers only, 6 to 30 digits.",
+      message:
+        "Maya / PayMaya reference number must be numbers only, 6 to 30 digits.",
       digits,
     };
   }
@@ -366,7 +454,7 @@ function validateReferenceNumberByMethod(referenceNumber, method) {
 }
 
 // ============================================================
-// SECTION 8: Payment form setup
+// SECTION 10: Payment form setup
 // ============================================================
 
 function setupPaymentForm() {
@@ -386,7 +474,7 @@ function setupPaymentForm() {
     paymentReference.addEventListener("input", () => {
       paymentReference.value = formatReferenceNumberForDisplay(
         paymentReference.value,
-        paymentMethod?.value || "gcash"
+        paymentMethod?.value || "gcash",
       );
     });
 
@@ -394,7 +482,7 @@ function setupPaymentForm() {
       setTimeout(() => {
         paymentReference.value = formatReferenceNumberForDisplay(
           paymentReference.value,
-          paymentMethod?.value || "gcash"
+          paymentMethod?.value || "gcash",
         );
       }, 0);
     });
@@ -407,7 +495,6 @@ function setupPaymentForm() {
   const submitReservationBtn = document.getElementById("submitReservationBtn");
 
   if (paymentForm) {
-    // Hard block native browser submit/reload.
     paymentForm.setAttribute("novalidate", "novalidate");
     paymentForm.setAttribute("onsubmit", "return false;");
 
@@ -422,10 +509,6 @@ function setupPaymentForm() {
       },
       true,
     );
-
-    console.log("[booking-payment] paymentForm native submit blocked.");
-  } else {
-    console.error("[booking-payment] paymentForm was not found.");
   }
 
   if (submitReservationBtn) {
@@ -435,32 +518,30 @@ function setupPaymentForm() {
         event.preventDefault();
         event.stopPropagation();
         event.stopImmediatePropagation?.();
-        console.log("[booking-payment] Submit button clicked.");
         submitReservation(event);
         return false;
       },
       true,
     );
-
-    console.log(
-      "[booking-payment] submitReservationBtn click handler attached.",
-    );
-  } else {
-    console.error("[booking-payment] submitReservationBtn was not found.");
   }
 }
 
 // ============================================================
-// SECTION 9: QR payment box
+// SECTION 11: QR payment box
 // ============================================================
 
 function updateQrPlaceholder() {
   const method = document.getElementById("paymentMethod")?.value || "gcash";
   const box = document.getElementById("qrPlaceholderBox");
-
-  if (!box) return;
+  const qrMethodPreview = document.getElementById("qrMethodPreview");
 
   const details = PAYMENT_DETAILS[method] || PAYMENT_DETAILS.gcash;
+
+  if (qrMethodPreview) {
+    qrMethodPreview.textContent = `Selected method: ${details.label}`;
+  }
+
+  if (!box) return;
 
   box.innerHTML = `
     <div class="qr-payment-badge">${escapeHtml(details.label)} Selected</div>
@@ -490,11 +571,10 @@ function updateQrPlaceholder() {
     <div class="qr-payment-reminder">
       Scan the QR code using your selected payment app.
       After payment, enter your reference number and upload the transaction screenshot.
-      Your reservation is approved, but your payment will remain pending until admin verifies it.
+      Your reservation will remain pending until admin verifies your proof.
     </div>
   `;
 }
-
 
 function updatePaymentReferenceUI() {
   const method = document.getElementById("paymentMethod")?.value || "gcash";
@@ -510,7 +590,7 @@ function updatePaymentReferenceUI() {
     referenceInput.setAttribute("maxlength", method === "gcash" ? "16" : "37");
     referenceInput.value = formatReferenceNumberForDisplay(
       referenceInput.value,
-      method
+      method,
     );
   }
 
@@ -523,7 +603,7 @@ function updatePaymentReferenceUI() {
 }
 
 // ============================================================
-// SECTION 10: Proof preview and validation
+// SECTION 12: Proof preview and validation
 // ============================================================
 
 function updateProofPreview() {
@@ -571,7 +651,7 @@ function updateProofPreview() {
 }
 
 // ============================================================
-// SECTION 11: Submit reservation
+// SECTION 13: Submit reservation
 // ============================================================
 
 async function submitReservation(e) {
@@ -581,10 +661,7 @@ async function submitReservation(e) {
     e.stopImmediatePropagation?.();
   }
 
-  console.log("[booking-payment] Submit handler fired.");
-
   if (isSubmittingReservation) {
-    console.warn("[booking-payment] Duplicate submit blocked.");
     return false;
   }
 
@@ -603,7 +680,9 @@ async function submitReservation(e) {
   const paymentMethod =
     document.getElementById("paymentMethod")?.value || "gcash";
   const paymentReferenceInput = document.getElementById("paymentReference");
-  const paymentReference = normalizeReferenceNumber(paymentReferenceInput?.value || "");
+  const paymentReference = normalizeReferenceNumber(
+    paymentReferenceInput?.value || "",
+  );
 
   const paymentReminderNote = document
     .getElementById("paymentReminderNote")
@@ -614,7 +693,7 @@ async function submitReservation(e) {
 
   const referenceValidation = validateReferenceNumberByMethod(
     paymentReference,
-    paymentMethod
+    paymentMethod,
   );
 
   if (!referenceValidation.valid) {
@@ -684,11 +763,6 @@ async function submitReservation(e) {
       submitBtn.textContent = "Submitting...";
     }
 
-    console.log(
-      "[booking-payment] Sending JSON request to:",
-      `${API_BASE}/bookings`,
-    );
-
     const response = await fetch(`${API_BASE}/bookings`, {
       method: "POST",
       headers: {
@@ -704,15 +778,8 @@ async function submitReservation(e) {
     try {
       data = responseText ? JSON.parse(responseText) : {};
     } catch (jsonError) {
-      console.warn(
-        "[booking-payment] Backend response was not JSON:",
-        responseText,
-      );
       data = {};
     }
-
-    console.log("[booking-payment] Backend status:", response.status);
-    console.log("[booking-payment] Backend response:", data);
 
     if (!response.ok) {
       throw new Error(data.message || responseText || "Reservation failed.");
@@ -720,9 +787,6 @@ async function submitReservation(e) {
 
     sessionStorage.removeItem(BOOKING_DRAFT_KEY);
 
-    console.log(
-      "[booking-payment] Reservation created successfully. Redirecting to My Bookings.",
-    );
     showMessage(
       "Reservation submitted successfully. Redirecting to My Bookings...",
       "success",
@@ -747,49 +811,9 @@ async function submitReservation(e) {
   return false;
 }
 
-function extractBookingId(data) {
-  return (
-    data?.bookingId ||
-    data?.reservationId ||
-    data?.reservation_id ||
-    data?.id ||
-    data?.booking?.id ||
-    data?.data?.bookingId ||
-    data?.data?.reservationId ||
-    null
-  );
-}
-
-async function fetchLatestUserBookingId(userId) {
-  if (!userId) return null;
-
-  try {
-    const response = await fetch(`${API_BASE}/bookings/user/${userId}`);
-    const data = await safeReadJson(response);
-
-    if (!response.ok) {
-      console.warn(
-        "[booking-payment] Failed to fetch latest user booking:",
-        data,
-      );
-      return null;
-    }
-
-    const bookings = Array.isArray(data?.bookings)
-      ? data.bookings
-      : Array.isArray(data)
-        ? data
-        : [];
-
-    const latest = bookings[0];
-    console.log("[booking-payment] Latest user booking fallback:", latest);
-
-    return latest?.id || latest?.bookingId || latest?.reservationId || null;
-  } catch (error) {
-    console.warn("[booking-payment] Latest booking fallback failed:", error);
-    return null;
-  }
-}
+// ============================================================
+// SECTION 14: File and redirect helpers
+// ============================================================
 
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
@@ -809,8 +833,6 @@ function fileToBase64(file) {
 function redirectToMyBookings() {
   const targetUrl = new URL("my-bookings.html", window.location.href).href;
 
-  console.log("[booking-payment] FORCE REDIRECT TO MY BOOKINGS:", targetUrl);
-
   window.location.href = targetUrl;
 
   setTimeout(() => {
@@ -823,8 +845,7 @@ function redirectToMyBookings() {
 }
 
 // ============================================================
-// SECTION 12: Safer JSON reader
-// Helps show a clearer error if backend returns HTML instead of JSON.
+// SECTION 15: Safe JSON reader
 // ============================================================
 
 async function safeReadJson(response) {
@@ -842,7 +863,7 @@ async function safeReadJson(response) {
 }
 
 // ============================================================
-// SECTION 13: Date and format helpers
+// SECTION 16: Date and format helpers
 // ============================================================
 
 function calculateCheckOutDate(
@@ -907,7 +928,7 @@ function formatTimeDisplay(timeValue) {
 function formatDateDisplay(dateValue) {
   if (!dateValue) return "N/A";
 
-  const date = new Date(dateValue);
+  const date = new Date(`${String(dateValue).slice(0, 10)}T00:00:00`);
 
   if (Number.isNaN(date.getTime())) return dateValue;
 

@@ -18,6 +18,7 @@ let availableAccommodations = [];
 let selectedExtraBedBookingId = null;
 let selectedAddAccommodationBookingId = null;
 let selectedExtendStayBookingId = null;
+let selectedChargesBookingId = null;
 let currentSearchTerm = "";
 let addAccommodationAvailabilityTimer = null;
 let addAccommodationAvailabilityState = "unknown";
@@ -70,13 +71,25 @@ function setupEvents() {
   const cancelExtraBedBtn = document.getElementById("cancelExtraBedBtn");
   const extraBedModal = document.getElementById("extraBedModal");
   const guestSearchInput = document.getElementById("guestSearchInput");
-  const addAccommodationSelect = document.getElementById("addAccommodationSelect");
+  const addAccommodationSelect = document.getElementById(
+    "addAccommodationSelect",
+  );
   const addAccommodationSlot = document.getElementById("addAccommodationSlot");
   const addAccommodationDate = document.getElementById("addAccommodationDate");
-  const addAccommodationStayDuration = document.getElementById("addAccommodationStayDuration");
-  const saveAddAccommodationBtn = document.getElementById("saveAddAccommodationBtn");
-  const cancelAddAccommodationBtn = document.getElementById("cancelAddAccommodationBtn");
-  const addAccommodationModal = document.getElementById("addAccommodationModal");
+  const addAccommodationStayDuration = document.getElementById(
+    "addAccommodationStayDuration",
+  );
+  const saveAddAccommodationBtn = document.getElementById(
+    "saveAddAccommodationBtn",
+  );
+  const cancelAddAccommodationBtn = document.getElementById(
+    "cancelAddAccommodationBtn",
+  );
+  const addAccommodationModal = document.getElementById(
+    "addAccommodationModal",
+  );
+  const chargesModal = document.getElementById("chargesModal");
+  const saveChargeBtn = document.getElementById("saveChargeBtn");
 
   if (logoutBtn) {
     logoutBtn.addEventListener("click", (e) => {
@@ -166,7 +179,10 @@ function setupEvents() {
   }
 
   if (cancelAddAccommodationBtn) {
-    cancelAddAccommodationBtn.addEventListener("click", closeAddAccommodationModal);
+    cancelAddAccommodationBtn.addEventListener(
+      "click",
+      closeAddAccommodationModal,
+    );
   }
 
   if (addAccommodationModal) {
@@ -177,14 +193,28 @@ function setupEvents() {
     });
   }
 
+  // Additional Charges modal events
+  if (saveChargeBtn) {
+    saveChargeBtn.addEventListener("click", saveBookingCharge);
+  }
+
+  if (chargesModal) {
+    chargesModal.addEventListener("click", (e) => {
+      if (e.target === chargesModal) {
+        closeChargesModal();
+      }
+    });
+  }
+
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
       closeExtraBedModal();
+      closeAddAccommodationModal();
       closeExtendStayModal();
+      closeChargesModal();
     }
   });
 }
-
 
 // ============================================================
 // SECTION 3.1: Table cleanup
@@ -198,14 +228,16 @@ function removeEntranceFeeReminderColumn() {
 
   const headers = Array.from(table.querySelectorAll("thead th"));
   const entranceIndex = headers.findIndex((header) =>
-    String(header.textContent || "").trim().toLowerCase().includes("entrance fee")
+    String(header.textContent || "")
+      .trim()
+      .toLowerCase()
+      .includes("entrance fee"),
   );
 
   if (entranceIndex < 0) return;
 
   headers[entranceIndex].remove();
 }
-
 
 async function loadAvailableAccommodations() {
   try {
@@ -232,7 +264,6 @@ async function loadAvailableAccommodations() {
     showMessage(error.message || "Failed to load accommodations.", "error");
   }
 }
-
 
 // ============================================================
 // SECTION 4: Load guests inside
@@ -319,7 +350,7 @@ function filterGuestsInside(bookings) {
               item.check_out_date,
               item.check_in_time,
               item.check_out_time,
-            ].join(" ")
+            ].join(" "),
           )
           .join(" ")
       : "";
@@ -393,7 +424,7 @@ function getReservationStatus(booking) {
     booking.status ||
       booking.reservation_status ||
       booking.booking_status ||
-      ""
+      "",
   ).toLowerCase();
 }
 
@@ -433,6 +464,49 @@ function updateSummary(bookings) {
 }
 
 // ============================================================
+// SECTION 8.1: Additional charges booking ID helper
+// Some backend responses may use booking_id or reservation_id instead of id.
+// This helper prepares possible IDs and the charges modal will test them.
+// ============================================================
+
+function getChargeBookingCandidates(booking) {
+  if (!booking || typeof booking !== "object") return [];
+
+  const candidates = [
+    booking.booking_id,
+    booking.bookingId,
+    booking.reservation_id,
+    booking.reservationId,
+    booking.original_booking_id,
+    booking.originalBookingId,
+    booking.id,
+  ]
+    .map((value) => Number(value || 0))
+    .filter((value) => Number.isFinite(value) && value > 0);
+
+  return [...new Set(candidates)];
+}
+
+function getChargeBookingId(booking) {
+  const candidates = getChargeBookingCandidates(booking);
+
+  return candidates.length ? candidates[0] : Number(booking?.id || 0);
+}
+
+function findBookingByRowId(rowId) {
+  return (
+    allBookings.find((booking) => Number(booking.id) === Number(rowId)) ||
+    allBookings.find(
+      (booking) => Number(booking.booking_id) === Number(rowId),
+    ) ||
+    allBookings.find(
+      (booking) => Number(booking.reservation_id) === Number(rowId),
+    ) ||
+    null
+  );
+}
+
+// ============================================================
 // SECTION 9: Render guests table
 // Creates active guest rows and action buttons.
 // ============================================================
@@ -461,7 +535,7 @@ function renderGuestsInside(bookings) {
       const source = String(booking.booking_source || "online").toLowerCase();
 
       const paymentStatus = String(
-        booking.payment_status || "pending"
+        booking.payment_status || "pending",
       ).toLowerCase();
 
       const remainingBalance = Number(booking.remaining_balance || 0);
@@ -476,7 +550,7 @@ function renderGuestsInside(bookings) {
       const frontDeskNote = getFrontDeskNote(
         remainingBalance,
         unpaidExtraBedFee,
-        timeInfo
+        timeInfo,
       );
 
       const bookingItems = getBookingItems(booking);
@@ -484,20 +558,20 @@ function renderGuestsInside(bookings) {
       const accommodationHtml = formatAccommodationDisplay(
         bookingItems,
         booking.room_name || booking.accommodation_name || "-",
-        Number(booking.id)
+        Number(booking.id),
       );
 
       const extraBedPaymentButton = renderExtraBedPaymentButton(
         Number(booking.id),
         extraBedFee,
-        extraBedPaid
+        extraBedPaid,
       );
 
       return `
         <tr class="${getRowClass(
           timeInfo,
           remainingBalance,
-          unpaidExtraBedFee
+          unpaidExtraBedFee,
         )}">
           <td>
             <strong>${escapeHtml(booking.reservation_code || `#${booking.id}`)}</strong>
@@ -542,26 +616,34 @@ function renderGuestsInside(bookings) {
           <td>
             <div class="action-buttons">
               <button class="action-btn extra-bed-btn" onclick="openExtraBedModal(${Number(
-                booking.id
+                booking.id,
               )})">
                 Extra Bed
               </button>
 
               <button class="action-btn add-accommodation-btn" onclick="openAddAccommodationModal(${Number(
-                booking.id
+                booking.id,
               )})">
-                Add Accommodation
-              </button>
+  Add Accommodation
+</button>
+
+<button
+  class="action-btn charges-btn"
+  onclick="openChargesModalByRow(${Number(booking.id)})"
+>
+  Charges
+</button>
+
 ${extraBedPaymentButton}
 
-              <button class="action-btn save-booking-btn" onclick="markAsCheckedOut(${Number(
-                booking.id
-              )})">
+<button class="action-btn save-booking-btn" onclick="markAsCheckedOut(${Number(
+        booking.id,
+      )})">
                 Check Out
               </button>
 
               <button class="action-btn receipt-btn" onclick="viewReceipt(${Number(
-                booking.id
+                booking.id,
               )})">
                 Receipt
               </button>
@@ -580,7 +662,7 @@ ${extraBedPaymentButton}
 
 function openExtraBedModal(bookingId) {
   const booking = allBookings.find(
-    (item) => Number(item.id) === Number(bookingId)
+    (item) => Number(item.id) === Number(bookingId),
   );
 
   const modal = document.getElementById("extraBedModal");
@@ -661,7 +743,7 @@ async function saveExtraBed() {
   if (Number.isNaN(count) || count < 0 || !Number.isInteger(count)) {
     showMessage(
       "Extra bed count must be a whole number and cannot be negative.",
-      "error"
+      "error",
     );
     return;
   }
@@ -677,7 +759,7 @@ async function saveExtraBed() {
         body: JSON.stringify({
           extra_bed_count: count,
         }),
-      }
+      },
     );
 
     const data = await response.json();
@@ -709,7 +791,6 @@ async function saveExtraBed() {
     showMessage(error.message || "Failed to update extra bed.", "error");
   }
 }
-
 
 function renderExtraBedPaymentButton(bookingId, extraBedFee, extraBedPaid) {
   const fee = Number(extraBedFee || 0);
@@ -747,7 +828,7 @@ async function markExtraBedPaid(bookingId) {
         headers: {
           "Content-Type": "application/json",
         },
-      }
+      },
     );
 
     const data = await response.json();
@@ -782,7 +863,6 @@ async function markExtraBedPaid(bookingId) {
 // from the Admin Dashboard. Extra bed fee is shown here as a front-desk reminder.
 // ============================================================
 
-
 // ============================================================
 // SECTION 14.1: Add accommodation to active reservation
 // Adds an onsite accommodation under the same reservation code.
@@ -790,7 +870,7 @@ async function markExtraBedPaid(bookingId) {
 
 async function openAddAccommodationModal(bookingId) {
   const booking = allBookings.find(
-    (item) => Number(item.id) === Number(bookingId)
+    (item) => Number(item.id) === Number(bookingId),
   );
 
   const modal = document.getElementById("addAccommodationModal");
@@ -850,7 +930,8 @@ function getSelectedAddAccommodationBooking() {
 
   return (
     allBookings.find(
-      (booking) => Number(booking.id) === Number(selectedAddAccommodationBookingId)
+      (booking) =>
+        Number(booking.id) === Number(selectedAddAccommodationBookingId),
     ) || null
   );
 }
@@ -861,7 +942,7 @@ function getLatestReservationItemForAccommodation(accommodationId) {
   if (!booking || !accommodationId) return null;
 
   const matchingItems = getBookingItems(booking).filter(
-    (item) => Number(item.accommodation_id) === Number(accommodationId)
+    (item) => Number(item.accommodation_id) === Number(accommodationId),
   );
 
   if (!matchingItems.length) return null;
@@ -871,14 +952,14 @@ function getLatestReservationItemForAccommodation(accommodationId) {
       ? combineDateAndTime(
           latest.check_out_date || latest.check_out,
           latest.check_out_time,
-          true
+          true,
         )
       : null;
 
     const itemDateTime = combineDateAndTime(
       item.check_out_date || item.check_out,
       item.check_out_time,
-      true
+      true,
     );
 
     if (!itemDateTime) return latest;
@@ -890,7 +971,7 @@ function getLatestReservationItemForAccommodation(accommodationId) {
 
 function isSelectedAccommodationExtensionMode() {
   const accommodationId = Number(
-    document.getElementById("addAccommodationSelect")?.value || 0
+    document.getElementById("addAccommodationSelect")?.value || 0,
   );
 
   return Boolean(getLatestReservationItemForAccommodation(accommodationId));
@@ -898,7 +979,7 @@ function isSelectedAccommodationExtensionMode() {
 
 function getSelectedExtensionItem() {
   const accommodationId = Number(
-    document.getElementById("addAccommodationSelect")?.value || 0
+    document.getElementById("addAccommodationSelect")?.value || 0,
   );
 
   return getLatestReservationItemForAccommodation(accommodationId);
@@ -922,7 +1003,7 @@ function updateAddAccommodationExtensionDateMinimum() {
   }
 
   const checkOutDate = String(
-    extensionItem.check_out_date || extensionItem.check_out || today
+    extensionItem.check_out_date || extensionItem.check_out || today,
   ).slice(0, 10);
 
   dateInput.min = checkOutDate;
@@ -962,8 +1043,12 @@ function ensureExtensionTypeControl() {
 
   if (select) return select;
 
-  const durationSelect = document.getElementById("addAccommodationStayDuration");
-  const durationGroup = durationSelect?.closest(".add-accommodation-form-group");
+  const durationSelect = document.getElementById(
+    "addAccommodationStayDuration",
+  );
+  const durationGroup = durationSelect?.closest(
+    ".add-accommodation-form-group",
+  );
 
   if (!durationGroup || !durationGroup.parentNode) return null;
 
@@ -1039,7 +1124,9 @@ function updateExtensionTypeOptions() {
 }
 
 function getSelectedExtensionType() {
-  const selectedValue = document.getElementById("addAccommodationExtensionType")?.value;
+  const selectedValue = document.getElementById(
+    "addAccommodationExtensionType",
+  )?.value;
 
   if (selectedValue) {
     return selectedValue;
@@ -1069,7 +1156,9 @@ function updateExtensionTypeVisibility() {
 }
 
 function getExtensionDurationValue() {
-  const durationSelect = document.getElementById("addAccommodationStayDuration");
+  const durationSelect = document.getElementById(
+    "addAccommodationStayDuration",
+  );
 
   if (["overnight_half", "day_half"].includes(getSelectedExtensionType())) {
     return 1;
@@ -1077,7 +1166,7 @@ function getExtensionDurationValue() {
 
   return Math.max(
     1,
-    Math.min(5, Math.floor(Number(durationSelect?.value || 1)))
+    Math.min(5, Math.floor(Number(durationSelect?.value || 1))),
   );
 }
 
@@ -1090,7 +1179,7 @@ function getExtensionPreviewDetails(extensionItem, duration) {
 
   const extensionType = getSelectedExtensionType();
   const currentCheckOutDate = String(
-    extensionItem.check_out_date || extensionItem.check_out || ""
+    extensionItem.check_out_date || extensionItem.check_out || "",
   ).slice(0, 10);
   const currentCheckOutTime = extensionItem.check_out_time || "00:00:00";
 
@@ -1146,7 +1235,7 @@ function populateAddAccommodationOptions() {
           <option value="${Number(item.id)}">
             ${escapeHtml(item.name)} (${escapeHtml(item.category_name || "Accommodation")})
           </option>
-        `
+        `,
       )
       .join("")}
   `;
@@ -1176,7 +1265,7 @@ function populateAddAccommodationSlotOptions() {
           <option value="${slot.value}">
             ${slot.label} (${formatTime(slot.start)} - ${formatTime(slot.end)}) - ₱${formatMoney(slot.price)}
           </option>
-        `
+        `,
       )
       .join("")}
   `;
@@ -1186,7 +1275,9 @@ function populateAddAccommodationSlotOptions() {
 
 function updateAddAccommodationStayDurationOptions() {
   const slotSelect = document.getElementById("addAccommodationSlot");
-  const durationSelect = document.getElementById("addAccommodationStayDuration");
+  const durationSelect = document.getElementById(
+    "addAccommodationStayDuration",
+  );
 
   if (!durationSelect) return;
 
@@ -1203,7 +1294,10 @@ function updateAddAccommodationStayDurationOptions() {
 
     durationSelect.disabled = false;
     durationSelect.innerHTML = [1, 2, 3, 4, 5]
-      .map((value) => `<option value="${value}">${value} day${value > 1 ? "s" : ""}</option>`)
+      .map(
+        (value) =>
+          `<option value="${value}">${value} day${value > 1 ? "s" : ""}</option>`,
+      )
       .join("");
     return;
   }
@@ -1216,7 +1310,10 @@ function updateAddAccommodationStayDurationOptions() {
     const unit = slotType === "overnight" ? "night" : "day";
 
     durationSelect.innerHTML = [1, 2, 3, 4, 5]
-      .map((value) => `<option value="${value}">${value} ${unit}${value > 1 ? "s" : ""}</option>`)
+      .map(
+        (value) =>
+          `<option value="${value}">${value} ${unit}${value > 1 ? "s" : ""}</option>`,
+      )
       .join("");
     return;
   }
@@ -1230,7 +1327,9 @@ function updateAddAccommodationPreview() {
   const accommodationSelect = document.getElementById("addAccommodationSelect");
   const slotSelect = document.getElementById("addAccommodationSlot");
   const dateInput = document.getElementById("addAccommodationDate");
-  const durationSelect = document.getElementById("addAccommodationStayDuration");
+  const durationSelect = document.getElementById(
+    "addAccommodationStayDuration",
+  );
 
   if (!preview) return;
 
@@ -1243,7 +1342,7 @@ function updateAddAccommodationPreview() {
   }
 
   const extensionItem = getLatestReservationItemForAccommodation(
-    Number(accommodation.id)
+    Number(accommodation.id),
   );
 
   if (extensionItem) {
@@ -1281,7 +1380,7 @@ function updateAddAccommodationPreview() {
   updateAddAccommodationModeFields();
 
   const slot = getSlotOptions(accommodation).find(
-    (item) => item.value === slotSelect?.value
+    (item) => item.value === slotSelect?.value,
   );
 
   if (!slot) {
@@ -1295,15 +1394,12 @@ function updateAddAccommodationPreview() {
   }
 
   const checkInDate = dateInput?.value || getTodayInputDate();
-  const stayDuration = getValidStayDuration(
-    durationSelect?.value,
-    slot.value
-  );
+  const stayDuration = getValidStayDuration(durationSelect?.value, slot.value);
   const checkOutDate = calculateAddOnCheckOutDate(
     checkInDate,
     slot.start,
     slot.end,
-    stayDuration
+    stayDuration,
   );
   const total = Number(slot.price || 0) * stayDuration;
 
@@ -1327,14 +1423,15 @@ function updateAddAccommodationPreview() {
 
 function getAddAccommodationAvailabilityPayload() {
   const accommodationId = Number(
-    document.getElementById("addAccommodationSelect")?.value || 0
+    document.getElementById("addAccommodationSelect")?.value || 0,
   );
 
   if (!accommodationId) {
     return null;
   }
 
-  const extensionItem = getLatestReservationItemForAccommodation(accommodationId);
+  const extensionItem =
+    getLatestReservationItemForAccommodation(accommodationId);
 
   if (extensionItem) {
     return {
@@ -1347,10 +1444,11 @@ function getAddAccommodationAvailabilityPayload() {
   }
 
   const slotType = document.getElementById("addAccommodationSlot")?.value || "";
-  const checkInDate = document.getElementById("addAccommodationDate")?.value || "";
+  const checkInDate =
+    document.getElementById("addAccommodationDate")?.value || "";
   const stayDuration = getValidStayDuration(
     document.getElementById("addAccommodationStayDuration")?.value,
-    slotType
+    slotType,
   );
 
   if (!slotType || !checkInDate) {
@@ -1378,7 +1476,7 @@ function scheduleAddAccommodationAvailabilityCheck() {
   setAvailabilityStatus(
     "addAccommodationAvailabilityStatus",
     "checking",
-    "Checking availability..."
+    "Checking availability...",
   );
   setAddAccommodationButtonState("checking");
 
@@ -1395,7 +1493,7 @@ async function checkAddAccommodationAvailabilityNow(showErrors = true) {
     setAvailabilityStatus(
       "addAccommodationAvailabilityStatus",
       "muted",
-      "Complete the form to check availability."
+      "Complete the form to check availability.",
     );
     setAddAccommodationButtonState("incomplete");
     return false;
@@ -1408,7 +1506,7 @@ async function checkAddAccommodationAvailabilityNow(showErrors = true) {
     setAvailabilityStatus(
       "addAccommodationAvailabilityStatus",
       "available",
-      `✅ AVAILABLE — ${result.message || "This schedule is available."}`
+      `✅ AVAILABLE — ${result.message || "This schedule is available."}`,
     );
     setAddAccommodationButtonState("available");
     return true;
@@ -1418,17 +1516,19 @@ async function checkAddAccommodationAvailabilityNow(showErrors = true) {
   setAvailabilityStatus(
     "addAccommodationAvailabilityStatus",
     "unavailable",
-    `❌ NOT AVAILABLE — ${result.message || "Please choose another schedule."}`
+    `❌ NOT AVAILABLE — ${result.message || "Please choose another schedule."}`,
   );
   setAddAccommodationButtonState("unavailable");
 
   if (showErrors) {
-    showMessage(result.message || "Selected accommodation is not available.", "error");
+    showMessage(
+      result.message || "Selected accommodation is not available.",
+      "error",
+    );
   }
 
   return false;
 }
-
 
 async function submitAddAccommodation() {
   if (!selectedAddAccommodationBookingId) {
@@ -1437,7 +1537,7 @@ async function submitAddAccommodation() {
   }
 
   const accommodationId = Number(
-    document.getElementById("addAccommodationSelect")?.value || 0
+    document.getElementById("addAccommodationSelect")?.value || 0,
   );
 
   if (!accommodationId) {
@@ -1445,16 +1545,18 @@ async function submitAddAccommodation() {
     return;
   }
 
-  const extensionItem = getLatestReservationItemForAccommodation(accommodationId);
+  const extensionItem =
+    getLatestReservationItemForAccommodation(accommodationId);
   const isExtensionMode = Boolean(extensionItem);
 
   const slotType = document.getElementById("addAccommodationSlot")?.value || "";
-  const checkInDate = document.getElementById("addAccommodationDate")?.value || "";
+  const checkInDate =
+    document.getElementById("addAccommodationDate")?.value || "";
   const stayDuration = isExtensionMode
     ? getExtensionDurationValue()
     : getValidStayDuration(
         document.getElementById("addAccommodationStayDuration")?.value,
-        slotType
+        slotType,
       );
 
   if (!isExtensionMode && (!slotType || !checkInDate)) {
@@ -1475,7 +1577,7 @@ async function submitAddAccommodation() {
         : getSelectedExtensionType() === "overnight_half"
           ? "Payment should be collected first. Continue half-day / overnight extension with no schedule gap?"
           : "Payment should be collected first. Continue full-day extension with no schedule gap?"
-      : "Payment should be collected first. Continue adding this accommodation as paid onsite?"
+      : "Payment should be collected first. Continue adding this accommodation as paid onsite?",
   );
 
   if (!confirmed) return;
@@ -1519,7 +1621,9 @@ async function submitAddAccommodation() {
     if (!response.ok) {
       throw new Error(
         data.message ||
-          (isExtensionMode ? "Failed to extend stay." : "Failed to add accommodation.")
+          (isExtensionMode
+            ? "Failed to extend stay."
+            : "Failed to add accommodation."),
       );
     }
 
@@ -1531,14 +1635,16 @@ async function submitAddAccommodation() {
         (isExtensionMode
           ? "Stay extended successfully."
           : "Accommodation added successfully."),
-      "success"
+      "success",
     );
   } catch (error) {
     console.error("submitAddAccommodation error:", error);
     showMessage(
       error.message ||
-        (isExtensionMode ? "Failed to extend stay." : "Failed to add accommodation."),
-      "error"
+        (isExtensionMode
+          ? "Failed to extend stay."
+          : "Failed to add accommodation."),
+      "error",
     );
   } finally {
     if (saveBtn) {
@@ -1591,7 +1697,12 @@ function getValidStayDuration(value, slotType) {
   return slotType === "extended" || slotType === "overnight" ? duration : 1;
 }
 
-function calculateAddOnCheckOutDate(checkInDate, startTime, endTime, stayDuration = 1) {
+function calculateAddOnCheckOutDate(
+  checkInDate,
+  startTime,
+  endTime,
+  stayDuration = 1,
+) {
   if (!checkInDate || !startTime || !endTime) return checkInDate || "";
 
   const startParts = String(startTime).split(":");
@@ -1630,7 +1741,6 @@ function toInputDateValue(date) {
   return `${year}-${month}-${day}`;
 }
 
-
 // ============================================================
 // SECTION 15: Check out guest
 // Marks booking as completed.
@@ -1640,13 +1750,16 @@ async function markAsCheckedOut(bookingId) {
   if (!confirm("Mark this guest as checked out / completed?")) return;
 
   try {
-    let response = await fetch(`${API_BASE}/admin/bookings/${bookingId}/status`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
+    let response = await fetch(
+      `${API_BASE}/admin/bookings/${bookingId}/status`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ status: "completed" }),
       },
-      body: JSON.stringify({ status: "completed" }),
-    });
+    );
 
     let data = await response.json();
 
@@ -1690,7 +1803,6 @@ async function markAsCheckedOut(bookingId) {
 // SECTION 16: View receipt
 // Opens organized admin receipt page.
 // ============================================================
-
 
 // ============================================================
 // SECTION 16.1: Extend stay
@@ -1755,23 +1867,31 @@ function ensureExtendStayModal() {
     }
   });
 
-  modal.querySelector("#extendStayItemSelect")?.addEventListener("change", () => {
-    updateExtendStayPreview();
-    scheduleExtendStayAvailabilityCheck();
-  });
-  modal.querySelector("#extendStayDurationSelect")?.addEventListener("change", () => {
-    updateExtendStayPreview();
-    scheduleExtendStayAvailabilityCheck();
-  });
-  modal.querySelector("#saveExtendStayBtn")?.addEventListener("click", submitExtendStay);
-  modal.querySelector("#cancelExtendStayBtn")?.addEventListener("click", closeExtendStayModal);
+  modal
+    .querySelector("#extendStayItemSelect")
+    ?.addEventListener("change", () => {
+      updateExtendStayPreview();
+      scheduleExtendStayAvailabilityCheck();
+    });
+  modal
+    .querySelector("#extendStayDurationSelect")
+    ?.addEventListener("change", () => {
+      updateExtendStayPreview();
+      scheduleExtendStayAvailabilityCheck();
+    });
+  modal
+    .querySelector("#saveExtendStayBtn")
+    ?.addEventListener("click", submitExtendStay);
+  modal
+    .querySelector("#cancelExtendStayBtn")
+    ?.addEventListener("click", closeExtendStayModal);
 
   return modal;
 }
 
 function openExtendStayModal(bookingId) {
   const booking = allBookings.find(
-    (item) => Number(item.id) === Number(bookingId)
+    (item) => Number(item.id) === Number(bookingId),
   );
 
   if (!booking) {
@@ -1840,18 +1960,20 @@ function getSelectedExtendStayItem() {
   if (!selectedExtendStayBookingId) return null;
 
   const booking = allBookings.find(
-    (item) => Number(item.id) === Number(selectedExtendStayBookingId)
+    (item) => Number(item.id) === Number(selectedExtendStayBookingId),
   );
 
   if (!booking) return null;
 
   const selectedItemId = Number(
-    document.getElementById("extendStayItemSelect")?.value || 0
+    document.getElementById("extendStayItemSelect")?.value || 0,
   );
 
-  return getBookingItems(booking).find(
-    (item) => Number(item.id) === Number(selectedItemId)
-  ) || null;
+  return (
+    getBookingItems(booking).find(
+      (item) => Number(item.id) === Number(selectedItemId),
+    ) || null
+  );
 }
 
 function getExtensionDuration() {
@@ -1859,8 +1981,10 @@ function getExtensionDuration() {
     1,
     Math.min(
       5,
-      Math.floor(Number(document.getElementById("extendStayDurationSelect")?.value || 1))
-    )
+      Math.floor(
+        Number(document.getElementById("extendStayDurationSelect")?.value || 1),
+      ),
+    ),
   );
 }
 
@@ -1882,7 +2006,8 @@ function updateExtendStayPreview() {
   const newCheckOutDate = addDaysToDateOnly(oldCheckOutDate, duration);
   const unitPrice = getItemUnitPrice(item);
   const extensionFee = unitPrice * duration;
-  const name = item.accommodation_name || item.room_name || item.name || "Accommodation";
+  const name =
+    item.accommodation_name || item.room_name || item.name || "Accommodation";
 
   preview.innerHTML = `
     <strong>${escapeHtml(name)}</strong><br>
@@ -1897,7 +2022,6 @@ function updateExtendStayPreview() {
 
   scheduleExtendStayAvailabilityCheck();
 }
-
 
 function getExtendStayAvailabilityPayload() {
   if (!selectedExtendStayBookingId) return null;
@@ -1921,7 +2045,7 @@ function scheduleExtendStayAvailabilityCheck() {
   setAvailabilityStatus(
     "extendStayAvailabilityStatus",
     "checking",
-    "Checking extension availability..."
+    "Checking extension availability...",
   );
   setButtonAvailability("saveExtendStayBtn", false);
 
@@ -1938,7 +2062,7 @@ async function checkExtendStayAvailabilityNow(showErrors = true) {
     setAvailabilityStatus(
       "extendStayAvailabilityStatus",
       "muted",
-      "Select accommodation and duration to check availability."
+      "Select accommodation and duration to check availability.",
     );
     setButtonAvailability("saveExtendStayBtn", false);
     return false;
@@ -1951,7 +2075,7 @@ async function checkExtendStayAvailabilityNow(showErrors = true) {
     setAvailabilityStatus(
       "extendStayAvailabilityStatus",
       "available",
-      `Available: ${result.message || "This extension is available."}`
+      `Available: ${result.message || "This extension is available."}`,
     );
     setButtonAvailability("saveExtendStayBtn", true);
     return true;
@@ -1961,17 +2085,19 @@ async function checkExtendStayAvailabilityNow(showErrors = true) {
   setAvailabilityStatus(
     "extendStayAvailabilityStatus",
     "unavailable",
-    `Not available: ${result.message || "Please choose another option."}`
+    `Not available: ${result.message || "Please choose another option."}`,
   );
   setButtonAvailability("saveExtendStayBtn", false);
 
   if (showErrors) {
-    showMessage(result.message || "Selected extension is not available.", "error");
+    showMessage(
+      result.message || "Selected extension is not available.",
+      "error",
+    );
   }
 
   return false;
 }
-
 
 async function submitExtendStay() {
   if (!selectedExtendStayBookingId) {
@@ -1997,7 +2123,7 @@ async function submitExtendStay() {
   }
 
   const confirmed = confirm(
-    `Extend this stay by ${duration} ${unitLabel}?\n\nCash to collect now: ₱${formatMoney(extensionFee)}`
+    `Extend this stay by ${duration} ${unitLabel}?\n\nCash to collect now: ₱${formatMoney(extensionFee)}`,
   );
 
   if (!confirmed) return;
@@ -2022,7 +2148,7 @@ async function submitExtendStay() {
           reservation_item_id: Number(item.id),
           extension_duration: duration,
         }),
-      }
+      },
     );
 
     const data = await response.json();
@@ -2070,7 +2196,9 @@ function getItemUnitPrice(item) {
 }
 
 function getExtensionUnitLabel(item, amount = 1) {
-  const slotLabel = String(item.slot_label || item.slot_type || "").toLowerCase();
+  const slotLabel = String(
+    item.slot_label || item.slot_type || "",
+  ).toLowerCase();
   const plural = Number(amount || 0) !== 1;
 
   if (slotLabel.includes("overnight")) {
@@ -2108,7 +2236,10 @@ function getBookingItems(booking) {
     return booking.items;
   }
 
-  if (Array.isArray(booking.reservation_items) && booking.reservation_items.length) {
+  if (
+    Array.isArray(booking.reservation_items) &&
+    booking.reservation_items.length
+  ) {
     return booking.reservation_items;
   }
 
@@ -2181,7 +2312,9 @@ function formatAccommodationDisplay(items, fallbackName = "-", bookingId = 0) {
 }
 
 function openAccommodationDetails(bookingId) {
-  const booking = allBookings.find((item) => Number(item.id) === Number(bookingId));
+  const booking = allBookings.find(
+    (item) => Number(item.id) === Number(bookingId),
+  );
 
   if (!booking) {
     showMessage("Booking not found.", "error");
@@ -2264,7 +2397,6 @@ function closeAccommodationDetails() {
   }
 }
 
-
 function renderItemTimeStatus(item) {
   const status = getItemTimeStatus(item);
 
@@ -2345,7 +2477,6 @@ function formatDurationLeft(totalMinutes) {
   return `${mins}m`;
 }
 
-
 function formatItemShortInfo(item) {
   if (!item) return "";
 
@@ -2367,19 +2498,24 @@ function formatSlotType(slotType) {
 
 function formatItemDuration(item) {
   const duration = Math.max(1, Number(item.stay_duration || 1));
-  const slotType = String(item.slot_type || item.slot_label || "").toLowerCase();
+  const slotType = String(
+    item.slot_type || item.slot_label || "",
+  ).toLowerCase();
 
   if (slotType.includes("overnight")) {
     return `${duration} ${duration === 1 ? "night" : "nights"}`;
   }
 
-  if (slotType.includes("22") || slotType.includes("23") || slotType.includes("extended")) {
+  if (
+    slotType.includes("22") ||
+    slotType.includes("23") ||
+    slotType.includes("extended")
+  ) {
     return `${duration} ${duration === 1 ? "day" : "days"}`;
   }
 
   return "1 day";
 }
-
 
 // ============================================================
 // SECTION 18: Time status
@@ -2394,7 +2530,7 @@ function getLatestCheckOutDateTime(booking) {
     const itemCheckOut = combineDateAndTime(
       item.check_out_date,
       item.check_out_time,
-      true
+      true,
     );
 
     if (itemCheckOut) {
@@ -2405,7 +2541,7 @@ function getLatestCheckOutDateTime(booking) {
   const mainCheckOut = combineDateAndTime(
     booking.check_out || booking.check_out_date,
     booking.check_out_time,
-    true
+    true,
   );
 
   if (mainCheckOut) {
@@ -2417,7 +2553,7 @@ function getLatestCheckOutDateTime(booking) {
   }
 
   return checkOutTimes.reduce((latest, current) =>
-    current.getTime() > latest.getTime() ? current : latest
+    current.getTime() > latest.getTime() ? current : latest,
   );
 }
 
@@ -2501,8 +2637,7 @@ function getUnpaidExtraBedFee(booking) {
 
 function getFrontDeskNote(remainingBalance, extraBedFee, timeInfo) {
   const totalToCollect =
-    Number(remainingBalance || 0) +
-    Number(extraBedFee || 0);
+    Number(remainingBalance || 0) + Number(extraBedFee || 0);
 
   if (timeInfo.level === "danger") {
     return totalToCollect > 0
@@ -2689,16 +2824,18 @@ function setText(id, value) {
   }
 }
 
-
 async function checkItemAvailability(payload) {
   try {
-    const response = await fetch(`${API_BASE}/bookings/check-item-availability`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
+    const response = await fetch(
+      `${API_BASE}/bookings/check-item-availability`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
       },
-      body: JSON.stringify(payload),
-    });
+    );
 
     const data = await response.json();
 
@@ -2732,7 +2869,6 @@ function setAvailabilityStatus(elementId, type, message) {
   el.className = `availability-status ${type}`;
   el.textContent = message;
 }
-
 
 function setAddAccommodationButtonState(state) {
   const button = document.getElementById("saveAddAccommodationBtn");
@@ -2770,7 +2906,6 @@ function setAddAccommodationButtonState(state) {
   button.title = "Complete the form to check availability.";
 }
 
-
 function setButtonAvailability(buttonId, isAvailable) {
   const button = document.getElementById(buttonId);
 
@@ -2785,13 +2920,15 @@ function setButtonAvailability(buttonId, isAvailable) {
       : "Not available or still checking. Please choose another schedule.";
 
     if (!button.dataset.originalText) {
-      button.dataset.originalText = button.textContent.trim() || "Add Accommodation";
+      button.dataset.originalText =
+        button.textContent.trim() || "Add Accommodation";
     }
 
-    button.textContent = isAvailable ? button.dataset.originalText : "Not Available";
+    button.textContent = isAvailable
+      ? button.dataset.originalText
+      : "Not Available";
   }
 }
-
 
 function showMessage(message, type = "success") {
   if (typeof showToast === "function") {
@@ -2814,3 +2951,414 @@ function escapeHtml(value) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
+
+// ======================================================
+// SECTION 25: BOOKING CHARGES
+// Purpose:
+// - Open charges modal
+// - Load additional charges from booking_charges table
+// - Add damage/stain/missing-item charges
+// - Delete a charge if staff made a mistake
+// ======================================================
+
+async function openChargesModalByRow(rowId) {
+  const booking = findBookingByRowId(rowId);
+
+  if (!booking) {
+    showMessage("Booking not found in the current table.", "error");
+    return;
+  }
+
+  await openChargesModal(booking);
+}
+
+async function openChargesModal(bookingOrId) {
+  const modal = document.getElementById("chargesModal");
+  const guestText = document.getElementById("chargesGuestText");
+  const saveBtn = document.getElementById("saveChargeBtn");
+
+  if (!modal) {
+    showMessage("Charges modal not found.", "error");
+    return;
+  }
+
+  const booking =
+    typeof bookingOrId === "object" && bookingOrId !== null
+      ? bookingOrId
+      : findBookingByRowId(Number(bookingOrId));
+
+  if (guestText) {
+    guestText.textContent = booking
+      ? `Manage additional charges for ${booking.fullname || "this guest"} • ${
+          booking.reservation_code || `#${booking.id}`
+        }`
+      : "Manage additional charges for this guest.";
+  }
+
+  if (saveBtn) {
+    saveBtn.disabled = false;
+    saveBtn.textContent = "Add Charge";
+  }
+
+  selectedChargesBookingId = null;
+  clearChargeForm();
+  modal.classList.add("show");
+
+  await resolveAndLoadBookingCharges(booking || Number(bookingOrId));
+}
+
+function closeChargesModal() {
+  const modal = document.getElementById("chargesModal");
+
+  selectedChargesBookingId = null;
+  clearChargeForm();
+
+  const saveBtn = document.getElementById("saveChargeBtn");
+
+  if (saveBtn) {
+    saveBtn.disabled = false;
+    saveBtn.textContent = "Add Charge";
+  }
+
+  if (modal) {
+    modal.classList.remove("show");
+  }
+}
+
+async function resolveAndLoadBookingCharges(bookingOrId) {
+  const list = document.getElementById("chargesListContainer");
+  const totalText = document.getElementById("chargesTotalText");
+
+  if (list) {
+    list.innerHTML = "Loading charges...";
+  }
+
+  if (totalText) {
+    totalText.textContent = "₱0.00";
+  }
+
+  const candidates =
+    typeof bookingOrId === "object" && bookingOrId !== null
+      ? getChargeBookingCandidates(bookingOrId)
+      : [Number(bookingOrId || 0)].filter((value) => value > 0);
+
+  if (!candidates.length) {
+    if (list) {
+      list.innerHTML = "No valid booking ID found for charges.";
+    }
+
+    showMessage("No valid booking ID found for charges.", "error");
+    return;
+  }
+
+  let lastErrorMessage = "Failed to load charges.";
+
+  for (const candidateId of candidates) {
+    try {
+      const response = await fetch(`${API_BASE}/bookings/${candidateId}/charges`);
+      const data = await response.json();
+
+      if (response.ok) {
+        selectedChargesBookingId = Number(candidateId);
+        renderChargesList(data);
+        console.log("Charges booking ID used:", selectedChargesBookingId);
+        return;
+      }
+
+      lastErrorMessage = data.message || lastErrorMessage;
+    } catch (error) {
+      console.error("resolveAndLoadBookingCharges candidate error:", error);
+      lastErrorMessage = error.message || lastErrorMessage;
+    }
+  }
+
+  if (list) {
+    list.innerHTML = `
+      <div class="charges-empty">
+        Unable to load charges. Please check booking ID mapping.
+      </div>
+    `;
+  }
+
+  showMessage(lastErrorMessage, "error");
+}
+
+async function loadBookingCharges() {
+  if (!selectedChargesBookingId) return;
+
+  try {
+    const response = await fetch(
+      `${API_BASE}/bookings/${selectedChargesBookingId}/charges`,
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to load charges.");
+    }
+
+    renderChargesList(data);
+  } catch (error) {
+    console.error("loadBookingCharges error:", error);
+    showMessage(error.message || "Failed to load charges.", "error");
+
+    const list = document.getElementById("chargesListContainer");
+
+    if (list) {
+      list.innerHTML = "Failed to load charges.";
+    }
+  }
+}
+
+function renderChargesList(data) {
+  const list = document.getElementById("chargesListContainer");
+  const totalText = document.getElementById("chargesTotalText");
+
+  const charges = Array.isArray(data?.charges) ? data.charges : [];
+  const total = Number(data?.total || 0);
+  const unpaidTotal = Number(data?.unpaidTotal || 0);
+  const allPaid = charges.length > 0 && unpaidTotal <= 0;
+
+  if (totalText) {
+    totalText.textContent = `₱${formatMoney(total)}`;
+  }
+
+  if (!list) return;
+
+  if (!charges.length) {
+    list.innerHTML = `
+      <div class="charges-empty">
+        No additional charges recorded yet.
+      </div>
+    `;
+    return;
+  }
+
+  list.innerHTML = `
+    <div class="charges-payment-summary">
+      <div>
+        <strong>Status:</strong>
+        <span class="${allPaid ? "paid-text" : "unpaid-text"}">
+          ${allPaid ? "Paid" : "Unpaid"}
+        </span>
+      </div>
+
+      <div>
+        <strong>Total Charges:</strong>
+        <span>₱${formatMoney(total)}</span>
+      </div>
+
+      <div>
+        <strong>Unpaid Total:</strong>
+        <span>₱${formatMoney(unpaidTotal)}</span>
+      </div>
+
+      ${
+        unpaidTotal > 0
+          ? `
+            <button
+              type="button"
+              class="mark-charges-paid-btn"
+              onclick="markChargesPaid()"
+            >
+              Mark Charges Paid
+            </button>
+          `
+          : `
+            <button
+              type="button"
+              class="mark-charges-paid-btn paid"
+              disabled
+            >
+              Charges Paid
+            </button>
+          `
+      }
+    </div>
+
+    ${charges
+      .map((charge) => {
+        const isPaid = Number(charge.is_paid || 0) === 1;
+
+        return `
+          <div class="charge-item">
+            <div class="charge-item-main">
+              <strong>${escapeHtml(charge.charge_name)}</strong>
+
+              ${
+                charge.charge_note
+                  ? `<small>${escapeHtml(charge.charge_note)}</small>`
+                  : `<small>No note provided.</small>`
+              }
+
+              <small>
+                Status:
+                <b class="${isPaid ? "paid-text" : "unpaid-text"}">
+                  ${isPaid ? "Paid" : "Unpaid"}
+                </b>
+              </small>
+            </div>
+
+            <div class="charge-item-side">
+              <strong>₱${formatMoney(charge.charge_amount)}</strong>
+
+              ${
+                isPaid
+                  ? `<button type="button" class="delete-charge-btn" disabled style="opacity:0.55;cursor:not-allowed;">Paid</button>`
+                  : `
+                    <button
+                      type="button"
+                      class="delete-charge-btn"
+                      onclick="deleteBookingCharge(${Number(charge.id)})"
+                    >
+                      Delete
+                    </button>
+                  `
+              }
+            </div>
+          </div>
+        `;
+      })
+      .join("")}
+  `;
+}
+
+async function saveBookingCharge() {
+  if (!selectedChargesBookingId) {
+    showMessage("Charges are still loading or no valid booking was found.", "error");
+    return;
+  }
+
+  const nameInput = document.getElementById("chargeNameInput");
+  const amountInput = document.getElementById("chargeAmountInput");
+  const noteInput = document.getElementById("chargeNoteInput");
+  const saveBtn = document.getElementById("saveChargeBtn");
+
+  const chargeName = String(nameInput?.value || "").trim();
+  const chargeAmount = Number(amountInput?.value || 0);
+  const chargeNote = String(noteInput?.value || "").trim();
+
+  if (!chargeName) {
+    showMessage("Charge name is required.", "error");
+    nameInput?.focus();
+    return;
+  }
+
+  if (!chargeAmount || chargeAmount <= 0) {
+    showMessage("Charge amount must be greater than zero.", "error");
+    amountInput?.focus();
+    return;
+  }
+
+  const originalText = saveBtn ? saveBtn.textContent : "Add Charge";
+
+  try {
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = "Saving...";
+    }
+
+    const response = await fetch(
+      `${API_BASE}/bookings/${selectedChargesBookingId}/charges`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          charge_name: chargeName,
+          charge_amount: chargeAmount,
+          charge_note: chargeNote,
+        }),
+      },
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to add charge.");
+    }
+
+    clearChargeForm();
+    await loadBookingCharges();
+
+    showMessage("Additional charge added successfully.", "success");
+  } catch (error) {
+    console.error("saveBookingCharge error:", error);
+    showMessage(error.message || "Failed to add charge.", "error");
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = originalText || "Add Charge";
+    }
+  }
+}
+
+async function markChargesPaid() {
+  if (!selectedChargesBookingId) {
+    showMessage("No selected booking charges found.", "error");
+    return;
+  }
+
+  if (!confirm("Mark all additional charges as paid?")) return;
+
+  try {
+    const response = await fetch(
+      `${API_BASE}/bookings/${selectedChargesBookingId}/charges/paid`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      },
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to mark charges as paid.");
+    }
+
+    await loadBookingCharges();
+    showMessage(data.message || "Additional charges marked as paid.", "success");
+  } catch (error) {
+    console.error("markChargesPaid error:", error);
+    showMessage(error.message || "Failed to mark charges as paid.", "error");
+  }
+}
+
+async function deleteBookingCharge(chargeId) {
+  if (!confirm("Delete this additional charge?")) return;
+
+  try {
+    const response = await fetch(
+      `${API_BASE}/bookings/charges/${Number(chargeId)}`,
+      {
+        method: "DELETE",
+      },
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to delete charge.");
+    }
+
+    await loadBookingCharges();
+    showMessage("Charge deleted successfully.", "success");
+  } catch (error) {
+    console.error("deleteBookingCharge error:", error);
+    showMessage(error.message || "Failed to delete charge.", "error");
+  }
+}
+
+function clearChargeForm() {
+  const nameInput = document.getElementById("chargeNameInput");
+  const amountInput = document.getElementById("chargeAmountInput");
+  const noteInput = document.getElementById("chargeNoteInput");
+
+  if (nameInput) nameInput.value = "";
+  if (amountInput) amountInput.value = "";
+  if (noteInput) noteInput.value = "";
+}
+

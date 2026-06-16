@@ -2,12 +2,14 @@
 // SMARTRESORT REGISTER SCRIPT
 // Purpose:
 // - Submit registration form
+// - First name and last name are required
+// - Middle name is optional
+// - Password requires minimum 8 characters and 1 special character
 // - Send OTP to user's email
 // - Verify OTP before account can login
 // - Auto-login user after successful OTP verification
 // - Resend OTP with cooldown timer
 // ============================================================
-
 
 const RESEND_COOLDOWN_SECONDS = 60;
 
@@ -27,6 +29,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const registerForm = document.getElementById("registerForm");
   const verifyOtpBtn = document.getElementById("verifyOtpBtn");
   const resendOtpBtn = document.getElementById("resendOtpBtn");
+  const phoneInput = document.getElementById("phone");
 
   if (!registerForm) {
     console.error("registerForm not found.");
@@ -42,6 +45,12 @@ document.addEventListener("DOMContentLoaded", () => {
   if (resendOtpBtn) {
     resendOtpBtn.addEventListener("click", resendRegistrationOtp);
   }
+
+  if (phoneInput) {
+    phoneInput.addEventListener("input", () => {
+      phoneInput.value = phoneInput.value.replace(/\D/g, "").slice(0, 11);
+    });
+  }
 });
 
 // ============================================================
@@ -51,22 +60,27 @@ document.addEventListener("DOMContentLoaded", () => {
 async function submitRegistration(e) {
   e.preventDefault();
 
-  const fullname = document.getElementById("fullname")?.value.trim();
+  const firstName = document.getElementById("firstName")?.value.trim();
+  const middleName = document.getElementById("middleName")?.value.trim();
+  const lastName = document.getElementById("lastName")?.value.trim();
   const email = document.getElementById("email")?.value.trim().toLowerCase();
   const phone = document.getElementById("phone")?.value.trim();
   const address = document.getElementById("address")?.value.trim();
   const password = document.getElementById("password")?.value;
   const confirmPassword = document.getElementById("confirmPassword")?.value;
 
+  const fullname = [firstName, middleName, lastName].filter(Boolean).join(" ");
+
   if (
-    !fullname ||
+    !firstName ||
+    !lastName ||
     !email ||
     !phone ||
     !address ||
     !password ||
     !confirmPassword
   ) {
-    showMessage("Please fill in all fields.", "error");
+    showMessage("Please fill in all required fields.", "error");
     return;
   }
 
@@ -75,8 +89,15 @@ async function submitRegistration(e) {
     return;
   }
 
-  if (password.length < 8) {
-    showMessage("Password must be at least 8 characters long.", "error");
+  if (!isValidPhilippineMobileNumber(phone)) {
+    showMessage("Phone number must be exactly 11 digits and start with 09.", "error");
+    return;
+  }
+
+  const passwordValidation = validatePassword(password);
+
+  if (!passwordValidation.valid) {
+    showMessage(passwordValidation.message, "error");
     return;
   }
 
@@ -97,6 +118,9 @@ async function submitRegistration(e) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        first_name: firstName,
+        middle_name: middleName || "",
+        last_name: lastName,
         fullname,
         email,
         phone,
@@ -343,7 +367,9 @@ function showOtpBox(email) {
 
 function lockRegisterForm() {
   const fields = [
-    "fullname",
+    "firstName",
+    "middleName",
+    "lastName",
     "email",
     "phone",
     "address",
@@ -360,11 +386,38 @@ function lockRegisterForm() {
 }
 
 // ============================================================
-// SECTION 9: Email validator
+// SECTION 9: Validators
 // ============================================================
 
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function isValidPhilippineMobileNumber(value) {
+  return /^09\d{9}$/.test(String(value || "").trim());
+}
+
+function validatePassword(password) {
+  const value = String(password || "");
+
+  if (value.length < 8) {
+    return {
+      valid: false,
+      message: "Password must be at least 8 characters long.",
+    };
+  }
+
+  if (!/[!@#$%^&*()_\-+=[\]{};':"\\|,.<>/?`~]/.test(value)) {
+    return {
+      valid: false,
+      message: "Password must contain at least 1 special character.",
+    };
+  }
+
+  return {
+    valid: true,
+    message: "",
+  };
 }
 
 // ============================================================

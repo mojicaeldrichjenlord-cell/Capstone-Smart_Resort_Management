@@ -56,12 +56,10 @@
 ====================================================== */
 
 .guests-hero {
-  background: linear-gradient(
-    135deg,
-    #0f2f44 0%,
-    #0f766e 62%,
-    #14b8a6 100%
-  );
+  background: linear-gradient(135deg,
+      #0f2f44 0%,
+      #0f766e 62%,
+      #14b8a6 100%);
   color: white;
   border-radius: 30px;
   padding: 34px 28px;
@@ -655,6 +653,7 @@
     flex-direction: column;
   }
 }
+
 .guest-accommodation-list {
   display: flex;
   flex-direction: column;
@@ -1192,16 +1191,45 @@
     color: #0f172a;
   }
 
-  .guests-table td:nth-child(1)::before { content: "Reservation"; }
-  .guests-table td:nth-child(2)::before { content: "Guest"; }
-  .guests-table td:nth-child(3)::before { content: "Accommodation"; }
-  .guests-table td:nth-child(4)::before { content: "Check In"; }
-  .guests-table td:nth-child(5)::before { content: "Check Out"; }
-  .guests-table td:nth-child(6)::before { content: "Guests"; }
-  .guests-table td:nth-child(7)::before { content: "Time Status"; }
-  .guests-table td:nth-child(8)::before { content: "Extra Bed"; }
-  .guests-table td:nth-child(9)::before { content: "Extra Bed Fee"; }
-  .guests-table td:nth-child(10)::before { content: "Actions"; }
+  .guests-table td:nth-child(1)::before {
+    content: "Reservation";
+  }
+
+  .guests-table td:nth-child(2)::before {
+    content: "Guest";
+  }
+
+  .guests-table td:nth-child(3)::before {
+    content: "Accommodation";
+  }
+
+  .guests-table td:nth-child(4)::before {
+    content: "Check In";
+  }
+
+  .guests-table td:nth-child(5)::before {
+    content: "Check Out";
+  }
+
+  .guests-table td:nth-child(6)::before {
+    content: "Guests";
+  }
+
+  .guests-table td:nth-child(7)::before {
+    content: "Time Status";
+  }
+
+  .guests-table td:nth-child(8)::before {
+    content: "Extra Bed";
+  }
+
+  .guests-table td:nth-child(9)::before {
+    content: "Extra Bed Fee";
+  }
+
+  .guests-table td:nth-child(10)::before {
+    content: "Actions";
+  }
 
   .action-buttons {
     max-width: 240px !important;
@@ -1413,15 +1441,41 @@
     color: #0f172a;
   }
 
-  .guests-table td:nth-child(1)::before { content: "Reservation"; }
-  .guests-table td:nth-child(2)::before { content: "Guest"; }
-  .guests-table td:nth-child(3)::before { content: "Accommodation"; }
-  .guests-table td:nth-child(4)::before { content: "Check In"; }
-  .guests-table td:nth-child(5)::before { content: "Check Out"; }
-  .guests-table td:nth-child(6)::before { content: "Guests"; }
-  .guests-table td:nth-child(7)::before { content: "Time Status"; }
-  .guests-table td:nth-child(8)::before { content: "Extra Bed / Fee"; }
-  .guests-table td:nth-child(9)::before { content: "Actions"; }
+  .guests-table td:nth-child(1)::before {
+    content: "Reservation";
+  }
+
+  .guests-table td:nth-child(2)::before {
+    content: "Guest";
+  }
+
+  .guests-table td:nth-child(3)::before {
+    content: "Accommodation";
+  }
+
+  .guests-table td:nth-child(4)::before {
+    content: "Check In";
+  }
+
+  .guests-table td:nth-child(5)::before {
+    content: "Check Out";
+  }
+
+  .guests-table td:nth-child(6)::before {
+    content: "Guests";
+  }
+
+  .guests-table td:nth-child(7)::before {
+    content: "Time Status";
+  }
+
+  .guests-table td:nth-child(8)::before {
+    content: "Extra Bed / Fee";
+  }
+
+  .guests-table td:nth-child(9)::before {
+    content: "Actions";
+  }
 
   .action-buttons {
     max-width: 240px !important;
@@ -1601,4 +1655,506 @@
   background: #eff6ff !important;
   border-color: #3b82f6 !important;
   color: #1e3a8a !important;
+}
+
+/* ======================================================
+   BOOKING CHARGES BUTTON
+   Purpose:
+   - Keeps additional charges visible but not too distracting
+====================================================== */
+
+.charges-btn {
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  color: #ffffff;
+}
+
+/* ======================================================
+   BOOKING CHARGES MODAL
+   Purpose:
+   - Admin/staff can add damage, stain, missing item, or other charges
+====================================================== */
+
+.charges-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 7000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(5px);
+}
+
+.charges-modal.show {
+  display: flex;
+}
+
+.charges-modal-box {
+  width: min(100%, 560px);
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 22px;
+  border: 1px solid #dbe7ef;
+  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.32);
+}
+
+.charges-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.charges-header h2 {
+  margin: 0 0 5px;
+  color: #0f172a;
+  font-size: 1.35rem;
+}
+
+.charges-header p {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.45;
+  font-size: 0.9rem;
+}
+
+.charges-close-btn {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #991b1b;
+  font-size: 1.35rem;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.charges-total-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #0f766e, #14b8a6);
+  color: #ffffff;
+}
+
+.charges-total-box span {
+  font-weight: 850;
+  font-size: 0.9rem;
+}
+
+.charges-total-box strong {
+  font-size: 1.15rem;
+  font-weight: 950;
+}
+
+.charges-list-container {
+  display: grid;
+  gap: 9px;
+  min-height: 52px;
+  padding: 12px;
+  border-radius: 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+  font-weight: 800;
+}
+
+.charge-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 11px 12px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+}
+
+.charge-item-main strong {
+  display: block;
+  color: #0f172a;
+  font-size: 0.94rem;
+}
+
+.charge-item-main small {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+  line-height: 1.35;
+  font-weight: 700;
+}
+
+.charge-item-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 7px;
+}
+
+.charge-item-side strong {
+  color: #ea580c;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.delete-charge-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: #fee2e2;
+  color: #991b1b;
+  font-weight: 950;
+  cursor: pointer;
+  font-size: 0.74rem;
+}
+
+.charges-divider {
+  height: 1px;
+  margin: 16px 0;
+  background: #e2e8f0;
+}
+
+.charges-form {
+  display: grid;
+  gap: 12px;
+}
+
+.charges-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.charges-form-group label {
+  color: #0f172a;
+  font-weight: 900;
+  font-size: 0.9rem;
+}
+
+.charges-form-group input,
+.charges-form-group textarea {
+  width: 100%;
+  padding: 12px 13px;
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  outline: none;
+  font-size: 0.94rem;
+  background: #ffffff;
+}
+
+.charges-form-group textarea {
+  min-height: 82px;
+  resize: vertical;
+}
+
+.charges-form-group input:focus,
+.charges-form-group textarea:focus {
+  border-color: #14b8a6;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.13);
+}
+
+.add-charge-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 13px 18px;
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  color: #ffffff;
+  font-weight: 950;
+  cursor: pointer;
+  box-shadow: 0 12px 24px rgba(249, 115, 22, 0.2);
+}
+
+.add-charge-btn:hover,
+.delete-charge-btn:hover,
+.charges-close-btn:hover {
+  filter: brightness(0.98);
+  transform: translateY(-1px);
+}
+
+/* ======================================================
+   BOOKING CHARGES RESPONSIVE
+====================================================== */
+
+@media (max-width: 560px) {
+  .charges-modal-box {
+    padding: 18px;
+    border-radius: 20px;
+  }
+
+  .charges-header {
+    gap: 10px;
+  }
+
+  .charge-item {
+    grid-template-columns: 1fr;
+  }
+
+  .charge-item-side {
+    align-items: stretch;
+  }
+
+  .delete-charge-btn {
+    width: 100%;
+  }
+}
+
+/* ======================================================
+   BOOKING CHARGES BUTTON
+   Purpose:
+   - Keeps additional charges visible but not too distracting
+====================================================== */
+
+.charges-btn {
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  color: #ffffff;
+}
+
+/* ======================================================
+   BOOKING CHARGES MODAL
+   Purpose:
+   - Admin/staff can add damage, stain, missing item, or other charges
+====================================================== */
+
+.charges-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 7000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(5px);
+}
+
+.charges-modal.show {
+  display: flex;
+}
+
+.charges-modal-box {
+  width: min(100%, 560px);
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 22px;
+  border: 1px solid #dbe7ef;
+  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.32);
+}
+
+.charges-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+.charges-header h2 {
+  margin: 0 0 5px;
+  color: #0f172a;
+  font-size: 1.35rem;
+}
+
+.charges-header p {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.45;
+  font-size: 0.9rem;
+}
+
+.charges-close-btn {
+  flex: 0 0 auto;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #991b1b;
+  font-size: 1.35rem;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.charges-total-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #0f766e, #14b8a6);
+  color: #ffffff;
+}
+
+.charges-total-box span {
+  font-weight: 850;
+  font-size: 0.9rem;
+}
+
+.charges-total-box strong {
+  font-size: 1.15rem;
+  font-weight: 950;
+}
+
+.charges-list-container {
+  display: grid;
+  gap: 9px;
+  min-height: 52px;
+  padding: 12px;
+  border-radius: 16px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #64748b;
+  font-weight: 800;
+}
+
+.charge-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  padding: 11px 12px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+}
+
+.charge-item-main strong {
+  display: block;
+  color: #0f172a;
+  font-size: 0.94rem;
+}
+
+.charge-item-main small {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+  line-height: 1.35;
+  font-weight: 700;
+}
+
+.charge-item-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 7px;
+}
+
+.charge-item-side strong {
+  color: #ea580c;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.delete-charge-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: #fee2e2;
+  color: #991b1b;
+  font-weight: 950;
+  cursor: pointer;
+  font-size: 0.74rem;
+}
+
+.charges-divider {
+  height: 1px;
+  margin: 16px 0;
+  background: #e2e8f0;
+}
+
+.charges-form {
+  display: grid;
+  gap: 12px;
+}
+
+.charges-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.charges-form-group label {
+  color: #0f172a;
+  font-weight: 900;
+  font-size: 0.9rem;
+}
+
+.charges-form-group input,
+.charges-form-group textarea {
+  width: 100%;
+  padding: 12px 13px;
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  outline: none;
+  font-size: 0.94rem;
+  background: #ffffff;
+}
+
+.charges-form-group textarea {
+  min-height: 82px;
+  resize: vertical;
+}
+
+.charges-form-group input:focus,
+.charges-form-group textarea:focus {
+  border-color: #14b8a6;
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.13);
+}
+
+.add-charge-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 13px 18px;
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  color: #ffffff;
+  font-weight: 950;
+  cursor: pointer;
+  box-shadow: 0 12px 24px rgba(249, 115, 22, 0.2);
+}
+
+.add-charge-btn:hover,
+.delete-charge-btn:hover,
+.charges-close-btn:hover {
+  filter: brightness(0.98);
+  transform: translateY(-1px);
+}
+
+/* ======================================================
+   BOOKING CHARGES RESPONSIVE
+====================================================== */
+
+@media (max-width: 560px) {
+  .charges-modal-box {
+    padding: 18px;
+    border-radius: 20px;
+  }
+
+  .charges-header {
+    gap: 10px;
+  }
+
+  .charge-item {
+    grid-template-columns: 1fr;
+  }
+
+  .charge-item-side {
+    align-items: stretch;
+  }
+
+  .delete-charge-btn {
+    width: 100%;
+  }
 }
