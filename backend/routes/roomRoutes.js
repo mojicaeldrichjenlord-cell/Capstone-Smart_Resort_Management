@@ -1,3 +1,11 @@
+// ======================================================
+// backend/routes/roomRoutes.js
+// No changes needed for amenities.
+// Existing POST /rooms and PUT /rooms/:id routes will work
+// once roomController.js is updated to include req.body.amenities.
+// ======================================================
+
+
 const express = require("express");
 const router = express.Router();
 

@@ -563,3 +563,58 @@
     padding-right: 78px;
   }
 }
+
+/* ======================================================
+   AMENITIES / INCLUSIONS TEXTAREA
+   Purpose:
+   - Gives the amenities input a comfortable height
+====================================================== */
+
+#roomAmenities {
+  min-height: 130px;
+  font-family: Arial, sans-serif;
+}
+
+/* ======================================================
+   AMENITIES / INCLUSIONS DISPLAY BOX
+   Purpose:
+   - Shows amenities clearly inside admin accommodation cards
+====================================================== */
+
+.room-inclusions-box {
+  background: linear-gradient(180deg, #ecfeff 0%, #f8fafc 100%);
+  border: 1px solid #ccfbf1;
+  border-radius: 16px;
+  padding: 14px;
+  color: #334155;
+  margin: 12px 0;
+  line-height: 1.6;
+}
+
+/* ======================================================
+   AMENITIES LIST
+   Purpose:
+   - Displays amenities as clean bullet points
+====================================================== */
+
+.amenities-list {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  color: #334155;
+}
+
+.amenities-list li {
+  margin-bottom: 6px;
+}
+
+/* ======================================================
+   EMPTY AMENITIES TEXT
+   Purpose:
+   - Shows a subtle message when no amenities are listed
+====================================================== */
+
+.empty-inclusions {
+  margin: 8px 0 0 !important;
+  color: #64748b !important;
+  font-style: italic;
+}

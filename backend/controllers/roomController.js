@@ -164,6 +164,7 @@ exports.getAllRooms = async (req, res) => {
         c.name AS category_name,
         a.name,
         a.description,
+        a.amenities,
         a.max_capacity,
         a.free_entrance_pax,
         a.image,
@@ -210,6 +211,7 @@ exports.getAvailableRooms = async (req, res) => {
         c.name AS category_name,
         a.name,
         a.description,
+        a.amenities,
         a.max_capacity,
         a.free_entrance_pax,
         a.image,
@@ -260,6 +262,7 @@ exports.getRoomById = async (req, res) => {
         c.name AS category_name,
         a.name,
         a.description,
+        a.amenities,
         a.max_capacity,
         a.free_entrance_pax,
         a.image,
@@ -312,6 +315,7 @@ exports.createRoom = async (req, res) => {
     const category_id = toNumber(req.body.category_id, 0);
     const name = normalizeText(req.body.name);
     const description = normalizeNullableText(req.body.description);
+    const amenities = normalizeNullableText(req.body.amenities);
     const max_capacity = toNumber(req.body.max_capacity, 0);
     const free_entrance_pax = toNumber(req.body.free_entrance_pax, 0);
     const image = normalizeNullableText(req.body.image);
@@ -361,6 +365,7 @@ exports.createRoom = async (req, res) => {
         category_id,
         name,
         description,
+        amenities,
         max_capacity,
         free_entrance_pax,
         image,
@@ -376,12 +381,13 @@ exports.createRoom = async (req, res) => {
         extended_start_time,
         extended_end_time
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `,
       [
         category_id,
         name,
         description,
+        amenities,
         max_capacity,
         free_entrance_pax,
         image,
@@ -423,6 +429,7 @@ exports.updateRoom = async (req, res) => {
     const category_id = toNumber(req.body.category_id, 0);
     const name = normalizeText(req.body.name);
     const description = normalizeNullableText(req.body.description);
+    const amenities = normalizeNullableText(req.body.amenities);
     const max_capacity = toNumber(req.body.max_capacity, 0);
     const free_entrance_pax = toNumber(req.body.free_entrance_pax, 0);
     const image = normalizeNullableText(req.body.image);
@@ -485,6 +492,7 @@ exports.updateRoom = async (req, res) => {
         category_id = ?,
         name = ?,
         description = ?,
+        amenities = ?,
         max_capacity = ?,
         free_entrance_pax = ?,
         image = ?,
@@ -505,6 +513,7 @@ exports.updateRoom = async (req, res) => {
         category_id,
         name,
         description,
+        amenities,
         max_capacity,
         free_entrance_pax,
         image,
@@ -614,6 +623,8 @@ exports.seedDefaultAccommodations = async (req, res) => {
         category_id: cottageId,
         name: "Small Nipa Hut",
         description: "Default cottage accommodation",
+        amenities:
+          "Open cottage seating\nGood for 8-10 pax\nPool access available\nBeach access available\nDay tour, overnight, and 23-hour options",
         max_capacity: 10,
         free_entrance_pax: 0,
         image: "",
@@ -633,6 +644,8 @@ exports.seedDefaultAccommodations = async (req, res) => {
         category_id: roomId,
         name: "Standard Room",
         description: "Default room accommodation",
+        amenities:
+          "Airconditioned room\nBed/s included\nFree pool and beach entrance for 2 pax\nExtra bed available: ₱200",
         max_capacity: 4,
         free_entrance_pax: 2,
         image: "",
@@ -652,6 +665,8 @@ exports.seedDefaultAccommodations = async (req, res) => {
         category_id: functionAreaId,
         name: "Pavillion A",
         description: "Default function area accommodation",
+        amenities:
+          "Function area for events\nGood for large gatherings\nDay tour, overnight, and 23-hour options\nEntrance fee not included",
         max_capacity: 30,
         free_entrance_pax: 0,
         image: "",
@@ -685,6 +700,7 @@ exports.seedDefaultAccommodations = async (req, res) => {
           category_id,
           name,
           description,
+          amenities,
           max_capacity,
           free_entrance_pax,
           image,
@@ -700,12 +716,13 @@ exports.seedDefaultAccommodations = async (req, res) => {
           extended_start_time,
           extended_end_time
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `,
         [
           item.category_id,
           item.name,
           item.description,
+          item.amenities,
           item.max_capacity,
           item.free_entrance_pax,
           item.image,

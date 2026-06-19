@@ -233,6 +233,54 @@
   line-height: 1.6;
 }
 
+
+
+/* ======================================================
+   CUSTOMER AMENITIES / INCLUSIONS BOX
+   Purpose:
+   - Shows accommodation inclusions clearly on customer room cards
+   - Values come from accommodations.amenities
+====================================================== */
+
+.room-customer-inclusions {
+  background: linear-gradient(180deg, #ecfeff 0%, #f8fafc 100%);
+  border: 1px solid #ccfbf1;
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin: 12px 0 14px;
+  color: #334155;
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
+/* ======================================================
+   CUSTOMER AMENITIES LIST
+   Purpose:
+   - Displays amenities as clean bullet points
+====================================================== */
+
+.customer-amenities-list {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  color: #334155;
+}
+
+.customer-amenities-list li {
+  margin-bottom: 6px;
+}
+
+/* ======================================================
+   EMPTY CUSTOMER INCLUSIONS TEXT
+   Purpose:
+   - Shows a subtle message when no amenities are listed
+====================================================== */
+
+.empty-customer-inclusions {
+  margin: 8px 0 0 !important;
+  color: #64748b !important;
+  font-style: italic;
+}
+
 .room-ai-actions {
   margin-top: auto;
   padding-top: 10px;

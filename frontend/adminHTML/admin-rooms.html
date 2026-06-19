@@ -183,6 +183,31 @@
               <textarea id="roomDescription" required></textarea>
             </div>
 
+            <!-- ======================================================
+               AMENITIES / INCLUSIONS
+               Purpose:
+               - Lets admin list what is included in the accommodation
+               - Use one amenity or inclusion per line
+               - Example: Airconditioned room, Free entrance for 2 pax
+            ======================================================= -->
+            <div class="room-form-group full-width">
+              <label for="roomAmenities">Amenities / Inclusions</label>
+
+              <textarea
+                id="roomAmenities"
+                placeholder="Add one amenity or inclusion per line. Example:
+Airconditioned room
+1 bed
+Free pool and beach entrance for 2 pax
+Extra bed available: ₱200"
+              ></textarea>
+
+              <small class="field-help">
+                Use one item per line. These will be shown to customers as the
+                accommodation inclusions.
+              </small>
+            </div>
+
             <div class="room-form-group full-width">
               <label for="roomImage">Cover Image</label>
               <input

@@ -317,6 +317,11 @@ function renderRooms(rooms) {
 
             <p>${itemDescription}</p>
 
+            <div class="room-customer-inclusions">
+              <strong>Amenities / Inclusions:</strong>
+              ${formatAmenitiesList(room.amenities)}
+            </div>
+
             <div class="room-price">Best for up to ${maxCapacity} pax</div>
 
             <div class="room-ai-meta">
@@ -616,6 +621,29 @@ function resolveImagePath(value) {
   }
 
   return `../${imagePath}`;
+}
+
+
+// ============================================================
+// SECTION 11A: Amenities formatter
+// Converts multiline amenities/inclusions into a clean customer bullet list.
+// ============================================================
+
+function formatAmenitiesList(value) {
+  const items = String(value || "")
+    .split(/\r?\n|,/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  if (!items.length) {
+    return `<p class="empty-customer-inclusions">No amenities or inclusions listed.</p>`;
+  }
+
+  return `
+    <ul class="customer-amenities-list">
+      ${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+    </ul>
+  `;
 }
 
 // ============================================================

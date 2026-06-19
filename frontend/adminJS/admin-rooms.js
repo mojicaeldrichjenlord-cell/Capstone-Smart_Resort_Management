@@ -293,6 +293,7 @@ async function handleRoomSubmit(e) {
     category_id: document.getElementById("categoryId").value.trim(),
     name: document.getElementById("roomName").value.trim(),
     description: document.getElementById("roomDescription").value.trim(),
+    amenities: document.getElementById("roomAmenities").value.trim(),
     max_capacity: document.getElementById("roomCapacity").value.trim(),
     image: document.getElementById("roomImage").value.trim(),
     gallery_images: getGalleryImagesFromInput(),
@@ -460,6 +461,7 @@ function applyRoomFilters() {
         room.name,
         room.category_name,
         room.description,
+        room.amenities,
         room.map_label,
         room.status,
         room.max_capacity,
@@ -561,6 +563,12 @@ function renderRooms(rooms) {
 
             <p><strong>Category:</strong> ${escapeHtml(room.category_name || "N/A")}</p>
             <p><strong>Description:</strong> ${escapeHtml(room.description || "N/A")}</p>
+
+            <div class="room-inclusions-box">
+              <strong>Amenities / Inclusions:</strong>
+              ${formatAmenitiesList(room.amenities)}
+            </div>
+
             <p><strong>Map Label:</strong> ${escapeHtml(room.map_label || "Not set")}</p>
             <p><strong>Gallery Photos:</strong> ${galleryImages.length}</p>
 
@@ -688,6 +696,7 @@ async function editRoom(roomId) {
     document.getElementById("categoryId").value = room.category_id || "";
     document.getElementById("roomName").value = room.name || "";
     document.getElementById("roomDescription").value = room.description || "";
+    document.getElementById("roomAmenities").value = room.amenities || "";
     document.getElementById("roomCapacity").value = room.max_capacity || "";
     document.getElementById("roomImage").value = room.image || "";
     document.getElementById("mapLabel").value = room.map_label || "";
@@ -926,6 +935,29 @@ function resolveImagePath(value) {
   }
 
   return `../${imagePath}`;
+}
+
+
+// ============================================================
+// SECTION 22A: Amenities formatter
+// Converts multiline amenities into a clean bullet list.
+// ============================================================
+
+function formatAmenitiesList(value) {
+  const items = String(value || "")
+    .split(/\r?\n|,/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  if (!items.length) {
+    return `<p class="empty-inclusions">No amenities or inclusions listed.</p>`;
+  }
+
+  return `
+    <ul class="amenities-list">
+      ${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+    </ul>
+  `;
 }
 
 // ============================================================
