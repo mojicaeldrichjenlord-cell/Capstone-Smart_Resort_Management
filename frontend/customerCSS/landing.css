@@ -1029,3 +1029,267 @@ body {
         font-size: 0.92rem;
     }
 }
+
+/* ======================================================
+   LANDING PAGE BUTTON HOVER EFFECTS
+   File: frontend/customerCSS/landing.css
+   Placement:
+   - Add this block near the BUTTONS section or at the very bottom of landing.css
+
+   Purpose:
+   - Adds clear hover feedback for all clickable buttons on landing page
+   - Helps users know where the cursor is pointing
+   - Includes keyboard focus styles for accessibility
+====================================================== */
+
+/* ======================================================
+   GLOBAL BUTTON-LIKE TRANSITIONS
+   Purpose:
+   - Makes hover movement smooth for all landing page buttons and clickable controls
+====================================================== */
+
+.btn-main,
+.btn-outline,
+.nav-login,
+.nav-register,
+.landing-menu-toggle,
+.gallery-close-btn,
+.gallery-nav-btn,
+.showcase-card {
+    transition:
+        transform 0.2s ease,
+        box-shadow 0.2s ease,
+        background 0.2s ease,
+        color 0.2s ease,
+        border-color 0.2s ease,
+        opacity 0.2s ease,
+        filter 0.2s ease;
+}
+
+/* ======================================================
+   MAIN BUTTON HOVER
+   Purpose:
+   - Applies to Book Your Stay, Login, Open Google Maps, and other main buttons
+====================================================== */
+
+.btn-main:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 20px 42px rgba(20, 184, 166, 0.38);
+    filter: brightness(1.06);
+}
+
+/* ======================================================
+   OUTLINE BUTTON HOVER
+   Purpose:
+   - Applies to Explore Resort and Register outline buttons
+====================================================== */
+
+.btn-outline:hover {
+    transform: translateY(-3px);
+    border-color: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.24);
+    box-shadow: 0 16px 34px rgba(15, 23, 42, 0.18);
+}
+
+/* ======================================================
+   DARK OUTLINE BUTTON HOVER
+   Purpose:
+   - Applies to final CTA Register button
+====================================================== */
+
+.dark-outline:hover {
+    color: #ffffff;
+    border-color: #0f766e;
+    background: linear-gradient(135deg, #14b8a6, #0f766e);
+}
+
+/* ======================================================
+   NAVBAR LINK HOVER
+   Purpose:
+   - Adds hover feedback to About, Facilities, Policies, and Location links
+====================================================== */
+
+.landing-nav-links a:hover {
+    transform: translateY(-2px);
+    opacity: 1;
+}
+
+/* ======================================================
+   NAVBAR LOGIN BUTTON HOVER
+   Purpose:
+   - Adds stronger hover feedback to Login button in navbar
+====================================================== */
+
+.nav-login:hover {
+    background: rgba(255, 255, 255, 0.26);
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.22);
+}
+
+/* ======================================================
+   NAVBAR REGISTER BUTTON HOVER
+   Purpose:
+   - Adds stronger hover feedback to Register button in navbar
+====================================================== */
+
+.nav-register:hover {
+    background: #0f766e;
+    box-shadow: 0 14px 30px rgba(20, 184, 166, 0.32);
+}
+
+/* ======================================================
+   MOBILE BURGER BUTTON HOVER
+   Purpose:
+   - Adds hover feedback to mobile menu button
+====================================================== */
+
+.landing-menu-toggle:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.24);
+}
+
+/* ======================================================
+   SHOWCASE CARD HOVER IMPROVEMENT
+   Purpose:
+   - Makes clickable showcase cards feel more interactive
+====================================================== */
+
+.showcase-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 26px 54px rgba(15, 23, 42, 0.22);
+}
+
+/* ======================================================
+   GALLERY MODAL BUTTON HOVER
+   Purpose:
+   - Adds clear hover feedback to close, next, and previous buttons
+====================================================== */
+
+.gallery-close-btn:hover {
+    transform: scale(1.06);
+    background: rgba(15, 23, 42, 0.95);
+}
+
+.gallery-nav-btn:hover {
+    transform: translateY(-50%) scale(1.06);
+    background: rgba(15, 23, 42, 0.95);
+}
+
+/* ======================================================
+   FOCUS VISIBLE STATES
+   Purpose:
+   - Shows clear outline when using keyboard navigation
+====================================================== */
+
+.btn-main:focus-visible,
+.btn-outline:focus-visible,
+.nav-login:focus-visible,
+.nav-register:focus-visible,
+.landing-menu-toggle:focus-visible,
+.gallery-close-btn:focus-visible,
+.gallery-nav-btn:focus-visible,
+.showcase-card:focus-visible {
+    outline: 3px solid rgba(20, 184, 166, 0.75);
+    outline-offset: 4px;
+}
+
+/* ======================================================
+   ACTIVE CLICK EFFECT
+   Purpose:
+   - Gives a small press effect when clicking buttons
+====================================================== */
+
+.btn-main:active,
+.btn-outline:active,
+.nav-login:active,
+.nav-register:active,
+.landing-menu-toggle:active,
+.gallery-close-btn:active,
+.gallery-nav-btn:active,
+.showcase-card:active {
+    opacity: 0.88;
+}
+
+/* ======================================================
+   LANDING NAV LINK HOVER AND SECTION TARGET HIGHLIGHT
+   File: frontend/customerCSS/landing.css
+   Placement:
+   - Paste this block at the very bottom of landing.css
+
+   Purpose:
+   - Makes navbar section links more obviously clickable
+   - Applies to About, Facilities, Policies, and Location
+   - Highlights the section after the user clicks a navbar link
+====================================================== */
+
+/* ======================================================
+   NAVBAR SECTION LINK BASE STYLE
+   Purpose:
+   - Gives About, Facilities, Policies, and Location a button-like hover area
+   - Excludes Login and Register because they already have their own button style
+====================================================== */
+
+.landing-nav-links a:not(.nav-login):not(.nav-register) {
+    padding: 10px 14px;
+    border-radius: 999px;
+    transition:
+        transform 0.2s ease,
+        background 0.2s ease,
+        color 0.2s ease,
+        box-shadow 0.2s ease;
+}
+
+/* ======================================================
+   NAVBAR SECTION LINK HOVER
+   Purpose:
+   - Shows clear feedback when cursor points to About, Facilities, Policies, or Location
+====================================================== */
+
+.landing-nav-links a:not(.nav-login):not(.nav-register):hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.16);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.18);
+}
+
+/* ======================================================
+   NAVBAR SECTION LINK ACTIVE CLICK
+   Purpose:
+   - Adds small press feedback when clicking navbar section links
+====================================================== */
+
+.landing-nav-links a:not(.nav-login):not(.nav-register):active {
+    transform: scale(0.96);
+}
+
+/* ======================================================
+   SECTION TARGET HIGHLIGHT
+   Purpose:
+   - Highlights the destination section after clicking navbar links
+   - Example: clicking About highlights the About section
+====================================================== */
+
+.landing-section:target {
+    border-color: rgba(20, 184, 166, 0.65);
+    box-shadow:
+        0 0 0 4px rgba(20, 184, 166, 0.12),
+        0 22px 52px rgba(15, 23, 42, 0.1);
+    animation: landingTargetHighlight 1.2s ease;
+}
+
+/* ======================================================
+   SECTION TARGET ANIMATION
+   Purpose:
+   - Creates a soft highlight effect so users know where the page moved
+====================================================== */
+
+@keyframes landingTargetHighlight {
+    0% {
+        transform: translateY(-4px);
+        background: rgba(236, 254, 255, 0.95);
+    }
+
+    100% {
+        transform: translateY(0);
+        background: rgba(255, 255, 255, 0.72);
+    }
+}
