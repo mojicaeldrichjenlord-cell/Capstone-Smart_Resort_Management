@@ -1,6 +1,14 @@
 /* ======================================================
    PUBLIC LANDING PAGE CSS
    File: frontend/customerCSS/landing.css
+   Purpose:
+   - Styles the public landing page
+   - Handles navbar, hero, showcase, facilities, policies, contact, footer
+   - Includes responsive design and image gallery modal
+====================================================== */
+
+/* ======================================================
+   PAGE BASE
 ====================================================== */
 
 html {
@@ -32,6 +40,10 @@ body {
     justify-content: space-between;
 }
 
+/* ======================================================
+   NAVBAR LOGO
+====================================================== */
+
 .landing-logo {
     text-decoration: none;
     color: #ffffff;
@@ -52,6 +64,10 @@ body {
     box-shadow: 0 10px 24px rgba(15, 23, 42, 0.22);
 }
 
+/* ======================================================
+   DESKTOP NAV LINKS
+====================================================== */
+
 .landing-nav-links {
     display: flex;
     align-items: center;
@@ -69,6 +85,10 @@ body {
     color: #ffffff;
 }
 
+/* ======================================================
+   NAV LOGIN AND REGISTER BUTTONS
+====================================================== */
+
 .nav-login {
     padding: 11px 18px;
     border-radius: 999px;
@@ -81,6 +101,14 @@ body {
     border-radius: 999px;
     background: #14b8a6;
     color: #ffffff !important;
+}
+
+/* ======================================================
+   MOBILE MENU TOGGLE DEFAULT
+====================================================== */
+
+.landing-menu-toggle {
+    display: none;
 }
 
 /* ======================================================
@@ -101,6 +129,10 @@ body {
     overflow: hidden;
 }
 
+/* ======================================================
+   HERO VIDEO BACKGROUND
+====================================================== */
+
 .hero-video {
     position: absolute;
     inset: 0;
@@ -110,6 +142,10 @@ body {
     z-index: 0;
 }
 
+/* ======================================================
+   HERO DARK OVERLAY
+====================================================== */
+
 .landing-hero-overlay {
     position: absolute;
     inset: 0;
@@ -118,6 +154,10 @@ body {
         radial-gradient(circle at top left, rgba(20, 184, 166, 0.28), transparent 36%),
         linear-gradient(90deg, rgba(15, 23, 42, 0.76), rgba(15, 23, 42, 0.22));
 }
+
+/* ======================================================
+   HERO TEXT CONTENT
+====================================================== */
 
 .landing-hero-content {
     position: relative;
@@ -154,6 +194,10 @@ body {
     line-height: 1.75;
     color: rgba(255, 255, 255, 0.94);
 }
+
+/* ======================================================
+   HERO BUTTON GROUP
+====================================================== */
 
 .hero-buttons {
     display: flex;
@@ -217,6 +261,10 @@ body {
     border: 1px solid rgba(226, 232, 240, 0.7);
 }
 
+/* ======================================================
+   SECTION TITLES
+====================================================== */
+
 .section-title {
     max-width: 780px;
     margin-bottom: 28px;
@@ -241,7 +289,7 @@ body {
 }
 
 /* ======================================================
-   ABOUT
+   ABOUT SECTION
 ====================================================== */
 
 .about-text {
@@ -253,7 +301,7 @@ body {
 }
 
 /* ======================================================
-   SHOWCASE
+   SHOWCASE GRID
 ====================================================== */
 
 .showcase-grid {
@@ -262,6 +310,10 @@ body {
     gap: 20px;
 }
 
+/* ======================================================
+   SHOWCASE CARD
+====================================================== */
+
 .showcase-card {
     min-height: 280px;
     position: relative;
@@ -269,34 +321,86 @@ body {
     border-radius: 28px;
     background: #e2e8f0;
     box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+    cursor: pointer;
+    isolation: isolate;
+    transition:
+        transform 0.22s ease,
+        box-shadow 0.22s ease;
 }
+
+.showcase-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 24px 48px rgba(15, 23, 42, 0.18);
+}
+
+.showcase-card:focus {
+    outline: 3px solid rgba(20, 184, 166, 0.55);
+    outline-offset: 4px;
+}
+
+/* ======================================================
+   LARGE SHOWCASE CARD
+====================================================== */
 
 .showcase-card.large-card {
     grid-row: span 2;
     min-height: 580px;
 }
 
-.showcase-card img {
+/* ======================================================
+   SHOWCASE IMAGE AND VIDEO THUMBNAIL
+   Purpose:
+   - Supports normal image cards
+   - Supports MP4 drone video card
+====================================================== */
+
+.showcase-card img,
+.showcase-card video {
     width: 100%;
     height: 100%;
     object-fit: cover;
     position: absolute;
     inset: 0;
+    transition: transform 0.3s ease;
 }
+
+.showcase-card:hover img,
+.showcase-card:hover video {
+    transform: scale(1.04);
+}
+
+/* ======================================================
+   SHOWCASE VIDEO
+   Purpose:
+   - Keeps drone MP4 thumbnail clean inside the showcase card
+====================================================== */
+
+.showcase-video {
+    pointer-events: none;
+}
+
+/* ======================================================
+   SHOWCASE GRADIENT OVERLAY
+====================================================== */
 
 .showcase-card::after {
     content: "";
     position: absolute;
     inset: 0;
+    z-index: 1;
     background: linear-gradient(transparent 35%, rgba(15, 23, 42, 0.82));
 }
 
-.showcase-card div {
+/* ======================================================
+   SHOWCASE TEXT CONTENT
+====================================================== */
+
+.showcase-card-content {
     position: absolute;
     left: 24px;
     right: 24px;
     bottom: 22px;
-    z-index: 1;
+    z-index: 2;
     color: white;
 }
 
@@ -311,6 +415,28 @@ body {
     line-height: 1.55;
 }
 
+/* ======================================================
+   SHOWCASE VIEW LABEL
+====================================================== */
+
+.showcase-view-label {
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 7px 11px;
+    border-radius: 999px;
+    background: rgba(20, 184, 166, 0.88);
+    color: #ffffff;
+    font-size: 0.76rem;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+/* ======================================================
+   IMAGE NOTE
+====================================================== */
+
 .image-note {
     margin-top: 16px;
     color: #64748b;
@@ -318,7 +444,7 @@ body {
 }
 
 /* ======================================================
-   FACILITIES
+   FACILITIES GRID
 ====================================================== */
 
 .facility-grid {
@@ -326,6 +452,10 @@ body {
     grid-template-columns: repeat(4, 1fr);
     gap: 18px;
 }
+
+/* ======================================================
+   FACILITY CARD
+====================================================== */
 
 .facility-card {
     padding: 24px;
@@ -357,7 +487,7 @@ body {
 }
 
 /* ======================================================
-   POLICIES
+   POLICIES SECTION
 ====================================================== */
 
 .policy-box {
@@ -380,7 +510,7 @@ body {
 }
 
 /* ======================================================
-   CONTACT
+   CONTACT SECTION
 ====================================================== */
 
 .contact-grid {
@@ -398,6 +528,10 @@ body {
     padding: 26px;
 }
 
+/* ======================================================
+   MAP CARD
+====================================================== */
+
 .map-card {
     padding: 0;
     min-height: 420px;
@@ -409,6 +543,10 @@ body {
     min-height: 420px;
     border: 0;
 }
+
+/* ======================================================
+   CONTACT TEXT
+====================================================== */
 
 .contact-card h3 {
     margin: 0 0 18px;
@@ -448,6 +586,187 @@ body {
 }
 
 /* ======================================================
+   IMAGE GALLERY MODAL WRAPPER
+====================================================== */
+
+.gallery-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 5000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 22px;
+}
+
+/* ======================================================
+   IMAGE GALLERY MODAL ACTIVE STATE
+====================================================== */
+
+.gallery-modal.show {
+    display: flex;
+}
+
+/* ======================================================
+   IMAGE GALLERY BACKDROP
+====================================================== */
+
+.gallery-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.78);
+    backdrop-filter: blur(8px);
+}
+
+/* ======================================================
+   IMAGE GALLERY DIALOG
+====================================================== */
+
+.gallery-dialog {
+    position: relative;
+    z-index: 1;
+    width: min(980px, 100%);
+    max-height: 92vh;
+    overflow: hidden;
+    border-radius: 30px;
+    background: #ffffff;
+    box-shadow: 0 30px 80px rgba(15, 23, 42, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.36);
+}
+
+/* ======================================================
+   IMAGE GALLERY CLOSE BUTTON
+====================================================== */
+
+.gallery-close-btn {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    z-index: 5;
+    width: 42px;
+    height: 42px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(15, 23, 42, 0.78);
+    color: #ffffff;
+    font-size: 1.8rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+/* ======================================================
+   IMAGE GALLERY IMAGE AREA
+====================================================== */
+
+.gallery-image-wrap {
+    position: relative;
+    height: min(68vh, 620px);
+    min-height: 420px;
+    background: #020617;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ======================================================
+   IMAGE GALLERY MAIN IMAGE
+====================================================== */
+
+.gallery-image-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+}
+
+/* ======================================================
+   IMAGE GALLERY VIDEO
+   Purpose:
+   - Used by Drone View showcase
+   - Hidden by default and shown by landing.js when video card is opened
+====================================================== */
+
+.gallery-video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: none;
+    background: #020617;
+}
+
+/* ======================================================
+   IMAGE GALLERY NEXT AND PREVIOUS BUTTONS
+====================================================== */
+
+.gallery-nav-btn {
+    position: absolute;
+    top: 50%;
+    z-index: 4;
+    transform: translateY(-50%);
+    width: 48px;
+    height: 58px;
+    border: none;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.72);
+    color: #ffffff;
+    font-size: 2.4rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.gallery-nav-btn:hover,
+.gallery-close-btn:hover {
+    background: rgba(15, 23, 42, 0.92);
+}
+
+.gallery-prev-btn {
+    left: 16px;
+}
+
+.gallery-next-btn {
+    right: 16px;
+}
+
+/* ======================================================
+   IMAGE GALLERY INFO AREA
+====================================================== */
+
+.gallery-info {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 22px 24px;
+    background: #ffffff;
+}
+
+.gallery-info h3 {
+    margin: 0 0 8px;
+    color: #0f172a;
+    font-size: 1.35rem;
+}
+
+.gallery-info p {
+    margin: 0;
+    color: #475569;
+    line-height: 1.55;
+}
+
+/* ======================================================
+   IMAGE GALLERY COUNTER
+====================================================== */
+
+.gallery-counter {
+    flex: 0 0 auto;
+    padding: 8px 12px;
+    border-radius: 999px;
+    background: #ecfeff;
+    color: #0f766e;
+    font-size: 0.9rem;
+    font-weight: 900;
+}
+
+/* ======================================================
    FOOTER
 ====================================================== */
 
@@ -463,7 +782,7 @@ body {
 }
 
 /* ======================================================
-   TABLET
+   TABLET RESPONSIVE
 ====================================================== */
 
 @media (max-width: 992px) {
@@ -490,12 +809,8 @@ body {
 }
 
 /* ======================================================
-   MOBILE - BURGER MENU
+   MOBILE RESPONSIVE
 ====================================================== */
-
-.landing-menu-toggle {
-    display: none;
-}
 
 @media (max-width: 768px) {
     .landing-navbar {
@@ -624,7 +939,47 @@ body {
     .showcase-card.large-card {
         min-height: 340px;
     }
+
+    .gallery-modal {
+        padding: 12px;
+    }
+
+    .gallery-dialog {
+        border-radius: 22px;
+    }
+
+    .gallery-image-wrap {
+        height: 58vh;
+        min-height: 300px;
+    }
+
+    .gallery-nav-btn {
+        width: 42px;
+        height: 52px;
+        font-size: 2rem;
+    }
+
+    .gallery-prev-btn {
+        left: 10px;
+    }
+
+    .gallery-next-btn {
+        right: 10px;
+    }
+
+    .gallery-info {
+        padding: 18px;
+        flex-direction: column;
+    }
+
+    .gallery-counter {
+        align-self: flex-start;
+    }
 }
+
+/* ======================================================
+   SMALL MOBILE RESPONSIVE
+====================================================== */
 
 @media (max-width: 480px) {
     .landing-navbar {
@@ -649,5 +1004,28 @@ body {
     .facility-card {
         padding: 20px;
         border-radius: 22px;
+    }
+
+    .showcase-card,
+    .showcase-card.large-card {
+        min-height: 300px;
+    }
+
+    .gallery-close-btn {
+        width: 38px;
+        height: 38px;
+        font-size: 1.55rem;
+    }
+
+    .gallery-image-wrap {
+        min-height: 260px;
+    }
+
+    .gallery-info h3 {
+        font-size: 1.15rem;
+    }
+
+    .gallery-info p {
+        font-size: 0.92rem;
     }
 }

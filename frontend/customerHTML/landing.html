@@ -6,7 +6,8 @@
       File: frontend/customerHTML/landing.html
       Purpose:
       - First page visitors see before login/register
-      - Show resort introduction, facilities, policies, map, and contact
+      - Shows resort introduction, facilities, policies, map, and contact
+      - Includes clickable Resort Showcase image gallery
       - Does not affect customer dashboard, booking, payment, or admin features
     ======================================================= -->
     <meta charset="UTF-8" />
@@ -14,16 +15,29 @@
 
     <title>Arvic Seaside Beach Resort and Hotel</title>
 
-    <!-- Shared/global styles -->
+    <!-- ======================================================
+      SHARED GLOBAL CSS
+      Purpose:
+      - Loads shared styles used by the whole frontend
+    ======================================================= -->
     <link rel="stylesheet" href="../sharedCSS/global.css" />
 
-    <!-- Landing page only styles -->
+    <!-- ======================================================
+      LANDING PAGE CSS
+      Purpose:
+      - Loads landing-page-only styles
+    ======================================================= -->
     <link rel="stylesheet" href="../customerCSS/landing.css" />
   </head>
 
   <body>
     <!-- ======================================================
       LANDING NAVBAR
+      Purpose:
+      - Shows resort logo
+      - Provides section links
+      - Shows Login and Register buttons
+      - Burger menu works on mobile through landing.js
     ======================================================= -->
     <header class="landing-navbar">
       <a href="landing.html" class="landing-logo">
@@ -31,7 +45,12 @@
         <span>Arvic Seaside</span>
       </a>
 
-      <button id="landingMenuToggle" class="landing-menu-toggle" type="button">
+      <button
+        id="landingMenuToggle"
+        class="landing-menu-toggle"
+        type="button"
+        aria-label="Open navigation menu"
+      >
         ☰
       </button>
 
@@ -47,20 +66,25 @@
 
     <!-- ======================================================
       HERO SECTION
-      Replace background image in landing.css if you have drone shot.
+      Purpose:
+      - Shows drone video background
+      - Introduces the resort
+      - Provides main call-to-action buttons
     ======================================================= -->
     <section class="landing-hero">
-      <!--Drone Shot-->
-
+      <!-- Hero background video -->
       <video class="hero-video" autoplay muted loop playsinline>
-        <source src="../videos/drone-shot.mp4" type="video/mp4" />
+        <source src="../videos/drone-landing.mp4" type="video/mp4" />
       </video>
+
+      <!-- Dark overlay for better text readability -->
       <div class="landing-hero-overlay"></div>
 
+      <!-- Hero text content -->
       <div class="landing-hero-content">
-        <span class="hero-badge"
-          >Always Open • Beach Resort • Naic, Cavite</span
-        >
+        <span class="hero-badge">
+          Always Open • Beach Resort • Naic, Cavite
+        </span>
 
         <h1>Experience a relaxing seaside getaway at Arvic Seaside.</h1>
 
@@ -78,9 +102,16 @@
     </section>
 
     <!-- ======================================================
-      ABOUT / INTRODUCTION SECTION
+      MAIN LANDING CONTENT
+      Purpose:
+      - Groups all landing page sections
     ======================================================= -->
     <main>
+      <!-- ======================================================
+        ABOUT / INTRODUCTION SECTION
+        Purpose:
+        - Shows short resort description and address
+      ======================================================= -->
       <section id="about" class="landing-section about-section">
         <div class="section-title">
           <span>Welcome to Arvic Seaside</span>
@@ -97,8 +128,18 @@
       </section>
 
       <!-- ======================================================
-        RESORT SHOWCASE / GALLERY SECTION
-        Replace the image src values with actual resort photos.
+        RESORT SHOWCASE / CLICKABLE GALLERY SECTION
+        Purpose:
+        - Shows resort showcase cards
+        - Each card opens its own separate modal
+        - Drone card opens MP4 video
+        - Image cards use Next/Previous inside the clicked showcase category only
+
+        Important:
+        - Separate multiple image paths using |
+        - Example:
+          data-gallery-images="../images/pool1.jpg|../images/pool2.jpg"
+        - Replace example image paths with your actual uploaded resort photos
       ======================================================= -->
       <section class="landing-section showcase-section">
         <div class="section-title">
@@ -107,52 +148,162 @@
         </div>
 
         <div class="showcase-grid">
-          <div class="showcase-card large-card">
-            <img
-              src="../images/resort-drone.jpg"
-              alt="Drone shot of Arvic Seaside Resort"
-            />
-            <div>
+          <!-- ======================================================
+            SHOWCASE CARD 1 - DRONE VIEW VIDEO
+            Purpose:
+            - Uses MP4 video instead of image
+            - Opens drone video inside the modal when clicked
+            - Does not use next/previous because this is a single video
+          ======================================================= -->
+          <article
+            class="showcase-card large-card js-gallery-card"
+            role="button"
+            tabindex="0"
+            aria-label="Open Drone View video"
+            data-gallery-type="video"
+            data-gallery-title="Drone View"
+            data-gallery-description="Watch the drone view of the resort area and seaside atmosphere."
+            data-gallery-video="../videos/drone-landing.mp4" type="video/mp4"
+          >
+            <!-- Drone View Video Thumbnail in Landing Page -->
+            <video class="showcase-video" autoplay muted loop playsinline>
+              <source src="../videos/drone-landing.mp4" type="video/mp4" />
+            </video>
+
+            <div class="showcase-card-content">
+              <span class="showcase-view-label">Watch Video</span>
               <h3>Drone View</h3>
               <p>
-                Enjoy a wider view of the resort area and seaside atmosphere.
+                Watch a drone view of the resort area and seaside atmosphere.
               </p>
             </div>
-          </div>
+          </article>
 
-          <div class="showcase-card">
-            <img src="../images/pool-landing.jpg" alt="Swimming pool area" />
-            <div>
+          <!-- ======================================================
+            SHOWCASE CARD 2 - SWIMMING AREA
+            Purpose:
+            - Opens only pool/swimming photos
+            - Next/Previous will stay inside this pool gallery only
+          ======================================================= -->
+          <article
+            class="showcase-card js-gallery-card"
+            role="button"
+            tabindex="0"
+            aria-label="Open Swimming Area gallery"
+            data-gallery-title="Swimming Area"
+            data-gallery-description="Relax and enjoy the pool with your family and friends."
+            data-gallery-images="../images/landing/pool-landing.jpg|../images/landing/pool-landing-2.jpg"
+          >
+            <!-- Swimming Area Thumbnail Photo in Landing Page-->
+            <img
+              src="../images/landing/pool-landing.jpg"
+              alt="Swimming pool area"
+            />
+
+            <div class="showcase-card-content">
+              <span class="showcase-view-label">View Photos</span>
               <h3>Swimming Area</h3>
               <p>Relax and enjoy the pool with your family and friends.</p>
             </div>
-          </div>
+          </article>
 
-          <div class="showcase-card">
+          <!-- ======================================================
+            SHOWCASE CARD 3 - BEACH SHOWCASE
+            Purpose:
+            - Opens only beach/seaside photos
+            - Next/Previous will stay inside this beach gallery only
+            - Uses 4 beach image slots from beach-landing to beach-landing-4
+          ======================================================= -->
+          <article
+            class="showcase-card js-gallery-card"
+            role="button"
+            tabindex="0"
+            aria-label="Open Beach Showcase gallery"
+            data-gallery-title="Beach Showcase"
+            data-gallery-description="Enjoy the relaxing beach and seaside view of Arvic Seaside."
+            data-gallery-images="../images/landing/beach-landing.jpg|../images/landing/beach-landing-2.jpg|../images/landing/beach-landing-3.jpg|../images/landing/beach-landing-4.jpg"
+          >
+            <!-- Beach Showcase Thumbnail Photo in Landing Page -->
             <img
-              src="../images/room-landing.jpg"
+              src="../images/landing/beach-landing.jpg"
+              alt="Beach and seaside view"
+            />
+
+            <div class="showcase-card-content">
+              <span class="showcase-view-label">View Photos</span>
+              <h3>Beach Showcase</h3>
+              <p>Enjoy the relaxing beach and seaside view of the resort.</p>
+            </div>
+          </article>
+
+          <!-- ======================================================
+            SHOWCASE CARD 4 - COMFORTABLE ROOMS
+            Purpose:
+            - Opens only room accommodation photos
+            - Does not include pool or function photos
+          ======================================================= -->
+          <article
+            class="showcase-card js-gallery-card"
+            role="button"
+            tabindex="0"
+            aria-label="Open Comfortable Rooms gallery"
+            data-gallery-title="Comfortable Rooms"
+            data-gallery-description="Stay comfortably with available room accommodations."
+            data-gallery-images="../images/landing/room-landing.jpg|../images/landing/room-landing-2.jpg|../images/landing/room-landing-3.jpg|../images/landing/room-landing-4.jpg"
+          >
+
+          <!-- Comfort Rooms Thumbnail Photo in Landing Page-->
+            <img
+              src="../images/landing/room-landing.jpg"
               alt="Resort room accommodation"
             />
-            <div>
+
+            <div class="showcase-card-content">
+              <span class="showcase-view-label">View Photos</span>
               <h3>Comfortable Rooms</h3>
               <p>Stay comfortably with available room accommodations.</p>
             </div>
-          </div>
+          </article>
 
-          <div class="showcase-card">
-            <img src="../images/function-landing.jpg" alt="Function area" />
-            <div>
+          <!-- ======================================================
+            SHOWCASE CARD 5 - FUNCTION AREAS
+            Purpose:
+            - Opens only function area/event photos
+            - Does not include pool or room photos
+          ======================================================= -->
+          <article
+            class="showcase-card js-gallery-card"
+            role="button"
+            tabindex="0"
+            aria-label="Open Function Areas gallery"
+            data-gallery-title="Function Areas"
+            data-gallery-description="Ideal for gatherings, celebrations, and private events."
+            data-gallery-images="../images/landing/function-landing.jpg|../images/landing/function-landing-2.jpg"
+          >
+          <!-- Function Areas Thumbnail Photo in Landing Page-->
+            <img
+              src="../images/landing/function-landing.jpg"
+              alt="Function area"
+            />
+
+            <div class="showcase-card-content">
+              <span class="showcase-view-label">View Photos</span>
               <h3>Function Areas</h3>
               <p>Ideal for gatherings, celebrations, and private events.</p>
             </div>
-          </div>
+          </article>
         </div>
 
-        <p class="image-note">Note: Those are taken from the resort.</p>
+        <p class="image-note">
+          Note: Click any resort photo to view more images from the same
+          category.
+        </p>
       </section>
 
       <!-- ======================================================
         FACILITIES SECTION
+        Purpose:
+        - Shows resort facilities in simple cards
       ======================================================= -->
       <section id="facilities" class="landing-section facilities-section">
         <div class="section-title">
@@ -189,7 +340,9 @@
 
       <!-- ======================================================
         RESORT POLICIES SECTION
-        This also supports the panel recommendation.
+        Purpose:
+        - Shows important booking and damage charge reminders
+        - Supports panel recommendation for policy reminders
       ======================================================= -->
       <section id="policies" class="landing-section policies-section">
         <div class="section-title">
@@ -226,6 +379,9 @@
 
       <!-- ======================================================
         LOCATION AND CONTACT SECTION
+        Purpose:
+        - Shows embedded Google Map
+        - Shows resort contact information
       ======================================================= -->
       <section id="location" class="landing-section contact-section">
         <div class="section-title">
@@ -234,6 +390,7 @@
         </div>
 
         <div class="contact-grid">
+          <!-- Google Maps embed -->
           <div class="contact-card map-card">
             <iframe
               src="https://www.google.com/maps?q=17%20Mahogany%20Street%2C%20Brgy.%20Bagong%20Karsada%2C%20Naic%2C%20Cavite&output=embed"
@@ -242,6 +399,7 @@
             ></iframe>
           </div>
 
+          <!-- Resort contact details -->
           <div class="contact-card">
             <h3>Arvic Seaside Beach Resort and Hotel</h3>
 
@@ -279,6 +437,8 @@
 
       <!-- ======================================================
         FINAL CTA SECTION
+        Purpose:
+        - Encourages visitor to login or register
       ======================================================= -->
       <section class="landing-section final-cta">
         <h2>Ready to plan your resort stay?</h2>
@@ -286,15 +446,88 @@
 
         <div class="hero-buttons">
           <a href="../authHTML/login.html" class="btn-main">Login</a>
-          <a href="../authHTML/register.html" class="btn-outline dark-outline"
-            >Register</a
-          >
+          <a href="../authHTML/register.html" class="btn-outline dark-outline">
+            Register
+          </a>
         </div>
       </section>
     </main>
 
     <!-- ======================================================
+      IMAGE GALLERY MODAL
+      Purpose:
+      - Opens when a showcase card is clicked
+      - Displays selected gallery image or drone video
+      - Supports Next, Previous, Close, and keyboard controls
+    ======================================================= -->
+    <section id="galleryModal" class="gallery-modal" aria-hidden="true">
+      <!-- Clickable dark background -->
+      <div class="gallery-backdrop" data-gallery-close></div>
+
+      <!-- Modal content wrapper -->
+      <div
+        class="gallery-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="galleryTitle"
+      >
+        <!-- Close button -->
+        <button
+          id="galleryCloseBtn"
+          class="gallery-close-btn"
+          type="button"
+          aria-label="Close gallery"
+        >
+          ×
+        </button>
+
+        <!-- Main media area -->
+        <div class="gallery-image-wrap">
+          <button
+            id="galleryPrevBtn"
+            class="gallery-nav-btn gallery-prev-btn"
+            type="button"
+            aria-label="Previous image"
+          >
+            ‹
+          </button>
+
+          <!-- Image viewer used by pool, beach, room, and function galleries -->
+          <img id="galleryImage" src="" alt="Resort gallery image" />
+
+          <!-- Video viewer used by drone showcase -->
+          <video id="galleryVideo" class="gallery-video" controls playsinline>
+            <source id="galleryVideoSource" src="" type="video/mp4" />
+          </video>
+
+          <button
+            id="galleryNextBtn"
+            class="gallery-nav-btn gallery-next-btn"
+            type="button"
+            aria-label="Next image"
+          >
+            ›
+          </button>
+        </div>
+
+        <!-- Modal text information -->
+        <div class="gallery-info">
+          <div>
+            <h3 id="galleryTitle">Resort Gallery</h3>
+            <p id="galleryDescription">
+              View more photos of Arvic Seaside Beach Resort and Hotel.
+            </p>
+          </div>
+
+          <span id="galleryCounter" class="gallery-counter">1 / 1</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================================================
       FOOTER
+      Purpose:
+      - Shows system footer
     ======================================================= -->
     <footer class="landing-footer">
       <p>
@@ -302,20 +535,13 @@
         System.
       </p>
     </footer>
-    <script>
-      const landingMenuToggle = document.getElementById("landingMenuToggle");
-      const landingNavLinks = document.getElementById("landingNavLinks");
 
-      if (landingMenuToggle && landingNavLinks) {
-        landingMenuToggle.addEventListener("click", () => {
-          landingNavLinks.classList.toggle("show");
-          landingMenuToggle.textContent = landingNavLinks.classList.contains(
-            "show",
-          )
-            ? "×"
-            : "☰";
-        });
-      }
-    </script>
+    <!-- ======================================================
+      LANDING PAGE JAVASCRIPT
+      Purpose:
+      - Controls mobile burger menu
+      - Controls image gallery modal
+    ======================================================= -->
+    <script src="../customerJS/landing.js"></script>
   </body>
 </html>
