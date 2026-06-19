@@ -461,7 +461,7 @@ function renderReservationCard(booking) {
             </span>
 
             <span class="status-badge status-${bookingStatus}">
-              ${capitalize(bookingStatus)}
+              ${formatReservationStatus(bookingStatus)}
             </span>
 
             <span class="payment-badge payment-${paymentStatus}">
@@ -1317,6 +1317,19 @@ function getPaymentAmountHighlightClass(booking, amountValue) {
   }
 
   return "payment-amount-red";
+}
+
+
+function formatReservationStatus(status) {
+  const value = String(status || "").toLowerCase();
+
+  if (value === "approved") return "Reservation Confirmed";
+  if (value === "pending") return "Pending";
+  if (value === "cancelled") return "Cancelled";
+  if (value === "completed") return "Completed";
+  if (value === "rejected") return "Rejected";
+
+  return capitalize(value);
 }
 
 function formatPaymentStatus(status) {

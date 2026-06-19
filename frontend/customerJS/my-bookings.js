@@ -171,7 +171,7 @@ function renderBookingCard(booking) {
             font-weight:800;
             ${getStatusBadgeStyles(status)}
           ">
-            ${capitalize(status)}
+            ${formatReservationStatus(status)}
           </span>
         </div>
 
@@ -570,6 +570,19 @@ function formatPaymentMethod(method) {
   if (value === "gcash") return "GCash";
   if (value === "paymaya") return "PayMaya / Maya";
   if (value === "cash") return "Cash";
+
+  return capitalize(value.replaceAll("_", " "));
+}
+
+
+function formatReservationStatus(status) {
+  const value = String(status || "").toLowerCase();
+
+  if (value === "approved") return "Reservation Confirmed";
+  if (value === "pending") return "Pending";
+  if (value === "cancelled") return "Cancelled";
+  if (value === "completed") return "Completed";
+  if (value === "rejected") return "Rejected";
 
   return capitalize(value.replaceAll("_", " "));
 }
