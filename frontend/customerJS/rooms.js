@@ -18,6 +18,20 @@ let currentViewerImages = [];
 let currentViewerIndex = 0;
 let currentViewerCaption = "Accommodation Photo";
 
+const FALLBACK_IMAGE =
+  "data:image/svg+xml;charset=UTF-8," +
+  encodeURIComponent(`
+    <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+      <rect width="1200" height="720" fill="#eef8f7"/>
+      <rect x="80" y="80" width="1040" height="560" rx="42" fill="#ffffff" stroke="#cbd5e1" stroke-width="8"/>
+      <circle cx="600" cy="310" r="74" fill="#dbeafe"/>
+      <path d="M560 345l45-60 35 45 25-30 65 90H500l60-45z" fill="#14b8a6"/>
+      <text x="600" y="480" text-anchor="middle" font-family="Arial, sans-serif" font-size="38" font-weight="700" fill="#334155">
+        Image unavailable
+      </text>
+    </svg>
+  `);
+
 // ============================================================
 // SECTION 1: Page startup
 // ============================================================
@@ -218,7 +232,7 @@ function renderRooms(rooms) {
 
   container.innerHTML = rooms
     .map((room) => {
-      const rawImage = room.image || "images/no-image.jpg";
+      const rawImage = room.image || "";
       const imageSrc = escapeHtml(resolveImagePath(rawImage));
       const itemName = escapeHtml(room.name || "N/A");
 
@@ -258,7 +272,7 @@ function renderRooms(rooms) {
                     alt="${itemName} photo"
                     onclick="openImageViewerFromRoom(${room.id}, '${escapeForJs(img)}', '${escapeForJs(room.name || "Accommodation")}')"
                     style="cursor:pointer;"
-                    onerror="this.src='../images/no-image.jpg'"
+                    onerror="this.onerror=null; this.src=FALLBACK_IMAGE;"
                   />
                 `;
               })
@@ -275,7 +289,7 @@ function renderRooms(rooms) {
               alt="${itemName}"
               onclick="openImageViewerFromRoom(${room.id}, '${escapeForJs(rawImage)}', '${escapeForJs(room.name || "Accommodation")}')"
               style="cursor:pointer;"
-              onerror="this.src='../images/no-image.jpg'"
+              onerror="this.onerror=null; this.src=FALLBACK_IMAGE;"
             />
 
             <div style="
@@ -473,7 +487,7 @@ function openImageViewerFromRoom(
   }
 
   if (!images.length) {
-    images.push(selectedImage || "images/no-image.jpg");
+    images.push(selectedImage || "");
   }
 
   const selectedIndex = images.findIndex((img) => img === selectedImage);
@@ -494,11 +508,12 @@ function showCurrentViewerImage() {
   if (!modal || !image || !caption) return;
 
   const currentImage =
-    currentViewerImages[currentViewerIndex] || "images/no-image.jpg";
+    currentViewerImages[currentViewerIndex] || "";
 
   image.src = resolveImagePath(currentImage);
   image.onerror = () => {
-    image.src = "../images/no-image.jpg";
+    image.onerror = null;
+    image.src = FALLBACK_IMAGE;
   };
 
   caption.textContent = currentViewerCaption;
@@ -596,7 +611,7 @@ function resolveImagePath(value) {
   const imagePath = String(value || "").trim();
 
   if (!imagePath) {
-    return "../images/no-image.jpg";
+    return FALLBACK_IMAGE;
   }
 
   if (
@@ -608,19 +623,27 @@ function resolveImagePath(value) {
     return imagePath;
   }
 
-  if (imagePath.startsWith("../")) {
+  if (imagePath.startsWith("../images/")) {
+    return imagePath.replace("../images/", "/images/");
+  }
+
+  if (imagePath.startsWith("images/")) {
+    return `/${imagePath}`;
+  }
+
+  if (imagePath.startsWith("/images/")) {
     return imagePath;
   }
 
   if (imagePath.startsWith("/uploads/")) {
-    return `http://127.0.0.1:5000${imagePath}`;
+    return `${API_BASE.replace("/api", "")}${imagePath}`;
   }
 
   if (imagePath.startsWith("uploads/")) {
-    return `http://127.0.0.1:5000/${imagePath}`;
+    return `${API_BASE.replace("/api", "")}/${imagePath}`;
   }
 
-  return `../${imagePath}`;
+  return `/${imagePath.replace(/^\/+/, "")}`;
 }
 
 
