@@ -25,6 +25,48 @@ function normalizeEmail(email) {
     .toLowerCase();
 }
 
+
+// ============================================================
+// SECTION 1.1: Strong registration password validator
+// Purpose:
+// - Matches the Premium Password UI on the register page
+// - Requires 8+ chars, uppercase, lowercase, number, special char
+// - Applied to NEW REGISTRATIONS only for this phase
+// ============================================================
+
+function validateStrongRegistrationPassword(password) {
+  const value = String(password || "");
+
+  const requirements = {
+    length: value.length >= 8,
+    uppercase: /[A-Z]/.test(value),
+    lowercase: /[a-z]/.test(value),
+    number: /\d/.test(value),
+    special: /[^A-Za-z0-9\s]/.test(value),
+  };
+
+  const score = Object.values(requirements).filter(Boolean).length;
+
+  // ==========================================================
+  // ACCEPTANCE RULE:
+  // GOOD = any 4 out of 5 password checks
+  // STRONG = all 5 password checks
+  // Both are accepted for registration.
+  // ==========================================================
+  if (score < 4) {
+    return {
+      valid: false,
+      message:
+        "Password strength must be at least Good before you can register.",
+    };
+  }
+
+  return {
+    valid: true,
+    message: "",
+  };
+}
+
 // ============================================================
 // SECTION 2: OTP generator
 // Generates a random 6-digit code.
@@ -167,10 +209,13 @@ exports.register = async (req, res) => {
       });
     }
 
-    if (password.length < 8) {
+    const passwordValidation =
+      validateStrongRegistrationPassword(password);
+
+    if (!passwordValidation.valid) {
       return res.status(400).json({
         success: false,
-        message: "Password must be at least 8 characters long.",
+        message: passwordValidation.message,
       });
     }
 

@@ -30,6 +30,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const verifyOtpBtn = document.getElementById("verifyOtpBtn");
   const resendOtpBtn = document.getElementById("resendOtpBtn");
   const phoneInput = document.getElementById("phone");
+  const otpInput = document.getElementById("registerOtp");
+  const passwordInput = document.getElementById("password");
+  const confirmPasswordInput = document.getElementById("confirmPassword");
 
   if (!registerForm) {
     console.error("registerForm not found.");
@@ -51,7 +54,183 @@ document.addEventListener("DOMContentLoaded", () => {
       phoneInput.value = phoneInput.value.replace(/\D/g, "").slice(0, 11);
     });
   }
+
+  if (otpInput) {
+    otpInput.addEventListener("input", () => {
+      otpInput.value = otpInput.value.replace(/\D/g, "").slice(0, 6);
+    });
+  }
+
+  if (passwordInput) {
+    passwordInput.addEventListener("input", () => {
+      updatePasswordStrengthUi(passwordInput.value);
+      updatePasswordMatchUi();
+    });
+
+    updatePasswordStrengthUi(passwordInput.value);
+  }
+
+  if (confirmPasswordInput) {
+    confirmPasswordInput.addEventListener("input", updatePasswordMatchUi);
+  }
+
+  setupPasswordToggles();
 });
+
+
+
+// ============================================================
+// SECTION 2.1: Password show/hide controls
+// ============================================================
+
+function setupPasswordToggles() {
+  document.querySelectorAll(".password-toggle").forEach((button) => {
+    button.addEventListener("click", () => {
+      const input = document.getElementById(button.dataset.target);
+
+      if (!input) return;
+
+      const isPassword = input.type === "password";
+      input.type = isPassword ? "text" : "password";
+
+      button.setAttribute(
+        "aria-label",
+        isPassword ? "Hide password" : "Show password",
+      );
+    });
+  });
+}
+
+// ============================================================
+// SECTION 2.2: Password requirement checker
+// ============================================================
+
+function getPasswordRequirements(password) {
+  const value = String(password || "");
+
+  return {
+    length: value.length >= 8,
+    uppercase: /[A-Z]/.test(value),
+    lowercase: /[a-z]/.test(value),
+    number: /\d/.test(value),
+    special: /[^A-Za-z0-9\s]/.test(value),
+  };
+}
+
+// ============================================================
+// SECTION 2.3: Password strength calculator
+// ============================================================
+
+function getPasswordStrengthInfo(password) {
+  const value = String(password || "");
+  const requirements = getPasswordRequirements(value);
+  const score = Object.values(requirements).filter(Boolean).length;
+
+  if (!value) {
+    return { label: "Not set", key: "empty", percentage: 0 };
+  }
+
+  if (score <= 2) {
+    return { label: "Weak", key: "weak", percentage: 25 };
+  }
+
+  if (score === 3) {
+    return { label: "Fair", key: "fair", percentage: 50 };
+  }
+
+  if (score === 4) {
+    return { label: "Good", key: "good", percentage: 75 };
+  }
+
+  return { label: "Strong", key: "strong", percentage: 100 };
+}
+
+// ============================================================
+// SECTION 2.4: Update premium password UI
+// ============================================================
+
+function updatePasswordStrengthUi(password) {
+  const requirements = getPasswordRequirements(password);
+  const strength = getPasswordStrengthInfo(password);
+
+  const strengthBox = document.getElementById("passwordStrengthBox");
+  const strengthText = document.getElementById("passwordStrengthText");
+  const strengthBar = document.getElementById("passwordStrengthBar");
+  const premiumField = document.getElementById("premiumPasswordField");
+
+  const requirementElements = {
+    length: document.getElementById("requirementLength"),
+    uppercase: document.getElementById("requirementUppercase"),
+    lowercase: document.getElementById("requirementLowercase"),
+    number: document.getElementById("requirementNumber"),
+    special: document.getElementById("requirementSpecial"),
+  };
+
+  Object.entries(requirementElements).forEach(([key, element]) => {
+    if (!element) return;
+    element.classList.toggle("met", Boolean(requirements[key]));
+  });
+
+  if (strengthBox) {
+    strengthBox.dataset.strength = strength.key;
+  }
+
+  if (strengthText) {
+    strengthText.textContent = strength.label;
+  }
+
+  if (strengthBar) {
+    strengthBar.style.width = `${strength.percentage}%`;
+  }
+
+  if (premiumField) {
+    premiumField.classList.remove("valid", "partial", "invalid");
+
+    if (!password) return;
+
+    if (strength.key === "strong") {
+      premiumField.classList.add("valid");
+    } else if (strength.key === "good" || strength.key === "fair") {
+      premiumField.classList.add("partial");
+    } else {
+      premiumField.classList.add("invalid");
+    }
+  }
+}
+
+// ============================================================
+// SECTION 2.5: Confirm password match indicator
+// ============================================================
+
+function updatePasswordMatchUi() {
+  const passwordInput = document.getElementById("password");
+  const confirmInput = document.getElementById("confirmPassword");
+  const status = document.getElementById("passwordMatchStatus");
+  const field = confirmInput?.closest(".password-field");
+
+  if (!passwordInput || !confirmInput || !status) return;
+
+  const password = passwordInput.value;
+  const confirmPassword = confirmInput.value;
+
+  status.classList.remove("match", "no-match");
+  field?.classList.remove("match", "no-match");
+
+  if (!confirmPassword) {
+    status.textContent = "Re-enter your password to confirm.";
+    return;
+  }
+
+  if (password === confirmPassword) {
+    status.textContent = "✓ Passwords match.";
+    status.classList.add("match");
+    field?.classList.add("match");
+  } else {
+    status.textContent = "Passwords do not match.";
+    status.classList.add("no-match");
+    field?.classList.add("no-match");
+  }
+}
 
 // ============================================================
 // SECTION 3: Submit registration
@@ -398,19 +577,20 @@ function isValidPhilippineMobileNumber(value) {
 }
 
 function validatePassword(password) {
-  const value = String(password || "");
+  const requirements = getPasswordRequirements(password);
+  const score = Object.values(requirements).filter(Boolean).length;
 
-  if (value.length < 8) {
+  // ==========================================================
+  // ACCEPTANCE RULE:
+  // GOOD = any 4 out of 5 password checks
+  // STRONG = all 5 password checks
+  // Both are accepted for registration.
+  // ==========================================================
+  if (score < 4) {
     return {
       valid: false,
-      message: "Password must be at least 8 characters long.",
-    };
-  }
-
-  if (!/[!@#$%^&*()_\-+=[\]{};':"\\|,.<>/?`~]/.test(value)) {
-    return {
-      valid: false,
-      message: "Password must contain at least 1 special character.",
+      message:
+        "Password strength must be at least Good before you can register.",
     };
   }
 

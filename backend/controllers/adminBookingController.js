@@ -38,6 +38,7 @@ exports.getAllAdminBookings = async (req, res) => {
         r.last_name,
         r.contact_no,
         r.guest_count,
+        r.actual_guest_count,
         r.estimated_entrance_fee,
         r.accommodation_total,
         r.required_downpayment,
@@ -110,7 +111,9 @@ exports.getAllAdminBookings = async (req, res) => {
       check_out: row.check_out_date,
       check_in_time: row.check_in_time,
       check_out_time: row.check_out_time,
-      guests: row.guest_count,
+      guests: Number(row.actual_guest_count ?? row.guest_count ?? 0),
+      booked_guests: Number(row.guest_count || 0),
+      actual_guests: Number(row.actual_guest_count ?? row.guest_count ?? 0),
       room_name: row.accommodation_list || row.room_name || "N/A",
     }));
 
@@ -198,6 +201,244 @@ exports.updateAdminBookingStatus = async (req, res) => {
       message: "Failed to update reservation status.",
       error: error.message,
     });
+  }
+};
+
+
+
+// ============================================================
+// UPDATE GUEST ADJUSTMENT
+// Purpose:
+// - Keeps reservations.guest_count as the originally booked guest count.
+// - Saves the verified onsite count in reservations.actual_guest_count.
+// - Creates or updates one unpaid "Extra Guest Charge" row.
+// - Prevents duplicate extra guest charge rows from repeated saves.
+// - Protects already-paid extra guest charges from accidental recalculation.
+//
+// Endpoint:
+// PUT /api/admin/bookings/:id/guest-adjustment
+// ============================================================
+exports.updateGuestAdjustment = async (req, res) => {
+  const connection = await db.promise().getConnection();
+
+  try {
+    const reservationId = Number(req.params.id);
+    const actualGuestCount = toInteger(req.body.actual_guest_count, -1);
+    const extraGuestRate = Number(req.body.extra_guest_rate || 0);
+
+    if (!reservationId || Number.isNaN(reservationId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid reservation ID.",
+      });
+    }
+
+    if (actualGuestCount < 1) {
+      return res.status(400).json({
+        success: false,
+        message: "Actual guest count must be at least 1.",
+      });
+    }
+
+    if (
+      !Number.isFinite(extraGuestRate) ||
+      extraGuestRate < 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Extra guest rate cannot be negative.",
+      });
+    }
+
+    await connection.beginTransaction();
+
+    const [reservationRows] = await connection.query(
+      `
+      SELECT
+        id,
+        guest_count,
+        actual_guest_count,
+        reservation_status,
+        is_checked_in
+      FROM reservations
+      WHERE id = ?
+      LIMIT 1
+      FOR UPDATE
+      `,
+      [reservationId],
+    );
+
+    if (!reservationRows.length) {
+      await connection.rollback();
+
+      return res.status(404).json({
+        success: false,
+        message: "Reservation not found.",
+      });
+    }
+
+    const reservation = reservationRows[0];
+    const reservationStatus = normalizeValue(
+      reservation.reservation_status,
+    );
+
+    if (["cancelled", "rejected", "completed"].includes(reservationStatus)) {
+      await connection.rollback();
+
+      return res.status(400).json({
+        success: false,
+        message:
+          "Guest adjustment is not allowed for cancelled, rejected, or completed reservations.",
+      });
+    }
+
+    if (Number(reservation.is_checked_in || 0) !== 1) {
+      await connection.rollback();
+
+      return res.status(400).json({
+        success: false,
+        message:
+          "Guest adjustment is only available after the guest is checked in.",
+      });
+    }
+
+    const bookedGuestCount = Number(reservation.guest_count || 0);
+    const extraGuestCount = Math.max(
+      actualGuestCount - bookedGuestCount,
+      0,
+    );
+    const extraGuestCharge = extraGuestCount * extraGuestRate;
+
+    const [existingChargeRows] = await connection.query(
+      `
+      SELECT
+        id,
+        charge_amount,
+        COALESCE(is_paid, 0) AS is_paid
+      FROM booking_charges
+      WHERE booking_id = ?
+        AND LOWER(TRIM(charge_name)) = 'extra guest charge'
+      ORDER BY id ASC
+      LIMIT 1
+      FOR UPDATE
+      `,
+      [reservationId],
+    );
+
+    const existingCharge = existingChargeRows[0] || null;
+
+    /*
+      Safety rule:
+      Once the structured Extra Guest Charge has already been paid,
+      do not silently replace its amount. This prevents staff from
+      accidentally collecting the full recalculated total twice.
+    */
+    if (
+      existingCharge &&
+      Number(existingCharge.is_paid || 0) === 1 &&
+      Number(existingCharge.charge_amount || 0) !==
+        Number(extraGuestCharge || 0)
+    ) {
+      await connection.rollback();
+
+      return res.status(400).json({
+        success: false,
+        message:
+          "The Extra Guest Charge is already marked as paid. Delete or handle the later difference through Additional Charges before changing this guest adjustment.",
+      });
+    }
+
+    await connection.query(
+      `
+      UPDATE reservations
+      SET actual_guest_count = ?
+      WHERE id = ?
+      `,
+      [actualGuestCount, reservationId],
+    );
+
+    if (extraGuestCount > 0 && extraGuestCharge > 0) {
+      const chargeNote =
+        `${extraGuestCount} additional guest${extraGuestCount === 1 ? "" : "s"} ` +
+        `above the booked guest count of ${bookedGuestCount}. ` +
+        `Rate: ₱${extraGuestRate.toFixed(2)} per extra guest.`;
+
+      if (existingCharge) {
+        await connection.query(
+          `
+          UPDATE booking_charges
+          SET
+            charge_amount = ?,
+            charge_note = ?,
+            is_paid = 0,
+            paid_at = NULL
+          WHERE id = ?
+          `,
+          [
+            extraGuestCharge,
+            chargeNote,
+            Number(existingCharge.id),
+          ],
+        );
+      } else {
+        await connection.query(
+          `
+          INSERT INTO booking_charges (
+            booking_id,
+            charge_name,
+            charge_amount,
+            charge_note,
+            is_paid,
+            paid_at
+          )
+          VALUES (?, 'Extra Guest Charge', ?, ?, 0, NULL)
+          `,
+          [reservationId, extraGuestCharge, chargeNote],
+        );
+      }
+    } else if (
+      existingCharge &&
+      Number(existingCharge.is_paid || 0) === 0
+    ) {
+      await connection.query(
+        `
+        DELETE FROM booking_charges
+        WHERE id = ?
+        `,
+        [Number(existingCharge.id)],
+      );
+    }
+
+    await connection.commit();
+
+    return res.status(200).json({
+      success: true,
+      message:
+        extraGuestCount > 0 && extraGuestCharge > 0
+          ? "Guest adjustment saved and Extra Guest Charge updated successfully."
+          : "Guest adjustment saved successfully. No extra guest charge is required.",
+      booked_guest_count: bookedGuestCount,
+      actual_guest_count: actualGuestCount,
+      extra_guest_count: extraGuestCount,
+      extra_guest_rate: extraGuestRate,
+      extra_guest_charge: extraGuestCharge,
+    });
+  } catch (error) {
+    try {
+      await connection.rollback();
+    } catch (rollbackError) {
+      console.error("updateGuestAdjustment rollback error:", rollbackError);
+    }
+
+    console.error("updateGuestAdjustment error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update guest adjustment.",
+      error: error.message,
+    });
+  } finally {
+    connection.release();
   }
 };
 

@@ -4,15 +4,29 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Register | Arvic Seaside</title>
+
+    <!-- ======================================================
+         PAGE STYLES
+    ======================================================= -->
     <link rel="stylesheet" href="../sharedCSS/global.css" />
     <link rel="stylesheet" href="../authCSS/register.css" />
   </head>
 
   <body class="auth-page">
+    <!-- ======================================================
+         BACK TO LANDING PAGE
+    ======================================================= -->
+    <a href="../customerHTML/landing.html" class="back-landing-btn">
+      ← Back to Landing Page
+    </a>
 
-    <a href="../customerHTML/landing.html" class="back-landing-btn">← Back to Landing Page</a>
-    
+    <!-- ======================================================
+         REGISTER PAGE CONTAINER
+    ======================================================= -->
     <div class="register-container">
+      <!-- ====================================================
+           LEFT SHOWCASE PANEL
+      ===================================================== -->
       <section class="register-showcase">
         <div class="register-badge">Create your Arvic Seaside guest account</div>
 
@@ -41,6 +55,9 @@
         </div>
       </section>
 
+      <!-- ====================================================
+           REGISTER CARD
+      ===================================================== -->
       <section class="register-card">
         <h2>Create Account</h2>
 
@@ -49,6 +66,9 @@
           an OTP to your email for verification.
         </p>
 
+        <!-- ==================================================
+             REGISTER FORM
+        =================================================== -->
         <form id="registerForm">
           <div class="register-form-grid">
             <div class="register-form-group">
@@ -73,34 +93,74 @@
 
             <div class="register-form-group">
               <label for="phone">Phone Number</label>
-              <input type="text" id="phone" placeholder="Example: 09XXXXXXXXX" maxlength="11" autocomplete="tel" required />
+              <input type="text" id="phone" placeholder="Example: 09XXXXXXXXX" maxlength="11" inputmode="numeric" autocomplete="tel" required />
             </div>
 
-            <div class="register-form-group">
+            <!-- ==================================================
+                 PREMIUM PASSWORD UI
+            =================================================== -->
+            <div class="register-form-group password-premium-group full-width">
               <label for="password">Password</label>
 
-              <div class="password-field">
+              <div class="premium-password-field" id="premiumPasswordField">
+                <span class="premium-floating-label">Password</span>
+
                 <input
                   type="password"
                   id="password"
-                  placeholder="At least 8 characters + special character"
+                  placeholder="Create a secure password"
                   minlength="8"
                   autocomplete="new-password"
+                  aria-describedby="passwordRequirements"
                   required
                 />
 
                 <button type="button" class="password-toggle" data-target="password" aria-label="Show password">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                     <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"></path>
                     <circle cx="12" cy="12" r="3"></circle>
                   </svg>
                 </button>
               </div>
 
-              <small class="field-help">Use at least 8 characters and 1 special character.</small>
+              <div class="password-strength" id="passwordStrengthBox" aria-live="polite">
+                <div class="password-strength-header">
+                  <span>Password Strength</span>
+                  <strong id="passwordStrengthText">Not set</strong>
+                </div>
+
+                <div class="password-strength-track">
+                  <div class="password-strength-bar" id="passwordStrengthBar"></div>
+                </div>
+              </div>
+
+              <div class="password-requirements" id="passwordRequirements">
+                <span class="password-requirement" id="requirementLength">
+                  <span class="requirement-icon">✓</span>8+ Chars
+                </span>
+
+                <span class="password-requirement" id="requirementUppercase">
+                  <span class="requirement-icon">✓</span>A-Z
+                </span>
+
+                <span class="password-requirement" id="requirementLowercase">
+                  <span class="requirement-icon">✓</span>a-z
+                </span>
+
+                <span class="password-requirement" id="requirementNumber">
+                  <span class="requirement-icon">✓</span>123
+                </span>
+
+                <span class="password-requirement" id="requirementSpecial">
+                  <span class="requirement-icon">✓</span>@#$
+                </span>
+              </div>
             </div>
 
-            <div class="register-form-group">
+            <!-- ==================================================
+                 CONFIRM PASSWORD
+            =================================================== -->
+            <div class="register-form-group full-width confirm-password-group">
               <label for="confirmPassword">Confirm Password</label>
 
               <div class="password-field">
@@ -114,11 +174,15 @@
                 />
 
                 <button type="button" class="password-toggle" data-target="confirmPassword" aria-label="Show confirm password">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                     <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"></path>
                     <circle cx="12" cy="12" r="3"></circle>
                   </svg>
                 </button>
+              </div>
+
+              <div class="password-match-status" id="passwordMatchStatus" aria-live="polite">
+                Re-enter your password to confirm.
               </div>
             </div>
 
@@ -131,6 +195,9 @@
           <button type="submit" class="register-submit" id="registerSubmitBtn">Register Account</button>
         </form>
 
+        <!-- ==================================================
+             OTP VERIFICATION BOX
+        =================================================== -->
         <section id="registerOtpBox" class="otp-box">
           <h3>Verify Your Email</h3>
 
@@ -142,7 +209,7 @@
 
           <div class="register-form-group full-width">
             <label for="registerOtp">OTP Code</label>
-            <input type="text" id="registerOtp" maxlength="6" placeholder="Enter 6-digit OTP" />
+            <input type="text" id="registerOtp" maxlength="6" inputmode="numeric" placeholder="Enter 6-digit OTP" />
           </div>
 
           <div class="otp-actions">
@@ -151,6 +218,9 @@
           </div>
         </section>
 
+        <!-- ==================================================
+             STATUS MESSAGE + LOGIN LINK
+        =================================================== -->
         <p id="registerMessage" class="message"></p>
 
         <div class="auth-link">
@@ -160,27 +230,10 @@
       </section>
     </div>
 
+    <!-- ======================================================
+         PAGE SCRIPTS
+    ======================================================= -->
     <script src="../sharedJS/toast.js"></script>
-
-    <script>
-      document.querySelectorAll(".password-toggle").forEach((button) => {
-        button.addEventListener("click", () => {
-          const targetId = button.dataset.target;
-          const input = document.getElementById(targetId);
-
-          if (!input) return;
-
-          const isPassword = input.type === "password";
-          input.type = isPassword ? "text" : "password";
-
-          button.setAttribute(
-            "aria-label",
-            isPassword ? "Hide password" : "Show password",
-          );
-        });
-      });
-    </script>
-
     <script src="../sharedJS/api-config.js"></script>
     <script src="../authJS/register.js"></script>
   </body>

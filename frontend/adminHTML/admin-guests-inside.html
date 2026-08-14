@@ -147,6 +147,112 @@
       </section>
     </main>
 
+
+    <!-- ======================================================
+       GUEST ADJUSTMENT MODAL
+       Purpose:
+       - Staff verifies the actual onsite guest count
+       - Calculates guests above the originally booked count
+       - Creates or updates one structured Extra Guest Charge
+    ======================================================= -->
+    <div class="guest-adjustment-modal" id="guestAdjustmentModal">
+      <div class="guest-adjustment-modal-box">
+        <div class="guest-adjustment-header">
+          <div>
+            <h2>Guest Adjustment</h2>
+
+            <p id="guestAdjustmentGuestText">
+              Verify the actual number of guests currently inside the resort.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="guest-adjustment-close-btn"
+            id="closeGuestAdjustmentBtn"
+            aria-label="Close guest adjustment modal"
+          >
+            ×
+          </button>
+        </div>
+
+        <div class="guest-adjustment-summary-grid">
+          <div class="guest-adjustment-summary-item">
+            <span>Booked Guests</span>
+            <strong id="bookedGuestCountText">0</strong>
+          </div>
+
+          <div class="guest-adjustment-summary-item">
+            <span>Extra Guests</span>
+            <strong id="extraGuestCountText">0</strong>
+          </div>
+        </div>
+
+        <div class="guest-adjustment-form-group">
+          <label for="actualGuestCountInput">Actual Guests Inside</label>
+
+          <input
+            type="number"
+            id="actualGuestCountInput"
+            min="1"
+            step="1"
+            value="1"
+          />
+
+          <small>
+            Enter the verified number of guests currently inside under this
+            reservation.
+          </small>
+        </div>
+
+        <div class="guest-adjustment-form-group">
+          <label for="extraGuestRateInput">Extra Guest Rate Per Pax</label>
+
+          <input
+            type="number"
+            id="extraGuestRateInput"
+            min="0"
+            step="0.01"
+            value="0"
+            placeholder="0.00"
+          />
+
+          <small>
+            This rate only applies to guests above the originally booked guest
+            count.
+          </small>
+        </div>
+
+        <div class="guest-adjustment-charge-preview">
+          <span>Calculated Extra Guest Charge</span>
+          <strong id="extraGuestChargePreview">₱0.00</strong>
+        </div>
+
+        <div class="guest-adjustment-note">
+          Re-saving this adjustment updates the same unpaid
+          <strong>Extra Guest Charge</strong> instead of creating duplicates.
+        </div>
+
+        <div class="guest-adjustment-modal-actions">
+          <button
+            type="button"
+            class="modal-btn save"
+            id="saveGuestAdjustmentBtn"
+          >
+            Apply Guest Adjustment
+          </button>
+
+          <button
+            type="button"
+            class="modal-btn cancel"
+            id="cancelGuestAdjustmentBtn"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- ======================================================
        EXTRA BED MODAL
     ======================================================= -->
@@ -334,6 +440,166 @@
 
           <button type="button" class="add-charge-btn" id="saveChargeBtn">
             Add Charge
+          </button>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ======================================================
+       MULTIPLE ENTRANCE ADJUSTMENT MODAL
+       Purpose:
+       - Senior / PWD uses automatic 20% entrance fee discount
+       - Free Kid Entrance deducts full entrance fee per child
+       - Supports multiple adjustment types in one save
+    ======================================================= -->
+    <div class="discount-modal" id="discountModal">
+      <div class="discount-modal-box">
+        <div class="discount-header">
+          <div>
+            <h2>Entrance Adjustment</h2>
+
+            <p id="discountGuestText">
+              Apply Senior/PWD entrance discounts and free kid entrance for this
+              guest.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="discount-close-btn"
+            id="closeDiscountBtn"
+            aria-label="Close entrance adjustment modal"
+          >
+            ×
+          </button>
+        </div>
+
+        <div id="currentDiscountBox" class="current-discount-box empty">
+          No entrance adjustment has been applied yet.
+        </div>
+
+        <div class="discount-meta-grid">
+          <div class="discount-meta-item">
+            <span>Entrance Fee Per Pax</span>
+            <strong id="discountEntranceRateText">₱0.00</strong>
+          </div>
+
+          <div class="discount-meta-item">
+            <span>Senior / PWD Rule</span>
+            <strong>20% discount</strong>
+          </div>
+        </div>
+
+        <div class="multi-adjustment-grid">
+          <div class="discount-form-group">
+            <label for="seniorPaxInput">Senior Citizen Pax</label>
+
+            <input
+              type="number"
+              id="seniorPaxInput"
+              min="0"
+              step="1"
+              value="0"
+            />
+
+            <small>Automatic 20% entrance discount.</small>
+          </div>
+
+          <div class="discount-form-group">
+            <label for="pwdPaxInput">PWD Pax</label>
+
+            <input
+              type="number"
+              id="pwdPaxInput"
+              min="0"
+              step="1"
+              value="0"
+            />
+
+            <small>Automatic 20% entrance discount.</small>
+          </div>
+
+          <div class="discount-form-group">
+            <label for="kidFreePaxInput">Free Kid Pax</label>
+
+            <input
+              type="number"
+              id="kidFreePaxInput"
+              min="0"
+              step="1"
+              value="0"
+            />
+
+            <small>Free entrance if below resort height measure.</small>
+          </div>
+        </div>
+
+        <div class="discount-form-group">
+          <label for="discountNoteInput">Verification Note</label>
+
+          <textarea
+            id="discountNoteInput"
+            placeholder="Example: 2 Senior IDs verified, 1 PWD ID verified, 2 children below height limit."
+          ></textarea>
+
+          <small>
+            Required. Record ID verification and height measure confirmation.
+          </small>
+        </div>
+
+        <div class="entrance-breakdown-box">
+          <h3>Adjustment Breakdown</h3>
+
+          <div class="breakdown-line">
+            <span>Senior Discount</span>
+            <strong id="seniorDiscountPreview">-₱0.00</strong>
+          </div>
+
+          <div class="breakdown-line">
+            <span>PWD Discount</span>
+            <strong id="pwdDiscountPreview">-₱0.00</strong>
+          </div>
+
+          <div class="breakdown-line">
+            <span>Free Kid Entrance</span>
+            <strong id="kidFreeDiscountPreview">-₱0.00</strong>
+          </div>
+
+          <div class="breakdown-line total">
+            <span>Total Entrance Deduction</span>
+            <strong id="discountAmountPreview">-₱0.00</strong>
+          </div>
+        </div>
+
+        <div class="discount-policy-note" id="discountPolicyNote">
+          Senior/PWD: entrance fee × 20% × qualified pax. Free Kid: entrance fee
+          × free kid pax.
+        </div>
+
+        <div class="discount-modal-actions">
+          <button
+            type="button"
+            class="modal-btn save"
+            id="saveDiscountBtn"
+          >
+            Apply Entrance Adjustment
+          </button>
+
+          <button
+            type="button"
+            class="modal-btn danger"
+            id="removeDiscountBtn"
+          >
+            Remove Adjustment
+          </button>
+
+          <button
+            type="button"
+            class="modal-btn cancel"
+            id="cancelDiscountBtn"
+          >
+            Cancel
           </button>
         </div>
       </div>

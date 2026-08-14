@@ -108,6 +108,16 @@ async function loadReceipt() {
     const entranceFeeCollected = Number(booking.entrance_fee_collected || 0);
     const entranceFeePaid = isTruthy(booking.entrance_fee_paid) || entranceFeeCollected > 0;
 
+    const entranceAdjustments = getEntranceAdjustments(booking);
+    const entranceAdjustmentTotal = getEntranceAdjustmentTotal(
+      booking,
+      entranceAdjustments,
+    );
+    const adjustedEntranceFee = Math.max(
+      estimatedEntranceFee - entranceAdjustmentTotal,
+      0,
+    );
+
     const extraBedCount = Number(booking.extra_bed_count || 0);
     const extraBedFee = Number(booking.extra_bed_fee || 0);
     const extraBedPaid = isTruthy(booking.extra_bed_paid);
@@ -124,18 +134,32 @@ async function loadReceipt() {
       entranceFeePaid ||
       extraBedCount > 0 ||
       extraBedFee > 0 ||
+      entranceAdjustments.length > 0 ||
+      entranceAdjustmentTotal > 0 ||
       paymentStatus === "paid";
 
     const entranceToCollect = entranceFeePaid ? 0 : estimatedEntranceFee;
     const extraBedToCollect = extraBedPaid ? 0 : extraBedFee;
 
-    const simpleOnsiteReminder = remainingBalance + estimatedEntranceFee;
+    const simpleOnsiteReminder = Math.max(
+      remainingBalance + estimatedEntranceFee - entranceAdjustmentTotal,
+      0,
+    );
 
     const finalTotalCollected =
       paidAmount + entranceFeeCollected + (extraBedPaid ? extraBedFee : 0);
 
-    const finalOnsiteReminder =
-      remainingBalance + entranceToCollect + extraBedToCollect;
+    const entranceAdjustmentToApply = entranceFeePaid
+      ? 0
+      : entranceAdjustmentTotal;
+
+    const finalOnsiteReminder = Math.max(
+      remainingBalance +
+        entranceToCollect +
+        extraBedToCollect -
+        entranceAdjustmentToApply,
+      0,
+    );
 
     receiptBox.innerHTML = `
       <article class="minimal-receipt">
@@ -212,6 +236,9 @@ async function loadReceipt() {
                   paidAmount,
                   remainingBalance,
                   estimatedEntranceFee,
+                  adjustedEntranceFee,
+                  entranceAdjustments,
+                  entranceAdjustmentTotal,
                   entranceFeePaid,
                   entranceFeeCollected,
                   extraBedCount,
@@ -226,6 +253,9 @@ async function loadReceipt() {
                   paidAmount,
                   remainingBalance,
                   estimatedEntranceFee,
+                  adjustedEntranceFee,
+                  entranceAdjustments,
+                  entranceAdjustmentTotal,
                   simpleOnsiteReminder,
                 })
           }
@@ -250,6 +280,67 @@ async function loadReceipt() {
       escapeHtml(error.message || "Failed to load receipt.")
     );
   }
+}
+
+function getEntranceAdjustments(booking) {
+  if (Array.isArray(booking.entrance_adjustments)) {
+    return booking.entrance_adjustments;
+  }
+
+  if (Array.isArray(booking.discounts)) {
+    return booking.discounts;
+  }
+
+  if (booking.discount) {
+    return [booking.discount];
+  }
+
+  return [];
+}
+
+function getEntranceAdjustmentTotal(booking, adjustments) {
+  const backendTotal = Number(
+    booking.entrance_adjustment_total ??
+      booking.front_desk_discount_total ??
+      booking.discount_total ??
+      0,
+  );
+
+  if (backendTotal > 0) {
+    return backendTotal;
+  }
+
+  return adjustments.reduce(
+    (sum, adjustment) => sum + Number(adjustment.discount_amount || 0),
+    0,
+  );
+}
+
+function formatEntranceAdjustmentLabel(type) {
+  const value = String(type || "").toLowerCase();
+
+  if (value === "senior") return "Senior Entrance Discount";
+  if (value === "pwd") return "PWD Entrance Discount";
+  if (value === "kid_free") return "Free Kid Entrance";
+
+  return "Entrance Adjustment";
+}
+
+function renderEntranceAdjustmentRows(adjustments) {
+  if (!adjustments.length) {
+    return "";
+  }
+
+  return adjustments
+    .map((adjustment) =>
+      amountRow(
+        `${formatEntranceAdjustmentLabel(adjustment.discount_type)} (${Number(
+          adjustment.qualified_pax || 0,
+        )} pax)`,
+        -Number(adjustment.discount_amount || 0),
+      ),
+    )
+    .join("");
 }
 
 // ============================================================
@@ -293,6 +384,12 @@ function renderSimplePaymentSummary(data) {
       ${amountRow("Downpayment Paid", data.paidAmount)}
       ${amountRow("Remaining Balance", data.remainingBalance)}
       ${amountRow("Entrance Fee Estimate", data.estimatedEntranceFee)}
+      ${renderEntranceAdjustmentRows(data.entranceAdjustments || [])}
+      ${
+        data.entranceAdjustmentTotal > 0
+          ? amountRow("Adjusted Entrance Fee", data.adjustedEntranceFee)
+          : ""
+      }
       ${amountRow("Estimated Onsite Payment", data.simpleOnsiteReminder)}
     </section>
   `;
@@ -307,6 +404,12 @@ function renderFinalPaymentSummary(data) {
       ${amountRow("Accommodation Paid", data.paidAmount)}
       ${amountRow("Remaining Balance", data.remainingBalance)}
       ${amountRow("Entrance Fee Estimate", data.estimatedEntranceFee)}
+      ${renderEntranceAdjustmentRows(data.entranceAdjustments || [])}
+      ${
+        data.entranceAdjustmentTotal > 0
+          ? amountRow("Adjusted Entrance Fee", data.adjustedEntranceFee)
+          : ""
+      }
       ${amountRow("Entrance Fee Collected", data.entranceFeeCollected)}
       ${textRow("Entrance Fee Status", data.entranceFeePaid ? "Collected" : "To collect onsite")}
 
@@ -349,10 +452,13 @@ function infoRow(label, value) {
 }
 
 function amountRow(label, value) {
+  const amount = Number(value || 0);
+  const prefix = amount < 0 ? "-₱" : "₱";
+
   return `
     <div class="amount-row">
       <span>${escapeHtml(label)}</span>
-      <strong>₱${formatMoney(value)}</strong>
+      <strong>${prefix}${formatMoney(Math.abs(amount))}</strong>
     </div>
   `;
 }

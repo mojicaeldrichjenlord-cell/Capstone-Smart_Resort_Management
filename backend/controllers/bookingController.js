@@ -1282,6 +1282,7 @@ exports.getUserBookings = async (req, res) => {
         r.last_name,
         r.contact_no,
         r.guest_count,
+        r.actual_guest_count,
         r.estimated_entrance_fee,
         r.accommodation_total,
         r.required_downpayment,
@@ -1352,7 +1353,9 @@ exports.getUserBookings = async (req, res) => {
       check_out: row.check_out_date,
       check_in_time: row.check_in_time,
       check_out_time: row.check_out_time,
-      guests: row.guest_count,
+      guests: Number(row.actual_guest_count ?? row.guest_count ?? 0),
+      booked_guests: Number(row.guest_count || 0),
+      actual_guests: Number(row.actual_guest_count ?? row.guest_count ?? 0),
       room_name: row.accommodation_list || row.room_name || "N/A",
     }));
 
@@ -1482,6 +1485,7 @@ exports.getBookingReceipt = async (req, res) => {
         r.last_name,
         r.contact_no,
         r.guest_count,
+        r.actual_guest_count,
         r.estimated_entrance_fee,
         r.accommodation_total,
         r.required_downpayment,
@@ -1578,6 +1582,35 @@ exports.getBookingReceipt = async (req, res) => {
       [id],
     );
 
+    /* ======================================================
+       FRONT-DESK DISCOUNT
+       booking_discounts.booking_id references reservations.id.
+       One active discount adjustment may exist per reservation.
+    ====================================================== */
+    const [discountRows] = await db.promise().query(
+      `
+      SELECT
+        id,
+        booking_id,
+        discount_type,
+        qualified_pax,
+        discount_amount,
+        discount_note,
+        created_at,
+        updated_at
+      FROM booking_discounts
+      WHERE booking_id = ?
+      ORDER BY FIELD(discount_type, 'senior', 'pwd', 'kid_free'), id ASC
+      `,
+      [id],
+    );
+
+    const bookingDiscount = discountRows[0] || null;
+    const discountTotal = discountRows.reduce(
+      (sum, discount) => sum + Number(discount.discount_amount || 0),
+      0,
+    );
+
     const additionalChargesTotal = chargeRows.reduce(
       (sum, charge) => sum + Number(charge.charge_amount || 0),
       0,
@@ -1613,7 +1646,11 @@ exports.getBookingReceipt = async (req, res) => {
     booking.check_out = booking.check_out_date;
     booking.check_in_time = booking.check_in_time;
     booking.check_out_time = booking.check_out_time;
-    booking.guests = booking.guest_count;
+    booking.booked_guests = Number(booking.guest_count || 0);
+    booking.actual_guests = Number(
+      booking.actual_guest_count ?? booking.guest_count ?? 0,
+    );
+    booking.guests = booking.actual_guests;
     booking.free_entrance_pax = totalFreeEntrancePax;
 
     booking.chargeable_entrance_guests = Math.max(
@@ -1625,6 +1662,13 @@ exports.getBookingReceipt = async (req, res) => {
       booking.accommodation_list || booking.room_name || "N/A";
 
     booking.items = items;
+
+    booking.discount = bookingDiscount;
+    booking.discounts = discountRows;
+    booking.entrance_adjustments = discountRows;
+    booking.discount_total = discountTotal;
+    booking.front_desk_discount_total = discountTotal;
+    booking.entrance_adjustment_total = discountTotal;
 
     booking.additional_charges = chargeRows;
     booking.additional_charges_total = additionalChargesTotal;
@@ -1754,6 +1798,7 @@ exports.getAllBookings = async (req, res) => {
         r.last_name,
         r.contact_no,
         r.guest_count,
+        r.actual_guest_count,
         r.estimated_entrance_fee,
         r.accommodation_total,
         r.required_downpayment,
@@ -1827,7 +1872,9 @@ exports.getAllBookings = async (req, res) => {
       check_out: row.check_out_date,
       check_in_time: row.check_in_time,
       check_out_time: row.check_out_time,
-      guests: row.guest_count,
+      guests: Number(row.actual_guest_count ?? row.guest_count ?? 0),
+      booked_guests: Number(row.guest_count || 0),
+      actual_guests: Number(row.actual_guest_count ?? row.guest_count ?? 0),
       room_name: row.accommodation_list || row.room_name || "N/A",
       items: [],
     }));

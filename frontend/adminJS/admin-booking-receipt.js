@@ -106,6 +106,62 @@ async function loadAdminReceipt() {
   }
 }
 
+function getEntranceAdjustments(booking) {
+  if (Array.isArray(booking.entrance_adjustments)) {
+    return booking.entrance_adjustments;
+  }
+
+  if (Array.isArray(booking.discounts)) {
+    return booking.discounts;
+  }
+
+  if (booking.discount) {
+    return [booking.discount];
+  }
+
+  return [];
+}
+
+function getEntranceAdjustmentTotal(booking, adjustments) {
+  const backendTotal = Number(
+    booking.entrance_adjustment_total ??
+      booking.front_desk_discount_total ??
+      booking.discount_total ??
+      0,
+  );
+
+  if (backendTotal > 0) {
+    return backendTotal;
+  }
+
+  return adjustments.reduce(
+    (sum, adjustment) => sum + Number(adjustment.discount_amount || 0),
+    0,
+  );
+}
+
+function formatEntranceAdjustmentLabel(type) {
+  const value = String(type || "").toLowerCase();
+
+  if (value === "senior") return "Senior Disc.";
+  if (value === "pwd") return "PWD Disc.";
+  if (value === "kid_free") return "Free Kid";
+
+  return "Entrance Adj.";
+}
+
+function renderEntranceAdjustment(adjustment) {
+  return `
+    <div class="thermal-row">
+      <span>${escapeHtml(formatEntranceAdjustmentLabel(adjustment.discount_type))}</span>
+      <span>-₱${formatMoney(adjustment.discount_amount)}</span>
+    </div>
+    <div class="thermal-small">
+      ${Number(adjustment.qualified_pax || 0)} pax
+    </div>
+  `;
+}
+
 function renderThermalReceipt(booking) {
   const items = Array.isArray(booking.items) ? booking.items : [];
 
@@ -133,6 +189,16 @@ function renderThermalReceipt(booking) {
     booking.unpaid_additional_charges_total || 0,
   );
 
+  const entranceAdjustments = getEntranceAdjustments(booking);
+  const entranceAdjustmentTotal = getEntranceAdjustmentTotal(
+    booking,
+    entranceAdjustments,
+  );
+  const adjustedEntranceFee = Math.max(
+    estimatedEntranceFee - entranceAdjustmentTotal,
+    0,
+  );
+
   const accommodationTotal = Number(booking.accommodation_total || 0);
   const paidAmount = Number(booking.paid_amount || 0);
   const remainingBalance = Number(booking.remaining_balance || 0);
@@ -143,11 +209,18 @@ function renderThermalReceipt(booking) {
   const totalCollected =
     paidAmount + entranceFeeCollected + (extraBedPaid ? extraBedFee : 0);
 
-  const onsiteTotal =
+  const entranceAdjustmentToApply = entranceFeePaid
+    ? 0
+    : entranceAdjustmentTotal;
+
+  const onsiteTotal = Math.max(
     remainingBalance +
-    entranceToCollect +
-    extraBedToCollect +
-    unpaidAdditionalChargesTotal;;
+      entranceToCollect +
+      extraBedToCollect +
+      unpaidAdditionalChargesTotal -
+      entranceAdjustmentToApply,
+    0,
+  );
 
   const status = formatPaymentStatus(booking.payment_status || "pending");
   const guestName = booking.fullname || buildFullName(booking) || "-";
@@ -255,6 +328,22 @@ function renderThermalReceipt(booking) {
         <span>₱${formatMoney(estimatedEntranceFee)}</span>
       </div>
 
+      ${
+        entranceAdjustments.length
+          ? `
+            <div class="thermal-row">
+              <span>Entrance Adj.</span>
+              <span>-₱${formatMoney(entranceAdjustmentTotal)}</span>
+            </div>
+
+            <div class="thermal-row">
+              <span>Adjusted Ent.</span>
+              <span>₱${formatMoney(adjustedEntranceFee)}</span>
+            </div>
+          `
+          : ""
+      }
+
       <div class="thermal-row">
         <span>Entrance Paid</span>
         <span>${entranceFeePaid ? "Yes" : "No"}</span>
@@ -279,6 +368,22 @@ function renderThermalReceipt(booking) {
         <span>Add. Charges</span>
         <span>₱${formatMoney(additionalChargesTotal)}</span>
       </div>
+
+      ${
+        entranceAdjustments.length
+          ? `
+            <div class="thermal-divider"></div>
+            <div class="thermal-section-title">Entrance Adjustments</div>
+
+            ${entranceAdjustments.map(renderEntranceAdjustment).join("")}
+
+            <div class="thermal-row thermal-bold">
+              <span>Total Deduction</span>
+              <span>-₱${formatMoney(entranceAdjustmentTotal)}</span>
+            </div>
+          `
+          : ""
+      }
 
       ${
         additionalCharges.length

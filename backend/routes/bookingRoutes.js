@@ -31,6 +31,16 @@ const {
   deleteBookingCharge,
 } = require("../controllers/bookingChargeController");
 
+/* ======================================================
+   BOOKING DISCOUNT CONTROLLER
+   Used for admin/staff verified front-desk discounts.
+====================================================== */
+const {
+  getBookingDiscount,
+  upsertBookingDiscount,
+  deleteBookingDiscount,
+} = require("../controllers/bookingDiscountController");
+
 const uploadDir = path.join(__dirname, "..", "uploads", "payment-proofs");
 fs.mkdirSync(uploadDir, { recursive: true });
 
@@ -100,6 +110,16 @@ router.get("/:id/charges", getBookingCharges);
 router.post("/:id/charges", addBookingCharge);
 router.put("/:id/charges/paid", markBookingChargesPaid);
 router.delete("/charges/:chargeId", deleteBookingCharge);
+
+/* ======================================================
+   FRONT-DESK DISCOUNT ROUTES
+   Important:
+   - One active discount adjustment per reservation.
+   - Kept separate from booking_charges because discounts are deductions.
+====================================================== */
+router.get("/:id/discounts", getBookingDiscount);
+router.put("/:id/discounts", upsertBookingDiscount);
+router.delete("/:id/discounts", deleteBookingDiscount);
 
 /* ======================================================
    RECEIPT ROUTE

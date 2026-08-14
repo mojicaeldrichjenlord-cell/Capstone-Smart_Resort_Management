@@ -243,3 +243,25 @@ body {
     margin: 4mm;
   }
 }
+
+/* ======================================================
+   REMOVE GLOBAL DECORATIVE ICONS ON ADMIN RECEIPT
+   Purpose:
+   - Removes global palm tree and wave pseudo-icons
+   - Keeps printed thermal receipt clean
+====================================================== */
+
+body::before,
+body::after {
+  display: none !important;
+  content: none !important;
+}
+
+@media print {
+
+  body::before,
+  body::after {
+    display: none !important;
+    content: none !important;
+  }
+}

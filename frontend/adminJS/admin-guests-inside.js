@@ -19,6 +19,8 @@ let selectedExtraBedBookingId = null;
 let selectedAddAccommodationBookingId = null;
 let selectedExtendStayBookingId = null;
 let selectedChargesBookingId = null;
+let selectedGuestAdjustmentBookingId = null;
+let selectedDiscountBookingId = null;
 let currentSearchTerm = "";
 let addAccommodationAvailabilityTimer = null;
 let addAccommodationAvailabilityState = "unknown";
@@ -90,6 +92,33 @@ function setupEvents() {
   );
   const chargesModal = document.getElementById("chargesModal");
   const saveChargeBtn = document.getElementById("saveChargeBtn");
+  const guestAdjustmentModal = document.getElementById(
+    "guestAdjustmentModal",
+  );
+  const actualGuestCountInput = document.getElementById(
+    "actualGuestCountInput",
+  );
+  const extraGuestRateInput = document.getElementById(
+    "extraGuestRateInput",
+  );
+  const saveGuestAdjustmentBtn = document.getElementById(
+    "saveGuestAdjustmentBtn",
+  );
+  const cancelGuestAdjustmentBtn = document.getElementById(
+    "cancelGuestAdjustmentBtn",
+  );
+  const closeGuestAdjustmentBtn = document.getElementById(
+    "closeGuestAdjustmentBtn",
+  );
+  const discountModal = document.getElementById("discountModal");
+  const seniorPaxInput = document.getElementById("seniorPaxInput");
+  const pwdPaxInput = document.getElementById("pwdPaxInput");
+  const kidFreePaxInput = document.getElementById("kidFreePaxInput");
+  const discountNoteInput = document.getElementById("discountNoteInput");
+  const saveDiscountBtn = document.getElementById("saveDiscountBtn");
+  const removeDiscountBtn = document.getElementById("removeDiscountBtn");
+  const cancelDiscountBtn = document.getElementById("cancelDiscountBtn");
+  const closeDiscountBtn = document.getElementById("closeDiscountBtn");
 
   if (logoutBtn) {
     logoutBtn.addEventListener("click", (e) => {
@@ -193,6 +222,88 @@ function setupEvents() {
     });
   }
 
+  // Guest Adjustment modal events
+  if (actualGuestCountInput) {
+    actualGuestCountInput.addEventListener(
+      "input",
+      updateGuestAdjustmentPreview,
+    );
+  }
+
+  if (extraGuestRateInput) {
+    extraGuestRateInput.addEventListener(
+      "input",
+      updateGuestAdjustmentPreview,
+    );
+  }
+
+  if (saveGuestAdjustmentBtn) {
+    saveGuestAdjustmentBtn.addEventListener(
+      "click",
+      saveGuestAdjustment,
+    );
+  }
+
+  if (cancelGuestAdjustmentBtn) {
+    cancelGuestAdjustmentBtn.addEventListener(
+      "click",
+      closeGuestAdjustmentModal,
+    );
+  }
+
+  if (closeGuestAdjustmentBtn) {
+    closeGuestAdjustmentBtn.addEventListener(
+      "click",
+      closeGuestAdjustmentModal,
+    );
+  }
+
+  if (guestAdjustmentModal) {
+    guestAdjustmentModal.addEventListener("click", (e) => {
+      if (e.target === guestAdjustmentModal) {
+        closeGuestAdjustmentModal();
+      closeDiscountModal();
+      }
+    });
+  }
+
+  // Entrance Adjustment modal events
+  if (seniorPaxInput) {
+    seniorPaxInput.addEventListener("input", updateDiscountPreview);
+  }
+
+  if (pwdPaxInput) {
+    pwdPaxInput.addEventListener("input", updateDiscountPreview);
+  }
+
+  if (kidFreePaxInput) {
+    kidFreePaxInput.addEventListener("input", updateDiscountPreview);
+  }
+
+  if (saveDiscountBtn) {
+    saveDiscountBtn.addEventListener("click", saveBookingDiscount);
+  }
+
+  if (removeDiscountBtn) {
+    removeDiscountBtn.addEventListener("click", removeBookingDiscount);
+  }
+
+  if (cancelDiscountBtn) {
+    cancelDiscountBtn.addEventListener("click", closeDiscountModal);
+  }
+
+  if (closeDiscountBtn) {
+    closeDiscountBtn.addEventListener("click", closeDiscountModal);
+  }
+
+  if (discountModal) {
+    discountModal.addEventListener("click", (e) => {
+      if (e.target === discountModal) {
+        closeDiscountModal();
+      }
+    });
+  }
+
   // Additional Charges modal events
   if (saveChargeBtn) {
     saveChargeBtn.addEventListener("click", saveBookingCharge);
@@ -212,6 +323,7 @@ function setupEvents() {
       closeAddAccommodationModal();
       closeExtendStayModal();
       closeChargesModal();
+      closeGuestAdjustmentModal();
     }
   });
 }
@@ -439,7 +551,7 @@ function updateSummary(bookings) {
   let attentionCount = 0;
 
   bookings.forEach((booking) => {
-    totalGuests += Number(booking.guests || booking.guest_count || 0);
+    totalGuests += getActualGuestCount(booking);
 
     const remainingBalance = Number(booking.remaining_balance || 0);
     const unpaidExtraBedFee = getUnpaidExtraBedFee(booking);
@@ -593,7 +705,14 @@ function renderGuestsInside(bookings) {
           </td>
 
           <td>
-            <strong>${Number(booking.guests || booking.guest_count || 0)}</strong>
+            <div class="guest-count-cell">
+              <strong>${getActualGuestCount(booking)}</strong>
+              ${
+                getActualGuestCount(booking) !== getBookedGuestCount(booking)
+                  ? `<small>Booked: ${getBookedGuestCount(booking)}</small>`
+                  : `<small>Verified</small>`
+              }
+            </div>
           </td>
 
           <td>
@@ -628,6 +747,20 @@ function renderGuestsInside(bookings) {
 </button>
 
 <button
+  class="action-btn guest-adjustment-btn"
+  onclick="openGuestAdjustmentModal(${Number(booking.id)})"
+>
+  Guest Adjustment
+</button>
+
+<button
+  class="action-btn discount-btn"
+  onclick="openDiscountModal(${Number(booking.id)})"
+>
+  Entrance Adjustment
+</button>
+
+<button
   class="action-btn charges-btn"
   onclick="openChargesModalByRow(${Number(booking.id)})"
 >
@@ -653,6 +786,696 @@ ${extraBedPaymentButton}
       `;
     })
     .join("");
+}
+
+// ============================================================
+// SECTION 9.1: Guest count helpers
+// Keeps originally booked guests separate from verified onsite guests.
+// ============================================================
+
+function getBookedGuestCount(booking) {
+  return Math.max(
+    0,
+    Number(
+      booking?.booked_guests ??
+        booking?.guest_count ??
+        booking?.guests ??
+        0,
+    ),
+  );
+}
+
+function getActualGuestCount(booking) {
+  const bookedCount = getBookedGuestCount(booking);
+
+  return Math.max(
+    1,
+    Number(
+      booking?.actual_guest_count ??
+        booking?.actual_guests ??
+        booking?.guests ??
+        bookedCount,
+    ),
+  );
+}
+
+// ============================================================
+// SECTION 9.2: Open Guest Adjustment modal
+// Loads booked and currently verified guest counts for the selected reservation.
+// ============================================================
+
+function openGuestAdjustmentModal(bookingId) {
+  const booking = findBookingByRowId(bookingId);
+  const modal = document.getElementById("guestAdjustmentModal");
+  const guestText = document.getElementById("guestAdjustmentGuestText");
+  const actualInput = document.getElementById("actualGuestCountInput");
+  const rateInput = document.getElementById("extraGuestRateInput");
+
+  if (!booking || !modal || !actualInput || !rateInput) {
+    showMessage("Reservation not found.", "error");
+    return;
+  }
+
+  selectedGuestAdjustmentBookingId = Number(bookingId);
+
+  actualInput.value = getActualGuestCount(booking);
+  rateInput.value = Number(booking.extra_guest_rate || 0);
+
+  if (guestText) {
+    guestText.textContent =
+      `Verify actual guests for ${booking.fullname || "this guest"} ` +
+      `under reservation ${booking.reservation_code || `#${booking.id}`}.`;
+  }
+
+  updateGuestAdjustmentPreview();
+  modal.classList.add("show");
+}
+
+// ============================================================
+// SECTION 9.3: Close Guest Adjustment modal
+// Clears selected reservation and hides the popup.
+// ============================================================
+
+function closeGuestAdjustmentModal() {
+  const modal = document.getElementById("guestAdjustmentModal");
+
+  selectedGuestAdjustmentBookingId = null;
+
+  if (modal) {
+    modal.classList.remove("show");
+  }
+}
+
+// ============================================================
+// SECTION 9.4: Guest Adjustment preview
+// Automatically calculates extra guests and the structured charge.
+// ============================================================
+
+function updateGuestAdjustmentPreview() {
+  const booking = findBookingByRowId(
+    selectedGuestAdjustmentBookingId,
+  );
+
+  const actualInput = document.getElementById("actualGuestCountInput");
+  const rateInput = document.getElementById("extraGuestRateInput");
+  const bookedText = document.getElementById("bookedGuestCountText");
+  const extraText = document.getElementById("extraGuestCountText");
+  const chargePreview = document.getElementById(
+    "extraGuestChargePreview",
+  );
+
+  const bookedGuests = getBookedGuestCount(booking);
+  const actualGuests = Math.max(1, Number(actualInput?.value || 1));
+  const extraGuestRate = Math.max(0, Number(rateInput?.value || 0));
+  const extraGuests = Math.max(actualGuests - bookedGuests, 0);
+  const extraGuestCharge = extraGuests * extraGuestRate;
+
+  if (bookedText) {
+    bookedText.textContent = String(bookedGuests);
+  }
+
+  if (extraText) {
+    extraText.textContent = String(extraGuests);
+  }
+
+  if (chargePreview) {
+    chargePreview.textContent = `₱${formatMoney(extraGuestCharge)}`;
+  }
+}
+
+// ============================================================
+// SECTION 9.5: Save Guest Adjustment
+// Calls the admin backend endpoint and refreshes the active guest table.
+// ============================================================
+
+async function saveGuestAdjustment() {
+  const booking = findBookingByRowId(
+    selectedGuestAdjustmentBookingId,
+  );
+
+  const actualInput = document.getElementById("actualGuestCountInput");
+  const rateInput = document.getElementById("extraGuestRateInput");
+  const saveBtn = document.getElementById("saveGuestAdjustmentBtn");
+
+  if (!booking || !selectedGuestAdjustmentBookingId) {
+    showMessage("No selected reservation.", "error");
+    return;
+  }
+
+  const actualGuestCount = Number(actualInput?.value || 0);
+  const extraGuestRate = Number(rateInput?.value || 0);
+
+  if (
+    !Number.isInteger(actualGuestCount) ||
+    actualGuestCount < 1
+  ) {
+    showMessage(
+      "Actual guest count must be a whole number and at least 1.",
+      "error",
+    );
+    return;
+  }
+
+  if (
+    !Number.isFinite(extraGuestRate) ||
+    extraGuestRate < 0
+  ) {
+    showMessage(
+      "Extra guest rate cannot be negative.",
+      "error",
+    );
+    return;
+  }
+
+  const bookedGuests = getBookedGuestCount(booking);
+  const extraGuests = Math.max(actualGuestCount - bookedGuests, 0);
+
+  if (extraGuests > 0 && extraGuestRate <= 0) {
+    showMessage(
+      "Enter the extra guest rate before applying this adjustment.",
+      "error",
+    );
+    return;
+  }
+
+  const originalText = saveBtn
+    ? saveBtn.textContent
+    : "Apply Guest Adjustment";
+
+  try {
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = "Applying...";
+    }
+
+    const response = await fetch(
+      `${API_BASE}/admin/bookings/${selectedGuestAdjustmentBookingId}/guest-adjustment`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          actual_guest_count: actualGuestCount,
+          extra_guest_rate: extraGuestRate,
+        }),
+      },
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.message || "Failed to apply guest adjustment.",
+      );
+    }
+
+    closeGuestAdjustmentModal();
+    await loadGuestsInside();
+
+    showMessage(
+      data.message || "Guest adjustment applied successfully.",
+      "success",
+    );
+  } catch (error) {
+    console.error("saveGuestAdjustment error:", error);
+
+    showMessage(
+      error.message || "Failed to apply guest adjustment.",
+      "error",
+    );
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = originalText;
+    }
+  }
+}
+
+// ============================================================
+// SECTION 9.6: Entrance adjustment state
+// Stores backend metadata used for automatic calculation.
+// ============================================================
+
+let currentDiscountMeta = {
+  entrance_rate_per_pax: 0,
+  senior_pwd_discount_rate: 0.2,
+  actual_guest_count: 1,
+};
+
+// ============================================================
+// SECTION 9.7: Entrance adjustment label helpers
+// Keeps adjustment type display clean and readable.
+// ============================================================
+
+function formatDiscountType(value) {
+  const type = String(value || "").toLowerCase();
+
+  if (type === "senior") return "Senior Citizen 20% Entrance Discount";
+  if (type === "pwd") return "PWD 20% Entrance Discount";
+  if (type === "kid_free") return "Free Kid Entrance";
+
+  return "Entrance Adjustment";
+}
+
+function cleanVerificationNote(value) {
+  const note = String(value || "").trim();
+
+  if (!note) return "";
+
+  const marker = "Verification:";
+  const markerIndex = note.lastIndexOf(marker);
+
+  if (markerIndex !== -1) {
+    return note.slice(markerIndex + marker.length).trim();
+  }
+
+  return note;
+}
+
+// ============================================================
+// SECTION 9.8: Get pax input values
+// Converts Senior/PWD/Free Kid fields into safe whole numbers.
+// ============================================================
+
+function getEntranceAdjustmentPaxValues() {
+  return {
+    seniorPax: Math.max(
+      0,
+      Math.floor(Number(document.getElementById("seniorPaxInput")?.value || 0)),
+    ),
+    pwdPax: Math.max(
+      0,
+      Math.floor(Number(document.getElementById("pwdPaxInput")?.value || 0)),
+    ),
+    kidFreePax: Math.max(
+      0,
+      Math.floor(Number(document.getElementById("kidFreePaxInput")?.value || 0)),
+    ),
+  };
+}
+
+// ============================================================
+// SECTION 9.9: Calculate entrance adjustment preview
+// Senior/PWD = entrance rate x 20% x pax
+// Free Kid = entrance rate x pax
+// ============================================================
+
+function calculateEntranceAdjustmentPreview() {
+  const values = getEntranceAdjustmentPaxValues();
+  const entranceRate = Number(currentDiscountMeta.entrance_rate_per_pax || 0);
+  const discountRate = Number(
+    currentDiscountMeta.senior_pwd_discount_rate || 0.2,
+  );
+
+  const seniorDiscount = entranceRate * discountRate * values.seniorPax;
+  const pwdDiscount = entranceRate * discountRate * values.pwdPax;
+  const kidFreeDiscount = entranceRate * values.kidFreePax;
+  const totalDeduction = seniorDiscount + pwdDiscount + kidFreeDiscount;
+
+  return {
+    ...values,
+    seniorDiscount,
+    pwdDiscount,
+    kidFreeDiscount,
+    totalDeduction,
+  };
+}
+
+// ============================================================
+// SECTION 9.10: Open Entrance Adjustment modal
+// Loads current adjustments and backend entrance metadata.
+// ============================================================
+
+async function openDiscountModal(bookingId) {
+  const booking = findBookingByRowId(bookingId);
+  const modal = document.getElementById("discountModal");
+  const guestText = document.getElementById("discountGuestText");
+
+  if (!booking || !modal) {
+    showMessage("Reservation not found.", "error");
+    return;
+  }
+
+  selectedDiscountBookingId = Number(bookingId);
+
+  if (guestText) {
+    guestText.textContent =
+      `Apply verified entrance adjustments for ` +
+      `${booking.fullname || "this guest"} under reservation ` +
+      `${booking.reservation_code || `#${booking.id}`}.`;
+  }
+
+  resetDiscountForm();
+  modal.classList.add("show");
+
+  await loadBookingDiscount();
+}
+
+// ============================================================
+// SECTION 9.11: Close Entrance Adjustment modal
+// Clears selected booking and hides the popup.
+// ============================================================
+
+function closeDiscountModal() {
+  const modal = document.getElementById("discountModal");
+
+  selectedDiscountBookingId = null;
+
+  if (modal) {
+    modal.classList.remove("show");
+  }
+}
+
+// ============================================================
+// SECTION 9.12: Reset Entrance Adjustment form
+// Keeps modal clean before loading saved adjustments.
+// ============================================================
+
+function resetDiscountForm() {
+  const seniorInput = document.getElementById("seniorPaxInput");
+  const pwdInput = document.getElementById("pwdPaxInput");
+  const kidInput = document.getElementById("kidFreePaxInput");
+  const noteInput = document.getElementById("discountNoteInput");
+  const currentBox = document.getElementById("currentDiscountBox");
+
+  currentDiscountMeta = {
+    entrance_rate_per_pax: 0,
+    senior_pwd_discount_rate: 0.2,
+    actual_guest_count: 1,
+  };
+
+  if (seniorInput) seniorInput.value = "0";
+  if (pwdInput) pwdInput.value = "0";
+  if (kidInput) kidInput.value = "0";
+  if (noteInput) noteInput.value = "";
+
+  if (currentBox) {
+    currentBox.classList.add("empty");
+    currentBox.innerHTML = "No entrance adjustment has been applied yet.";
+  }
+
+  updateDiscountPreview();
+}
+
+// ============================================================
+// SECTION 9.13: Load current entrance adjustments
+// Calls GET /api/bookings/:id/discounts.
+// ============================================================
+
+async function loadBookingDiscount() {
+  const currentBox = document.getElementById("currentDiscountBox");
+  const seniorInput = document.getElementById("seniorPaxInput");
+  const pwdInput = document.getElementById("pwdPaxInput");
+  const kidInput = document.getElementById("kidFreePaxInput");
+  const noteInput = document.getElementById("discountNoteInput");
+
+  if (!selectedDiscountBookingId) return;
+
+  try {
+    const response = await fetch(
+      `${API_BASE}/bookings/${selectedDiscountBookingId}/discounts`,
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Failed to load entrance adjustments.");
+    }
+
+    currentDiscountMeta = {
+      entrance_rate_per_pax: Number(data.meta?.entrance_rate_per_pax || 0),
+      senior_pwd_discount_rate: Number(
+        data.meta?.senior_pwd_discount_rate || 0.2,
+      ),
+      actual_guest_count: Number(data.meta?.actual_guest_count || 1),
+    };
+
+    const discounts = Array.isArray(data.discounts)
+      ? data.discounts
+      : data.discount
+        ? [data.discount]
+        : [];
+
+    let latestNote = "";
+
+    discounts.forEach((discount) => {
+      const type = String(discount.discount_type || "").toLowerCase();
+
+      if (type === "senior" && seniorInput) {
+        seniorInput.value = Number(discount.qualified_pax || 0);
+      }
+
+      if (type === "pwd" && pwdInput) {
+        pwdInput.value = Number(discount.qualified_pax || 0);
+      }
+
+      if (type === "kid_free" && kidInput) {
+        kidInput.value = Number(discount.qualified_pax || 0);
+      }
+
+      if (discount.discount_note) {
+        latestNote = cleanVerificationNote(discount.discount_note);
+      }
+    });
+
+    if (noteInput && latestNote) {
+      noteInput.value = latestNote;
+    }
+
+    if (!discounts.length) {
+      if (currentBox) {
+        currentBox.classList.add("empty");
+        currentBox.innerHTML =
+          "No entrance adjustment has been applied yet.";
+      }
+
+      updateDiscountPreview();
+      return;
+    }
+
+    if (currentBox) {
+      const total = discounts.reduce(
+        (sum, item) => sum + Number(item.discount_amount || 0),
+        0,
+      );
+
+      currentBox.classList.remove("empty");
+      currentBox.innerHTML = `
+        <strong>Current Entrance Adjustments</strong><br>
+        ${discounts
+          .map(
+            (discount) => `
+              ${escapeHtml(formatDiscountType(discount.discount_type))}:
+              ${Number(discount.qualified_pax || 0)} pax,
+              <strong>-₱${formatMoney(discount.discount_amount)}</strong>
+            `,
+          )
+          .join("<br>")}
+        <br>Total Deduction:
+        <strong>-₱${formatMoney(total)}</strong>
+      `;
+    }
+
+    updateDiscountPreview();
+  } catch (error) {
+    console.error("loadBookingDiscount error:", error);
+    showMessage(
+      error.message || "Failed to load entrance adjustments.",
+      "error",
+    );
+  }
+}
+
+// ============================================================
+// SECTION 9.14: Entrance adjustment preview
+// Shows automatic deductions before saving.
+// ============================================================
+
+function updateDiscountPreview() {
+  const rateText = document.getElementById("discountEntranceRateText");
+  const seniorPreview = document.getElementById("seniorDiscountPreview");
+  const pwdPreview = document.getElementById("pwdDiscountPreview");
+  const kidPreview = document.getElementById("kidFreeDiscountPreview");
+  const totalPreview = document.getElementById("discountAmountPreview");
+  const policyNote = document.getElementById("discountPolicyNote");
+
+  const entranceRate = Number(currentDiscountMeta.entrance_rate_per_pax || 0);
+  const preview = calculateEntranceAdjustmentPreview();
+
+  if (rateText) {
+    rateText.textContent = `₱${formatMoney(entranceRate)}`;
+  }
+
+  if (seniorPreview) {
+    seniorPreview.textContent = `-₱${formatMoney(preview.seniorDiscount)}`;
+  }
+
+  if (pwdPreview) {
+    pwdPreview.textContent = `-₱${formatMoney(preview.pwdDiscount)}`;
+  }
+
+  if (kidPreview) {
+    kidPreview.textContent = `-₱${formatMoney(preview.kidFreeDiscount)}`;
+  }
+
+  if (totalPreview) {
+    totalPreview.textContent = `-₱${formatMoney(preview.totalDeduction)}`;
+  }
+
+  if (policyNote) {
+    policyNote.textContent =
+      `Senior: ${preview.seniorPax} × ₱${formatMoney(entranceRate)} × 20%. ` +
+      `PWD: ${preview.pwdPax} × ₱${formatMoney(entranceRate)} × 20%. ` +
+      `Free Kid: ${preview.kidFreePax} × ₱${formatMoney(entranceRate)}.`;
+  }
+}
+
+// ============================================================
+// SECTION 9.15: Save entrance adjustments
+// Calls PUT /api/bookings/:id/discounts.
+// Backend computes final amounts automatically.
+// ============================================================
+
+async function saveBookingDiscount() {
+  const noteInput = document.getElementById("discountNoteInput");
+  const saveBtn = document.getElementById("saveDiscountBtn");
+
+  if (!selectedDiscountBookingId) {
+    showMessage("No selected reservation.", "error");
+    return;
+  }
+
+  const values = getEntranceAdjustmentPaxValues();
+  const totalQualifiedPax =
+    values.seniorPax + values.pwdPax + values.kidFreePax;
+  const actualGuestCount = Number(currentDiscountMeta.actual_guest_count || 1);
+  const discountNote = String(noteInput?.value || "").trim();
+
+  if (totalQualifiedPax <= 0) {
+    showMessage(
+      "Enter at least one Senior, PWD, or Free Kid pax.",
+      "error",
+    );
+    return;
+  }
+
+  if (totalQualifiedPax > actualGuestCount) {
+    showMessage(
+      "Total qualified pax cannot be greater than the verified actual guest count.",
+      "error",
+    );
+    return;
+  }
+
+  if (!discountNote) {
+    showMessage(
+      "Please add a verification note for this entrance adjustment.",
+      "error",
+    );
+    return;
+  }
+
+  const originalText = saveBtn
+    ? saveBtn.textContent
+    : "Apply Entrance Adjustment";
+
+  try {
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = "Saving...";
+    }
+
+    const response = await fetch(
+      `${API_BASE}/bookings/${selectedDiscountBookingId}/discounts`,
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          senior_pax: values.seniorPax,
+          pwd_pax: values.pwdPax,
+          kid_free_pax: values.kidFreePax,
+          discount_note: discountNote,
+        }),
+      },
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.message || "Failed to save entrance adjustments.",
+      );
+    }
+
+    await loadBookingDiscount();
+
+    showMessage(
+      data.message || "Entrance adjustments saved successfully.",
+      "success",
+    );
+  } catch (error) {
+    console.error("saveBookingDiscount error:", error);
+
+    showMessage(
+      error.message || "Failed to save entrance adjustments.",
+      "error",
+    );
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = originalText;
+    }
+  }
+}
+
+// ============================================================
+// SECTION 9.16: Remove all entrance adjustments
+// Calls DELETE /api/bookings/:id/discounts.
+// ============================================================
+
+async function removeBookingDiscount() {
+  if (!selectedDiscountBookingId) {
+    showMessage("No selected reservation.", "error");
+    return;
+  }
+
+  if (!confirm("Remove all entrance adjustments for this reservation?")) {
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      `${API_BASE}/bookings/${selectedDiscountBookingId}/discounts`,
+      {
+        method: "DELETE",
+      },
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.message || "Failed to remove entrance adjustments.",
+      );
+    }
+
+    resetDiscountForm();
+
+    showMessage(
+      data.message || "Entrance adjustments removed successfully.",
+      "success",
+    );
+  } catch (error) {
+    console.error("removeBookingDiscount error:", error);
+
+    showMessage(
+      error.message || "Failed to remove entrance adjustments.",
+      "error",
+    );
+  }
 }
 
 // ============================================================

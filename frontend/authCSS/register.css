@@ -663,3 +663,429 @@
     -webkit-backdrop-filter: blur(8px);
   }
 }
+
+/* ======================================================
+   PREMIUM PASSWORD UI
+   Purpose:
+   - Upgrades register password field into a premium live validator
+   - Adds strength bar, requirement checks, and match status
+====================================================== */
+
+.password-premium-group {
+  padding: 13px;
+  border: 1px solid #dbe7ef;
+  border-radius: 18px;
+  background: rgba(248, 250, 252, 0.82);
+}
+
+.password-premium-group > label {
+  display: none;
+}
+
+.premium-password-field {
+  position: relative;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.premium-password-field input {
+  min-height: 52px !important;
+  padding: 13px 52px 12px 15px !important;
+  border: 2px solid #cbd5e1 !important;
+  border-radius: 18px !important;
+  background: #ffffff !important;
+  font-size: 0.94rem !important;
+  transition: 0.2s ease;
+}
+
+.premium-password-field input:focus {
+  border-color: #22c55e !important;
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.12) !important;
+}
+
+.premium-password-field.valid input {
+  border-color: #22c55e !important;
+}
+
+.premium-password-field.partial input {
+  border-color: #f59e0b !important;
+}
+
+.premium-password-field.invalid input {
+  border-color: #ef4444 !important;
+}
+
+.premium-floating-label {
+  position: absolute;
+  top: -9px;
+  left: 14px;
+  z-index: 2;
+  padding: 0 7px;
+  background: #f8fafc;
+  color: #16a34a;
+  font-size: 0.78rem;
+  font-weight: 900;
+  pointer-events: none;
+}
+
+.premium-password-field .password-toggle {
+  right: 11px;
+  width: 34px;
+  height: 34px;
+  background: transparent;
+  color: #64748b;
+}
+
+.premium-password-field .password-toggle:hover {
+  background: #f1f5f9;
+  color: #0f766e;
+}
+
+/* ======================================================
+   PASSWORD STRENGTH BAR
+====================================================== */
+
+.password-strength {
+  margin-top: 10px;
+}
+
+.password-strength-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+  color: #475569;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.password-strength-header strong {
+  color: #64748b;
+  font-weight: 950;
+}
+
+.password-strength-track {
+  width: 100%;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+
+.password-strength-bar {
+  width: 0%;
+  height: 100%;
+  border-radius: inherit;
+  background: #cbd5e1;
+  transition: width 0.25s ease, background 0.25s ease;
+}
+
+.password-strength[data-strength="weak"] .password-strength-bar {
+  background: #ef4444;
+}
+
+.password-strength[data-strength="fair"] .password-strength-bar {
+  background: #f59e0b;
+}
+
+.password-strength[data-strength="good"] .password-strength-bar {
+  background: #0ea5e9;
+}
+
+.password-strength[data-strength="strong"] .password-strength-bar {
+  background: #22c55e;
+}
+
+.password-strength[data-strength="weak"] .password-strength-header strong {
+  color: #dc2626;
+}
+
+.password-strength[data-strength="fair"] .password-strength-header strong {
+  color: #d97706;
+}
+
+.password-strength[data-strength="good"] .password-strength-header strong {
+  color: #0284c7;
+}
+
+.password-strength[data-strength="strong"] .password-strength-header strong {
+  color: #16a34a;
+}
+
+/* ======================================================
+   PASSWORD REQUIREMENT INDICATORS
+====================================================== */
+
+.password-requirements {
+  margin-top: 9px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px 10px;
+}
+
+.password-requirement {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #94a3b8;
+  font-size: 0.72rem;
+  font-weight: 850;
+  transition: color 0.2s ease;
+}
+
+.requirement-icon {
+  width: 17px;
+  height: 17px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #e2e8f0;
+  color: transparent;
+  font-size: 0.66rem;
+  font-weight: 950;
+  transition: 0.2s ease;
+}
+
+.password-requirement.met {
+  color: #16a34a;
+}
+
+.password-requirement.met .requirement-icon {
+  background: #22c55e;
+  color: #ffffff;
+}
+
+/* ======================================================
+   CONFIRM PASSWORD MATCH STATUS
+====================================================== */
+
+.password-match-status {
+  min-height: 18px;
+  margin-top: 5px;
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.password-match-status.match {
+  color: #16a34a;
+}
+
+.password-match-status.no-match {
+  color: #dc2626;
+}
+
+.confirm-password-group .password-field.match input {
+  border-color: #22c55e;
+}
+
+.confirm-password-group .password-field.no-match input {
+  border-color: #ef4444;
+}
+
+/* ======================================================
+   PREMIUM PASSWORD MOBILE LAYOUT
+====================================================== */
+
+@media (max-width: 480px) {
+  .password-requirements {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .password-requirement:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+
+/* ======================================================
+   COMPACT PREMIUM PASSWORD UI
+   Purpose:
+   - Keeps the same premium password design
+   - Reduces unnecessary vertical space
+   - Makes strength meter and requirements more compact
+====================================================== */
+
+.password-premium-group {
+  padding: 9px 11px;
+  border-radius: 16px;
+}
+
+.premium-password-field {
+  margin-top: 2px;
+}
+
+.premium-password-field input {
+  min-height: 44px;
+  padding: 10px 46px 9px 14px !important;
+  border-radius: 16px;
+  font-size: 0.88rem;
+}
+
+.premium-floating-label {
+  top: -8px;
+  left: 12px;
+  padding: 0 6px;
+  font-size: 0.72rem;
+}
+
+.premium-password-field .password-toggle {
+  right: 9px;
+  width: 30px;
+  height: 30px;
+}
+
+.premium-password-field .password-toggle svg {
+  width: 14px;
+  height: 14px;
+}
+
+.password-strength {
+  margin-top: 6px;
+}
+
+.password-strength-header {
+  margin-bottom: 4px;
+  font-size: 0.71rem;
+  line-height: 1.2;
+}
+
+.password-strength-track {
+  height: 4px;
+}
+
+.password-requirements {
+  margin-top: 6px;
+  gap: 5px 8px;
+}
+
+.password-requirement {
+  gap: 4px;
+  font-size: 0.66rem;
+  line-height: 1.1;
+}
+
+.requirement-icon {
+  width: 15px;
+  height: 15px;
+  font-size: 0.58rem;
+}
+
+/* ======================================================
+   MOBILE COMPACT PASSWORD UI
+====================================================== */
+
+@media (max-width: 480px) {
+  .password-premium-group {
+    padding: 8px 9px;
+  }
+
+  .password-requirements {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px 7px;
+  }
+
+  .password-requirement:last-child {
+    grid-column: auto;
+  }
+}
+
+
+/* ======================================================
+   EXTRA COMPACT PREMIUM PASSWORD UI
+   Purpose:
+   - Further reduce height and spacing
+   - Keep same layout and visual design
+====================================================== */
+
+.password-premium-group {
+  padding: 7px 9px;
+  border-radius: 14px;
+}
+
+.premium-password-field {
+  margin-top: 1px;
+}
+
+.premium-password-field input {
+  min-height: 40px;
+  padding: 8px 42px 8px 12px !important;
+  border-radius: 14px;
+  font-size: 0.84rem;
+}
+
+.premium-floating-label {
+  top: -7px;
+  left: 10px;
+  padding: 0 5px;
+  font-size: 0.68rem;
+}
+
+.premium-password-field .password-toggle {
+  right: 7px;
+  width: 27px;
+  height: 27px;
+}
+
+.premium-password-field .password-toggle svg {
+  width: 13px;
+  height: 13px;
+}
+
+.password-strength {
+  margin-top: 4px;
+}
+
+.password-strength-header {
+  margin-bottom: 3px;
+  font-size: 0.67rem;
+  line-height: 1.05;
+}
+
+.password-strength-track {
+  height: 3px;
+}
+
+.password-requirements {
+  margin-top: 4px;
+  gap: 4px 6px;
+}
+
+.password-requirement {
+  gap: 3px;
+  font-size: 0.61rem;
+  line-height: 1;
+}
+
+.requirement-icon {
+  width: 13px;
+  height: 13px;
+  font-size: 0.52rem;
+}
+
+/* ======================================================
+   EXTRA COMPACT MOBILE TUNING
+====================================================== */
+
+@media (max-width: 480px) {
+  .password-premium-group {
+    padding: 6px 8px;
+  }
+
+  .premium-password-field input {
+    min-height: 39px;
+  }
+
+  .password-requirements {
+    gap: 4px 5px;
+  }
+
+  .password-requirement {
+    font-size: 0.59rem;
+  }
+}

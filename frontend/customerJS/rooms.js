@@ -623,27 +623,53 @@ function resolveImagePath(value) {
     return imagePath;
   }
 
-  if (imagePath.startsWith("../images/")) {
-    return imagePath.replace("../images/", "/images/");
+  /*
+    Local Live Server setup:
+    URL usually looks like:
+    http://127.0.0.1:5500/frontend/customerHTML/rooms.html
+
+    Because rooms.html is inside frontend/customerHTML,
+    local image paths must go back one folder:
+    ../images/accommodations/...
+  */
+  const isLocalLiveServer =
+    window.location.hostname === "127.0.0.1" ||
+    window.location.hostname === "localhost";
+
+  const isInsideFrontendFolder =
+    window.location.pathname.includes("/frontend/");
+
+  const cleanPath = imagePath
+    .replace(/^\.\.\//, "")
+    .replace(/^\/+/, "");
+
+  if (cleanPath.startsWith("frontend/images/")) {
+    const withoutFrontend = cleanPath.replace(/^frontend\//, "");
+
+    if (isLocalLiveServer && isInsideFrontendFolder) {
+      return `../${withoutFrontend}`;
+    }
+
+    return `/${withoutFrontend}`;
   }
 
-  if (imagePath.startsWith("images/")) {
-    return `/${imagePath}`;
+  if (cleanPath.startsWith("images/")) {
+    if (isLocalLiveServer && isInsideFrontendFolder) {
+      return `../${cleanPath}`;
+    }
+
+    return `/${cleanPath}`;
   }
 
-  if (imagePath.startsWith("/images/")) {
-    return imagePath;
+  if (cleanPath.startsWith("uploads/")) {
+    return `${API_BASE.replace("/api", "")}/${cleanPath}`;
   }
 
-  if (imagePath.startsWith("/uploads/")) {
-    return `${API_BASE.replace("/api", "")}${imagePath}`;
+  if (isLocalLiveServer && isInsideFrontendFolder) {
+    return `../${cleanPath}`;
   }
 
-  if (imagePath.startsWith("uploads/")) {
-    return `${API_BASE.replace("/api", "")}/${imagePath}`;
-  }
-
-  return `/${imagePath.replace(/^\/+/, "")}`;
+  return `/${cleanPath}`;
 }
 
 

@@ -2158,3 +2158,519 @@
     width: 100%;
   }
 }
+
+/* ======================================================
+   GUEST ADJUSTMENT BUTTON
+   Purpose:
+   - Gives staff a clear action for verifying onsite guest count
+====================================================== */
+
+.guest-adjustment-btn {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+}
+
+/* ======================================================
+   GUEST ADJUSTMENT MODAL
+   Purpose:
+   - Desktop/tablet-first front desk adjustment interface
+   - Keeps booked count, actual count, extra count, rate, and charge readable
+====================================================== */
+
+.guest-adjustment-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 7200;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 22px;
+  background: rgba(15, 23, 42, 0.74);
+  backdrop-filter: blur(5px);
+}
+
+.guest-adjustment-modal.show {
+  display: flex;
+}
+
+.guest-adjustment-modal-box {
+  width: min(100%, 580px);
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #ffffff;
+  border: 1px solid #dbe7ef;
+  border-radius: 26px;
+  padding: 26px;
+  box-shadow: 0 30px 78px rgba(15, 23, 42, 0.34);
+}
+
+.guest-adjustment-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+
+.guest-adjustment-header h2 {
+  margin: 0 0 6px;
+  color: #0f172a;
+  font-size: 1.45rem;
+}
+
+.guest-adjustment-header p {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.55;
+}
+
+.guest-adjustment-close-btn {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #991b1b;
+  font-size: 1.4rem;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.guest-adjustment-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.guest-adjustment-summary-item {
+  padding: 16px;
+  border: 1px solid #dbe7ef;
+  border-radius: 18px;
+  background: #f8fafc;
+}
+
+.guest-adjustment-summary-item span {
+  display: block;
+  margin-bottom: 7px;
+  color: #64748b;
+  font-size: 0.86rem;
+  font-weight: 850;
+}
+
+.guest-adjustment-summary-item strong {
+  color: #0f172a;
+  font-size: 1.7rem;
+  font-weight: 950;
+}
+
+.guest-adjustment-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.guest-adjustment-form-group label {
+  color: #0f172a;
+  font-weight: 900;
+}
+
+.guest-adjustment-form-group input {
+  width: 100%;
+  padding: 13px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 1rem;
+  outline: none;
+}
+
+.guest-adjustment-form-group input:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+}
+
+.guest-adjustment-form-group small {
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.guest-adjustment-charge-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 4px 0 14px;
+  padding: 17px 18px;
+  border: 2px solid #bfdbfe;
+  border-radius: 18px;
+  background: #eff6ff;
+}
+
+.guest-adjustment-charge-preview span {
+  color: #1e3a8a;
+  font-weight: 900;
+}
+
+.guest-adjustment-charge-preview strong {
+  color: #1d4ed8;
+  font-size: 1.45rem;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.guest-adjustment-note {
+  margin-bottom: 20px;
+  padding: 13px 15px;
+  border: 1px solid #a7f3d0;
+  border-radius: 15px;
+  background: #ecfdf5;
+  color: #065f46;
+  line-height: 1.5;
+  font-size: 0.88rem;
+  font-weight: 750;
+}
+
+.guest-adjustment-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 11px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 700px) {
+  .guest-adjustment-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .guest-adjustment-charge-preview {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .guest-adjustment-modal-actions {
+    flex-direction: column;
+  }
+}
+
+
+
+/* ======================================================
+   APPLY DISCOUNT BUTTON
+   Purpose:
+   - Gives staff a clear action for verified front-desk discounts
+====================================================== */
+
+.discount-btn {
+  background: linear-gradient(135deg, #16a34a, #15803d);
+  color: #ffffff;
+}
+
+/* ======================================================
+   APPLY DISCOUNT MODAL
+   Purpose:
+   - Spacious desktop/tablet-first UI for discount verification
+====================================================== */
+
+.discount-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 7300;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 22px;
+  background: rgba(15, 23, 42, 0.74);
+  backdrop-filter: blur(5px);
+}
+
+.discount-modal.show {
+  display: flex;
+}
+
+.discount-modal-box {
+  width: min(100%, 590px);
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #ffffff;
+  border: 1px solid #dbe7ef;
+  border-radius: 26px;
+  padding: 26px;
+  box-shadow: 0 30px 78px rgba(15, 23, 42, 0.34);
+}
+
+.discount-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.discount-header h2 {
+  margin: 0 0 6px;
+  color: #0f172a;
+  font-size: 1.45rem;
+}
+
+.discount-header p {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.55;
+}
+
+.discount-close-btn {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #991b1b;
+  font-size: 1.4rem;
+  font-weight: 950;
+  cursor: pointer;
+}
+
+.current-discount-box {
+  margin-bottom: 18px;
+  padding: 15px 16px;
+  border-radius: 18px;
+  border: 1px solid #bbf7d0;
+  background: #ecfdf5;
+  color: #065f46;
+  line-height: 1.5;
+  font-weight: 850;
+}
+
+.current-discount-box.empty {
+  border-color: #dbe7ef;
+  background: #f8fafc;
+  color: #64748b;
+}
+
+.discount-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 170px;
+  gap: 14px;
+}
+
+.discount-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.discount-form-group label {
+  color: #0f172a;
+  font-weight: 900;
+}
+
+.discount-form-group input,
+.discount-form-group select,
+.discount-form-group textarea {
+  width: 100%;
+  padding: 13px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 1rem;
+  outline: none;
+}
+
+.discount-form-group textarea {
+  min-height: 96px;
+  resize: vertical;
+}
+
+.discount-form-group input:focus,
+.discount-form-group select:focus,
+.discount-form-group textarea:focus {
+  border-color: #16a34a;
+  box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.12);
+}
+
+.discount-form-group small {
+  color: #64748b;
+  line-height: 1.45;
+}
+
+.discount-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 4px 0 20px;
+  padding: 17px 18px;
+  border: 2px solid #bbf7d0;
+  border-radius: 18px;
+  background: #f0fdf4;
+}
+
+.discount-preview span {
+  color: #166534;
+  font-weight: 900;
+}
+
+.discount-preview strong {
+  color: #15803d;
+  font-size: 1.45rem;
+  font-weight: 950;
+  white-space: nowrap;
+}
+
+.discount-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 11px;
+  flex-wrap: wrap;
+}
+
+.modal-btn.danger {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+@media (max-width: 700px) {
+  .discount-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .discount-preview {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .discount-modal-actions {
+    flex-direction: column;
+  }
+}
+
+
+
+/* ======================================================
+   REVISED ENTRANCE ADJUSTMENT META DISPLAY
+   Purpose:
+   - Shows entrance rate and computation rule clearly
+====================================================== */
+
+.discount-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.discount-meta-item {
+  padding: 15px 16px;
+  border: 1px solid #dbe7ef;
+  border-radius: 18px;
+  background: #f8fafc;
+}
+
+.discount-meta-item span {
+  display: block;
+  margin-bottom: 7px;
+  color: #64748b;
+  font-size: 0.86rem;
+  font-weight: 850;
+}
+
+.discount-meta-item strong {
+  display: block;
+  color: #0f172a;
+  font-size: 1.15rem;
+  font-weight: 950;
+  line-height: 1.25;
+}
+
+.discount-policy-note {
+  margin-bottom: 20px;
+  padding: 13px 15px;
+  border: 1px solid #fed7aa;
+  border-radius: 15px;
+  background: #fff7ed;
+  color: #9a3412;
+  line-height: 1.5;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+@media (max-width: 700px) {
+  .discount-meta-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+
+/* ======================================================
+   MULTIPLE ENTRANCE ADJUSTMENT LAYOUT
+   Purpose:
+   - Shows Senior, PWD, and Free Kid fields clearly in one modal
+====================================================== */
+
+.multi-adjustment-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.entrance-breakdown-box {
+  margin: 4px 0 18px;
+  padding: 17px 18px;
+  border: 2px solid #bbf7d0;
+  border-radius: 18px;
+  background: #f0fdf4;
+}
+
+.entrance-breakdown-box h3 {
+  margin: 0 0 12px;
+  color: #14532d;
+  font-size: 1rem;
+}
+
+.breakdown-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 9px 0;
+  border-bottom: 1px dashed #bbf7d0;
+  color: #166534;
+  font-weight: 850;
+}
+
+.breakdown-line:last-child {
+  border-bottom: none;
+}
+
+.breakdown-line strong {
+  color: #15803d;
+  white-space: nowrap;
+}
+
+.breakdown-line.total {
+  margin-top: 4px;
+  padding-top: 13px;
+  border-top: 2px solid #86efac;
+  border-bottom: none;
+  font-size: 1.05rem;
+  font-weight: 950;
+}
+
+.breakdown-line.total strong {
+  font-size: 1.35rem;
+  font-weight: 950;
+}
+
+@media (max-width: 900px) {
+  .multi-adjustment-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
