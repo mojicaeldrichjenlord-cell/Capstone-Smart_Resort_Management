@@ -1,23 +1,21 @@
 // ============================================================
-// ACCOMMODATION IMAGE MOBILE / VERCEL COMPATIBILITY FIX V2
+// ACCOMMODATION IMAGE MOBILE / VERCEL COMPATIBILITY FIX V3
 // File: frontend/customerJS/rooms-image-mobile-fix.js
-//
-// CONFIRMED ROOT CAUSE:
-// - Local Windows file lookup is case-insensitive.
-// - Vercel/Linux static file lookup is case-sensitive.
-// - Example from live API:
-//     Family-Room-B-Cover.jpg
-//   Actual repository filename:
-//     family-room-b-cover.jpg
 //
 // Purpose:
 // - Keep existing rooms.js untouched.
-// - Try exact database path first.
-// - Then try lowercase filename variants.
-// - Support /images/... and /frontend/images/....
-// - Support local Live Server.
-// - Support Pavilion/Pavillion spelling differences.
+// - Preserve the working generic case-sensitive image fix.
+// - Add one targeted canonical path fix for Beach Pavillion.
 // - Fix cover images, gallery thumbnails, and image viewer.
+//
+// Confirmed Beach Pavillion mismatch:
+// API / database style:
+//   images/accommodations/function-area/Beach-pavillion.jpg
+//
+// Actual deployed repository file:
+//   images/accommodations/Function-Area/Beach-Pavillion.jpg
+//
+// Vercel/Linux is case-sensitive, so folder + filename case must match.
 // ============================================================
 
 (function () {
@@ -86,15 +84,30 @@
   }
 
   // ==========================================================
-  // SECTION 3: CREATE FILENAME CASE VARIANTS
+  // SECTION 3: TARGETED BEACH PAVILLION PATH FIX
   //
-  // Keeps directory capitalization unchanged because folders
-  // such as Family-Room-B are correctly capitalized in repo.
-  //
-  // Example:
-  // images/accommodations/Family-Room-B/Family-Room-B-Cover.jpg
-  // becomes additional candidate:
-  // images/accommodations/Family-Room-B/family-room-b-cover.jpg
+  // Only normalizes the known Beach Pavillion folder / file.
+  // Other accommodation paths remain untouched.
+  // ==========================================================
+
+  function applyKnownAccommodationPathFixes(path) {
+    const lowerPath = String(path || "").toLowerCase();
+
+    if (
+      lowerPath ===
+        "images/accommodations/function-area/beach-pavillion.jpg" ||
+      lowerPath ===
+        "images/accommodations/function-area/beach-pavilion.jpg"
+    ) {
+      return "images/accommodations/Function-Area/Beach-Pavillion.jpg";
+    }
+
+    return path;
+  }
+
+  // ==========================================================
+  // SECTION 4: CREATE FILENAME CASE VARIANTS
+  // Keeps directory capitalization unchanged.
   // ==========================================================
 
   function buildFilenameCaseVariants(path) {
@@ -117,8 +130,7 @@
   }
 
   // ==========================================================
-  // SECTION 4: PAVILION / PAVILLION SPELLING VARIANTS
-  // Repository currently contains Pavillion filenames.
+  // SECTION 5: PAVILION / PAVILLION SPELLING VARIANTS
   // ==========================================================
 
   function buildPavilionVariants(path) {
@@ -136,17 +148,22 @@
   }
 
   // ==========================================================
-  // SECTION 5: COMBINE ALL STATIC PATH VARIANTS
+  // SECTION 6: COMBINE STATIC PATH VARIANTS
   // ==========================================================
 
   function buildStaticPathVariants(path) {
     const result = [];
 
-    buildFilenameCaseVariants(path).forEach((caseVariant) => {
-      buildPavilionVariants(caseVariant).forEach((spellingVariant) => {
-        if (!result.includes(spellingVariant)) {
-          result.push(spellingVariant);
-        }
+    const canonicalPath = applyKnownAccommodationPathFixes(path);
+
+    // Try the known canonical path first.
+    [canonicalPath, path].forEach((sourcePath) => {
+      buildFilenameCaseVariants(sourcePath).forEach((caseVariant) => {
+        buildPavilionVariants(caseVariant).forEach((spellingVariant) => {
+          if (!result.includes(spellingVariant)) {
+            result.push(spellingVariant);
+          }
+        });
       });
     });
 
@@ -154,7 +171,7 @@
   }
 
   // ==========================================================
-  // SECTION 6: BUILD URL CANDIDATES
+  // SECTION 7: BUILD URL CANDIDATES
   // ==========================================================
 
   function buildImageCandidates(value) {
@@ -205,21 +222,17 @@
       window.location.pathname.includes("/frontend/");
 
     pathVariants.forEach((relativePath) => {
-      // Vercel project where frontend is root.
       if (!pageUsesFrontendPrefix) {
         candidates.push(`/${relativePath}`);
         candidates.push(`/frontend/${relativePath}`);
       } else {
-        // Alternative project layout.
         candidates.push(`/frontend/${relativePath}`);
         candidates.push(`/${relativePath}`);
       }
 
-      // Local Live Server from customerHTML.
       candidates.push(`../${relativePath}`);
     });
 
-    // Preserve original frontend path as an extra candidate.
     if (cleanPath.startsWith("frontend/")) {
       candidates.push(`/${cleanPath}`);
     }
@@ -230,8 +243,7 @@
   }
 
   // ==========================================================
-  // SECTION 7: RESILIENT IMAGE LOADER
-  // Tries candidates in order until one loads successfully.
+  // SECTION 8: RESILIENT IMAGE LOADER
   // ==========================================================
 
   function configureResilientImage(img, rawPath) {
@@ -265,7 +277,7 @@
   }
 
   // ==========================================================
-  // SECTION 8: FIX RENDERED COVER + GALLERY IMAGES
+  // SECTION 9: FIX RENDERED COVER + GALLERY IMAGES
   // ==========================================================
 
   function enhanceRenderedAccommodationImages(rooms) {
@@ -280,7 +292,6 @@
 
       if (!room) return;
 
-      // Cover image.
       const coverImage = card.querySelector(".room-photo-wrap > img");
 
       configureResilientImage(
@@ -288,7 +299,6 @@
         room.image || ""
       );
 
-      // Gallery thumbnails.
       const galleryImages = Array.isArray(room.gallery_images)
         ? room.gallery_images.slice(0, 8)
         : [];
@@ -306,7 +316,7 @@
   }
 
   // ==========================================================
-  // SECTION 9: WRAP EXISTING renderRooms()
+  // SECTION 10: WRAP EXISTING renderRooms()
   // ==========================================================
 
   if (typeof window.renderRooms === "function") {
@@ -319,7 +329,7 @@
   }
 
   // ==========================================================
-  // SECTION 10: OVERRIDE EXISTING PATH RESOLVER
+  // SECTION 11: OVERRIDE EXISTING PATH RESOLVER
   // ==========================================================
 
   window.resolveImagePath = function (value) {
@@ -331,7 +341,7 @@
   };
 
   // ==========================================================
-  // SECTION 11: IMAGE VIEWER FIX
+  // SECTION 12: IMAGE VIEWER FIX
   // ==========================================================
 
   if (typeof window.showCurrentViewerImage === "function") {
@@ -361,10 +371,10 @@
   }
 
   // ==========================================================
-  // SECTION 12: DEBUG MESSAGE
+  // SECTION 13: DEBUG MESSAGE
   // ==========================================================
 
   console.log(
-    "[Rooms Image Fix V2] Case-sensitive Vercel image fallback enabled."
+    "[Rooms Image Fix V3] Beach Pavillion canonical path fix enabled."
   );
 })();
