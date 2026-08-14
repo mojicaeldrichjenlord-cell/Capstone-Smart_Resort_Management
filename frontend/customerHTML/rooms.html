@@ -195,7 +195,16 @@
     ======================================================= -->
     <script src="../sharedJS/toast.js"></script>
     <script src="../sharedJS/api-config.js"></script>
+
+    <!-- Existing rooms logic -->
     <script src="../customerJS/rooms.js"></script>
+
+    <!-- ======================================================
+       MOBILE / VERCEL ACCOMMODATION IMAGE FIX
+       Must load after rooms.js and before DOMContentLoaded fires.
+    ======================================================= -->
+    <script src="../customerJS/rooms-image-mobile-fix.js"></script>
+
     <script src="../js/ai-chat.js"></script>
 
     <script>
