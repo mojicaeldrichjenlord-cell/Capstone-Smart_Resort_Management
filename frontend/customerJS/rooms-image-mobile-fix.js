@@ -1,17 +1,23 @@
 // ============================================================
-// ACCOMMODATION IMAGE MOBILE / VERCEL COMPATIBILITY FIX
+// ACCOMMODATION IMAGE MOBILE / VERCEL COMPATIBILITY FIX V2
 // File: frontend/customerJS/rooms-image-mobile-fix.js
 //
+// CONFIRMED ROOT CAUSE:
+// - Local Windows file lookup is case-insensitive.
+// - Vercel/Linux static file lookup is case-sensitive.
+// - Example from live API:
+//     Family-Room-B-Cover.jpg
+//   Actual repository filename:
+//     family-room-b-cover.jpg
+//
 // Purpose:
-// - Keep the existing rooms.js logic untouched.
-// - Fix accommodation images that work locally but fail on
-//   deployed/mobile browsers.
-// - Support both common Vercel layouts:
-//     /images/...
-//     /frontend/images/...
-// - Support database paths with frontend/, ../, ./, or \.
-// - Try alternate static paths before showing a fallback.
-// - Also fixes gallery thumbnails and image viewer.
+// - Keep existing rooms.js untouched.
+// - Try exact database path first.
+// - Then try lowercase filename variants.
+// - Support /images/... and /frontend/images/....
+// - Support local Live Server.
+// - Support Pavilion/Pavillion spelling differences.
+// - Fix cover images, gallery thumbnails, and image viewer.
 // ============================================================
 
 (function () {
@@ -19,7 +25,6 @@
 
   // ==========================================================
   // SECTION 1: FALLBACK IMAGE
-  // Used only after all possible image paths fail.
   // ==========================================================
 
   const MOBILE_IMAGE_FALLBACK =
@@ -54,8 +59,7 @@
     `);
 
   // ==========================================================
-  // SECTION 2: PATH NORMALIZER
-  // Converts Windows slashes and removes unnecessary prefixes.
+  // SECTION 2: NORMALIZE DATABASE PATH
   // ==========================================================
 
   function normalizeStaticImagePath(value) {
@@ -65,7 +69,6 @@
 
     path = path.replace(/\\/g, "/");
 
-    // Keep true external/data URLs unchanged.
     if (
       path.startsWith("http://") ||
       path.startsWith("https://") ||
@@ -75,7 +78,6 @@
       return path;
     }
 
-    // Remove repeated ./ and ../ prefixes.
     path = path.replace(/^(?:\.\/)+/, "");
     path = path.replace(/^(?:\.\.\/)+/, "");
     path = path.replace(/^\/+/, "");
@@ -84,12 +86,42 @@
   }
 
   // ==========================================================
-  // SECTION 3: KNOWN SPELLING COMPATIBILITY
-  // Repository filenames use "Pavillion".
-  // This also accepts database values written as "Pavilion".
+  // SECTION 3: CREATE FILENAME CASE VARIANTS
+  //
+  // Keeps directory capitalization unchanged because folders
+  // such as Family-Room-B are correctly capitalized in repo.
+  //
+  // Example:
+  // images/accommodations/Family-Room-B/Family-Room-B-Cover.jpg
+  // becomes additional candidate:
+  // images/accommodations/Family-Room-B/family-room-b-cover.jpg
   // ==========================================================
 
-  function buildSpellingVariants(path) {
+  function buildFilenameCaseVariants(path) {
+    const variants = [path];
+
+    const lastSlash = path.lastIndexOf("/");
+
+    if (lastSlash >= 0) {
+      const directory = path.slice(0, lastSlash + 1);
+      const filename = path.slice(lastSlash + 1);
+
+      const lowercaseFilename = filename.toLowerCase();
+
+      if (lowercaseFilename !== filename) {
+        variants.push(`${directory}${lowercaseFilename}`);
+      }
+    }
+
+    return variants;
+  }
+
+  // ==========================================================
+  // SECTION 4: PAVILION / PAVILLION SPELLING VARIANTS
+  // Repository currently contains Pavillion filenames.
+  // ==========================================================
+
+  function buildPavilionVariants(path) {
     const variants = [path];
 
     const pavillionVariant = path
@@ -104,14 +136,25 @@
   }
 
   // ==========================================================
-  // SECTION 4: BUILD IMAGE CANDIDATES
-  //
-  // We intentionally try more than one valid project-root style.
-  // This makes the same database path work on:
-  // - Local Live Server
-  // - Vercel with frontend as Root Directory
-  // - Vercel with repository root serving /frontend/
-  // - Desktop and mobile browsers
+  // SECTION 5: COMBINE ALL STATIC PATH VARIANTS
+  // ==========================================================
+
+  function buildStaticPathVariants(path) {
+    const result = [];
+
+    buildFilenameCaseVariants(path).forEach((caseVariant) => {
+      buildPavilionVariants(caseVariant).forEach((spellingVariant) => {
+        if (!result.includes(spellingVariant)) {
+          result.push(spellingVariant);
+        }
+      });
+    });
+
+    return result;
+  }
+
+  // ==========================================================
+  // SECTION 6: BUILD URL CANDIDATES
   // ==========================================================
 
   function buildImageCandidates(value) {
@@ -130,9 +173,12 @@
       return [original];
     }
 
-    let cleanPath = normalizeStaticImagePath(original);
+    const cleanPath = normalizeStaticImagePath(original);
 
-    // Backend-uploaded images must come from Render/backend.
+    // --------------------------------------------------------
+    // Backend-uploaded images
+    // --------------------------------------------------------
+
     if (cleanPath.startsWith("uploads/")) {
       const backendBase =
         typeof API_BASE === "string"
@@ -144,47 +190,48 @@
         : [`/${cleanPath}`];
     }
 
-    // Convert:
-    // frontend/images/... -> images/...
+    // --------------------------------------------------------
+    // Static frontend images
+    // --------------------------------------------------------
+
     const withoutFrontend = cleanPath.startsWith("frontend/")
       ? cleanPath.replace(/^frontend\//, "")
       : cleanPath;
 
-    const spellingVariants = buildSpellingVariants(withoutFrontend);
+    const pathVariants = buildStaticPathVariants(withoutFrontend);
     const candidates = [];
 
     const pageUsesFrontendPrefix =
       window.location.pathname.includes("/frontend/");
 
-    spellingVariants.forEach((relativePath) => {
-      // When page itself is /frontend/customerHTML/..., try /frontend first.
-      if (pageUsesFrontendPrefix) {
-        candidates.push(`/frontend/${relativePath}`);
+    pathVariants.forEach((relativePath) => {
+      // Vercel project where frontend is root.
+      if (!pageUsesFrontendPrefix) {
         candidates.push(`/${relativePath}`);
+        candidates.push(`/frontend/${relativePath}`);
       } else {
-        // Normal Vercel setup where frontend is the project root.
-        candidates.push(`/${relativePath}`);
+        // Alternative project layout.
         candidates.push(`/frontend/${relativePath}`);
+        candidates.push(`/${relativePath}`);
       }
 
-      // Local customerHTML pages can also resolve this relative path.
+      // Local Live Server from customerHTML.
       candidates.push(`../${relativePath}`);
     });
 
-    // Preserve a root version of the original database value too.
+    // Preserve original frontend path as an extra candidate.
     if (cleanPath.startsWith("frontend/")) {
       candidates.push(`/${cleanPath}`);
     }
 
-    // Remove duplicates and safely encode spaces/special URL characters.
     return [...new Set(candidates)]
       .filter(Boolean)
       .map((candidate) => encodeURI(candidate));
   }
 
   // ==========================================================
-  // SECTION 5: RESILIENT IMAGE LOADER
-  // Tries each candidate before showing fallback.
+  // SECTION 7: RESILIENT IMAGE LOADER
+  // Tries candidates in order until one loads successfully.
   // ==========================================================
 
   function configureResilientImage(img, rawPath) {
@@ -192,7 +239,6 @@
 
     const candidates = buildImageCandidates(rawPath);
 
-    // Remove old inline fallback so it does not stop our retry chain.
     img.removeAttribute("onerror");
 
     let candidateIndex = 0;
@@ -219,8 +265,7 @@
   }
 
   // ==========================================================
-  // SECTION 6: PATCH ALL IMAGES AFTER ROOMS ARE RENDERED
-  // Uses the actual room objects, so no database value is lost.
+  // SECTION 8: FIX RENDERED COVER + GALLERY IMAGES
   // ==========================================================
 
   function enhanceRenderedAccommodationImages(rooms) {
@@ -235,7 +280,7 @@
 
       if (!room) return;
 
-      // Main / cover photo.
+      // Cover image.
       const coverImage = card.querySelector(".room-photo-wrap > img");
 
       configureResilientImage(
@@ -261,9 +306,7 @@
   }
 
   // ==========================================================
-  // SECTION 7: WRAP EXISTING renderRooms()
-  // Keeps all original design and behavior.
-  // We only add resilient image loading after it renders.
+  // SECTION 9: WRAP EXISTING renderRooms()
   // ==========================================================
 
   if (typeof window.renderRooms === "function") {
@@ -276,9 +319,7 @@
   }
 
   // ==========================================================
-  // SECTION 8: OVERRIDE resolveImagePath()
-  // Other existing room.js features can keep calling the same
-  // function name while receiving a production-safe first path.
+  // SECTION 10: OVERRIDE EXISTING PATH RESOLVER
   // ==========================================================
 
   window.resolveImagePath = function (value) {
@@ -290,8 +331,7 @@
   };
 
   // ==========================================================
-  // SECTION 9: IMAGE VIEWER COMPATIBILITY
-  // Makes the fullscreen viewer use the same retry logic.
+  // SECTION 11: IMAGE VIEWER FIX
   // ==========================================================
 
   if (typeof window.showCurrentViewerImage === "function") {
@@ -321,11 +361,10 @@
   }
 
   // ==========================================================
-  // SECTION 10: OPTIONAL DEBUG MESSAGE
-  // Helpful while testing mobile/Vercel.
+  // SECTION 12: DEBUG MESSAGE
   // ==========================================================
 
   console.log(
-    "[Rooms Image Fix] Mobile/Vercel accommodation image compatibility enabled."
+    "[Rooms Image Fix V2] Case-sensitive Vercel image fallback enabled."
   );
 })();
