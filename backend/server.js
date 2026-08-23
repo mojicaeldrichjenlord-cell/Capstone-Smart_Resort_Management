@@ -1,3 +1,9 @@
+// ============================================================
+// SMART RESORT BOOKING SYSTEM - BACKEND SERVER
+// File: backend/server.js
+// STEP 2: Added PayMongo preparation routes.
+// ============================================================
+
 const dns = require("dns");
 dns.setDefaultResultOrder("ipv4first");
 
@@ -12,9 +18,8 @@ const bookingRoutes = require("./routes/bookingRoutes");
 const adminBookingRoutes = require("./routes/adminBookingRoutes");
 const adminPaymentRoutes = require("./routes/adminPaymentRoutes");
 const aiRoutes = require("./routes/aiRoutes");
-
-// 🔥 NEW
 const mapMarkerRoutes = require("./routes/mapMarkerRoutes");
+const paymongoRoutes = require("./routes/paymongoRoutes");
 
 const app = express();
 
@@ -33,9 +38,8 @@ app.use("/api/bookings", bookingRoutes);
 app.use("/api/admin/bookings", adminBookingRoutes);
 app.use("/api/admin/payments", adminPaymentRoutes);
 app.use("/api/ai", aiRoutes);
-
-// 🔥 NEW ROUTE
 app.use("/api/map-markers", mapMarkerRoutes);
+app.use("/api/paymongo", paymongoRoutes);
 
 const PORT = process.env.PORT || 5000;
 

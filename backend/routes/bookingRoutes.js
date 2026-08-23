@@ -6,6 +6,7 @@ const fs = require("fs");
 
 const {
   createBooking,
+  createPayMongoBooking,
   createWalkInBooking,
   getUserBookings,
   cancelBooking,
@@ -90,6 +91,11 @@ const upload = multer({
 /* ======================================================
    BOOKING CREATE ROUTES
 ====================================================== */
+// Automated PayMongo reservation preparation.
+// No manual proof upload is required for this route.
+router.post("/paymongo", createPayMongoBooking);
+
+// Existing manual proof-upload customer flow remains unchanged.
 router.post("/", upload.single("proof_image"), createBooking);
 router.post("/walk-in", upload.single("proof_image"), createWalkInBooking);
 

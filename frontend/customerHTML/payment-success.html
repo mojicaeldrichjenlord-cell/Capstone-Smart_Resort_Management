@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Payment Confirmation | Arvic Seaside</title>
+
+    <link rel="stylesheet" href="../sharedCSS/global.css" />
+    <link rel="stylesheet" href="../customerCSS/payment-result.css" />
+  </head>
+
+  <body data-payment-result="success">
+    <main class="payment-result-page">
+      <section class="payment-result-card">
+        <div class="payment-result-icon processing">✓</div>
+
+        <h1>Payment Submitted</h1>
+
+        <p>
+          Your checkout has returned to Arvic Seaside. The system will rely on
+          the PayMongo payment confirmation before marking the reservation as paid.
+        </p>
+
+        <div class="payment-result-details">
+          <div class="payment-result-row">
+            <span>Reservation ID</span>
+            <strong id="resultReservationId">-</strong>
+          </div>
+
+          <div class="payment-result-row">
+            <span>Reservation Code</span>
+            <strong id="resultReservationCode">-</strong>
+          </div>
+
+          <div class="payment-result-row">
+            <span>Payment Status</span>
+            <strong id="resultPaymentStatus">
+              Waiting for payment confirmation
+            </strong>
+          </div>
+        </div>
+
+        <div class="payment-result-notice">
+          Do not worry if the status is not updated immediately. The final
+          payment status will come from PayMongo's backend confirmation, not
+          from this return page.
+        </div>
+
+        <div class="payment-result-actions">
+          <a href="my-bookings.html" class="payment-result-btn primary">
+            View My Bookings
+          </a>
+
+          <a href="index.html" class="payment-result-btn secondary">
+            Back to Home
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <script src="../customerJS/payment-result.js"></script>
+  </body>
+</html>

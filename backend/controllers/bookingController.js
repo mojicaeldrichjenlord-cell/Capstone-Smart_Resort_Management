@@ -745,7 +745,20 @@ async function createReservation({
   const cleanContactNo = normalizeContactNumber(contact_no);
   const cleanEntranceType = normalizeText(entrance_type || "pool_beach");
   const cleanNote = normalizeNullableText(note);
-  const cleanPaymentMethod = normalizeText(payment_method || "gcash");
+
+  // PayMongo is still an ONLINE booking in the database.
+  // "paymongo" is only an internal controller mode so we can
+  // skip manual proof validation before redirecting to checkout.
+  const isManualReservation = source === "manual";
+  const isPayMongoReservation = source === "paymongo";
+  const databaseBookingSource = isManualReservation ? "manual" : "online";
+
+  // The exact GCash/Maya method is not known until PayMongo
+  // confirms the payment, so the reservation starts as "other".
+  const cleanPaymentMethod = isPayMongoReservation
+    ? "other"
+    : normalizeText(payment_method || "gcash");
+
   const cleanProof = normalizeNullableText(proof_of_payment);
   const cleanProofImageData = normalizeNullableText(proof_image_data);
   const cleanProofReference = normalizeReferenceNumber(proof_reference);
@@ -755,7 +768,6 @@ async function createReservation({
   );
   const cleanPaymentType = normalizeText(payment_type || "downpayment");
   const totalGuests = toNumber(guest_count, 0);
-  const isManualReservation = source === "manual";
   const rawManualReservationType = normalizeText(
     reservation_type || manual_reservation_type || "",
   ).toLowerCase();
@@ -790,7 +802,7 @@ async function createReservation({
     };
   }
 
-  if (!isManualReservation) {
+  if (!isManualReservation && !isPayMongoReservation) {
     if (!["gcash", "paymaya"].includes(cleanPaymentMethod.toLowerCase())) {
       throw {
         status: 400,
@@ -993,7 +1005,13 @@ async function createReservation({
   let entranceFeePaid = 0;
   let entranceFeeCollected = 0;
 
-  if (isWalkInManualReservation) {
+  if (isPayMongoReservation) {
+    // Automated online payment has not happened yet.
+    paidAmount = 0;
+    remainingBalance = accommodationTotal;
+    reservationStatus = "pending";
+    paymentStatus = "unpaid";
+  } else if (isWalkInManualReservation) {
     paidAmount = accommodationTotal;
     remainingBalance = 0;
     reservationStatus = "approved";
@@ -1053,6 +1071,13 @@ async function createReservation({
     if (cleanProofReference) {
       noteParts.push(`Reference Number: ${cleanProofReference}`);
     }
+  } else if (isPayMongoReservation) {
+    noteParts.push(
+      "Online Reservation Payment: PayMongo automated checkout.",
+    );
+    noteParts.push(
+      "Payment Status: Awaiting PayMongo payment confirmation.",
+    );
   } else {
     noteParts.push(`Reference Number: ${cleanProofReference}`);
     noteParts.push(
@@ -1108,7 +1133,7 @@ async function createReservation({
       [
         reservationCode,
         user_id,
-        source,
+        databaseBookingSource,
         cleanFirstName,
         cleanMiddleName,
         cleanLastName,
@@ -1133,6 +1158,10 @@ async function createReservation({
     );
 
     const reservationId = reservationResult.insertId;
+
+    // For PayMongo flow, a pending transaction record is created
+    // in the SAME MySQL transaction as the reservation.
+    let paymentTransactionId = null;
 
     for (const item of reservationItems) {
       await connection.query(
@@ -1166,11 +1195,31 @@ async function createReservation({
       );
     }
 
+    if (isPayMongoReservation) {
+      const [paymentTransactionResult] = await connection.query(
+        `
+        INSERT INTO payment_transactions (
+          reservation_id,
+          provider,
+          amount,
+          currency,
+          payment_method,
+          status
+        )
+        VALUES (?, 'paymongo', ?, 'PHP', NULL, 'pending')
+        `,
+        [reservationId, requiredDownpayment],
+      );
+
+      paymentTransactionId = paymentTransactionResult.insertId;
+    }
+
     await connection.commit();
 
     return {
       reservationId,
       reservationCode,
+      paymentTransactionId,
       requiredDownpayment,
       estimatedEntranceFee,
       accommodationTotal,
@@ -1179,7 +1228,9 @@ async function createReservation({
       isCheckedIn: Boolean(isCheckedIn),
       message: isManualReservation
         ? "Manual reservation created successfully."
-        : "Reservation request submitted successfully. Please wait for admin payment verification.",
+        : isPayMongoReservation
+          ? "Reservation prepared successfully for PayMongo checkout."
+          : "Reservation request submitted successfully. Please wait for admin payment verification.",
     };
   } catch (error) {
     await connection.rollback();
@@ -1224,6 +1275,63 @@ exports.createBooking = async (req, res) => {
 
     return res.status(error.status || 500).json({
       message: error.message || "Failed to create reservation.",
+      error: error.message,
+    });
+  }
+};
+
+
+// ============================================================
+// BACKEND/API HANDLER: Create PayMongo-ready reservation
+// Purpose:
+// - Reuses the normal reservation validation and conflict logic.
+// - Does NOT require manual GCash/Maya proof/reference.
+// - Creates reservation + pending payment_transactions row.
+// - Does NOT mark anything paid.
+// ============================================================
+exports.createPayMongoBooking = async (req, res) => {
+  try {
+    const parsedBody = parseRequestReservationBody(req);
+    const user_id = Number(parsedBody.user_id);
+
+    if (!user_id) {
+      return res.status(400).json({
+        message: "User ID is required.",
+      });
+    }
+
+    // PayMongo will determine the final GCash/Maya method later.
+    parsedBody.payment_method = "other";
+    parsedBody.payment_type = "downpayment";
+    parsedBody.proof_reference = null;
+    parsedBody.proof_of_payment = null;
+    parsedBody.proof_image_data = null;
+
+    const result = await createReservation({
+      source: "paymongo",
+      user_id,
+      body: parsedBody,
+      autoApprove: false,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: result.message,
+      bookingId: result.reservationId,
+      reservationCode: result.reservationCode,
+      paymentTransactionId: result.paymentTransactionId,
+      requiredDownpayment: result.requiredDownpayment,
+      accommodationTotal: result.accommodationTotal,
+      estimatedEntranceFee: result.estimatedEntranceFee,
+      paymentStatus: "unpaid",
+    });
+  } catch (error) {
+    console.error("createPayMongoBooking error:", error);
+
+    return res.status(error.status || 500).json({
+      success: false,
+      message:
+        error.message || "Failed to prepare reservation for PayMongo checkout.",
       error: error.message,
     });
   }
