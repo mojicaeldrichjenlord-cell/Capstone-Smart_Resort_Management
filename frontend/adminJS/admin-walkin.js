@@ -57,8 +57,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 // ============================================================
-// SECTION 2: Admin access checker
-// Redirects unauthenticated or non-admin users.
+// SECTION 2: Administrator / Front Desk access checker
+// Redirects unauthenticated users or accounts without manual-reservation access.
 // ============================================================
 
 function checkAdminAccess() {
@@ -70,8 +70,10 @@ function checkAdminAccess() {
     return;
   }
 
-  if (user.role !== "admin") {
-    alert("Access denied. Admin only.");
+  const role = String(user.role || "").toLowerCase();
+
+  if (!["admin", "frontdesk"].includes(role)) {
+    alert("Access denied. Administrator or Front Desk account required.");
     window.location.href = "../index.html";
   }
 }
@@ -1094,6 +1096,30 @@ function calculateCheckOutDate(checkInDate, startTime, endTime, stayDuration = 1
 }
 
 // ============================================================
+// SECTION 15.1: Local date formatter
+// Converts a Date object to YYYY-MM-DD without UTC timezone shifting.
+// This fixes the missing toInputDateValue() error used by Night and
+// Day/Night 22/23 Hours checkout-date calculations.
+// ============================================================
+
+function toInputDateValue(dateValue) {
+  const date =
+    dateValue instanceof Date
+      ? dateValue
+      : new Date(dateValue);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+// ============================================================
 // SECTION 16: Entrance fee calculation
 // Estimates entrance fee after free entrance pax deduction.
 // ============================================================
@@ -1213,7 +1239,9 @@ function formatTimeDisplay(timeValue) {
 function formatDateDisplay(dateValue) {
   if (!dateValue) return "N/A";
 
-  const date = new Date(dateValue);
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(String(dateValue))
+    ? new Date(`${dateValue}T00:00:00`)
+    : new Date(dateValue);
 
   if (Number.isNaN(date.getTime())) return dateValue;
 

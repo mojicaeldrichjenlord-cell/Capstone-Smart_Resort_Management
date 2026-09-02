@@ -712,12 +712,71 @@ async function getReservationItems(reservationId) {
 }
 
 // ============================================================
+// BLOCK: Validate manual reservation creator
+// Purpose:
+// - Manual reservations must be traceable to the logged-in employee.
+// - Only active Administrator or Front Desk accounts may be recorded.
+// - Online customer and PayMongo reservations do not use created_by.
+// ============================================================
+async function validateManualReservationCreator(createdBy) {
+  const creatorId = Number(createdBy);
+
+  if (!creatorId) {
+    throw {
+      status: 400,
+      message: "Logged-in Front Desk or Administrator account is required for manual reservations.",
+    };
+  }
+
+  const [rows] = await db.promise().query(
+    `
+    SELECT
+      id,
+      role,
+      COALESCE(account_status, 'active') AS account_status
+    FROM users
+    WHERE id = ?
+    LIMIT 1
+    `,
+    [creatorId],
+  );
+
+  if (!rows.length) {
+    throw {
+      status: 404,
+      message: "Staff account used to create this reservation was not found.",
+    };
+  }
+
+  const creator = rows[0];
+  const role = String(creator.role || "").toLowerCase();
+  const accountStatus = String(creator.account_status || "active").toLowerCase();
+
+  if (!["admin", "frontdesk"].includes(role)) {
+    throw {
+      status: 403,
+      message: "Only Front Desk Staff or Administrator accounts can create manual reservations.",
+    };
+  }
+
+  if (accountStatus !== "active") {
+    throw {
+      status: 403,
+      message: "This staff account is disabled and cannot create manual reservations.",
+    };
+  }
+
+  return creatorId;
+}
+
+// ============================================================
 // BLOCK: Create reservation
 // Purpose: Handles the create reservation part of this file.
 // ============================================================
 async function createReservation({
   source = "online",
   user_id = null,
+  created_by = null,
   body,
   autoApprove = false,
 }) {
@@ -752,6 +811,12 @@ async function createReservation({
   const isManualReservation = source === "manual";
   const isPayMongoReservation = source === "paymongo";
   const databaseBookingSource = isManualReservation ? "manual" : "online";
+
+  // Manual reservations must identify the employee who encoded them.
+  // Online customer and PayMongo reservations intentionally keep this NULL.
+  const manualCreatorId = isManualReservation
+    ? await validateManualReservationCreator(created_by)
+    : null;
 
   // The exact GCash/Maya method is not known until PayMongo
   // confirms the payment, so the reservation starts as "other".
@@ -1105,6 +1170,7 @@ async function createReservation({
       INSERT INTO reservations (
         reservation_code,
         user_id,
+        created_by,
         booking_source,
         first_name,
         middle_name,
@@ -1128,11 +1194,12 @@ async function createReservation({
         entrance_fee_collected,
         reserved_at
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
       `,
       [
         reservationCode,
         user_id,
+        manualCreatorId,
         databaseBookingSource,
         cleanFirstName,
         cleanMiddleName,
@@ -1219,6 +1286,7 @@ async function createReservation({
     return {
       reservationId,
       reservationCode,
+      createdBy: manualCreatorId,
       paymentTransactionId,
       requiredDownpayment,
       estimatedEntranceFee,
@@ -1344,10 +1412,18 @@ exports.createPayMongoBooking = async (req, res) => {
 exports.createWalkInBooking = async (req, res) => {
   try {
     const parsedBody = parseRequestReservationBody(req);
+    const created_by = Number(parsedBody.created_by);
+
+    if (!created_by) {
+      return res.status(400).json({
+        message: "Logged-in staff account is required for manual reservations.",
+      });
+    }
 
     const result = await createReservation({
       source: "manual",
       user_id: null,
+      created_by,
       body: parsedBody,
       autoApprove: true,
     });
@@ -1356,6 +1432,7 @@ exports.createWalkInBooking = async (req, res) => {
       message: result.message,
       bookingId: result.reservationId,
       reservationCode: result.reservationCode,
+      createdBy: result.createdBy,
       proofPath: parsedBody.proof_of_payment || null,
       proofImageDataSaved: Boolean(parsedBody.proof_image_data),
       isCheckedIn: Boolean(result.isCheckedIn),
