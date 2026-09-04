@@ -97,3 +97,33 @@ Current source-of-truth status:
 - Step 3F-B1: ✅ complete and DB verified
 - Next task: 🔧 Entrance Fee Adjustments
 - Active working branch: `revision-phase1-landing-policy`
+
+
+### Step 3F-B2 — Entrance Fee Adjustments — IMPLEMENTED / TEST PENDING
+
+Code added on the working branch:
+- Front Desk Entrance Adjustment action for checked-in guests
+- Senior Citizen 20% entrance discount
+- PWD 20% entrance discount
+- Qualified Kid free entrance
+- Multiple adjustment types in one reservation
+- Backend recalculation based on verified actual guest count
+- Accommodation included free-entrance pax applied before Senior/PWD/Kid adjustments
+- Gross entrance fee, total deduction, and final entrance fee returned by the API
+- Front Desk modal shows actual guests, included free pax, chargeable guests, entrance rate, gross fee, deductions, and final fee
+- Receipt endpoint now returns all entrance adjustment rows rather than only one
+- Guest list API now exposes entrance adjustment totals and adjusted entrance fee values
+
+Verification still required before marking complete:
+- Restart backend
+- Pull latest working branch locally
+- UI test with Senior only
+- UI test with PWD only
+- UI test with qualified kid only
+- UI test with Senior + PWD + Kid together
+- Database verification of booking_discounts rows
+- Confirm booking_discounts has a composite unique key for (booking_id, discount_type)
+- Verify reservations.estimated_entrance_fee / entrance_fee_collected / entrance_fee_paid behavior
+
+Current roadmap status:
+**Step 3F-B2 remains 🔧 until UI + DB verification passes.**
