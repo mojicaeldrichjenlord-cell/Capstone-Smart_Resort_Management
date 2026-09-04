@@ -690,6 +690,17 @@ function renderGuestCard(booking) {
             <strong>₱${formatMoney(entranceDisplayAmount)}</strong>
           </span>
 
+          ${
+            entranceAdjustmentTotal > 0
+              ? `
+                <span>
+                  Entrance Adjustment:
+                  <strong>-₱${formatMoney(entranceAdjustmentTotal)}</strong>
+                </span>
+              `
+              : ""
+          }
+
           <span>
             ${escapeHtml(totalCollectionLabel)}:
             <strong class="${collectNow > 0 ? "amount-total" : ""}">
