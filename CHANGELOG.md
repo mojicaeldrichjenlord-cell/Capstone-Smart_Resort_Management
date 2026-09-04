@@ -77,3 +77,23 @@ After each verified implementation substep:
 5. Commit and push
 6. Update this changelog
 7. Update `IMPLEMENTATION_ROADMAP.md`
+
+
+### GitHub source-of-truth setup applied
+
+Created and committed:
+- `CAPSTONE_CONTEXT.md` — canonical project decisions, five roles, DFD alignment, payment rules, and development workflow
+- `IMPLEMENTATION_ROADMAP.md` — official nine-phase roadmap with current status
+- `CHANGELOG.md` — verified implementation checkpoints
+
+Step 3F-B1 tested implementation was also synchronized to the working branch:
+- `backend/controllers/frontdeskGuestAdjustmentController.js`
+- `backend/routes/adminBookingRoutes.js`
+- `frontend/frontdeskHTML/frontdeskGuests.html`
+- `frontend/frontdeskJS/frontdeskGuests.js`
+- `frontend/frontdeskCSS/frontdeskGuests.css`
+
+Current source-of-truth status:
+- Step 3F-B1: ✅ complete and DB verified
+- Next task: 🔧 Entrance Fee Adjustments
+- Active working branch: `revision-phase1-landing-policy`
