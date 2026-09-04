@@ -163,13 +163,13 @@
          STEP 3F-B STATUS NOTE
       ===================================================== -->
       <section class="next-step-note">
-        <strong>Step 3F-B1:</strong>
+        <strong>Step 3F-B2 — Entrance Fee Adjustments:</strong>
 
         <span>
-          Guest Adjustment is now available for checked-in guests. Front Desk
-          can verify the actual onsite guest count and record an Extra Guest
-          Charge when the actual count is higher than the originally booked
-          count. Other Guests Inside tools will be added in the next substeps.
+          Guest Adjustment is complete. The current Front Desk substep verifies
+          Senior Citizen, PWD, and qualified kid entrance adjustments against
+          the actual onsite guest count and the accommodation's included free
+          entrance pax.
         </span>
       </section>
     </main>
@@ -290,6 +290,193 @@
             type="button"
             class="guest-adjustment-cancel-btn"
             id="cancelGuestAdjustmentBtn"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================================================
+       STEP 3F-B2: ENTRANCE FEE ADJUSTMENT MODAL
+
+       Rules:
+       - Senior Citizen = 20% discount on entrance fee only
+       - PWD = 20% discount on entrance fee only
+       - Qualified kid = free entrance based on resort height rule
+       - Accommodation free-entrance inclusions are deducted first
+       - Total qualified adjustment pax cannot exceed chargeable entrance pax
+    ======================================================= -->
+    <div class="entrance-adjustment-modal" id="entranceAdjustmentModal">
+      <div class="entrance-adjustment-modal-box">
+        <div class="entrance-adjustment-header">
+          <div>
+            <p class="entrance-adjustment-eyebrow">FRONT DESK OPERATION</p>
+            <h2>Entrance Fee Adjustment</h2>
+
+            <p id="entranceAdjustmentGuestText">
+              Verify qualified Senior Citizen, PWD, and free kid entrance
+              adjustments for this checked-in reservation.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="entrance-adjustment-close-btn"
+            id="closeEntranceAdjustmentBtn"
+            aria-label="Close entrance adjustment modal"
+          >
+            ×
+          </button>
+        </div>
+
+        <div
+          id="currentEntranceAdjustmentBox"
+          class="current-entrance-adjustment-box empty"
+        >
+          No entrance adjustment has been applied yet.
+        </div>
+
+        <div class="entrance-adjustment-meta-grid">
+          <div class="entrance-adjustment-meta-item">
+            <span>Actual Guests</span>
+            <strong id="entranceActualGuestsText">0</strong>
+          </div>
+
+          <div class="entrance-adjustment-meta-item">
+            <span>Included Free Entrance</span>
+            <strong id="entranceIncludedFreeText">0 pax</strong>
+          </div>
+
+          <div class="entrance-adjustment-meta-item">
+            <span>Chargeable Guests</span>
+            <strong id="entranceChargeableGuestsText">0</strong>
+          </div>
+
+          <div class="entrance-adjustment-meta-item">
+            <span>Entrance Rate Per Pax</span>
+            <strong id="entranceRateText">₱0.00</strong>
+          </div>
+
+          <div class="entrance-adjustment-meta-item wide">
+            <span>Gross Entrance Fee Before Adjustments</span>
+            <strong id="grossEntranceFeeText">₱0.00</strong>
+          </div>
+        </div>
+
+        <div class="entrance-adjustment-input-grid">
+          <div class="entrance-adjustment-form-group">
+            <label for="entranceSeniorPaxInput">Senior Citizen Pax</label>
+
+            <input
+              type="number"
+              id="entranceSeniorPaxInput"
+              min="0"
+              step="1"
+              value="0"
+            />
+
+            <small>20% discount on entrance fee only.</small>
+          </div>
+
+          <div class="entrance-adjustment-form-group">
+            <label for="entrancePwdPaxInput">PWD Pax</label>
+
+            <input
+              type="number"
+              id="entrancePwdPaxInput"
+              min="0"
+              step="1"
+              value="0"
+            />
+
+            <small>20% discount on entrance fee only.</small>
+          </div>
+
+          <div class="entrance-adjustment-form-group">
+            <label for="entranceKidFreePaxInput">Qualified Kid Pax</label>
+
+            <input
+              type="number"
+              id="entranceKidFreePaxInput"
+              min="0"
+              step="1"
+              value="0"
+            />
+
+            <small>Free entrance after Front Desk height verification.</small>
+          </div>
+        </div>
+
+        <div class="entrance-adjustment-form-group">
+          <label for="entranceAdjustmentNoteInput">Verification Note</label>
+
+          <textarea
+            id="entranceAdjustmentNoteInput"
+            placeholder="Example: 1 Senior ID verified, 1 PWD ID verified, 2 kids below resort height limit."
+          ></textarea>
+
+          <small>
+            Required. Record ID verification and/or kid height confirmation.
+          </small>
+        </div>
+
+        <div class="entrance-adjustment-breakdown">
+          <h3>Entrance Fee Breakdown</h3>
+
+          <div class="entrance-breakdown-row">
+            <span>Senior Citizen Deduction</span>
+            <strong id="entranceSeniorDiscountText">-₱0.00</strong>
+          </div>
+
+          <div class="entrance-breakdown-row">
+            <span>PWD Deduction</span>
+            <strong id="entrancePwdDiscountText">-₱0.00</strong>
+          </div>
+
+          <div class="entrance-breakdown-row">
+            <span>Qualified Kid Deduction</span>
+            <strong id="entranceKidDiscountText">-₱0.00</strong>
+          </div>
+
+          <div class="entrance-breakdown-row total-deduction">
+            <span>Total Entrance Deduction</span>
+            <strong id="entranceTotalDeductionText">-₱0.00</strong>
+          </div>
+
+          <div class="entrance-breakdown-row final-fee">
+            <span>Final Entrance Fee</span>
+            <strong id="finalEntranceFeeText">₱0.00</strong>
+          </div>
+        </div>
+
+        <div class="entrance-adjustment-policy-note" id="entranceAdjustmentPolicyNote">
+          Accommodation free-entrance inclusions are applied first. Senior/PWD
+          receive 20% off the entrance fee only. Qualified kids receive free
+          entrance based on the resort height rule.
+        </div>
+
+        <div class="entrance-adjustment-actions">
+          <button
+            type="button"
+            class="entrance-adjustment-save-btn"
+            id="saveEntranceAdjustmentBtn"
+          >
+            Apply Entrance Adjustment
+          </button>
+
+          <button
+            type="button"
+            class="entrance-adjustment-remove-btn"
+            id="removeEntranceAdjustmentBtn"
+          >
+            Remove Adjustment
+          </button>
+
+          <button
+            type="button"
+            class="entrance-adjustment-cancel-btn"
+            id="cancelEntranceAdjustmentBtn"
           >
             Cancel
           </button>
