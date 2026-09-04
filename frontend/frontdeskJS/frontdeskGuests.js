@@ -1622,6 +1622,14 @@ function getGuestStateMessage(booking) {
 // SECTION 11: BOOKING HELPERS
 // ============================================================
 
+function isTruthyFlag(value) {
+  return (
+    value === true ||
+    Number(value || 0) === 1 ||
+    String(value || "").toLowerCase() === "true"
+  );
+}
+
 function getReservationStatus(booking) {
   return String(
     booking.status ||
