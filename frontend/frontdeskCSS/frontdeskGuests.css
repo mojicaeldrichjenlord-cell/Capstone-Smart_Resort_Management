@@ -874,3 +874,63 @@ body.guest-modal-open {
     width: 100%;
   }
 }
+
+/* ======================================================
+   STEP 3F-B1 EDGE CASE:
+   PAID EXTRA GUEST HISTORY + CURRENT DIFFERENCE
+====================================================== */
+
+.guest-adjustment-payment-summary {
+  margin: -2px 0 16px;
+
+  display: grid;
+  gap: 10px;
+}
+
+.guest-adjustment-payment-row {
+  padding: 13px 15px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+
+  border: 1px solid #dbe7ef;
+  border-radius: 15px;
+
+  background: #f8fafc;
+}
+
+.guest-adjustment-payment-row span {
+  color: #475569;
+
+  font-size: 0.88rem;
+  font-weight: 850;
+}
+
+.guest-adjustment-payment-row strong {
+  color: #0f172a;
+
+  font-size: 1rem;
+  font-weight: 950;
+
+  white-space: nowrap;
+}
+
+.guest-adjustment-payment-row.due-row {
+  border-color: #fdba74;
+  background: #fff7ed;
+}
+
+.guest-adjustment-payment-row.due-row span,
+.guest-adjustment-payment-row.due-row strong {
+  color: #9a3412;
+}
+
+@media (max-width: 700px) {
+  .guest-adjustment-payment-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
