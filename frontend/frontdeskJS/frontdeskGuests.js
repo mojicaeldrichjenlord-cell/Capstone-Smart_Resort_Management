@@ -1724,6 +1724,536 @@ function closeEntranceAdjustmentModal() {
   document.body.classList.remove("guest-modal-open");
 }
 
+async function loadEntranceAdjustment() {
+  if (!selectedEntranceAdjustmentBookingId) {
+    return;
+  }
+
+  const currentBox = document.getElementById(
+    "currentEntranceAdjustmentBox",
+  );
+  const seniorInput = document.getElementById(
+    "entranceSeniorPaxInput",
+  );
+  const pwdInput = document.getElementById(
+    "entrancePwdPaxInput",
+  );
+  const kidInput = document.getElementById(
+    "entranceKidFreePaxInput",
+  );
+  const noteInput = document.getElementById(
+    "entranceAdjustmentNoteInput",
+  );
+
+  try {
+    const response = await fetch(
+      API_BASE +
+        "/bookings/" +
+        Number(selectedEntranceAdjustmentBookingId) +
+        "/discounts",
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+        },
+        cache: "no-store",
+      },
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.message ||
+          "Failed to load entrance adjustments.",
+      );
+    }
+
+    const meta = data.meta || {};
+
+    currentEntranceAdjustmentMeta = {
+      ...currentEntranceAdjustmentMeta,
+      entrance_rate_per_pax: Number(
+        meta.entrance_rate_per_pax || 0,
+      ),
+      senior_pwd_discount_rate: Number(
+        meta.senior_pwd_discount_rate || 0.2,
+      ),
+      booked_guest_count: Number(
+        meta.booked_guest_count || 0,
+      ),
+      actual_guest_count: Number(
+        meta.actual_guest_count || 1,
+      ),
+      included_free_entrance_pax: Number(
+        meta.included_free_entrance_pax || 0,
+      ),
+      chargeable_entrance_guests: Number(
+        meta.chargeable_entrance_guests || 0,
+      ),
+      gross_entrance_fee: Number(
+        meta.gross_entrance_fee || 0,
+      ),
+      total_entrance_deduction: Number(
+        meta.total_entrance_deduction || 0,
+      ),
+      final_entrance_fee: Number(
+        meta.final_entrance_fee || 0,
+      ),
+      entrance_fee_collected: Number(
+        meta.entrance_fee_collected || 0,
+      ),
+      entrance_fee_remaining: Number(
+        meta.entrance_fee_remaining || 0,
+      ),
+    };
+
+    const discounts = Array.isArray(data.discounts)
+      ? data.discounts
+      : data.discount
+        ? [data.discount]
+        : [];
+
+    if (seniorInput) seniorInput.value = "0";
+    if (pwdInput) pwdInput.value = "0";
+    if (kidInput) kidInput.value = "0";
+
+    let latestNote = "";
+
+    discounts.forEach((discount) => {
+      const type = String(
+        discount.discount_type || "",
+      )
+        .trim()
+        .toLowerCase();
+
+      if (type === "senior" && seniorInput) {
+        seniorInput.value = Number(
+          discount.qualified_pax || 0,
+        );
+      }
+
+      if (type === "pwd" && pwdInput) {
+        pwdInput.value = Number(
+          discount.qualified_pax || 0,
+        );
+      }
+
+      if (type === "kid_free" && kidInput) {
+        kidInput.value = Number(
+          discount.qualified_pax || 0,
+        );
+      }
+
+      if (discount.discount_note) {
+        latestNote = cleanEntranceVerificationNote(
+          discount.discount_note,
+        );
+      }
+    });
+
+    if (noteInput) {
+      noteInput.value = latestNote;
+    }
+
+    if (currentBox) {
+      if (!discounts.length) {
+        currentBox.classList.add("empty");
+        currentBox.innerHTML =
+          "No entrance adjustment has been applied yet.";
+      } else {
+        const total = discounts.reduce(
+          (sum, discount) =>
+            sum +
+            Number(discount.discount_amount || 0),
+          0,
+        );
+
+        const adjustmentLines = discounts
+          .map((discount) => {
+            return (
+              escapeHtml(
+                formatEntranceAdjustmentType(
+                  discount.discount_type,
+                ),
+              ) +
+              ": " +
+              Number(discount.qualified_pax || 0) +
+              " pax, <strong>-₱" +
+              formatMoney(discount.discount_amount) +
+              "</strong>"
+            );
+          })
+          .join("<br>");
+
+        currentBox.classList.remove("empty");
+        currentBox.innerHTML =
+          "<strong>Current Entrance Adjustments</strong><br>" +
+          adjustmentLines +
+          "<br>Total Deduction: <strong>-₱" +
+          formatMoney(total) +
+          "</strong><br>Final Entrance Fee: <strong>₱" +
+          formatMoney(
+            currentEntranceAdjustmentMeta.final_entrance_fee,
+          ) +
+          "</strong>";
+      }
+    }
+
+    updateEntranceAdjustmentPreview();
+  } catch (error) {
+    console.error(
+      "loadEntranceAdjustment error:",
+      error,
+    );
+
+    showMessage(
+      error.message ||
+        "Failed to load entrance adjustments.",
+      "error",
+    );
+  }
+}
+
+function calculateEntranceAdjustmentPreview() {
+  const values = getEntranceAdjustmentPaxValues();
+
+  const entranceRate = Number(
+    currentEntranceAdjustmentMeta.entrance_rate_per_pax || 0,
+  );
+  const discountRate = Number(
+    currentEntranceAdjustmentMeta.senior_pwd_discount_rate || 0.2,
+  );
+  const grossEntranceFee = Number(
+    currentEntranceAdjustmentMeta.gross_entrance_fee || 0,
+  );
+
+  const seniorDiscount =
+    entranceRate * discountRate * values.seniorPax;
+  const pwdDiscount =
+    entranceRate * discountRate * values.pwdPax;
+  const kidFreeDiscount =
+    entranceRate * values.kidFreePax;
+
+  const totalDeduction =
+    seniorDiscount +
+    pwdDiscount +
+    kidFreeDiscount;
+
+  const finalEntranceFee = Math.max(
+    grossEntranceFee - totalDeduction,
+    0,
+  );
+
+  return {
+    ...values,
+    seniorDiscount,
+    pwdDiscount,
+    kidFreeDiscount,
+    totalDeduction,
+    finalEntranceFee,
+  };
+}
+
+function updateEntranceAdjustmentPreview() {
+  const preview = calculateEntranceAdjustmentPreview();
+
+  const entranceRate = Number(
+    currentEntranceAdjustmentMeta.entrance_rate_per_pax || 0,
+  );
+  const actualGuests = Number(
+    currentEntranceAdjustmentMeta.actual_guest_count || 0,
+  );
+  const includedFree = Number(
+    currentEntranceAdjustmentMeta.included_free_entrance_pax || 0,
+  );
+  const chargeableGuests = Number(
+    currentEntranceAdjustmentMeta.chargeable_entrance_guests || 0,
+  );
+  const grossEntranceFee = Number(
+    currentEntranceAdjustmentMeta.gross_entrance_fee || 0,
+  );
+
+  const setText = (elementId, value) => {
+    const element = document.getElementById(elementId);
+
+    if (element) {
+      element.textContent = value;
+    }
+  };
+
+  setText(
+    "entranceActualGuestsText",
+    String(actualGuests),
+  );
+  setText(
+    "entranceIncludedFreeText",
+    String(includedFree) + " pax",
+  );
+  setText(
+    "entranceChargeableGuestsText",
+    String(chargeableGuests),
+  );
+  setText(
+    "entranceRateText",
+    "₱" + formatMoney(entranceRate),
+  );
+  setText(
+    "grossEntranceFeeText",
+    "₱" + formatMoney(grossEntranceFee),
+  );
+  setText(
+    "entranceSeniorDiscountText",
+    "-₱" + formatMoney(preview.seniorDiscount),
+  );
+  setText(
+    "entrancePwdDiscountText",
+    "-₱" + formatMoney(preview.pwdDiscount),
+  );
+  setText(
+    "entranceKidDiscountText",
+    "-₱" + formatMoney(preview.kidFreeDiscount),
+  );
+  setText(
+    "entranceTotalDeductionText",
+    "-₱" + formatMoney(preview.totalDeduction),
+  );
+  setText(
+    "finalEntranceFeeText",
+    "₱" + formatMoney(preview.finalEntranceFee),
+  );
+
+  const policyNote = document.getElementById(
+    "entranceAdjustmentPolicyNote",
+  );
+
+  if (policyNote) {
+    policyNote.textContent =
+      "Chargeable entrance guests: " +
+      chargeableGuests +
+      ". Senior: " +
+      preview.seniorPax +
+      " × ₱" +
+      formatMoney(entranceRate) +
+      " × 20%. PWD: " +
+      preview.pwdPax +
+      " × ₱" +
+      formatMoney(entranceRate) +
+      " × 20%. Qualified Kid: " +
+      preview.kidFreePax +
+      " × ₱" +
+      formatMoney(entranceRate) +
+      ".";
+  }
+}
+
+async function saveEntranceAdjustment() {
+  if (!selectedEntranceAdjustmentBookingId) {
+    showMessage("No selected reservation.", "error");
+    return;
+  }
+
+  const values = getEntranceAdjustmentPaxValues();
+  const totalQualifiedPax =
+    values.seniorPax +
+    values.pwdPax +
+    values.kidFreePax;
+  const chargeableGuests = Number(
+    currentEntranceAdjustmentMeta.chargeable_entrance_guests || 0,
+  );
+  const noteInput = document.getElementById(
+    "entranceAdjustmentNoteInput",
+  );
+  const note = cleanEntranceVerificationNote(
+    noteInput?.value,
+  );
+
+  if (totalQualifiedPax <= 0) {
+    showMessage(
+      "Enter at least one Senior Citizen, PWD, or qualified kid pax.",
+      "error",
+    );
+    return;
+  }
+
+  if (totalQualifiedPax > chargeableGuests) {
+    showMessage(
+      "Total qualified adjustment pax cannot be greater than the chargeable entrance guest count.",
+      "error",
+    );
+    return;
+  }
+
+  if (!note) {
+    showMessage(
+      "Please add a verification note for the entrance adjustment.",
+      "error",
+    );
+    noteInput?.focus();
+    return;
+  }
+
+  const saveBtn = document.getElementById(
+    "saveEntranceAdjustmentBtn",
+  );
+  const originalText =
+    saveBtn?.textContent ||
+    "Apply Entrance Adjustment";
+
+  try {
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = "Saving...";
+    }
+
+    const response = await fetch(
+      API_BASE +
+        "/bookings/" +
+        Number(selectedEntranceAdjustmentBookingId) +
+        "/discounts",
+      {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          senior_pax: values.seniorPax,
+          pwd_pax: values.pwdPax,
+          kid_free_pax: values.kidFreePax,
+          discount_note: note,
+        }),
+      },
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.message ||
+          "Failed to save entrance adjustments.",
+      );
+    }
+
+    await loadEntranceAdjustment();
+    await loadGuestBookings();
+
+    const filter = document.getElementById(
+      "arrivalFilter",
+    );
+
+    if (filter) {
+      filter.value = "inside";
+      applyGuestFilters();
+    }
+
+    showMessage(
+      data.message ||
+        "Entrance adjustments saved successfully.",
+      "success",
+    );
+  } catch (error) {
+    console.error(
+      "saveEntranceAdjustment error:",
+      error,
+    );
+
+    showMessage(
+      error.message ||
+        "Failed to save entrance adjustments.",
+      "error",
+    );
+  } finally {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.textContent = originalText;
+    }
+  }
+}
+
+async function removeEntranceAdjustment() {
+  if (!selectedEntranceAdjustmentBookingId) {
+    showMessage("No selected reservation.", "error");
+    return;
+  }
+
+  if (!confirm(
+    "Remove all Senior/PWD/Kid entrance adjustments for this reservation?",
+  )) {
+    return;
+  }
+
+  const removeBtn = document.getElementById(
+    "removeEntranceAdjustmentBtn",
+  );
+  const originalText =
+    removeBtn?.textContent ||
+    "Remove Adjustment";
+
+  try {
+    if (removeBtn) {
+      removeBtn.disabled = true;
+      removeBtn.textContent = "Removing...";
+    }
+
+    const response = await fetch(
+      API_BASE +
+        "/bookings/" +
+        Number(selectedEntranceAdjustmentBookingId) +
+        "/discounts",
+      {
+        method: "DELETE",
+        headers: {
+          Accept: "application/json",
+        },
+      },
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.message ||
+          "Failed to remove entrance adjustments.",
+      );
+    }
+
+    resetEntranceAdjustmentForm();
+    await loadEntranceAdjustment();
+    await loadGuestBookings();
+
+    const filter = document.getElementById(
+      "arrivalFilter",
+    );
+
+    if (filter) {
+      filter.value = "inside";
+      applyGuestFilters();
+    }
+
+    showMessage(
+      data.message ||
+        "Entrance adjustments removed successfully.",
+      "success",
+    );
+  } catch (error) {
+    console.error(
+      "removeEntranceAdjustment error:",
+      error,
+    );
+
+    showMessage(
+      error.message ||
+        "Failed to remove entrance adjustments.",
+      "error",
+    );
+  } finally {
+    if (removeBtn) {
+      removeBtn.disabled = false;
+      removeBtn.textContent = originalText;
+    }
+  }
+}
+
 // ============================================================
 // SECTION 10: RECORD STATE TEXT
 // ============================================================
