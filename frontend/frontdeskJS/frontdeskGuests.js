@@ -33,6 +33,10 @@
 let allGuestBookings = [];
 let selectedGuestAdjustmentBookingId = null;
 
+// Total historical Extra Guest Charge amount already marked paid
+// for the reservation currently open in Guest Adjustment.
+let guestAdjustmentPaidExtraGuestTotal = 0;
+
 // ============================================================
 // SECTION 1: STARTUP
 // ============================================================
@@ -832,7 +836,7 @@ function findGuestBookingById(bookingId) {
 // Open Guest Adjustment modal.
 // Only checked-in / Inside Resort reservations are allowed.
 // ------------------------------------------------------------
-function openGuestAdjustmentModal(bookingId) {
+async function openGuestAdjustmentModal(bookingId) {
   const booking =
     findGuestBookingById(bookingId);
 
@@ -886,8 +890,10 @@ function openGuestAdjustmentModal(bookingId) {
     getActualGuestCount(booking);
 
   // Current booking list does not expose a saved per-pax rate.
-  // Staff enters the verified current rate when extra guests exist.
+  // Staff enters the verified current rate for the new calculation.
   rateInput.value = "0";
+
+  guestAdjustmentPaidExtraGuestTotal = 0;
 
   if (guestText) {
     guestText.textContent =
@@ -899,12 +905,19 @@ function openGuestAdjustmentModal(bookingId) {
       }.`;
   }
 
-  updateGuestAdjustmentPreview();
-
+  // Open immediately, then load historical paid structured charges.
   modal.classList.add("show");
   document.body.classList.add(
     "guest-modal-open",
   );
+
+  updateGuestAdjustmentPreview();
+
+  await loadGuestAdjustmentChargeSummary(
+    bookingId,
+  );
+
+  updateGuestAdjustmentPreview();
 }
 
 // ------------------------------------------------------------
@@ -913,6 +926,8 @@ function openGuestAdjustmentModal(bookingId) {
 function closeGuestAdjustmentModal() {
   selectedGuestAdjustmentBookingId =
     null;
+
+  guestAdjustmentPaidExtraGuestTotal = 0;
 
   document
     .getElementById("guestAdjustmentModal")
@@ -924,9 +939,109 @@ function closeGuestAdjustmentModal() {
 }
 
 // ------------------------------------------------------------
+// Load paid Extra Guest Charge history for this reservation.
+//
+// Only the structured charge_name "Extra Guest Charge" is used here.
+// Other damage/service/additional charges are intentionally ignored.
+// ------------------------------------------------------------
+async function loadGuestAdjustmentChargeSummary(
+  bookingId,
+) {
+  const paidText =
+    document.getElementById(
+      "paidExtraGuestChargeText",
+    );
+
+  guestAdjustmentPaidExtraGuestTotal = 0;
+
+  if (paidText) {
+    paidText.textContent = "Loading...";
+  }
+
+  try {
+    const response = await fetch(
+      `${API_BASE}/bookings/${Number(
+        bookingId,
+      )}/charges`,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+        },
+        cache: "no-store",
+      },
+    );
+
+    if (!response.ok) {
+      throw new Error(
+        "Failed to load existing Extra Guest Charges.",
+      );
+    }
+
+    const data =
+      await response.json();
+
+    const charges =
+      Array.isArray(data?.charges)
+        ? data.charges
+        : [];
+
+    guestAdjustmentPaidExtraGuestTotal =
+      charges
+        .filter((charge) => {
+          const name =
+            String(
+              charge?.charge_name || "",
+            )
+              .trim()
+              .toLowerCase();
+
+          return (
+            name ===
+              "extra guest charge" &&
+            Number(
+              charge?.is_paid || 0,
+            ) === 1
+          );
+        })
+        .reduce(
+          (sum, charge) =>
+            sum +
+            Math.max(
+              Number(
+                charge?.charge_amount ||
+                  0,
+              ),
+              0,
+            ),
+          0,
+        );
+  } catch (error) {
+    console.error(
+      "loadGuestAdjustmentChargeSummary error:",
+      error,
+    );
+
+    guestAdjustmentPaidExtraGuestTotal = 0;
+
+    showMessage(
+      "Could not load previous Extra Guest Charge payments. Review charges before collecting a new amount.",
+      "error",
+    );
+  } finally {
+    if (paidText) {
+      paidText.textContent =
+        `₱${formatMoney(
+          guestAdjustmentPaidExtraGuestTotal,
+        )}`;
+    }
+  }
+}
+
+// ------------------------------------------------------------
 // Live preview:
-// extra guests = actual - booked
-// charge = extra guests × rate per pax
+// target total = extra guests × current rate
+// additional due = target total - already-paid extra guest charges
 // ------------------------------------------------------------
 function updateGuestAdjustmentPreview() {
   const booking =
@@ -959,6 +1074,16 @@ function updateGuestAdjustmentPreview() {
       "extraGuestChargePreview",
     );
 
+  const paidText =
+    document.getElementById(
+      "paidExtraGuestChargeText",
+    );
+
+  const dueText =
+    document.getElementById(
+      "additionalExtraGuestDueText",
+    );
+
   const bookedGuests =
     getBookedGuestCount(booking);
 
@@ -983,6 +1108,13 @@ function updateGuestAdjustmentPreview() {
   const extraGuestCharge =
     extraGuests * extraGuestRate;
 
+  const additionalAmountDue =
+    Math.max(
+      extraGuestCharge -
+        guestAdjustmentPaidExtraGuestTotal,
+      0,
+    );
+
   if (bookedText) {
     bookedText.textContent =
       String(bookedGuests);
@@ -999,6 +1131,20 @@ function updateGuestAdjustmentPreview() {
         extraGuestCharge,
       )}`;
   }
+
+  if (paidText) {
+    paidText.textContent =
+      `₱${formatMoney(
+        guestAdjustmentPaidExtraGuestTotal,
+      )}`;
+  }
+
+  if (dueText) {
+    dueText.textContent =
+      `₱${formatMoney(
+        additionalAmountDue,
+      )}`;
+  }
 }
 
 // ------------------------------------------------------------
@@ -1010,6 +1156,144 @@ function updateGuestAdjustmentPreview() {
 // - one unpaid "Extra Guest Charge" is inserted/updated
 // - duplicate structured charge rows are prevented
 // ------------------------------------------------------------
+// ------------------------------------------------------------
+// Safely read a JSON API response.
+//
+// Why:
+// The database transaction can already be committed even if the browser
+// later has trouble parsing/finishing the response. A strict response.json()
+// would throw and leave the modal open even though the adjustment was saved.
+// ------------------------------------------------------------
+async function readJsonResponseSafely(response) {
+  const rawText = await response.text();
+
+  if (!rawText) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(rawText);
+  } catch (error) {
+    console.warn(
+      "Guest Adjustment response was not valid JSON:",
+      rawText,
+    );
+
+    return {
+      message: rawText,
+    };
+  }
+}
+
+// ------------------------------------------------------------
+// Verify whether the Guest Adjustment was already committed.
+//
+// The backend performs actual_guest_count + Extra Guest Charge inside one
+// transaction. If the updated actual_guest_count is visible here, the save
+// transaction completed successfully.
+// ------------------------------------------------------------
+async function confirmGuestAdjustmentWasSaved(
+  bookingId,
+  expectedActualGuestCount,
+) {
+  try {
+    const response = await fetch(
+      `${API_BASE}/bookings?scope=all`,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+        },
+        cache: "no-store",
+      },
+    );
+
+    if (!response.ok) {
+      return false;
+    }
+
+    const data = await response.json();
+
+    const bookings = Array.isArray(data)
+      ? data
+      : Array.isArray(data?.bookings)
+        ? data.bookings
+        : [];
+
+    const booking = bookings.find(
+      (item) =>
+        Number(item?.id) ===
+        Number(bookingId),
+    );
+
+    if (!booking) {
+      return false;
+    }
+
+    const actualGuestCount = Number(
+      booking.actual_guest_count ??
+        booking.actual_guests ??
+        booking.guests ??
+        0,
+    );
+
+    return (
+      actualGuestCount ===
+      Number(expectedActualGuestCount)
+    );
+  } catch (error) {
+    console.warn(
+      "Guest Adjustment verification failed:",
+      error,
+    );
+
+    return false;
+  }
+}
+
+// ------------------------------------------------------------
+// Complete the frontend success flow.
+//
+// This is intentionally separate from the PUT response handling so the modal
+// closes reliably after a confirmed save.
+// ------------------------------------------------------------
+async function finishGuestAdjustmentSuccess(
+  successMessage,
+) {
+  // Close first so the user immediately sees that Apply worked.
+  closeGuestAdjustmentModal();
+
+  showMessage(
+    successMessage ||
+      "Guest adjustment applied successfully.",
+    "success",
+  );
+
+  try {
+    await loadGuestBookings();
+
+    const filter =
+      document.getElementById(
+        "arrivalFilter",
+      );
+
+    if (filter) {
+      filter.value = "inside";
+      applyGuestFilters();
+    }
+  } catch (error) {
+    console.error(
+      "Guest Adjustment saved but list refresh failed:",
+      error,
+    );
+
+    showMessage(
+      "Guest Adjustment was saved, but the guest list could not refresh automatically. Please click Refresh.",
+      "error",
+    );
+  }
+}
+
 async function saveGuestAdjustment() {
   const booking =
     findGuestBookingById(
@@ -1041,6 +1325,11 @@ async function saveGuestAdjustment() {
     );
     return;
   }
+
+  const reservationId =
+    Number(
+      selectedGuestAdjustmentBookingId,
+    );
 
   const actualGuestCount =
     Number(actualInput?.value || 0);
@@ -1105,7 +1394,7 @@ async function saveGuestAdjustment() {
     }
 
     const response = await fetch(
-      `${API_BASE}/admin/bookings/${selectedGuestAdjustmentBookingId}/guest-adjustment`,
+      `${API_BASE}/admin/bookings/${reservationId}/guest-adjustment`,
       {
         method: "PUT",
         headers: {
@@ -1122,7 +1411,9 @@ async function saveGuestAdjustment() {
     );
 
     const data =
-      await response.json();
+      await readJsonResponseSafely(
+        response,
+      );
 
     if (!response.ok) {
       throw new Error(
@@ -1131,30 +1422,46 @@ async function saveGuestAdjustment() {
       );
     }
 
-    closeGuestAdjustmentModal();
-
-    await loadGuestBookings();
-
-    const filter =
-      document.getElementById(
-        "arrivalFilter",
-      );
-
-    if (filter) {
-      filter.value = "inside";
-      applyGuestFilters();
-    }
-
-    showMessage(
+    // --------------------------------------------------------
+    // IMPORTANT:
+    // Once the backend reports HTTP success, close the modal first.
+    // Refreshing the list happens after the modal is already gone.
+    // --------------------------------------------------------
+    await finishGuestAdjustmentSuccess(
       data.message ||
         "Guest adjustment applied successfully.",
-      "success",
     );
+
+    return;
   } catch (error) {
     console.error(
       "frontdesk saveGuestAdjustment error:",
       error,
     );
+
+    // --------------------------------------------------------
+    // RECOVERY CHECK
+    //
+    // If the PUT reached MySQL and committed, but the browser encountered a
+    // response/network issue afterward, verify the current reservation.
+    //
+    // Because the backend saves actual_guest_count and Extra Guest Charge in
+    // one database transaction, seeing the expected actual count means the
+    // operation succeeded and we should not tell staff to submit again.
+    // --------------------------------------------------------
+    const wasSaved =
+      await confirmGuestAdjustmentWasSaved(
+        reservationId,
+        actualGuestCount,
+      );
+
+    if (wasSaved) {
+      await finishGuestAdjustmentSuccess(
+        "Guest adjustment saved successfully.",
+      );
+
+      return;
+    }
 
     showMessage(
       error.message ||

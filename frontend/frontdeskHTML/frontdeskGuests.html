@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <title>Guest Management | SmartResort Front Desk</title>
+    <title>Guest Management | Arvic Seaside Front Desk</title>
 
     <link rel="stylesheet" href="../sharedCSS/global.css" />
     <link rel="stylesheet" href="../css/style.css" />
@@ -254,14 +254,27 @@
         </div>
 
         <div class="guest-adjustment-charge-preview">
-          <span>Calculated Extra Guest Charge</span>
+          <span>Calculated Extra Guest Total</span>
           <strong id="extraGuestChargePreview">₱0.00</strong>
         </div>
 
+        <div class="guest-adjustment-payment-summary">
+          <div class="guest-adjustment-payment-row">
+            <span>Previously Paid Extra Guest Charges</span>
+            <strong id="paidExtraGuestChargeText">₱0.00</strong>
+          </div>
+
+          <div class="guest-adjustment-payment-row due-row">
+            <span>Additional Amount to Collect</span>
+            <strong id="additionalExtraGuestDueText">₱0.00</strong>
+          </div>
+        </div>
+
         <div class="guest-adjustment-note">
-          The original booked guest count stays unchanged. Re-saving this
-          adjustment updates the same unpaid
-          <strong>Extra Guest Charge</strong> instead of creating duplicates.
+          The original booked guest count stays unchanged. Already-paid
+          <strong>Extra Guest Charge</strong> records are preserved. If more
+          guests arrive later, the system creates or updates only the
+          additional unpaid amount that still needs to be collected.
         </div>
 
         <div class="guest-adjustment-modal-actions">
