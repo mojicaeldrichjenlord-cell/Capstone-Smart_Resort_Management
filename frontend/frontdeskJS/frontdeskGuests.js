@@ -192,6 +192,63 @@ function setupGuestEvents() {
         closeGuestAdjustmentModal();
       }
     });
+
+  // ----------------------------------------------------------
+  // STEP 3F-B2: Entrance Fee Adjustment modal events
+  // ----------------------------------------------------------
+  [
+    "entranceSeniorPaxInput",
+    "entrancePwdPaxInput",
+    "entranceKidFreePaxInput",
+  ].forEach((inputId) => {
+    document
+      .getElementById(inputId)
+      ?.addEventListener(
+        "input",
+        updateEntranceAdjustmentPreview,
+      );
+  });
+
+  document
+    .getElementById("saveEntranceAdjustmentBtn")
+    ?.addEventListener(
+      "click",
+      saveEntranceAdjustment,
+    );
+
+  document
+    .getElementById("removeEntranceAdjustmentBtn")
+    ?.addEventListener(
+      "click",
+      removeEntranceAdjustment,
+    );
+
+  document
+    .getElementById("cancelEntranceAdjustmentBtn")
+    ?.addEventListener(
+      "click",
+      closeEntranceAdjustmentModal,
+    );
+
+  document
+    .getElementById("closeEntranceAdjustmentBtn")
+    ?.addEventListener(
+      "click",
+      closeEntranceAdjustmentModal,
+    );
+
+  document
+    .getElementById("entranceAdjustmentModal")
+    ?.addEventListener("click", (event) => {
+      if (
+        event.target ===
+        document.getElementById(
+          "entranceAdjustmentModal",
+        )
+      ) {
+        closeEntranceAdjustmentModal();
+      }
+    });
 }
 
 // ============================================================
