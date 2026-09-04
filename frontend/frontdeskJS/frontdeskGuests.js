@@ -1589,6 +1589,142 @@ async function saveGuestAdjustment() {
 }
 
 // ============================================================
+// STEP 3F-B2: ENTRANCE FEE ADJUSTMENTS
+// ============================================================
+
+function resetEntranceAdjustmentForm() {
+  const seniorInput = document.getElementById("entranceSeniorPaxInput");
+  const pwdInput = document.getElementById("entrancePwdPaxInput");
+  const kidInput = document.getElementById("entranceKidFreePaxInput");
+  const noteInput = document.getElementById("entranceAdjustmentNoteInput");
+  const currentBox = document.getElementById("currentEntranceAdjustmentBox");
+
+  currentEntranceAdjustmentMeta = {
+    entrance_rate_per_pax: 0,
+    senior_pwd_discount_rate: 0.2,
+    booked_guest_count: 0,
+    actual_guest_count: 1,
+    included_free_entrance_pax: 0,
+    chargeable_entrance_guests: 0,
+    gross_entrance_fee: 0,
+    total_entrance_deduction: 0,
+    final_entrance_fee: 0,
+    entrance_fee_collected: 0,
+    entrance_fee_remaining: 0,
+  };
+
+  if (seniorInput) seniorInput.value = "0";
+  if (pwdInput) pwdInput.value = "0";
+  if (kidInput) kidInput.value = "0";
+  if (noteInput) noteInput.value = "";
+
+  if (currentBox) {
+    currentBox.classList.add("empty");
+    currentBox.innerHTML =
+      "No entrance adjustment has been applied yet.";
+  }
+
+  updateEntranceAdjustmentPreview();
+}
+
+function getEntranceAdjustmentPaxValues() {
+  return {
+    seniorPax: Math.max(
+      0,
+      Math.floor(
+        Number(
+          document.getElementById("entranceSeniorPaxInput")?.value || 0,
+        ),
+      ),
+    ),
+    pwdPax: Math.max(
+      0,
+      Math.floor(
+        Number(
+          document.getElementById("entrancePwdPaxInput")?.value || 0,
+        ),
+      ),
+    ),
+    kidFreePax: Math.max(
+      0,
+      Math.floor(
+        Number(
+          document.getElementById("entranceKidFreePaxInput")?.value || 0,
+        ),
+      ),
+    ),
+  };
+}
+
+function formatEntranceAdjustmentType(type) {
+  const value = String(type || "").trim().toLowerCase();
+
+  if (value === "senior") {
+    return "Senior Citizen 20%";
+  }
+
+  if (value === "pwd") {
+    return "PWD 20%";
+  }
+
+  if (value === "kid_free") {
+    return "Qualified Kid Free";
+  }
+
+  return "Entrance Adjustment";
+}
+
+function cleanEntranceVerificationNote(value) {
+  return String(value || "").trim();
+}
+
+async function openEntranceAdjustmentModal(bookingId) {
+  const booking = findGuestBookingById(bookingId);
+  const modal = document.getElementById("entranceAdjustmentModal");
+  const guestText = document.getElementById("entranceAdjustmentGuestText");
+
+  if (!booking || !modal) {
+    showMessage("Reservation not found.", "error");
+    return;
+  }
+
+  if (getGuestState(booking) !== "inside") {
+    showMessage(
+      "Entrance Adjustment is only available for checked-in guests.",
+      "error",
+    );
+    return;
+  }
+
+  selectedEntranceAdjustmentBookingId = Number(bookingId);
+  resetEntranceAdjustmentForm();
+
+  if (guestText) {
+    guestText.textContent =
+      "Verify entrance adjustments for " +
+      getGuestName(booking) +
+      " under reservation " +
+      (booking.reservation_code || "#" + booking.id) +
+      ".";
+  }
+
+  modal.classList.add("show");
+  document.body.classList.add("guest-modal-open");
+
+  await loadEntranceAdjustment();
+}
+
+function closeEntranceAdjustmentModal() {
+  selectedEntranceAdjustmentBookingId = null;
+
+  document
+    .getElementById("entranceAdjustmentModal")
+    ?.classList.remove("show");
+
+  document.body.classList.remove("guest-modal-open");
+}
+
+// ============================================================
 // SECTION 10: RECORD STATE TEXT
 // ============================================================
 
