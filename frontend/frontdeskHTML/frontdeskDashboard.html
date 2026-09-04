@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Front Desk Dashboard | SmartResort</title>
+
+    <link rel="stylesheet" href="../sharedCSS/global.css" />
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../frontdeskCSS/frontdeskDashboard.css" />
+  </head>
+
+  <body class="has-fixed-navbar">
+    <!-- ======================================================
+       FRONT DESK NAVBAR
+    ======================================================= -->
+    <header class="navbar">
+      <div class="logo">Arvic Seaside</div>
+
+      <nav>
+        <a href="frontdeskDashboard.html" class="active-nav">Dashboard</a>
+        <a href="frontdeskReservations.html">Reservations</a>
+        <a href="frontdeskPayments.html">Payments</a>
+        <a href="frontdeskGuests.html">Guests</a>
+        <a href="../adminHTML/admin-walkin.html">Manual Reservation</a>
+        <a href="#" id="logoutBtn">Logout</a>
+      </nav>
+    </header>
+
+    <!-- ======================================================
+       FRONT DESK DASHBOARD
+    ======================================================= -->
+    <main class="frontdesk-wrapper">
+      <section class="frontdesk-hero">
+        <div class="frontdesk-hero-main">
+          <div>
+            <p class="frontdesk-eyebrow">FRONT DESK STAFF</p>
+            <h1>Front Desk Dashboard</h1>
+
+            <p class="frontdesk-description">
+              Handle daily reservations, manual bookings, payments, guest
+              arrivals, and check-in/check-out operations.
+            </p>
+          </div>
+
+          <div class="frontdesk-account-card">
+            <span>Logged in as</span>
+            <strong id="accountName">Front Desk Staff</strong>
+            <small id="accountEmail">-</small>
+          </div>
+        </div>
+      </section>
+
+      <section class="frontdesk-card-grid">
+        <article class="frontdesk-card frontdesk-card-ready">
+          <div class="frontdesk-card-number">01</div>
+
+          <h2>Reservation Records</h2>
+
+          <p>
+            View online and manual reservations and monitor reservation and
+            payment status.
+          </p>
+
+          <a
+            href="frontdeskReservations.html"
+            class="btn-primary frontdesk-card-action"
+          >
+            View Reservations
+          </a>
+        </article>
+
+        <article class="frontdesk-card frontdesk-card-ready">
+          <div class="frontdesk-card-number">02</div>
+
+          <h2>Manual Reservation</h2>
+
+          <p>
+            Create walk-in or Facebook/Messenger reservations for resort guests.
+          </p>
+
+          <a
+            href="../adminHTML/admin-walkin.html"
+            class="btn-primary frontdesk-card-action"
+          >
+            Create Reservation
+          </a>
+        </article>
+
+        <!-- ==================================================
+             STEP 3E: PAYMENT MANAGEMENT
+        =================================================== -->
+        <article class="frontdesk-card frontdesk-card-ready">
+          <div class="frontdesk-card-number">03</div>
+
+          <h2>Payment Management</h2>
+
+          <p>
+            Review submitted payment proof, verify 50% online downpayments, and
+            monitor remaining accommodation balances.
+          </p>
+
+          <a
+            href="frontdeskPayments.html"
+            class="btn-primary frontdesk-card-action"
+          >
+            Manage Payments
+          </a>
+        </article>
+
+        <article class="frontdesk-card frontdesk-card-ready">
+          <div class="frontdesk-card-number">04</div>
+
+          <h2>Guest Management</h2>
+
+          <p>
+            Review today's arrivals, collect onsite balances, and check
+            confirmed guests into the resort.
+          </p>
+
+          <a
+            href="frontdeskGuests.html"
+            class="btn-primary frontdesk-card-action"
+          >
+            Manage Guests
+          </a>
+        </article>
+      </section>
+
+      <section class="frontdesk-access-note">
+        <strong>Front Desk Access:</strong>
+
+        <span>
+          This role handles daily reservation, payment, and guest operations.
+          Accommodation editing, map editing, staff account management, and
+          management analytics remain restricted.
+        </span>
+      </section>
+    </main>
+
+    <script src="../sharedJS/toast.js"></script>
+    <script src="../frontdeskJS/frontdeskDashboard.js"></script>
+  </body>
+</html>

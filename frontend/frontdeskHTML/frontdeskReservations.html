@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Reservation Records | SmartResort Front Desk</title>
+
+    <link rel="stylesheet" href="../sharedCSS/global.css" />
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../frontdeskCSS/frontdeskReservations.css" />
+  </head>
+
+  <body class="has-fixed-navbar">
+    <!-- ======================================================
+       FRONT DESK NAVBAR
+    ======================================================= -->
+    <header class="navbar">
+      <div class="logo">Arvic Seaside</div>
+
+      <nav>
+        <a href="frontdeskDashboard.html">Dashboard</a>
+        <a href="frontdeskReservations.html" class="active-nav">Reservations</a>
+        <a href="frontdeskPayments.html">Payments</a>
+        <a href="frontdeskGuests.html">Guests</a>
+        <a href="../adminHTML/admin-walkin.html">Manual Reservation</a>
+        <a href="#" id="logoutBtn">Logout</a>
+      </nav>
+    </header>
+
+    <!-- ======================================================
+       PAGE WRAPPER
+    ======================================================= -->
+    <main class="frontdesk-reservations-wrapper">
+      <a href="frontdeskDashboard.html" class="back-btn">
+        ← Back to Dashboard
+      </a>
+
+      <section class="frontdesk-reservations-hero">
+        <div>
+          <p class="hero-eyebrow">FRONT DESK STAFF</p>
+          <h1>Reservation Records</h1>
+          <p>
+            View online and manual reservations, monitor payment progress, and
+            search current or previous reservation records.
+          </p>
+        </div>
+
+        <button type="button" class="btn-primary" id="refreshBtn">
+          Refresh
+        </button>
+      </section>
+
+      <section class="frontdesk-summary-grid">
+        <article class="summary-card">
+          <span>Active / Current</span>
+          <strong id="activeCount">0</strong>
+        </article>
+
+        <article class="summary-card">
+          <span>Pending</span>
+          <strong id="pendingCount">0</strong>
+        </article>
+
+        <article class="summary-card">
+          <span>Partially Paid</span>
+          <strong id="partiallyPaidCount">0</strong>
+        </article>
+
+        <article class="summary-card">
+          <span>Paid</span>
+          <strong id="paidCount">0</strong>
+        </article>
+      </section>
+
+      <section class="frontdesk-panel">
+        <div class="panel-heading">
+          <div>
+            <h2>Search and Filter</h2>
+            <p>
+              Active/current reservations are shown by default. Use the filters
+              to review completed, cancelled, rejected, or older records.
+            </p>
+          </div>
+        </div>
+
+        <div class="frontdesk-filter-grid">
+          <div class="filter-group filter-search">
+            <label for="searchInput">Search</label>
+
+            <input
+              type="text"
+              id="searchInput"
+              placeholder="Reservation code, guest, phone, accommodation..."
+            />
+          </div>
+
+          <div class="filter-group">
+            <label for="statusFilter">Reservation Status</label>
+
+            <select id="statusFilter">
+              <option value="active" selected>Active / Current</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Confirmed</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="rejected">Rejected</option>
+              <option value="all">All Records</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="paymentStatusFilter">Payment Status</label>
+
+            <select id="paymentStatusFilter">
+              <option value="">All</option>
+              <option value="pending">Pending</option>
+              <option value="unpaid">Unpaid</option>
+              <option value="partially_paid">Partially Paid</option>
+              <option value="paid">Paid</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="sourceFilter">Source</label>
+
+            <select id="sourceFilter">
+              <option value="">All</option>
+              <option value="online">Online</option>
+              <option value="manual">Manual</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section class="frontdesk-panel">
+        <div class="panel-heading">
+          <div>
+            <h2>Reservation Records</h2>
+            <p>
+              Read-only Front Desk view. Use Payment Management for payment
+              proof verification.
+            </p>
+          </div>
+
+          <span id="recordCount" class="record-count">0 records</span>
+        </div>
+
+        <div id="reservationRecords">
+          <div class="reservation-state-box">
+            Loading reservation records...
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script src="../sharedJS/toast.js"></script>
+    <script src="../sharedJS/api-config.js"></script>
+    <script src="../frontdeskJS/frontdeskReservations.js"></script>
+  </body>
+</html>

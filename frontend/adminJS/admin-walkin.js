@@ -30,6 +30,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupManualForm();
   setupContactNumberInputGuard();
   setupReservationTypeField();
+  setupManualReservationDateRules();
 
   const restoreDraft = shouldRestoreManualDraft();
 
@@ -229,6 +230,125 @@ function formatManualReservationType(type) {
   return type === "facebook" ? "Facebook / Messenger Reservation" : "Walk-in Guest";
 }
 
+
+// ============================================================
+// SECTION 5.2: Manual reservation date rules
+//
+// Final rule:
+// - Walk-in Guest = TODAY ONLY because the guest is already onsite.
+// - Facebook / Messenger = TODAY OR FUTURE.
+//
+// This protects the manual reservation UI from creating a future reservation
+// that is immediately auto-checked-in as a walk-in.
+// ============================================================
+
+function setupManualReservationDateRules() {
+  const reservationType = document.getElementById("manualReservationType");
+
+  if (
+    reservationType &&
+    reservationType.dataset.dateRuleBound !== "true"
+  ) {
+    reservationType.dataset.dateRuleBound = "true";
+
+    reservationType.addEventListener("change", () => {
+      applyManualReservationDateRules();
+      updateSummary();
+    });
+  }
+
+  applyManualReservationDateRules();
+}
+
+function getPhilippineTodayInputDate() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+
+  const values = {};
+
+  parts.forEach((part) => {
+    values[part.type] = part.value;
+  });
+
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function applyManualReservationDateRules() {
+  const today = getPhilippineTodayInputDate();
+  const reservationType = getManualReservationType();
+  const dateInputs = [
+    ...document.querySelectorAll(".booking-item-card .date-input"),
+  ];
+
+  dateInputs.forEach((dateInput) => {
+    dateInput.min = today;
+
+    if (reservationType === "walkin") {
+      // Walk-in means the guest is physically onsite now.
+      // Force every accommodation item to today's date.
+      dateInput.max = today;
+      dateInput.value = today;
+      dateInput.title = "Walk-in reservations are limited to today only.";
+    } else {
+      // Facebook/Messenger reservations may be today or a future date.
+      dateInput.removeAttribute("max");
+      dateInput.title =
+        "Facebook/Messenger reservations may use today or a future date.";
+
+      if (!dateInput.value || dateInput.value < today) {
+        dateInput.value = today;
+      }
+    }
+
+    const card = dateInput.closest(".booking-item-card");
+    const itemId = Number(card?.dataset?.itemId || 0);
+
+    if (itemId) {
+      updateItemPreview(itemId);
+    }
+  });
+}
+
+function validateManualReservationDates(items, reservationType) {
+  const today = getPhilippineTodayInputDate();
+
+  for (const item of items) {
+    const checkInDate = String(item?.check_in_date || "").slice(0, 10);
+
+    if (!checkInDate) {
+      return {
+        valid: false,
+        message: "Each accommodation item must have a reservation date.",
+      };
+    }
+
+    if (reservationType === "walkin" && checkInDate !== today) {
+      return {
+        valid: false,
+        message:
+          "Walk-in guests must use today's reservation date because they are already onsite.",
+      };
+    }
+
+    if (reservationType === "facebook" && checkInDate < today) {
+      return {
+        valid: false,
+        message:
+          "Facebook/Messenger reservations cannot use a past reservation date.",
+      };
+    }
+  }
+
+  return {
+    valid: true,
+    message: "",
+  };
+}
+
 // ============================================================
 // SECTION 5.1: Contact number validation
 // Keeps contact number numeric and exactly 11 digits, starting with 09.
@@ -288,6 +408,15 @@ function goToPaymentScreen(e) {
     return;
   }
 
+  const reservationDateValidation =
+    validateManualReservationDates(items, reservation_type);
+
+  if (!reservationDateValidation.valid) {
+    showMessage(reservationDateValidation.message, "error");
+    applyManualReservationDateRules();
+    return;
+  }
+
   const draft = {
     first_name,
     middle_name,
@@ -318,7 +447,7 @@ function addBookingItem(preselectedId = null) {
   bookingItemCounter += 1;
 
   const itemId = bookingItemCounter;
-  const today = new Date().toISOString().split("T")[0];
+  const today = getPhilippineTodayInputDate();
 
   const card = document.createElement("div");
   card.className = "booking-item-card";
@@ -466,6 +595,7 @@ function addBookingItem(preselectedId = null) {
   populateStayDurationOptions(itemId);
   updateItemPreview(itemId);
   refreshTitles();
+  applyManualReservationDateRules();
 }
 
 // ============================================================
@@ -755,6 +885,7 @@ function restoreDraftIfAny() {
       });
     }
 
+    applyManualReservationDateRules();
     updateSummary();
   } catch (error) {
     console.error("restoreDraftIfAny error:", error);

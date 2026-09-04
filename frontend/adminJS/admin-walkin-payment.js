@@ -21,9 +21,21 @@ const ADMIN_WALKIN_DRAFT_KEY = "smartresort_admin_walkin_draft_v2";
 const ADMIN_WALKIN_SUCCESS_RESET_KEY =
   "smartresort_admin_walkin_success_reset";
 
+// If a successful submit somehow reloads this same payment page instead of
+// navigating away, this URL hash survives the reload and lets startup recover.
+const ADMIN_WALKIN_SUCCESS_REDIRECT_HASH =
+  "#manual-reservation-created";
+
 let walkInDraft = null;
 let availableAccommodations = [];
 let isSubmittingManualReservation = false;
+
+// The normal POST response redirect remains the primary path.
+// This watchdog handles the observed edge case where the backend has already
+// created the reservation but the browser never receives/finishes the POST
+// success response, leaving the staff on the payment page.
+let manualReservationRedirectStarted = false;
+let manualReservationWatchdogTimer = null;
 
 let computedTotals = {
   accommodationTotal: 0,
@@ -40,6 +52,18 @@ let computedTotals = {
 document.addEventListener("DOMContentLoaded", async () => {
   checkStaffAccess();
   setupLogout();
+
+  // ----------------------------------------------------------
+  // SUCCESS-RELOAD RECOVERY
+  //
+  // We observed that the reservation can already be saved while the
+  // browser unexpectedly reloads this same payment page. The successful
+  // submission marker is checked before the draft is loaded, so the user
+  // is sent to the correct Guest page instead of seeing a reset form.
+  // ----------------------------------------------------------
+  if (redirectFromCompletedManualReservation()) {
+    return;
+  }
 
   walkInDraft = getWalkInDraft();
 
@@ -91,6 +115,410 @@ function checkStaffAccess() {
   }
 }
 
+
+// ============================================================
+// SECTION 2.1: Role-aware success destination
+//
+// After a successful manual reservation:
+// - Front Desk goes directly to Front Desk Guest Management.
+// - Administrator goes directly to Admin Guests Inside.
+//
+// This prevents the payment page from looking like it is still waiting for
+// another submission after the reservation has already been created.
+// ============================================================
+
+function getManualReservationSuccessDestination() {
+  const user = getLoggedInUser();
+  const role = String(user?.role || "")
+    .trim()
+    .toLowerCase();
+
+  if (role === "admin") {
+    return "/frontend/adminHTML/admin-guests-inside.html";
+  }
+
+  // Front Desk, legacy "staff", or safe operational fallback.
+  return "/frontend/frontdeskHTML/frontdeskGuests.html";
+}
+
+function buildManualReservationSuccessUrl(data = {}) {
+  const target = new URL(
+    getManualReservationSuccessDestination(),
+    window.location.origin,
+  );
+
+  target.searchParams.set("created", "1");
+
+  if (data?.reservationCode) {
+    target.searchParams.set(
+      "reservationCode",
+      String(data.reservationCode),
+    );
+  }
+
+  if (data?.bookingId) {
+    target.searchParams.set(
+      "reservationId",
+      String(data.bookingId),
+    );
+  }
+
+  return target.href;
+}
+
+function markCompletedManualReservationInCurrentUrl() {
+  try {
+    const currentUrl = new URL(window.location.href);
+
+    currentUrl.hash =
+      ADMIN_WALKIN_SUCCESS_REDIRECT_HASH;
+
+    // No reload here. This only places a recovery marker in the URL.
+    window.history.replaceState(
+      null,
+      document.title,
+      currentUrl.href,
+    );
+  } catch (error) {
+    console.error(
+      "Could not set manual reservation success marker:",
+      error,
+    );
+  }
+}
+
+function redirectFromCompletedManualReservation() {
+  if (
+    window.location.hash !==
+    ADMIN_WALKIN_SUCCESS_REDIRECT_HASH
+  ) {
+    return false;
+  }
+
+  const target = new URL(
+    getManualReservationSuccessDestination(),
+    window.location.origin,
+  ).href;
+
+  // This is running during a fresh page load, so there is no submit click
+  // left to interfere with the navigation.
+  window.location.replace(target);
+
+  return true;
+}
+
+function redirectAfterSuccessfulManualReservation(data = {}) {
+  if (manualReservationRedirectStarted) {
+    return;
+  }
+
+  manualReservationRedirectStarted = true;
+
+  if (manualReservationWatchdogTimer) {
+    window.clearInterval(
+      manualReservationWatchdogTimer,
+    );
+    manualReservationWatchdogTimer = null;
+  }
+
+  const target =
+    buildManualReservationSuccessUrl(data);
+
+  // ----------------------------------------------------------
+  // IMPORTANT:
+  // Mark this payment URL BEFORE navigating.
+  //
+  // If the browser unexpectedly reloads this exact payment page after the
+  // reservation was saved, DOMContentLoaded sees the hash and redirects
+  // again before it tries to read the cleared draft.
+  // ----------------------------------------------------------
+  markCompletedManualReservationInCurrentUrl();
+
+  // Primary navigation.
+  window.location.replace(target);
+
+  // Independent fallback if the page is somehow still here.
+  window.setTimeout(() => {
+    if (
+      window.location.hash ===
+      ADMIN_WALKIN_SUCCESS_REDIRECT_HASH
+    ) {
+      window.open(target, "_self");
+    }
+  }, 250);
+}
+
+// ============================================================
+// SECTION 2.2: Manual reservation creation watchdog
+//
+// Why this exists:
+// We confirmed a real case where the reservation is already present in the
+// database / Front Desk Guests page, but the payment page does not receive
+// or finish the POST success flow and therefore never reaches its redirect.
+//
+// This watchdog does NOT create another reservation.
+// It only checks GET /bookings?scope=all for a NEW matching reservation
+// after the submit started. Once found, it redirects to Guests.
+// ============================================================
+
+function getBookingsArrayFromApiResponse(data) {
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  if (Array.isArray(data?.bookings)) {
+    return data.bookings;
+  }
+
+  return [];
+}
+
+async function getManualReservationBaselineId() {
+  try {
+    const response = await fetch(
+      `${API_BASE}/bookings?scope=all`,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+        },
+        cache: "no-store",
+      },
+    );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    const bookings =
+      getBookingsArrayFromApiResponse(data);
+
+    return bookings.reduce(
+      (maxId, booking) =>
+        Math.max(
+          maxId,
+          Number(booking?.id || 0),
+        ),
+      0,
+    );
+  } catch (error) {
+    console.warn(
+      "Manual reservation baseline lookup failed:",
+      error,
+    );
+
+    return null;
+  }
+}
+
+function normalizeWatchdogText(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase();
+}
+
+function normalizeWatchdogPhone(value) {
+  return String(value || "")
+    .replace(/\D/g, "");
+}
+
+function bookingMatchesCurrentManualDraft(
+  booking,
+  baselineId,
+) {
+  if (!booking || !walkInDraft) {
+    return false;
+  }
+
+  const bookingId = Number(booking.id || 0);
+
+  if (
+    Number.isFinite(baselineId) &&
+    bookingId <= baselineId
+  ) {
+    return false;
+  }
+
+  if (
+    normalizeWatchdogText(
+      booking.booking_source,
+    ) !== "manual"
+  ) {
+    return false;
+  }
+
+  const bookingPhone =
+    normalizeWatchdogPhone(
+      booking.contact_no || booking.phone,
+    );
+
+  const draftPhone =
+    normalizeWatchdogPhone(
+      walkInDraft.contact_no,
+    );
+
+  if (
+    draftPhone &&
+    bookingPhone !== draftPhone
+  ) {
+    return false;
+  }
+
+  const bookingFirstName =
+    normalizeWatchdogText(
+      booking.first_name,
+    );
+
+  const bookingLastName =
+    normalizeWatchdogText(
+      booking.last_name,
+    );
+
+  const draftFirstName =
+    normalizeWatchdogText(
+      walkInDraft.first_name,
+    );
+
+  const draftLastName =
+    normalizeWatchdogText(
+      walkInDraft.last_name,
+    );
+
+  if (
+    draftFirstName &&
+    bookingFirstName !== draftFirstName
+  ) {
+    return false;
+  }
+
+  if (
+    draftLastName &&
+    bookingLastName !== draftLastName
+  ) {
+    return false;
+  }
+
+  const firstDraftItem =
+    Array.isArray(walkInDraft.items)
+      ? walkInDraft.items[0]
+      : null;
+
+  const draftCheckInDate =
+    String(
+      firstDraftItem?.check_in_date || "",
+    ).slice(0, 10);
+
+  const bookingCheckInDate =
+    String(
+      booking.check_in_date ||
+        booking.check_in ||
+        "",
+    ).slice(0, 10);
+
+  if (
+    draftCheckInDate &&
+    bookingCheckInDate &&
+    draftCheckInDate !== bookingCheckInDate
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+function startManualReservationCreationWatchdog(
+  baselineId,
+) {
+  if (!Number.isFinite(baselineId)) {
+    return;
+  }
+
+  if (manualReservationWatchdogTimer) {
+    window.clearInterval(
+      manualReservationWatchdogTimer,
+    );
+  }
+
+  let attempts = 0;
+  const maxAttempts = 20;
+
+  manualReservationWatchdogTimer =
+    window.setInterval(async () => {
+      attempts += 1;
+
+      if (
+        manualReservationRedirectStarted ||
+        attempts > maxAttempts
+      ) {
+        window.clearInterval(
+          manualReservationWatchdogTimer,
+        );
+        manualReservationWatchdogTimer = null;
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `${API_BASE}/bookings?scope=all`,
+          {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+            },
+            cache: "no-store",
+          },
+        );
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data = await response.json();
+
+        const matchedBooking =
+          getBookingsArrayFromApiResponse(data)
+            .find((booking) =>
+              bookingMatchesCurrentManualDraft(
+                booking,
+                baselineId,
+              ),
+            );
+
+        if (!matchedBooking) {
+          return;
+        }
+
+        // The reservation definitely exists, even if the original POST
+        // response is still pending or failed to finish in the browser.
+        sessionStorage.removeItem(
+          ADMIN_WALKIN_DRAFT_KEY,
+        );
+
+        sessionStorage.setItem(
+          ADMIN_WALKIN_SUCCESS_RESET_KEY,
+          "1",
+        );
+
+        showMessage(
+          "Manual reservation created successfully.",
+          "success",
+        );
+
+        redirectAfterSuccessfulManualReservation({
+          bookingId: matchedBooking.id,
+          reservationCode:
+            matchedBooking.reservation_code,
+        });
+      } catch (error) {
+        console.warn(
+          "Manual reservation watchdog check failed:",
+          error,
+        );
+      }
+    }, 1200);
+}
+
 // ============================================================
 // SECTION 3: Logout
 // ============================================================
@@ -137,14 +565,17 @@ function getWalkInDraft() {
 // ============================================================
 // SECTION 5: Manual reservation type helpers
 // Walk-in:
-// - Cash only
-// - Full accommodation payment
+// - Cash, GCash, or Maya
+// - Full accommodation payment only
+// - GCash/Maya reference is OPTIONAL
+// - GCash/Maya proof screenshot is REQUIRED
 // - Auto check-in
 //
 // Facebook / Messenger:
 // - GCash or Maya
 // - 50% downpayment or full payment
-// - Reference + proof required
+// - Reference is OPTIONAL
+// - Proof screenshot is REQUIRED
 // ============================================================
 
 function getManualReservationType() {
@@ -171,30 +602,107 @@ function formatManualReservationType(
     : "Walk-in Guest";
 }
 
+
+// ============================================================
+// SECTION 5.1: Manual reservation date safety check
+//
+// This is a second frontend guard on the payment screen.
+// Even if an old/stale sessionStorage draft contains a future walk-in date,
+// submission is blocked before the API request is sent.
+// ============================================================
+
+function getPhilippineTodayInputDate() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+
+  const values = {};
+
+  parts.forEach((part) => {
+    values[part.type] = part.value;
+  });
+
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function validateManualReservationDraftDates() {
+  const items = Array.isArray(walkInDraft?.items)
+    ? walkInDraft.items
+    : [];
+
+  const today = getPhilippineTodayInputDate();
+  const reservationType = getManualReservationType();
+
+  for (const item of items) {
+    const checkInDate = String(item?.check_in_date || "").slice(0, 10);
+
+    if (!checkInDate) {
+      return {
+        valid: false,
+        message:
+          "An accommodation item has no reservation date. Please go back and review the reservation.",
+      };
+    }
+
+    if (reservationType === "walkin" && checkInDate !== today) {
+      return {
+        valid: false,
+        message:
+          "Walk-in guests must use today's reservation date because they are already onsite. Please go back and review the reservation.",
+      };
+    }
+
+    if (reservationType === "facebook" && checkInDate < today) {
+      return {
+        valid: false,
+        message:
+          "Facebook/Messenger reservations cannot use a past reservation date. Please go back and review the reservation.",
+      };
+    }
+  }
+
+  return {
+    valid: true,
+    message: "",
+  };
+}
+
 function enforcePaymentOptionsByReservationType() {
   const paymentMethod = document.getElementById("paymentMethod");
   const paymentType = document.getElementById("paymentType");
 
   if (!paymentMethod || !paymentType) return;
 
+  const previousMethod = String(paymentMethod.value || "").toLowerCase();
+  const previousType = String(paymentType.value || "").toLowerCase();
+
+  paymentMethod.disabled = false;
+
   if (isWalkInManualReservation()) {
-    paymentMethod.innerHTML = `<option value="cash">Cash</option>`;
-    paymentMethod.value = "cash";
-    paymentMethod.disabled = true;
+    // Walk-in guests may pay onsite using Cash, GCash, or Maya.
+    // Payment is still locked to FULL because the guest is already onsite.
+    paymentMethod.innerHTML = `
+      <option value="cash">Cash</option>
+      <option value="gcash">GCash</option>
+      <option value="paymaya">Maya / PayMaya</option>
+    `;
+
+    paymentMethod.value = ["cash", "gcash", "paymaya"].includes(previousMethod)
+      ? previousMethod
+      : "cash";
 
     paymentType.innerHTML = `<option value="full">Full Payment</option>`;
     paymentType.value = "full";
     paymentType.disabled = true;
     paymentType.title =
-      "Walk-in reservations are cash and full payment only.";
+      "Walk-in reservations must be full payment only.";
 
     return;
   }
 
-  const previousMethod = String(paymentMethod.value || "").toLowerCase();
-  const previousType = String(paymentType.value || "").toLowerCase();
-
-  paymentMethod.disabled = false;
   paymentMethod.innerHTML = `
     <option value="gcash">GCash</option>
     <option value="paymaya">Maya / PayMaya</option>
@@ -401,7 +909,13 @@ function setupPaymentForm() {
 
   if (submitBtn) {
     submitBtn.type = "button";
-    submitBtn.onclick = submitManualReservation;
+
+    // Only ONE submit handler is attached.
+    // The old inline onclick in the HTML was removed.
+    submitBtn.addEventListener(
+      "click",
+      submitManualReservation,
+    );
   }
 }
 
@@ -450,7 +964,11 @@ function renderReservationSummary() {
         formatEntranceType(walkInDraft.entrance_type),
       )}<br />
 
-      <strong>Estimated Entrance Fee:</strong>
+      <strong>${
+        isWalkInManualReservation()
+          ? "Entrance Fee"
+          : "Estimated Entrance Fee"
+      }:</strong>
       ₱${formatMoney(computedTotals.estimatedEntranceFee)}
     </div>
 
@@ -584,21 +1102,25 @@ function updatePaymentRequirementUI() {
 
   const isWalkIn = isWalkInManualReservation();
   const isCash = method === "cash";
-  const requiresProof =
-    !isWalkIn && isProofRequired(method);
+  const isEWallet = ["gcash", "paymaya"].includes(method);
+
+  // Screenshot is required for every manual GCash/Maya payment.
+  // Reference number is optional, but if entered it must match the
+  // selected payment method's expected format.
+  const requiresScreenshot = isEWallet;
 
   if (paymentType && isWalkIn) {
     paymentType.value = "full";
     paymentType.disabled = true;
     paymentType.title =
-      "Walk-in reservations are cash and full payment only.";
+      "Walk-in reservations must be full payment only.";
   }
 
   if (proofReference) {
-    proofReference.required = requiresProof;
-    proofReference.disabled = isCash || isWalkIn;
+    proofReference.required = false;
+    proofReference.disabled = isCash;
 
-    if (isCash || isWalkIn) {
+    if (isCash) {
       proofReference.value = "";
       proofReference.placeholder =
         "Not required for cash payment";
@@ -606,8 +1128,8 @@ function updatePaymentRequirementUI() {
     } else {
       proofReference.placeholder =
         method === "gcash"
-          ? "GCash: 1234-5678-9012-3"
-          : "Maya: 1234-5678-9012";
+          ? "Optional GCash reference"
+          : "Optional Maya reference";
 
       proofReference.setAttribute(
         "maxlength",
@@ -623,72 +1145,68 @@ function updatePaymentRequirementUI() {
   }
 
   if (proofImage) {
-    proofImage.required = requiresProof;
-    proofImage.disabled = isCash || isWalkIn;
+    proofImage.required = requiresScreenshot;
+    proofImage.disabled = isCash;
 
-    if (isCash || isWalkIn) {
+    if (isCash) {
       proofImage.value = "";
     }
   }
 
-  if (
-    proofPreview &&
-    (isCash || isWalkIn)
-  ) {
+  if (proofPreview && isCash) {
     proofPreview.style.display = "none";
     proofPreview.src = "";
   }
 
   if (referenceGroup) {
     referenceGroup.style.display =
-      isCash || isWalkIn ? "none" : "flex";
+      isCash ? "none" : "flex";
   }
 
   if (proofGroup) {
     proofGroup.style.display =
-      isCash || isWalkIn ? "none" : "flex";
+      isCash ? "none" : "flex";
   }
 
   if (referenceRequiredText) {
-    referenceRequiredText.textContent = requiresProof
-      ? " *Required"
+    referenceRequiredText.textContent = isEWallet
+      ? " (Optional)"
       : " (Not needed)";
 
-    referenceRequiredText.style.color = requiresProof
-      ? "#dc2626"
-      : "#64748b";
+    referenceRequiredText.style.color = "#64748b";
   }
 
   if (proofRequiredText) {
-    proofRequiredText.textContent = requiresProof
+    proofRequiredText.textContent = requiresScreenshot
       ? " *Required"
       : " (Not needed)";
 
-    proofRequiredText.style.color = requiresProof
+    proofRequiredText.style.color = requiresScreenshot
       ? "#dc2626"
       : "#64748b";
   }
 
   if (methodHelp) {
     methodHelp.textContent = isWalkIn
-      ? "Walk-in reservations use Cash only and are automatically recorded as full payment."
-      : "Facebook/Messenger reservations use GCash or Maya and require a reference number plus proof screenshot.";
+      ? "Walk-in accepts Cash, GCash, or Maya. GCash/Maya requires a proof screenshot; reference number is optional."
+      : "Facebook/Messenger uses GCash or Maya. Proof screenshot is required; reference number is optional.";
   }
 
   if (paymentRuleNote) {
     paymentRuleNote.innerHTML = isWalkIn
       ? `
         <strong>Walk-in Rule:</strong><br />
-        Walk-in guests are already onsite, so the payment
-        method is Cash only, full accommodation payment only,
-        and the reservation will be automatically checked in
-        after submission.
+        Walk-in guests are already onsite. Payment may be
+        Cash, GCash, or Maya and must be full accommodation
+        payment. For GCash/Maya, upload the payment screenshot;
+        the reference number is optional. The reservation will
+        be automatically checked in after submission.
       `
       : `
         <strong>Facebook / Messenger Rule:</strong><br />
-        GCash or Maya is required. Enter the transaction
-        reference number and upload the payment proof before
-        submitting the reservation.
+        GCash or Maya is required. Upload the payment proof
+        screenshot before submitting. The reference number is
+        optional.
       `;
   }
 
@@ -701,6 +1219,8 @@ function updatePaymentRequirementUI() {
 
 function updatePaymentBreakdown() {
   computedTotals = computeTotals();
+
+  const isWalkIn = isWalkInManualReservation();
 
   const paymentType =
     document.getElementById("paymentType")?.value ||
@@ -716,8 +1236,18 @@ function updatePaymentBreakdown() {
     0,
   );
 
+  // Facebook/Messenger:
+  // remaining accommodation + estimated entrance fee is still a future
+  // Front Desk collection reminder.
   const frontDeskReminder =
     remainingBalance +
+    computedTotals.estimatedEntranceFee;
+
+  // Walk-in:
+  // guest is already onsite and full accommodation + entrance fee are
+  // collected during this manual reservation flow.
+  const walkInTotalDue =
+    computedTotals.accommodationTotal +
     computedTotals.estimatedEntranceFee;
 
   computedTotals.paidAmount = paidAmount;
@@ -754,10 +1284,109 @@ function updatePaymentBreakdown() {
     )}`,
   );
 
+  // ----------------------------------------------------------
+  // Dynamic labels/rows by reservation type
+  // ----------------------------------------------------------
+
+  const downpaymentRow =
+    document.getElementById("paymentDownpaymentRow");
+
+  const totalCollectedRow =
+    document.getElementById(
+      "paymentTotalCollectedRow",
+    );
+
+  const collectionNote =
+    document.getElementById(
+      "paymentCollectionNote",
+    );
+
+  if (isWalkIn) {
+    // Walk-in is full payment only, so 50% downpayment is irrelevant.
+    if (downpaymentRow) {
+      downpaymentRow.style.display = "none";
+    }
+
+    if (totalCollectedRow) {
+      totalCollectedRow.style.display = "flex";
+    }
+
+    setText(
+      "paymentPaidLabel",
+      "Accommodation Paid",
+    );
+
+    setText(
+      "paymentEntranceLabel",
+      "Entrance Fee",
+    );
+
+    setText(
+      "paymentTotalDueLabel",
+      "Total Amount Due",
+    );
+
+    setText(
+      "paymentFrontDeskReminder",
+      `₱${formatMoney(walkInTotalDue)}`,
+    );
+
+    setText(
+      "paymentTotalCollected",
+      `₱${formatMoney(walkInTotalDue)}`,
+    );
+
+    if (collectionNote) {
+      collectionNote.innerHTML = `
+        <strong>Walk-in Collection:</strong><br />
+        The guest is already onsite. Full accommodation payment
+        and the current entrance fee are collected during this
+        manual reservation. After successful submission, the
+        reservation is marked paid and the guest is automatically
+        checked in.
+      `;
+    }
+
+    return;
+  }
+
+  // Facebook / Messenger view
+  if (downpaymentRow) {
+    downpaymentRow.style.display = "flex";
+  }
+
+  if (totalCollectedRow) {
+    totalCollectedRow.style.display = "none";
+  }
+
+  setText(
+    "paymentPaidLabel",
+    "Paid Amount",
+  );
+
+  setText(
+    "paymentEntranceLabel",
+    "Estimated Entrance Fee",
+  );
+
+  setText(
+    "paymentTotalDueLabel",
+    "Total Reminder for Front Desk",
+  );
+
   setText(
     "paymentFrontDeskReminder",
     `₱${formatMoney(frontDeskReminder)}`,
   );
+
+  if (collectionNote) {
+    collectionNote.innerHTML = `
+      <strong>Reminder:</strong><br />
+      Entrance fee is not included in the downpayment computation.
+      It remains an estimate for Front Desk collection during guest
+      arrival/check-in.
+    `;
+  }
 }
 
 // ============================================================
@@ -844,8 +1473,8 @@ async function submitManualReservation(event) {
       .getElementById("paymentNote")
       ?.value.trim() || "";
 
-  const requiresProof =
-    !isWalkIn && isProofRequired(paymentMethod);
+  const requiresScreenshot =
+    isProofRequired(paymentMethod);
 
   // ----------------------------------------------------------
   // Validate reservation/payment rules.
@@ -862,6 +1491,17 @@ async function submitManualReservation(event) {
     return;
   }
 
+  const reservationDateValidation =
+    validateManualReservationDraftDates();
+
+  if (!reservationDateValidation.valid) {
+    showMessage(
+      reservationDateValidation.message,
+      "error",
+    );
+    return;
+  }
+
   const totals = computeTotals();
 
   if (totals.accommodationTotal <= 0) {
@@ -872,9 +1512,12 @@ async function submitManualReservation(event) {
     return;
   }
 
-  if (isWalkIn && paymentMethod !== "cash") {
+  if (
+    isWalkIn &&
+    !["cash", "gcash", "paymaya"].includes(paymentMethod)
+  ) {
     showMessage(
-      "Walk-in reservations must use cash payment only.",
+      "Walk-in reservations only accept Cash, GCash, or Maya.",
       "error",
     );
     return;
@@ -891,7 +1534,9 @@ async function submitManualReservation(event) {
     return;
   }
 
-  if (requiresProof) {
+  // Reference is optional for manual GCash/Maya payments.
+  // If the staff enters one, validate its format.
+  if (proofReference && ["gcash", "paymaya"].includes(paymentMethod)) {
     const referenceValidation =
       validateReferenceNumberByMethod(
         proofReference,
@@ -909,7 +1554,7 @@ async function submitManualReservation(event) {
     }
   }
 
-  if (requiresProof && !proofImage) {
+  if (requiresScreenshot && !proofImage) {
     showMessage(
       "Proof screenshot is required for GCash or Maya payments.",
       "error",
@@ -917,12 +1562,14 @@ async function submitManualReservation(event) {
     return;
   }
 
-  const proofImageData = proofImage
-    ? await fileToBase64(proofImage)
-    : null;
-
   // ----------------------------------------------------------
-  // Build final backend payload.
+  // IMPORTANT: Do NOT convert the uploaded screenshot to Base64.
+  //
+  // The screenshot is already appended to FormData below as a real file.
+  // Converting it again to Base64 makes the request/database unnecessarily
+  // large and can flood the backend terminal with a huge data:image string.
+  //
+  // The backend will save the uploaded file path in proof_of_payment.
   // ----------------------------------------------------------
 
   const payload = {
@@ -940,8 +1587,9 @@ async function submitManualReservation(event) {
     proof_reference:
       proofReference || null,
 
-    proof_image_data:
-      proofImageData,
+    // Keep legacy Base64 field empty.
+    // Actual proof is sent as multipart FormData file.
+    proof_image_data: null,
 
     note: combineNotes(
       walkInDraft.note,
@@ -966,15 +1614,49 @@ async function submitManualReservation(event) {
       submitBtn.style.cursor = "not-allowed";
     }
 
+    // --------------------------------------------------------
+    // Send multipart/form-data so multer can receive the proof
+    // screenshot as req.file.
+    //
+    // IMPORTANT:
+    // Do NOT manually set Content-Type here. The browser must add
+    // the multipart boundary automatically.
+    // --------------------------------------------------------
+    const formData = new FormData();
+
+    formData.append(
+      "payload",
+      JSON.stringify(payload),
+    );
+
+    if (proofImage) {
+      formData.append(
+        "proof_image",
+        proofImage,
+        proofImage.name,
+      );
+    }
+
+    // --------------------------------------------------------
+    // Capture the current latest reservation ID BEFORE POST.
+    // The watchdog can then detect only a newly-created matching
+    // reservation and redirect even if the POST response never finishes.
+    // --------------------------------------------------------
+    const baselineReservationId =
+      await getManualReservationBaselineId();
+
+    startManualReservationCreationWatchdog(
+      baselineReservationId,
+    );
+
     const response = await fetch(
       `${API_BASE}/bookings/walk-in`,
       {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
           Accept: "application/json",
         },
-        body: JSON.stringify(payload),
+        body: formData,
       },
     );
 
@@ -1010,28 +1692,36 @@ async function submitManualReservation(event) {
       "1",
     );
 
-    if (typeof showToast === "function") {
-      showToast(
-        "Manual reservation created successfully.",
-        "success",
-      );
-    }
+    // --------------------------------------------------------
+    // SUCCESS CONFIRMED
+    //
+    // 1. Show a real success message.
+    //    manualReservationRoleNav.js watches this as a second fallback.
+    //
+    // 2. Mark this URL and navigate to the correct Guests page.
+    // --------------------------------------------------------
+    const successMessage =
+      data.message ||
+      "Manual reservation created successfully.";
 
     showMessage(
-      data.message ||
-        "Manual reservation created successfully.",
+      successMessage,
       "success",
     );
 
-    // Existing flow returns to the booking dashboard.
-    setTimeout(() => {
-      window.location.href = "admin.html";
-    }, 500);
+    redirectAfterSuccessfulManualReservation(data);
+    return;
   } catch (error) {
     console.error(
       "submitManualReservation error:",
       error,
     );
+
+    // If the watchdog already confirmed that the reservation exists and
+    // started navigation, do not show a false failure message.
+    if (manualReservationRedirectStarted) {
+      return;
+    }
 
     isSubmittingManualReservation = false;
 

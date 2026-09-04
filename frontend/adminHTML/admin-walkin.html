@@ -9,13 +9,10 @@
     ======================================================= -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <title>Manual Reservation | SmartResort Admin</title>
+    <title>Manual Reservation | SmartResort</title>
 
     <!-- ======================================================
        PAGE CSS FILES
-       global.css = shared base styles
-       style.css = old navbar/button styles for now
-       admin-walkin.css = manual reservation page only
     ======================================================= -->
     <link rel="stylesheet" href="../sharedCSS/global.css" />
     <link rel="stylesheet" href="../css/style.css" />
@@ -24,34 +21,49 @@
 
   <body class="has-fixed-navbar">
     <!-- ======================================================
-       ADMIN NAVBAR
-       This page is inside adminHTML.
-       Pages not yet moved still use ../ links.
+       ROLE-AWARE NAVBAR
+       Administrator sees the full admin navigation.
+       Front Desk sees only currently allowed operational links.
     ======================================================= -->
-    <header class="navbar">
-      <div class="logo">SmartResort Admin</div>
+    <header class="navbar" id="manualRoleNavbar">
+      <div class="logo" id="manualRoleLogo">SmartResort Admin</div>
 
-      <nav>
-        <a href="admin.html">Bookings</a>
-        <a href="admin-walkin.html" class="active-nav">Manual Reservation</a>
-        <a href="admin-guests-inside.html">Guests Inside</a>
-        <a href="admin-rooms.html">Accommodations</a>
-        <a href="admin-map-editor.html">Map Editor</a>
-        <a href="admin-reports.html">Reports</a>
-        <a href="admin-profile.html">Profile</a>
+      <nav id="manualRoleNav">
+        <a href="admin.html" data-admin-only>Bookings</a>
+
+        <a
+          href="admin-walkin.html"
+          class="active-nav"
+          data-manual-reservation-link
+        >
+          Manual Reservation
+        </a>
+
+        <a href="admin-guests-inside.html" data-admin-only>Guests Inside</a>
+        <a href="admin-rooms.html" data-admin-only>Accommodations</a>
+        <a href="admin-map-editor.html" data-admin-only>Map Editor</a>
+        <a href="admin-reports.html" data-admin-only>Reports</a>
+        <a href="admin-profile.html" data-admin-only>Profile</a>
+
         <a href="#" id="logoutBtn">Logout</a>
       </nav>
     </header>
 
     <!-- ======================================================
        MAIN WALK-IN WRAPPER
-       Contains manual reservation form.
     ======================================================= -->
     <main class="walkin-wrapper">
-      <a href="admin.html" class="back-btn">← Back to Dashboard</a>
+      <a
+        href="admin.html"
+        class="back-btn"
+        data-dashboard-link
+      >
+        ← Back to Dashboard
+      </a>
 
       <section class="walkin-hero">
         <h1>Create Manual Reservation</h1>
+
         <p>
           Encode guest details and accommodation selection first, then continue
           to the payment screen.
@@ -94,6 +106,7 @@
 
               <div class="walkin-group">
                 <label for="entranceType">Entrance Type</label>
+
                 <select id="entranceType" required>
                   <option value="pool_beach">Pool &amp; Beach Entrance</option>
                   <option value="beach_only">Beach Entrance Only</option>
@@ -107,6 +120,7 @@
 
               <div class="walkin-group full-width">
                 <label for="customerNote">Note / Concern</label>
+
                 <textarea
                   id="customerNote"
                   placeholder="Kung may gusto kayong ihabilin or concern, ilagay dito. If may kids, senior, or PWD guests, ilagay dito for front-desk verification."
@@ -186,7 +200,14 @@
           ======================================================= -->
           <div class="walkin-actions">
             <button type="submit" class="btn-primary">Next to Payment</button>
-            <a href="admin.html" class="btn-secondary">Cancel</a>
+
+            <a
+              href="admin.html"
+              class="btn-secondary"
+              data-dashboard-link
+            >
+              Cancel
+            </a>
           </div>
         </form>
 
@@ -196,9 +217,12 @@
 
     <!-- ======================================================
        PAGE SCRIPTS
+       Role nav loads before the page script so the correct UI is
+       prepared for Administrator or Front Desk.
     ======================================================= -->
     <script src="../sharedJS/toast.js"></script>
     <script src="../sharedJS/api-config.js"></script>
+    <script src="../sharedJS/manualReservationRoleNav.js"></script>
     <script src="../adminJS/admin-walkin.js"></script>
   </body>
 </html>

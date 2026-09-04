@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Guest Management | SmartResort Front Desk</title>
+
+    <link rel="stylesheet" href="../sharedCSS/global.css" />
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../frontdeskCSS/frontdeskGuests.css" />
+  </head>
+
+  <body class="has-fixed-navbar">
+    <!-- ======================================================
+       FRONT DESK NAVBAR
+    ======================================================= -->
+    <header class="navbar">
+      <div class="logo">Arvic Seaside</div>
+
+      <nav>
+        <a href="frontdeskDashboard.html">Dashboard</a>
+        <a href="frontdeskReservations.html">Reservations</a>
+        <a href="frontdeskPayments.html">Payments</a>
+        <a href="frontdeskGuests.html" class="active-nav">Guests</a>
+        <a href="../adminHTML/admin-walkin.html">Manual Reservation</a>
+        <a href="#" id="logoutBtn">Logout</a>
+      </nav>
+    </header>
+
+    <!-- ======================================================
+       PAGE WRAPPER
+    ======================================================= -->
+    <main class="frontdesk-guests-wrapper">
+      <a href="frontdeskDashboard.html" class="back-btn">
+        ← Back to Dashboard
+      </a>
+
+      <!-- ====================================================
+         HERO
+      ===================================================== -->
+      <section class="guests-hero">
+        <div>
+          <p class="hero-eyebrow">FRONT DESK STAFF</p>
+          <h1>Guest Management</h1>
+
+          <p>
+            Review today's arrivals, check confirmed guests into the resort,
+            and manage verified onsite guest counts for guests already inside.
+          </p>
+        </div>
+
+        <button type="button" class="btn-primary" id="refreshBtn">
+          Refresh
+        </button>
+      </section>
+
+      <!-- ====================================================
+         SUMMARY
+      ===================================================== -->
+      <section class="guests-summary-grid">
+        <article class="guest-summary-card ready">
+          <span>Ready Today</span>
+          <strong id="readyTodayCount">0</strong>
+        </article>
+
+        <article class="guest-summary-card">
+          <span>Already Inside</span>
+          <strong id="insideCount">0</strong>
+        </article>
+
+        <article class="guest-summary-card attention">
+          <span>Needs Payment</span>
+          <strong id="needsPaymentCount">0</strong>
+        </article>
+
+        <article class="guest-summary-card">
+          <span>Upcoming</span>
+          <strong id="upcomingCount">0</strong>
+        </article>
+      </section>
+
+      <!-- ====================================================
+         CHECK-IN RULE
+      ===================================================== -->
+      <section class="checkin-rule-note">
+        <strong>Front Desk Check-In Rule:</strong>
+
+        <span>
+          A reservation can be checked in when it is confirmed, the scheduled
+          check-in date is today, and the required downpayment has already been
+          verified. The current system records the remaining accommodation
+          balance and estimated entrance fee as collected when Check In / Allow
+          Entry is confirmed.
+        </span>
+      </section>
+
+      <!-- ====================================================
+         SEARCH / FILTER
+      ===================================================== -->
+      <section class="guests-panel">
+        <div class="panel-heading">
+          <div>
+            <h2>Search and Filter</h2>
+            <p>
+              The default view shows reservations that are ready for check-in
+              today.
+            </p>
+          </div>
+        </div>
+
+        <div class="guest-filter-grid">
+          <div class="filter-group filter-search">
+            <label for="searchInput">Search</label>
+
+            <input
+              id="searchInput"
+              type="text"
+              placeholder="Reservation code, guest, phone, accommodation..."
+            />
+          </div>
+
+          <div class="filter-group">
+            <label for="arrivalFilter">Guest View</label>
+
+            <select id="arrivalFilter">
+              <option value="ready" selected>Ready Today</option>
+              <option value="inside">Already Inside</option>
+              <option value="needs_payment">Needs Payment</option>
+              <option value="upcoming">Upcoming</option>
+              <option value="passed">Check-in Date Passed</option>
+              <option value="all">All Active Guest Records</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================
+         GUEST RECORDS
+      ===================================================== -->
+      <section class="guests-panel">
+        <div class="panel-heading">
+          <div>
+            <h2>Guest / Arrival Records</h2>
+
+            <p>
+              Check-in actions are only enabled when the reservation passes the
+              current Front Desk check-in rules.
+            </p>
+          </div>
+
+          <span id="recordCount" class="record-count">0 records</span>
+        </div>
+
+        <div id="guestRecords">
+          <div class="guest-state-box">
+            Loading guest records...
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================
+         STEP 3F-B STATUS NOTE
+      ===================================================== -->
+      <section class="next-step-note">
+        <strong>Step 3F-B1:</strong>
+
+        <span>
+          Guest Adjustment is now available for checked-in guests. Front Desk
+          can verify the actual onsite guest count and record an Extra Guest
+          Charge when the actual count is higher than the originally booked
+          count. Other Guests Inside tools will be added in the next substeps.
+        </span>
+      </section>
+    </main>
+
+
+    <!-- ======================================================
+       STEP 3F-B1: GUEST ADJUSTMENT MODAL
+
+       Purpose:
+       - Verify actual onsite guest count after check-in
+       - Keep original booked guest count unchanged
+       - Calculate guests above the booked count
+       - Create/update one structured Extra Guest Charge
+    ======================================================= -->
+    <div class="guest-adjustment-modal" id="guestAdjustmentModal">
+      <div class="guest-adjustment-modal-box">
+        <div class="guest-adjustment-header">
+          <div>
+            <p class="guest-adjustment-eyebrow">FRONT DESK OPERATION</p>
+            <h2>Guest Adjustment</h2>
+
+            <p id="guestAdjustmentGuestText">
+              Verify the actual number of guests currently inside the resort.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="guest-adjustment-close-btn"
+            id="closeGuestAdjustmentBtn"
+            aria-label="Close guest adjustment modal"
+          >
+            ×
+          </button>
+        </div>
+
+        <div class="guest-adjustment-summary-grid">
+          <div class="guest-adjustment-summary-item">
+            <span>Booked Guests</span>
+            <strong id="bookedGuestCountText">0</strong>
+          </div>
+
+          <div class="guest-adjustment-summary-item">
+            <span>Extra Guests</span>
+            <strong id="extraGuestCountText">0</strong>
+          </div>
+        </div>
+
+        <div class="guest-adjustment-form-group">
+          <label for="actualGuestCountInput">Actual Guests Inside</label>
+
+          <input
+            type="number"
+            id="actualGuestCountInput"
+            min="1"
+            step="1"
+            value="1"
+          />
+
+          <small>
+            Enter the verified number of guests currently inside under this
+            reservation.
+          </small>
+        </div>
+
+        <div class="guest-adjustment-form-group">
+          <label for="extraGuestRateInput">Extra Guest Rate Per Pax</label>
+
+          <input
+            type="number"
+            id="extraGuestRateInput"
+            min="0"
+            step="0.01"
+            value="0"
+            placeholder="0.00"
+          />
+
+          <small>
+            Only guests above the originally booked guest count are charged
+            using this rate.
+          </small>
+        </div>
+
+        <div class="guest-adjustment-charge-preview">
+          <span>Calculated Extra Guest Charge</span>
+          <strong id="extraGuestChargePreview">₱0.00</strong>
+        </div>
+
+        <div class="guest-adjustment-note">
+          The original booked guest count stays unchanged. Re-saving this
+          adjustment updates the same unpaid
+          <strong>Extra Guest Charge</strong> instead of creating duplicates.
+        </div>
+
+        <div class="guest-adjustment-modal-actions">
+          <button
+            type="button"
+            class="guest-adjustment-save-btn"
+            id="saveGuestAdjustmentBtn"
+          >
+            Apply Guest Adjustment
+          </button>
+
+          <button
+            type="button"
+            class="guest-adjustment-cancel-btn"
+            id="cancelGuestAdjustmentBtn"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script src="../sharedJS/toast.js"></script>
+    <script src="../sharedJS/api-config.js"></script>
+    <script src="../frontdeskJS/frontdeskGuests.js"></script>
+  </body>
+</html>

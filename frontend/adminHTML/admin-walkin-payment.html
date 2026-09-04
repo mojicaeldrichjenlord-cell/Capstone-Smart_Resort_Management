@@ -5,17 +5,13 @@
 
     <!-- ======================================================
        RESPONSIVE VIEWPORT
-       Makes manual payment page mobile-friendly.
     ======================================================= -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <title>Manual Reservation Payment | SmartResort Admin</title>
+    <title>Manual Reservation Payment | SmartResort</title>
 
     <!-- ======================================================
        PAGE CSS FILES
-       global.css = shared base styles
-       style.css = old navbar/button styles for now
-       admin-walkin-payment.css = payment page only
     ======================================================= -->
     <link rel="stylesheet" href="../sharedCSS/global.css" />
     <link rel="stylesheet" href="../css/style.css" />
@@ -24,28 +20,34 @@
 
   <body class="has-fixed-navbar">
     <!-- ======================================================
-       ADMIN NAVBAR
-       This page is inside adminHTML.
-       Pages not yet moved still use ../ links.
+       ROLE-AWARE NAVBAR
     ======================================================= -->
-    <header class="navbar">
-      <div class="logo">SmartResort Admin</div>
+    <header class="navbar" id="manualRoleNavbar">
+      <div class="logo" id="manualRoleLogo">SmartResort Admin</div>
 
-      <nav>
-        <a href="admin.html">Bookings</a>
-        <a href="admin-walkin.html" class="active-nav">Manual Reservation</a>
-        <a href="admin-guests-inside.html">Guests Inside</a>
-        <a href="admin-rooms.html">Accommodations</a>
-        <a href="admin-map-editor.html">Map Editor</a>
-        <a href="admin-reports.html">Reports</a>
-        <a href="admin-profile.html">Profile</a>
+      <nav id="manualRoleNav">
+        <a href="admin.html" data-admin-only>Bookings</a>
+
+        <a
+          href="admin-walkin.html"
+          class="active-nav"
+          data-manual-reservation-link
+        >
+          Manual Reservation
+        </a>
+
+        <a href="admin-guests-inside.html" data-admin-only>Guests Inside</a>
+        <a href="admin-rooms.html" data-admin-only>Accommodations</a>
+        <a href="admin-map-editor.html" data-admin-only>Map Editor</a>
+        <a href="admin-reports.html" data-admin-only>Reports</a>
+        <a href="admin-profile.html" data-admin-only>Profile</a>
+
         <a href="#" id="logoutBtn">Logout</a>
       </nav>
     </header>
 
     <!-- ======================================================
        MAIN PAYMENT WRAPPER
-       Contains reservation summary, payment form, and breakdown.
     ======================================================= -->
     <main class="payment-wrapper">
       <a href="admin-walkin.html" class="back-btn">
@@ -54,10 +56,11 @@
 
       <section class="payment-hero">
         <h1>Manual Reservation Payment</h1>
+
         <p>
-          Choose payment method and payment type. For Facebook or online manual
-          reservations, GCash/PayMaya payments must include reference number and
-          proof screenshot.
+          Choose payment method and payment type. For GCash/Maya manual
+          payments, the proof screenshot is required while the transaction
+          reference number is optional.
         </p>
       </section>
 
@@ -116,7 +119,8 @@
                     />
 
                     <small class="field-help">
-                      Required for PayMaya, and Gcash payments.
+                      Optional for GCash and Maya. If entered, the reference
+                      number format will be validated.
                     </small>
                   </div>
 
@@ -134,7 +138,7 @@
 
                     <small class="field-help">
                       Upload the screenshot sent by the customer through
-                      Facebook/Messenger or other channels.
+                      Facebook/Messenger or another approved channel.
                     </small>
 
                     <img
@@ -145,11 +149,11 @@
                   </div>
 
                   <div class="payment-form-group full-width">
-                    <label for="paymentNote">Admin Note (Optional)</label>
+                    <label for="paymentNote">Staff Note (Optional)</label>
 
                     <textarea
                       id="paymentNote"
-                      placeholder="Optional note for manual reservation"
+                      placeholder="Optional note for this manual reservation"
                     ></textarea>
                   </div>
                 </div>
@@ -159,7 +163,6 @@
                     type="button"
                     class="btn-primary"
                     id="submitPaymentBtn"
-                    onclick="submitManualReservation(event)"
                   >
                     Submit Manual Reservation
                   </button>
@@ -180,48 +183,58 @@
               <h2>Payment Breakdown</h2>
 
               <div class="payment-breakdown">
-                <div class="payment-row">
-                  <span>Accommodation Total</span>
+                <div class="payment-row" id="paymentAccommodationRow">
+                  <span id="paymentAccommodationLabel">Accommodation Total</span>
                   <strong id="paymentAccommodationTotal">₱0.00</strong>
                 </div>
 
-                <div class="payment-row">
-                  <span>Required Down Payment (50%)</span>
+                <div class="payment-row" id="paymentDownpaymentRow">
+                  <span id="paymentDownpaymentLabel">Required Down Payment (50%)</span>
                   <strong id="paymentDownpayment">₱0.00</strong>
                 </div>
 
-                <div class="payment-row">
-                  <span>Paid Amount</span>
+                <div class="payment-row" id="paymentPaidRow">
+                  <span id="paymentPaidLabel">Paid Amount</span>
                   <strong id="paymentPaidAmount">₱0.00</strong>
                 </div>
 
-                <div class="payment-row">
-                  <span>Remaining Balance</span>
+                <div class="payment-row" id="paymentRemainingRow">
+                  <span id="paymentRemainingLabel">Remaining Balance</span>
                   <strong id="paymentRemaining">₱0.00</strong>
                 </div>
 
-                <div class="payment-row">
-                  <span>Estimated Entrance Fee</span>
+                <div class="payment-row" id="paymentEntranceRow">
+                  <span id="paymentEntranceLabel">Estimated Entrance Fee</span>
                   <strong id="paymentEntranceFee">₱0.00</strong>
                 </div>
 
-                <div class="payment-row">
-                  <span>Total Reminder for Front Desk</span>
+                <div class="payment-row" id="paymentTotalDueRow">
+                  <span id="paymentTotalDueLabel">Total Reminder for Front Desk</span>
                   <strong id="paymentFrontDeskReminder">₱0.00</strong>
+                </div>
+
+                <div
+                  class="payment-row"
+                  id="paymentTotalCollectedRow"
+                  style="display: none;"
+                >
+                  <span id="paymentTotalCollectedLabel">Total Collected</span>
+                  <strong id="paymentTotalCollected">₱0.00</strong>
                 </div>
               </div>
 
               <div class="payment-note" id="paymentRuleNote">
-                <strong>Admin Flow:</strong><br />
-                Cash payments can be submitted without proof. PayMaya,
-                and Gcash require a transaction reference and proof
-                screenshot.
+                <strong>Manual Reservation Flow:</strong><br />
+                Walk-in accepts Cash, GCash, or Maya and uses full payment only.
+                For GCash/Maya, proof screenshot is required and reference
+                number is optional. Facebook/Messenger uses GCash or Maya with
+                required screenshot and optional reference number.
               </div>
 
-              <div class="payment-note success-note">
+              <div class="payment-note success-note" id="paymentCollectionNote">
                 <strong>Reminder:</strong><br />
                 Entrance fee is not included in the downpayment computation. It
-                is only shown as an estimate for front-desk collection.
+                is shown as an estimate for front-desk collection.
               </div>
             </section>
           </div>
@@ -234,6 +247,7 @@
     ======================================================= -->
     <script src="../sharedJS/toast.js"></script>
     <script src="../sharedJS/api-config.js"></script>
+    <script src="../sharedJS/manualReservationRoleNav.js"></script>
     <script src="../adminJS/admin-walkin-payment.js"></script>
   </body>
 </html>

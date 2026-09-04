@@ -711,12 +711,13 @@ async function getReservationItems(reservationId) {
   return rows;
 }
 
+
 // ============================================================
 // BLOCK: Validate manual reservation creator
 // Purpose:
 // - Manual reservations must be traceable to the logged-in employee.
 // - Only active Administrator or Front Desk accounts may be recorded.
-// - Online customer and PayMongo reservations do not use created_by.
+// - Online customer and automated-payment reservations do not use created_by.
 // ============================================================
 async function validateManualReservationCreator(createdBy) {
   const creatorId = Number(createdBy);
@@ -724,7 +725,8 @@ async function validateManualReservationCreator(createdBy) {
   if (!creatorId) {
     throw {
       status: 400,
-      message: "Logged-in Front Desk or Administrator account is required for manual reservations.",
+      message:
+        "Logged-in Front Desk or Administrator account is required for manual reservations.",
     };
   }
 
@@ -750,19 +752,23 @@ async function validateManualReservationCreator(createdBy) {
 
   const creator = rows[0];
   const role = String(creator.role || "").toLowerCase();
-  const accountStatus = String(creator.account_status || "active").toLowerCase();
+  const accountStatus = String(
+    creator.account_status || "active",
+  ).toLowerCase();
 
   if (!["admin", "frontdesk"].includes(role)) {
     throw {
       status: 403,
-      message: "Only Front Desk Staff or Administrator accounts can create manual reservations.",
+      message:
+        "Only Front Desk Staff or Administrator accounts can create manual reservations.",
     };
   }
 
   if (accountStatus !== "active") {
     throw {
       status: 403,
-      message: "This staff account is disabled and cannot create manual reservations.",
+      message:
+        "This staff account is disabled and cannot create manual reservations.",
     };
   }
 
@@ -810,16 +816,16 @@ async function createReservation({
   // skip manual proof validation before redirecting to checkout.
   const isManualReservation = source === "manual";
   const isPayMongoReservation = source === "paymongo";
-  const databaseBookingSource = isManualReservation ? "manual" : "online";
+  const databaseBookingSource =
+    isManualReservation ? "manual" : "online";
 
   // Manual reservations must identify the employee who encoded them.
-  // Online customer and PayMongo reservations intentionally keep this NULL.
+  // Online customer and automated-payment reservations keep this NULL.
   const manualCreatorId = isManualReservation
     ? await validateManualReservationCreator(created_by)
     : null;
 
-  // The exact GCash/Maya method is not known until PayMongo
-  // confirms the payment, so the reservation starts as "other".
+  // Automated checkout determines the final method after payment.
   const cleanPaymentMethod = isPayMongoReservation
     ? "other"
     : normalizeText(payment_method || "gcash");
@@ -898,23 +904,74 @@ async function createReservation({
   }
 
   if (isWalkInManualReservation) {
-    if (cleanPaymentMethod.toLowerCase() !== "cash") {
+    if (
+      !["cash", "gcash", "paymaya"].includes(
+        cleanPaymentMethod.toLowerCase(),
+      )
+    ) {
       throw {
         status: 400,
-        message: "Walk-in manual reservations must use cash payment only.",
+        message:
+          "Walk-in manual reservations only accept Cash, GCash, or Maya.",
       };
     }
 
     if (cleanPaymentType !== "full") {
       throw {
         status: 400,
-        message: "Walk-in manual reservations must be full payment only.",
+        message:
+          "Walk-in manual reservations must be full payment only.",
+      };
+    }
+
+    const isWalkInEWallet = ["gcash", "paymaya"].includes(
+      cleanPaymentMethod.toLowerCase(),
+    );
+
+    /*
+      Screenshot rule:
+      - Cash does not need proof.
+      - GCash/Maya must have an actual screenshot.
+      - A reference number alone does NOT satisfy the proof requirement.
+    */
+    const hasWalkInProofScreenshot =
+      Boolean(cleanProofImageData) ||
+      Boolean(
+        cleanProof &&
+          (
+            cleanProof.startsWith("/uploads/") ||
+            cleanProof.startsWith("uploads/") ||
+            cleanProof.startsWith("data:image/")
+          )
+      );
+
+    if (isWalkInEWallet && !hasWalkInProofScreenshot) {
+      throw {
+        status: 400,
+        message:
+          "Proof screenshot is required for Walk-in GCash or Maya payments.",
+      };
+    }
+
+    // Reference is optional. Validate only when staff entered one.
+    if (
+      isWalkInEWallet &&
+      cleanProofReference &&
+      !proofReferenceValidation.valid
+    ) {
+      throw {
+        status: 400,
+        message: proofReferenceValidation.message,
       };
     }
   }
 
   if (isFacebookManualReservation) {
-    if (!["gcash", "paymaya"].includes(cleanPaymentMethod.toLowerCase())) {
+    if (
+      !["gcash", "paymaya"].includes(
+        cleanPaymentMethod.toLowerCase(),
+      )
+    ) {
       throw {
         status: 400,
         message:
@@ -922,26 +979,38 @@ async function createReservation({
       };
     }
 
-    if (!cleanProofReference) {
-      throw {
-        status: 400,
-        message:
-          "Reference number is required for Facebook/Messenger reservations.",
-      };
-    }
+    /*
+      Facebook/Messenger proof:
+      - Screenshot is required.
+      - Reference is optional.
+      - If reference is supplied, its method-specific format is validated.
+    */
+    const hasFacebookProofScreenshot =
+      Boolean(cleanProofImageData) ||
+      Boolean(
+        cleanProof &&
+          (
+            cleanProof.startsWith("/uploads/") ||
+            cleanProof.startsWith("uploads/") ||
+            cleanProof.startsWith("data:image/")
+          )
+      );
 
-    if (!proofReferenceValidation.valid) {
-      throw {
-        status: 400,
-        message: proofReferenceValidation.message,
-      };
-    }
-
-    if (!cleanProof && !cleanProofImageData) {
+    if (!hasFacebookProofScreenshot) {
       throw {
         status: 400,
         message:
           "Proof screenshot is required for Facebook/Messenger reservations.",
+      };
+    }
+
+    if (
+      cleanProofReference &&
+      !proofReferenceValidation.valid
+    ) {
+      throw {
+        status: 400,
+        message: proofReferenceValidation.message,
       };
     }
   }
@@ -1059,8 +1128,9 @@ async function createReservation({
 
   // Online customer reservations start as pending until admin verifies proof.
   // Manual reservations are encoded by staff:
-  // - Walk-in: cash, full payment, auto checked-in.
-  // - Facebook/Messenger: GCash/PayMaya proof, approved but not checked-in.
+  // - Walk-in: Cash/GCash/Maya, full payment, auto checked-in.
+  // - Facebook/Messenger: GCash/Maya proof, approved but not checked-in.
+  // Automated checkout starts unpaid until the provider confirms payment.
   let paidAmount = 0;
   let remainingBalance = accommodationTotal;
   let reservationStatus = "pending";
@@ -1123,7 +1193,16 @@ async function createReservation({
     );
 
     if (isWalkInManualReservation) {
-      noteParts.push("Manual Reservation Payment Type: Full Cash Payment");
+      const manualPaymentMethodLabel =
+        cleanPaymentMethod.toLowerCase() === "gcash"
+          ? "GCash"
+          : cleanPaymentMethod.toLowerCase() === "paymaya"
+            ? "Maya / PayMaya"
+            : "Cash";
+
+      noteParts.push(
+        `Manual Reservation Payment Type: Full ${manualPaymentMethodLabel} Payment`,
+      );
       noteParts.push(
         "Walk-in guest automatically checked in after manual reservation creation.",
       );
@@ -1226,8 +1305,8 @@ async function createReservation({
 
     const reservationId = reservationResult.insertId;
 
-    // For PayMongo flow, a pending transaction record is created
-    // in the SAME MySQL transaction as the reservation.
+    // Automated-payment reservation may create a pending transaction row
+    // in the same database transaction as the reservation.
     let paymentTransactionId = null;
 
     for (const item of reservationItems) {
@@ -1348,11 +1427,10 @@ exports.createBooking = async (req, res) => {
   }
 };
 
-
 // ============================================================
 // BACKEND/API HANDLER: Create PayMongo-ready reservation
 // Purpose:
-// - Reuses the normal reservation validation and conflict logic.
+// - Reuses normal reservation validation and conflict logic.
 // - Does NOT require manual GCash/Maya proof/reference.
 // - Creates reservation + pending payment_transactions row.
 // - Does NOT mark anything paid.
@@ -1368,7 +1446,7 @@ exports.createPayMongoBooking = async (req, res) => {
       });
     }
 
-    // PayMongo will determine the final GCash/Maya method later.
+    // Automated checkout determines the final payment method later.
     parsedBody.payment_method = "other";
     parsedBody.payment_type = "downpayment";
     parsedBody.proof_reference = null;
@@ -1399,7 +1477,8 @@ exports.createPayMongoBooking = async (req, res) => {
     return res.status(error.status || 500).json({
       success: false,
       message:
-        error.message || "Failed to prepare reservation for PayMongo checkout.",
+        error.message ||
+        "Failed to prepare reservation for automated checkout.",
       error: error.message,
     });
   }
@@ -1416,7 +1495,8 @@ exports.createWalkInBooking = async (req, res) => {
 
     if (!created_by) {
       return res.status(400).json({
-        message: "Logged-in staff account is required for manual reservations.",
+        message:
+          "Logged-in staff account is required for manual reservations.",
       });
     }
 
@@ -1785,16 +1865,16 @@ exports.getBookingReceipt = async (req, res) => {
         updated_at
       FROM booking_discounts
       WHERE booking_id = ?
-      ORDER BY FIELD(discount_type, 'senior', 'pwd', 'kid_free'), id ASC
+      ORDER BY updated_at DESC, id DESC
+      LIMIT 1
       `,
       [id],
     );
 
     const bookingDiscount = discountRows[0] || null;
-    const discountTotal = discountRows.reduce(
-      (sum, discount) => sum + Number(discount.discount_amount || 0),
-      0,
-    );
+    const discountTotal = bookingDiscount
+      ? Number(bookingDiscount.discount_amount || 0)
+      : 0;
 
     const additionalChargesTotal = chargeRows.reduce(
       (sum, charge) => sum + Number(charge.charge_amount || 0),
@@ -1849,11 +1929,8 @@ exports.getBookingReceipt = async (req, res) => {
     booking.items = items;
 
     booking.discount = bookingDiscount;
-    booking.discounts = discountRows;
-    booking.entrance_adjustments = discountRows;
     booking.discount_total = discountTotal;
     booking.front_desk_discount_total = discountTotal;
-    booking.entrance_adjustment_total = discountTotal;
 
     booking.additional_charges = chargeRows;
     booking.additional_charges_total = additionalChargesTotal;

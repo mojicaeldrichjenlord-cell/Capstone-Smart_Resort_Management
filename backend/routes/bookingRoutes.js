@@ -22,6 +22,15 @@ const {
 } = require("../controllers/bookingController");
 
 /* ======================================================
+   MANUAL RESERVATION DATE GUARD
+   - Walk-in = today only
+   - Facebook/Messenger = today or future
+====================================================== */
+const {
+  validateManualReservationDate,
+} = require("../middleware/manualReservationDateGuard");
+
+/* ======================================================
    BOOKING CHARGE CONTROLLER
    Used for admin/staff additional charges before checkout.
 ====================================================== */
@@ -97,7 +106,14 @@ router.post("/paymongo", createPayMongoBooking);
 
 // Existing manual proof-upload customer flow remains unchanged.
 router.post("/", upload.single("proof_image"), createBooking);
-router.post("/walk-in", upload.single("proof_image"), createWalkInBooking);
+
+// Manual reservation date guard runs after multer parses the form payload.
+router.post(
+  "/walk-in",
+  upload.single("proof_image"),
+  validateManualReservationDate,
+  createWalkInBooking,
+);
 
 /* ======================================================
    GENERAL BOOKING ROUTES

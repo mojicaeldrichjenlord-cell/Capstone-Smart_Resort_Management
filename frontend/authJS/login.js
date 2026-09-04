@@ -1,15 +1,9 @@
 // ============================================================
-// SMARTRESORT LOGIN SCRIPT
-// Purpose:
-// - Handles login form submission
-// - Saves logged-in user to localStorage
-// - Redirects admin/staff/customer to correct page
-// - Adds show/hide password toggle
-// ============================================================
-
-
-// ============================================================
-// SECTION 1: Get login page elements
+// SMARTRESORT LOGIN SCRIPT - FULL REPLACEMENT
+// Replace: frontend/authJS/login.js
+//
+// Final roles:
+// customer, admin, frontdesk, manager, housekeeping
 // ============================================================
 
 const loginForm = document.getElementById("loginForm");
@@ -18,11 +12,7 @@ const emailInput = document.getElementById("email");
 const passwordInput = document.getElementById("password");
 
 // ============================================================
-// SECTION 2: Setup show/hide password
-// Supports button with:
-// - id="togglePassword"
-// OR
-// - class="toggle-password" data-target="password"
+// SECTION 1: Password visibility
 // ============================================================
 
 setupPasswordToggle();
@@ -50,7 +40,7 @@ function setupPasswordToggle() {
 }
 
 // ============================================================
-// SECTION 3: Auto-fill email after registration or password reset
+// SECTION 2: Saved email helpers
 // ============================================================
 
 const savedRegisteredEmail = localStorage.getItem("registeredEmail");
@@ -67,32 +57,37 @@ if (savedResetEmail && emailInput) {
 }
 
 // ============================================================
-// SECTION 4: Login form submit event
-// Sends email and password to backend /api/auth/login.
+// SECTION 3: Login
 // ============================================================
 
 if (loginForm) {
-  loginForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
+  loginForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
 
     const email = emailInput ? emailInput.value.trim() : "";
     const password = passwordInput ? passwordInput.value.trim() : "";
 
-    if (loginMessage) {
-      loginMessage.textContent = "";
-      loginMessage.className = "";
-    }
+    clearMessage();
 
     if (!email || !password) {
       showMessage("Please enter your email and password.", "error");
       return;
     }
 
+    const submitButton = loginForm.querySelector('button[type="submit"]');
+    const originalButtonText = submitButton?.textContent || "Login";
+
     try {
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = "Logging in...";
+      }
+
       const response = await fetch(`${API_BASE}/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Accept: "application/json",
         },
         body: JSON.stringify({ email, password }),
       });
@@ -103,46 +98,100 @@ if (loginForm) {
         throw new Error(data.message || "Invalid email or password.");
       }
 
-      if (data.user?.account_status === "disabled") {
-        showMessage(
-          "Your account has been disabled. Please contact the resort administrator.",
-          "error",
-        );
-        return;
+      if (!data.user) {
+        throw new Error("Login response did not include a user account.");
       }
 
-      localStorage.setItem("user", JSON.stringify(data.user));
+      if (
+        String(data.user.account_status || "active").toLowerCase() ===
+        "disabled"
+      ) {
+        throw new Error(
+          "Your account has been disabled. Please contact the resort administrator.",
+        );
+      }
+
+      const role = normalizeRole(data.user.role);
+      const destination = getRoleRedirect(role);
+
+      if (!destination) {
+        throw new Error(
+          "Your account role is not recognized. Please contact the resort administrator.",
+        );
+      }
+
+      localStorage.setItem(
+        "user",
+        JSON.stringify({
+          ...data.user,
+          role,
+        }),
+      );
+
       showMessage("Login successful!", "success");
 
       setTimeout(() => {
-        const role = String(data.user.role || "").toLowerCase();
-
-        if (role === "admin" || role === "staff") {
-          window.location.href = "../adminHTML/admin.html";
-        } else {
-          window.location.href = "../customerHTML/index.html";
-        }
-      }, 900);
+        window.location.href = destination;
+      }, 600);
     } catch (error) {
       console.error("login error:", error);
+
       showMessage(
         error.message || "Something went wrong. Please try again.",
         "error",
       );
+    } finally {
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = originalButtonText;
+      }
     }
   });
 }
 
 // ============================================================
-// SECTION 5: Message helper
-// Uses toast notification if available.
-// Falls back to loginMessage without moving layout too much.
+// SECTION 4: Role routing
 // ============================================================
+
+function normalizeRole(role) {
+  const value = String(role || "")
+    .trim()
+    .toLowerCase();
+
+  // Legacy compatibility only.
+  if (value === "staff") {
+    return "frontdesk";
+  }
+
+  return value;
+}
+
+function getRoleRedirect(role) {
+  const routes = {
+    customer: "../customerHTML/index.html",
+    admin: "../adminHTML/admin.html",
+    frontdesk: "../frontdeskHTML/frontdeskDashboard.html",
+    manager: "../managerHTML/managerDashboard.html",
+    housekeeping: "../housekeepingHTML/housekeepingDashboard.html",
+  };
+
+  return routes[role] || null;
+}
+
+// ============================================================
+// SECTION 5: Message helpers
+// ============================================================
+
+function clearMessage() {
+  if (!loginMessage) return;
+
+  loginMessage.textContent = "";
+  loginMessage.className = "";
+}
 
 function showMessage(message, type = "success") {
   if (typeof showToast === "function") {
     showToast(message, type);
-    return;
   }
 
   if (loginMessage) {
@@ -151,5 +200,7 @@ function showMessage(message, type = "success") {
     return;
   }
 
-  alert(message);
+  if (typeof showToast !== "function") {
+    alert(message);
+  }
 }

@@ -1,0 +1,136 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: #0f172a;
+  background: linear-gradient(180deg, #f8fafc, #eef2ff);
+}
+
+.manager-navbar {
+  min-height: 76px;
+  padding: 0 5%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #fff;
+  background: linear-gradient(135deg, #172554, #0f766e);
+}
+
+.manager-navbar > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.manager-navbar span {
+  margin-top: 3px;
+  font-size: 0.75rem;
+  opacity: 0.75;
+}
+
+.manager-navbar button {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.manager-page {
+  width: min(1120px, calc(100% - 32px));
+  margin: 34px auto 60px;
+}
+
+.manager-hero {
+  padding: 32px;
+  border-radius: 28px;
+  color: #fff;
+  background: linear-gradient(135deg, #172554, #0f766e);
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.14);
+}
+
+.manager-hero p {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  opacity: 0.75;
+}
+
+.manager-hero h1 {
+  margin: 8px 0 10px;
+  font-size: clamp(2rem, 4vw, 3rem);
+}
+
+.manager-hero > span {
+  display: block;
+  max-width: 720px;
+  line-height: 1.7;
+  opacity: 0.88;
+}
+
+.account-line {
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.account-line small {
+  opacity: 0.72;
+}
+
+.manager-grid {
+  margin-top: 22px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.manager-grid article {
+  min-height: 190px;
+  padding: 24px;
+  border-radius: 22px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+}
+
+.manager-grid h2 {
+  margin: 0 0 10px;
+}
+
+.manager-grid p {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.manager-grid span {
+  margin-top: auto;
+  align-self: flex-start;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #475569;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+@media (max-width: 720px) {
+  .manager-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .account-line {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

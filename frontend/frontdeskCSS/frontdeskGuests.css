@@ -1,0 +1,876 @@
+/* ======================================================
+   FRONT DESK GUEST MANAGEMENT
+   File: frontend/frontdeskCSS/frontdeskGuests.css
+====================================================== */
+
+/* ======================================================
+   SECTION 1: WRAPPER
+====================================================== */
+
+.frontdesk-guests-wrapper {
+  width: 92%;
+  max-width: 1240px;
+  margin: 0 auto 48px;
+}
+
+/* ======================================================
+   SECTION 2: HERO
+====================================================== */
+
+.guests-hero {
+  margin: 6px 0 22px;
+  padding: 30px 28px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+
+  color: #ffffff;
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(15, 23, 42, 0.95),
+      rgba(20, 184, 166, 0.82)
+    ),
+    linear-gradient(135deg, #0f172a, #14b8a6);
+
+  border-radius: 30px;
+
+  box-shadow: 0 20px 46px rgba(15, 23, 42, 0.16);
+}
+
+.hero-eyebrow {
+  margin: 0 0 6px;
+
+  color: #99f6e4;
+
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.guests-hero h1 {
+  margin: 0 0 8px;
+
+  color: #ffffff;
+
+  font-size: 2rem;
+}
+
+.guests-hero p {
+  margin: 0;
+
+  max-width: 760px;
+
+  color: rgba(255, 255, 255, 0.94);
+
+  line-height: 1.65;
+}
+
+/* ======================================================
+   SECTION 3: SUMMARY
+====================================================== */
+
+.guests-summary-grid {
+  margin-bottom: 18px;
+
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.guest-summary-card {
+  padding: 18px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  background: rgba(255, 255, 255, 0.96);
+
+  border: 1px solid #dbe7ef;
+  border-radius: 18px;
+
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+}
+
+.guest-summary-card span {
+  color: #64748b;
+
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.guest-summary-card strong {
+  color: #0f9488;
+
+  font-size: 1.65rem;
+}
+
+.guest-summary-card.ready {
+  border-color: rgba(20, 184, 166, 0.45);
+}
+
+.guest-summary-card.attention strong {
+  color: #b45309;
+}
+
+/* ======================================================
+   SECTION 4: CHECK-IN RULE
+====================================================== */
+
+.checkin-rule-note,
+.next-step-note {
+  margin-bottom: 18px;
+  padding: 17px 19px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  border-radius: 17px;
+
+  line-height: 1.6;
+}
+
+.checkin-rule-note {
+  background: #ecfeff;
+
+  border: 1px solid #99f6e4;
+
+  color: #115e59;
+}
+
+.next-step-note {
+  background: #f8fafc;
+
+  border: 1px solid #dbe7ef;
+
+  color: #475569;
+}
+
+/* ======================================================
+   SECTION 5: PANELS
+====================================================== */
+
+.guests-panel {
+  margin-bottom: 20px;
+  padding: 22px;
+
+  background: rgba(255, 255, 255, 0.96);
+
+  border: 1px solid #dbe7ef;
+  border-radius: 24px;
+
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.07);
+}
+
+.panel-heading {
+  margin-bottom: 18px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.panel-heading h2 {
+  margin: 0 0 5px;
+
+  color: #0f172a;
+}
+
+.panel-heading p {
+  margin: 0;
+
+  color: #64748b;
+
+  line-height: 1.55;
+}
+
+.record-count {
+  padding: 8px 12px;
+
+  flex: 0 0 auto;
+
+  border-radius: 999px;
+
+  background: #ecfeff;
+  color: #0f766e;
+
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+/* ======================================================
+   SECTION 6: FILTER
+====================================================== */
+
+.guest-filter-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 14px;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.filter-group label {
+  color: #0f172a;
+
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.filter-group input,
+.filter-group select {
+  width: 100%;
+
+  padding: 12px 13px;
+
+  background: #ffffff;
+
+  border: 1px solid #cbd5e1;
+  border-radius: 13px;
+
+  outline: none;
+
+  font-size: 0.92rem;
+}
+
+.filter-group input:focus,
+.filter-group select:focus {
+  border-color: #14b8a6;
+
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.12);
+}
+
+/* ======================================================
+   SECTION 7: GUEST CARDS
+====================================================== */
+
+.guest-record-list {
+  display: grid;
+  gap: 14px;
+}
+
+.guest-record-card {
+  padding: 18px;
+
+  background: linear-gradient(180deg, #fcfeff 0%, #f5fbfc 100%);
+
+  border: 1px solid #dbe7ef;
+  border-radius: 20px;
+}
+
+.guest-record-card.state-ready {
+  border-color: rgba(20, 184, 166, 0.45);
+}
+
+.guest-record-card.state-passed,
+.guest-record-card.state-needs_payment {
+  border-color: rgba(245, 158, 11, 0.38);
+}
+
+.guest-card-head {
+  margin-bottom: 14px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.reservation-code {
+  color: #0f172a;
+
+  font-size: 1.08rem;
+  font-weight: 900;
+}
+
+.reservation-id {
+  margin-top: 4px;
+
+  color: #64748b;
+
+  font-size: 0.82rem;
+}
+
+.guest-badges {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.guest-state-badge,
+.reservation-badge,
+.payment-badge {
+  padding: 6px 10px;
+
+  border-radius: 999px;
+
+  font-size: 0.75rem;
+  font-weight: 900;
+}
+
+.guest-state-ready,
+.guest-state-inside {
+  background: #ccfbf1;
+  color: #0f766e;
+}
+
+.guest-state-needs_payment,
+.guest-state-passed {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.guest-state-upcoming {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.reservation-approved,
+.payment-paid {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.reservation-pending,
+.payment-pending,
+.payment-unpaid {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.payment-partially_paid {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.reservation-rejected,
+.payment-rejected {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.guest-info-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.guest-info-box {
+  min-width: 0;
+
+  padding: 13px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+
+  background: #ffffff;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 15px;
+
+  color: #475569;
+
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.guest-info-box strong {
+  color: #0f172a;
+}
+
+.info-label {
+  margin-bottom: 2px;
+
+  color: #64748b;
+
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+
+  text-transform: uppercase;
+}
+
+.amount-attention {
+  color: #b45309 !important;
+}
+
+.amount-total {
+  color: #0f766e !important;
+}
+
+/* ======================================================
+   SECTION 8: ACTION AREA
+====================================================== */
+
+.guest-card-footer {
+  margin-top: 14px;
+  padding-top: 14px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+
+  border-top: 1px solid #e2e8f0;
+}
+
+.guest-state-message {
+  color: #64748b;
+
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.guest-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.checkin-btn {
+  white-space: nowrap;
+}
+
+.guest-action-disabled,
+.guest-action-link {
+  padding: 10px 14px;
+
+  border-radius: 999px;
+
+  font-size: 0.84rem;
+  font-weight: 900;
+
+  text-decoration: none;
+}
+
+.guest-action-disabled {
+  border: 1px solid #cbd5e1;
+
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.guest-action-disabled.warning {
+  border-color: #fde68a;
+
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.guest-action-link {
+  border: 1px solid #99f6e4;
+
+  background: #ecfeff;
+  color: #0f766e;
+}
+
+.guest-action-link:hover {
+  background: #ccfbf1;
+}
+
+/* ======================================================
+   SECTION 9: EMPTY / ERROR STATE
+====================================================== */
+
+.guest-state-box {
+  padding: 26px;
+
+  text-align: center;
+
+  color: #64748b;
+
+  background: #f8fafc;
+
+  border: 1px dashed #cbd5e1;
+  border-radius: 16px;
+}
+
+.guest-state-box.error {
+  color: #991b1b;
+
+  background: #fef2f2;
+
+  border-color: #fecaca;
+}
+
+/* ======================================================
+   SECTION 10: RESPONSIVE
+====================================================== */
+
+@media (max-width: 1080px) {
+  .guests-summary-grid,
+  .guest-info-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .frontdesk-guests-wrapper {
+    width: 94%;
+  }
+
+  .guests-hero {
+    padding: 25px 20px;
+
+    flex-direction: column;
+    align-items: flex-start;
+
+    border-radius: 22px;
+  }
+
+  .guests-summary-grid,
+  .guest-filter-grid,
+  .guest-info-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .guest-card-head,
+  .guest-card-footer,
+  .panel-heading {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .guest-badges {
+    justify-content: flex-start;
+  }
+
+  .guest-actions,
+  .checkin-btn {
+    width: 100%;
+  }
+}
+
+
+/* ======================================================
+   STEP 3F-B1: GUEST ADJUSTMENT ACTION
+====================================================== */
+
+.guest-adjustment-action-btn {
+  padding: 10px 14px;
+
+  border: none;
+  border-radius: 999px;
+
+  background: linear-gradient(
+    135deg,
+    #2563eb,
+    #1d4ed8
+  );
+
+  color: #ffffff;
+
+  font-size: 0.84rem;
+  font-weight: 900;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 9px 20px
+    rgba(37, 99, 235, 0.18);
+}
+
+.guest-adjustment-action-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.02);
+}
+
+.guest-adjustment-action-btn:active {
+  transform: translateY(0);
+}
+
+/* ======================================================
+   STEP 3F-B1: GUEST ADJUSTMENT MODAL
+====================================================== */
+
+body.guest-modal-open {
+  overflow: hidden;
+}
+
+.guest-adjustment-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+
+  display: none;
+  align-items: center;
+  justify-content: center;
+
+  padding: 22px;
+
+  background: rgba(15, 23, 42, 0.74);
+
+  backdrop-filter: blur(5px);
+}
+
+.guest-adjustment-modal.show {
+  display: flex;
+}
+
+.guest-adjustment-modal-box {
+  width: min(100%, 590px);
+  max-height: 90vh;
+
+  overflow-y: auto;
+
+  padding: 26px;
+
+  background: #ffffff;
+
+  border: 1px solid #dbe7ef;
+  border-radius: 26px;
+
+  box-shadow:
+    0 30px 78px
+    rgba(15, 23, 42, 0.34);
+}
+
+.guest-adjustment-header {
+  margin-bottom: 20px;
+
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.guest-adjustment-eyebrow {
+  margin: 0 0 5px;
+
+  color: #2563eb;
+
+  font-size: 0.75rem;
+  font-weight: 950;
+  letter-spacing: 0.1em;
+}
+
+.guest-adjustment-header h2 {
+  margin: 0 0 6px;
+
+  color: #0f172a;
+
+  font-size: 1.45rem;
+}
+
+.guest-adjustment-header p {
+  margin-top: 0;
+
+  color: #64748b;
+
+  line-height: 1.55;
+}
+
+.guest-adjustment-close-btn {
+  flex: 0 0 auto;
+
+  width: 42px;
+  height: 42px;
+
+  border: none;
+  border-radius: 999px;
+
+  background: #fee2e2;
+  color: #991b1b;
+
+  font-size: 1.4rem;
+  font-weight: 950;
+
+  cursor: pointer;
+}
+
+.guest-adjustment-summary-grid {
+  margin-bottom: 18px;
+
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.guest-adjustment-summary-item {
+  padding: 16px;
+
+  border: 1px solid #dbe7ef;
+  border-radius: 18px;
+
+  background: #f8fafc;
+}
+
+.guest-adjustment-summary-item span {
+  display: block;
+
+  margin-bottom: 7px;
+
+  color: #64748b;
+
+  font-size: 0.86rem;
+  font-weight: 850;
+}
+
+.guest-adjustment-summary-item strong {
+  color: #0f172a;
+
+  font-size: 1.7rem;
+  font-weight: 950;
+}
+
+.guest-adjustment-form-group {
+  margin-bottom: 16px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.guest-adjustment-form-group label {
+  color: #0f172a;
+
+  font-weight: 900;
+}
+
+.guest-adjustment-form-group input {
+  width: 100%;
+
+  padding: 13px 14px;
+
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+
+  background: #ffffff;
+  color: #0f172a;
+
+  font-size: 1rem;
+
+  outline: none;
+}
+
+.guest-adjustment-form-group input:focus {
+  border-color: #2563eb;
+
+  box-shadow:
+    0 0 0 4px
+    rgba(37, 99, 235, 0.12);
+}
+
+.guest-adjustment-form-group small {
+  color: #64748b;
+
+  line-height: 1.45;
+}
+
+.guest-adjustment-charge-preview {
+  margin: 4px 0 14px;
+  padding: 17px 18px;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+
+  border: 2px solid #bfdbfe;
+  border-radius: 18px;
+
+  background: #eff6ff;
+}
+
+.guest-adjustment-charge-preview span {
+  color: #1e3a8a;
+
+  font-weight: 900;
+}
+
+.guest-adjustment-charge-preview strong {
+  color: #1d4ed8;
+
+  font-size: 1.45rem;
+  font-weight: 950;
+
+  white-space: nowrap;
+}
+
+.guest-adjustment-note {
+  margin-bottom: 20px;
+  padding: 13px 15px;
+
+  border: 1px solid #a7f3d0;
+  border-radius: 15px;
+
+  background: #ecfdf5;
+  color: #065f46;
+
+  line-height: 1.5;
+
+  font-size: 0.88rem;
+  font-weight: 750;
+}
+
+.guest-adjustment-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 11px;
+
+  flex-wrap: wrap;
+}
+
+.guest-adjustment-save-btn,
+.guest-adjustment-cancel-btn {
+  padding: 12px 17px;
+
+  border: none;
+  border-radius: 999px;
+
+  font-weight: 900;
+
+  cursor: pointer;
+}
+
+.guest-adjustment-save-btn {
+  background: linear-gradient(
+    135deg,
+    #2563eb,
+    #1d4ed8
+  );
+
+  color: #ffffff;
+}
+
+.guest-adjustment-cancel-btn {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.guest-adjustment-save-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+@media (max-width: 700px) {
+  .guest-adjustment-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .guest-adjustment-charge-preview {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .guest-adjustment-modal-actions {
+    flex-direction: column;
+  }
+
+  .guest-adjustment-save-btn,
+  .guest-adjustment-cancel-btn {
+    width: 100%;
+  }
+}

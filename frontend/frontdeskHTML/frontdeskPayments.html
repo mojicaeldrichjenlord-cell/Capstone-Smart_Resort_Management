@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Payment Management | SmartResort Front Desk</title>
+
+    <link rel="stylesheet" href="../sharedCSS/global.css" />
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../frontdeskCSS/frontdeskPayments.css" />
+  </head>
+
+  <body class="has-fixed-navbar">
+    <!-- ======================================================
+       FRONT DESK NAVBAR
+    ======================================================= -->
+    <header class="navbar">
+      <div class="logo">Arvic Seaside</div>
+
+      <nav>
+        <a href="frontdeskDashboard.html">Dashboard</a>
+        <a href="frontdeskReservations.html">Reservations</a>
+        <a href="frontdeskPayments.html" class="active-nav">Payments</a>
+        <a href="frontdeskGuests.html">Guests</a>
+        <a href="../adminHTML/admin-walkin.html">Manual Reservation</a>
+        <a href="#" id="logoutBtn">Logout</a>
+      </nav>
+    </header>
+
+    <!-- ======================================================
+       PAGE WRAPPER
+    ======================================================= -->
+    <main class="frontdesk-payments-wrapper">
+      <a href="frontdeskDashboard.html" class="back-btn">
+        ← Back to Dashboard
+      </a>
+
+      <!-- ====================================================
+         PAGE HERO
+      ===================================================== -->
+      <section class="payments-hero">
+        <div>
+          <p class="hero-eyebrow">FRONT DESK STAFF</p>
+          <h1>Payment Management</h1>
+
+          <p>
+            Review GCash/Maya payment references and proof screenshots, verify
+            submitted 50% online downpayments, and monitor remaining balances.
+          </p>
+        </div>
+
+        <button type="button" class="btn-primary" id="refreshBtn">
+          Refresh
+        </button>
+      </section>
+
+      <!-- ====================================================
+         SUMMARY CARDS
+      ===================================================== -->
+      <section class="payments-summary-grid">
+        <article class="payment-summary-card attention">
+          <span>Needs Verification</span>
+          <strong id="needsVerificationCount">0</strong>
+        </article>
+
+        <article class="payment-summary-card">
+          <span>Partially Paid</span>
+          <strong id="partiallyPaidCount">0</strong>
+        </article>
+
+        <article class="payment-summary-card">
+          <span>Fully Paid</span>
+          <strong id="paidCount">0</strong>
+        </article>
+
+        <article class="payment-summary-card">
+          <span>Remaining Balance</span>
+          <strong id="remainingBalanceTotal">₱0.00</strong>
+        </article>
+      </section>
+
+      <!-- ====================================================
+         PAYMENT POLICY NOTE
+      ===================================================== -->
+      <section class="payment-policy-note">
+        <strong>Front Desk Payment Rule:</strong>
+
+        <span>
+          Verify only payment proof that matches the customer's submitted
+          GCash/Maya reference. Verification records the required 50%
+          accommodation downpayment as partially paid and confirms the
+          reservation. Remaining accommodation balance and entrance fee are
+          collected during the guest check-in flow.
+        </span>
+      </section>
+
+      <!-- ====================================================
+         SEARCH / FILTER
+      ===================================================== -->
+      <section class="payments-panel">
+        <div class="panel-heading">
+          <div>
+            <h2>Search and Filter</h2>
+            <p>
+              Default view shows records that currently need payment attention.
+            </p>
+          </div>
+        </div>
+
+        <div class="payments-filter-grid">
+          <div class="filter-group filter-search">
+            <label for="searchInput">Search</label>
+
+            <input
+              type="text"
+              id="searchInput"
+              placeholder="Reservation code, guest, phone, reference..."
+            />
+          </div>
+
+          <div class="filter-group">
+            <label for="paymentViewFilter">Payment View</label>
+
+            <select id="paymentViewFilter">
+              <option value="attention" selected>Needs Attention</option>
+              <option value="pending">Pending / Unpaid</option>
+              <option value="partially_paid">Partially Paid</option>
+              <option value="paid">Paid</option>
+              <option value="all">All Payment Records</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="methodFilter">Payment Method</label>
+
+            <select id="methodFilter">
+              <option value="">All</option>
+              <option value="gcash">GCash</option>
+              <option value="paymaya">Maya</option>
+              <option value="cash">Cash</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label for="sourceFilter">Source</label>
+
+            <select id="sourceFilter">
+              <option value="">All</option>
+              <option value="online">Online</option>
+              <option value="manual">Manual</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====================================================
+         PAYMENT RECORDS
+      ===================================================== -->
+      <section class="payments-panel">
+        <div class="panel-heading">
+          <div>
+            <h2>Payment Records</h2>
+
+            <p>
+              Online pending payments with proof/reference can be verified here.
+              Manual reservations remain visible for monitoring.
+            </p>
+          </div>
+
+          <span id="recordCount" class="record-count">0 records</span>
+        </div>
+
+        <div id="paymentRecords">
+          <div class="payment-state-box">
+            Loading payment records...
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ======================================================
+       PROOF MODAL
+    ======================================================= -->
+    <div class="proof-modal" id="proofModal" aria-hidden="true">
+      <div class="proof-modal-backdrop" data-close-proof></div>
+
+      <div class="proof-modal-card">
+        <div class="proof-modal-head">
+          <div>
+            <strong>Payment Proof</strong>
+            <span id="proofModalReservation">-</span>
+          </div>
+
+          <button type="button" class="proof-close-btn" data-close-proof>
+            ×
+          </button>
+        </div>
+
+        <div class="proof-modal-body">
+          <img id="proofModalImage" alt="Payment proof screenshot" />
+        </div>
+      </div>
+    </div>
+
+    <script src="../sharedJS/toast.js"></script>
+    <script src="../sharedJS/api-config.js"></script>
+    <script src="../frontdeskJS/frontdeskPayments.js"></script>
+  </body>
+</html>

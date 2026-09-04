@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Housekeeping Dashboard | SmartResort</title>
+
+    <link rel="stylesheet" href="../sharedCSS/global.css" />
+    <link rel="stylesheet" href="../housekeepingCSS/housekeepingDashboard.css" />
+  </head>
+
+  <body>
+    <header class="hk-navbar">
+      <div>
+        <strong>Arvic Seaside</strong>
+        <span>Housekeeping Staff</span>
+      </div>
+
+      <button type="button" id="logoutBtn">Logout</button>
+    </header>
+
+    <main class="hk-page">
+      <section class="hk-hero">
+        <div>
+          <p>HOUSEKEEPING STAFF</p>
+          <h1>Daily Accommodation Schedule</h1>
+          <span>
+            View today’s booked, occupied, arriving, and departing accommodations
+            so rooms and resort areas can be prepared.
+          </span>
+        </div>
+
+        <div class="hk-user-card">
+          <strong id="accountName">Housekeeping Staff</strong>
+          <small id="accountEmail">-</small>
+          <span>View-only access</span>
+        </div>
+      </section>
+
+      <section class="schedule-placeholder">
+        <div class="placeholder-icon">✓</div>
+
+        <h2>Housekeeping schedule module is ready for connection</h2>
+
+        <p>
+          In the next step, this dashboard will read reservation schedules and
+          display booked/occupied accommodation, arrival, departure, and guest count.
+        </p>
+
+        <div class="permission-note">
+          Housekeeping will not create reservations, process payments, change
+          reservation status, or edit accommodation records.
+        </div>
+      </section>
+    </main>
+
+    <script src="../sharedJS/toast.js"></script>
+    <script src="../housekeepingJS/housekeepingDashboard.js"></script>
+  </body>
+</html>

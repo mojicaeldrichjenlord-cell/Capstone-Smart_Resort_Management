@@ -1,0 +1,154 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: #0f172a;
+  background:
+    radial-gradient(circle at top right, rgba(14, 165, 233, 0.12), transparent 30%),
+    #f8fafc;
+}
+
+.hk-navbar {
+  min-height: 74px;
+  padding: 0 5%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #fff;
+  background: #0f766e;
+}
+
+.hk-navbar > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.hk-navbar span {
+  margin-top: 2px;
+  font-size: 0.75rem;
+  opacity: 0.78;
+}
+
+.hk-navbar button {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: transparent;
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.hk-page {
+  width: min(1050px, calc(100% - 30px));
+  margin: 32px auto 60px;
+}
+
+.hk-hero {
+  padding: 28px;
+  border-radius: 26px;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 24px;
+  align-items: center;
+}
+
+.hk-hero p {
+  margin: 0;
+  color: #0f766e;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.hk-hero h1 {
+  margin: 8px 0 10px;
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+}
+
+.hk-hero > div:first-child > span {
+  display: block;
+  max-width: 660px;
+  color: #64748b;
+  line-height: 1.7;
+}
+
+.hk-user-card {
+  min-width: 235px;
+  padding: 18px;
+  border-radius: 18px;
+  background: #ecfeff;
+  border: 1px solid #a5f3fc;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.hk-user-card small {
+  color: #64748b;
+}
+
+.hk-user-card span {
+  margin-top: 6px;
+  color: #0f766e;
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+
+.schedule-placeholder {
+  margin-top: 22px;
+  padding: 38px 28px;
+  border-radius: 26px;
+  text-align: center;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+}
+
+.placeholder-icon {
+  width: 58px;
+  height: 58px;
+  margin: 0 auto 16px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #ccfbf1;
+  color: #0f766e;
+  font-size: 1.7rem;
+  font-weight: 900;
+}
+
+.schedule-placeholder h2 {
+  margin: 0;
+}
+
+.schedule-placeholder > p {
+  max-width: 720px;
+  margin: 12px auto 0;
+  color: #64748b;
+  line-height: 1.7;
+}
+
+.permission-note {
+  max-width: 720px;
+  margin: 24px auto 0;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: #f1f5f9;
+  color: #475569;
+  line-height: 1.6;
+}
+
+@media (max-width: 700px) {
+  .hk-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .hk-user-card {
+    min-width: 0;
+  }
+}

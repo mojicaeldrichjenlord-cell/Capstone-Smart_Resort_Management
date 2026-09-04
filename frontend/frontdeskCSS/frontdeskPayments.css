@@ -1,0 +1,653 @@
+/* ======================================================
+   FRONT DESK PAYMENT MANAGEMENT
+   File: frontend/frontdeskCSS/frontdeskPayments.css
+====================================================== */
+
+/* ======================================================
+   SECTION 1: Wrapper
+====================================================== */
+
+.frontdesk-payments-wrapper {
+  width: 92%;
+  max-width: 1240px;
+  margin: 0 auto 48px;
+}
+
+/* ======================================================
+   SECTION 2: Hero
+====================================================== */
+
+.payments-hero {
+  margin: 6px 0 22px;
+  padding: 30px 28px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+
+  color: #ffffff;
+
+  background:
+    linear-gradient(
+      135deg,
+      rgba(15, 23, 42, 0.95),
+      rgba(20, 184, 166, 0.82)
+    ),
+    linear-gradient(135deg, #0f172a, #14b8a6);
+
+  border-radius: 30px;
+
+  box-shadow: 0 20px 46px rgba(15, 23, 42, 0.16);
+}
+
+.hero-eyebrow {
+  margin: 0 0 6px;
+
+  color: #99f6e4;
+
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.payments-hero h1 {
+  margin: 0 0 8px;
+
+  color: #ffffff;
+
+  font-size: 2rem;
+}
+
+.payments-hero p {
+  margin: 0;
+
+  max-width: 760px;
+
+  color: rgba(255, 255, 255, 0.94);
+
+  line-height: 1.65;
+}
+
+/* ======================================================
+   SECTION 3: Summary
+====================================================== */
+
+.payments-summary-grid {
+  margin-bottom: 18px;
+
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.payment-summary-card {
+  padding: 18px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  background: rgba(255, 255, 255, 0.96);
+
+  border: 1px solid #dbe7ef;
+  border-radius: 18px;
+
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.06);
+}
+
+.payment-summary-card.attention {
+  border-color: rgba(245, 158, 11, 0.42);
+}
+
+.payment-summary-card span {
+  color: #64748b;
+
+  font-size: 0.86rem;
+  font-weight: 800;
+}
+
+.payment-summary-card strong {
+  color: #0f9488;
+
+  font-size: 1.65rem;
+}
+
+.payment-summary-card.attention strong {
+  color: #b45309;
+}
+
+/* ======================================================
+   SECTION 4: Policy note
+====================================================== */
+
+.payment-policy-note {
+  margin-bottom: 18px;
+  padding: 17px 19px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+
+  background: #fffbeb;
+
+  border: 1px solid #fde68a;
+  border-radius: 17px;
+
+  color: #78350f;
+}
+
+.payment-policy-note span {
+  line-height: 1.6;
+}
+
+/* ======================================================
+   SECTION 5: Panels
+====================================================== */
+
+.payments-panel {
+  margin-bottom: 20px;
+  padding: 22px;
+
+  background: rgba(255, 255, 255, 0.96);
+
+  border: 1px solid #dbe7ef;
+  border-radius: 24px;
+
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.07);
+}
+
+.panel-heading {
+  margin-bottom: 18px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.panel-heading h2 {
+  margin: 0 0 5px;
+  color: #0f172a;
+}
+
+.panel-heading p {
+  margin: 0;
+
+  color: #64748b;
+
+  line-height: 1.55;
+}
+
+.record-count {
+  padding: 8px 12px;
+
+  flex: 0 0 auto;
+
+  border-radius: 999px;
+
+  background: #ecfeff;
+  color: #0f766e;
+
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+/* ======================================================
+   SECTION 6: Filters
+====================================================== */
+
+.payments-filter-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 14px;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.filter-group label {
+  color: #0f172a;
+
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.filter-group input,
+.filter-group select {
+  width: 100%;
+
+  padding: 12px 13px;
+
+  background: #ffffff;
+
+  border: 1px solid #cbd5e1;
+  border-radius: 13px;
+
+  outline: none;
+
+  font-size: 0.92rem;
+}
+
+.filter-group input:focus,
+.filter-group select:focus {
+  border-color: #14b8a6;
+
+  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.12);
+}
+
+/* ======================================================
+   SECTION 7: Payment cards
+====================================================== */
+
+.frontdesk-payment-list {
+  display: grid;
+  gap: 14px;
+}
+
+.frontdesk-payment-card {
+  padding: 18px;
+
+  background: linear-gradient(180deg, #fcfeff 0%, #f4fbfc 100%);
+
+  border: 1px solid #dbe7ef;
+  border-radius: 20px;
+}
+
+.payment-card-head {
+  margin-bottom: 14px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+.reservation-code {
+  color: #0f172a;
+
+  font-size: 1.08rem;
+  font-weight: 900;
+}
+
+.reservation-id {
+  margin-top: 4px;
+
+  color: #64748b;
+
+  font-size: 0.82rem;
+}
+
+.payment-badges {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.source-badge,
+.status-badge,
+.payment-badge {
+  padding: 6px 10px;
+
+  border-radius: 999px;
+
+  font-size: 0.75rem;
+  font-weight: 900;
+}
+
+.source-online {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.source-manual {
+  background: #ccfbf1;
+  color: #0f766e;
+}
+
+.status-pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-approved {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-completed {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.status-cancelled {
+  background: #e5e7eb;
+  color: #475569;
+}
+
+.status-rejected {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.payment-pending,
+.payment-unpaid {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.payment-partially_paid {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.payment-paid {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.payment-rejected {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.payment-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.payment-detail-box {
+  min-width: 0;
+
+  padding: 13px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+
+  background: #ffffff;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 15px;
+
+  color: #475569;
+
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.payment-detail-box strong {
+  color: #0f172a;
+}
+
+.detail-label {
+  margin-bottom: 2px;
+
+  color: #64748b;
+
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+
+  text-transform: uppercase;
+}
+
+.amount-attention {
+  color: #b45309 !important;
+}
+
+.payment-proof-box {
+  justify-content: center;
+}
+
+/* ======================================================
+   SECTION 8: Payment actions
+====================================================== */
+
+.payment-card-footer {
+  margin-top: 14px;
+  padding-top: 14px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+
+  border-top: 1px solid #e2e8f0;
+}
+
+.payment-record-note {
+  color: #64748b;
+
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.payment-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.verify-payment-btn {
+  white-space: nowrap;
+}
+
+.proof-btn {
+  width: fit-content;
+
+  padding: 9px 13px;
+
+  border: 1px solid #99f6e4;
+  border-radius: 999px;
+
+  background: #ecfeff;
+  color: #0f766e;
+
+  font-weight: 900;
+
+  cursor: pointer;
+}
+
+.proof-btn:hover {
+  background: #ccfbf1;
+}
+
+.no-proof-text {
+  color: #94a3b8;
+  font-style: italic;
+}
+
+/* ======================================================
+   SECTION 9: States
+====================================================== */
+
+.payment-state-box {
+  padding: 26px;
+
+  text-align: center;
+
+  color: #64748b;
+
+  background: #f8fafc;
+
+  border: 1px dashed #cbd5e1;
+  border-radius: 16px;
+}
+
+.payment-state-box.error {
+  color: #991b1b;
+
+  background: #fef2f2;
+
+  border-color: #fecaca;
+}
+
+/* ======================================================
+   SECTION 10: Proof modal
+====================================================== */
+
+.proof-modal {
+  position: fixed;
+  inset: 0;
+
+  z-index: 5000;
+
+  display: none;
+  place-items: center;
+
+  padding: 20px;
+}
+
+.proof-modal.open {
+  display: grid;
+}
+
+.proof-modal-backdrop {
+  position: absolute;
+  inset: 0;
+
+  background: rgba(15, 23, 42, 0.76);
+
+  backdrop-filter: blur(3px);
+}
+
+.proof-modal-card {
+  position: relative;
+
+  width: min(720px, 96vw);
+  max-height: 90vh;
+
+  overflow: hidden;
+
+  background: #ffffff;
+
+  border-radius: 22px;
+
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.35);
+}
+
+.proof-modal-head {
+  padding: 16px 18px;
+
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.proof-modal-head > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.proof-modal-head span {
+  color: #64748b;
+  font-size: 0.8rem;
+}
+
+.proof-close-btn {
+  width: 38px;
+  height: 38px;
+
+  border: 0;
+  border-radius: 50%;
+
+  background: #f1f5f9;
+  color: #0f172a;
+
+  font-size: 1.4rem;
+
+  cursor: pointer;
+}
+
+.proof-modal-body {
+  max-height: calc(90vh - 72px);
+
+  overflow: auto;
+
+  padding: 16px;
+
+  background: #f8fafc;
+}
+
+.proof-modal-body img {
+  display: block;
+
+  width: 100%;
+  height: auto;
+
+  margin: auto;
+
+  border-radius: 14px;
+}
+
+.proof-modal-open {
+  overflow: hidden;
+}
+
+/* ======================================================
+   SECTION 11: Responsive
+====================================================== */
+
+@media (max-width: 1050px) {
+  .payments-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .payments-filter-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .payment-detail-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .frontdesk-payments-wrapper {
+    width: 94%;
+  }
+
+  .payments-hero {
+    padding: 25px 20px;
+
+    flex-direction: column;
+    align-items: flex-start;
+
+    border-radius: 22px;
+  }
+
+  .payments-summary-grid,
+  .payments-filter-grid,
+  .payment-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .payment-card-head,
+  .payment-card-footer,
+  .panel-heading {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .payment-badges {
+    justify-content: flex-start;
+  }
+
+  .payment-actions {
+    width: 100%;
+  }
+
+  .verify-payment-btn {
+    width: 100%;
+  }
+}
