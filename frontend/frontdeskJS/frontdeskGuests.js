@@ -545,18 +545,36 @@ function renderGuestCard(booking) {
 
   const remainingBalance = toMoney(booking.remaining_balance);
   const entranceFee = toMoney(booking.estimated_entrance_fee);
+  const entranceAdjustmentTotal = toMoney(
+    booking.entrance_adjustment_total,
+  );
+  const adjustedEntranceFee = toMoney(
+    booking.adjusted_entrance_fee ??
+      Math.max(
+        entranceFee - entranceAdjustmentTotal,
+        0,
+      ),
+  );
   const entranceFeeCollected = toMoney(
     booking.entrance_fee_collected,
   );
+  const entranceFeePaid = isTruthyFlag(
+    booking.entrance_fee_paid,
+  );
 
-  // Before check-in, the entrance fee is still an estimate to collect.
-  // After check-in, the backend records entrance_fee_collected, so the
-  // card should show actual collection instead of telling staff to collect
-  // the same amount again.
+  // Entrance adjustment is a deduction from the gross entrance fee.
+  // If entrance fee is already marked paid, the deduction itself must
+  // never appear again as an amount still to collect.
   const entranceFeeRemaining =
     state === "inside"
-      ? Math.max(entranceFee - entranceFeeCollected, 0)
-      : entranceFee;
+      ? entranceFeePaid
+        ? 0
+        : Math.max(
+            adjustedEntranceFee -
+              entranceFeeCollected,
+            0,
+          )
+      : adjustedEntranceFee;
 
   const collectNow =
     remainingBalance + entranceFeeRemaining;
@@ -568,13 +586,13 @@ function renderGuestCard(booking) {
 
   const entranceLabel =
     state === "inside"
-      ? "Entrance Fee Collected"
+      ? "Final Entrance Fee Collected"
       : "Estimated Entrance Fee";
 
   const entranceDisplayAmount =
     state === "inside"
       ? entranceFeeCollected
-      : entranceFee;
+      : adjustedEntranceFee;
 
   const totalCollectionLabel =
     state === "inside"
