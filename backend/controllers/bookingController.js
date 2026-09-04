@@ -1848,9 +1848,13 @@ exports.getBookingReceipt = async (req, res) => {
     );
 
     /* ======================================================
-       FRONT-DESK DISCOUNT
+       ENTRANCE ADJUSTMENTS
        booking_discounts.booking_id references reservations.id.
-       One active discount adjustment may exist per reservation.
+
+       Multiple structured rows may exist at the same time:
+       - senior
+       - pwd
+       - kid_free
     ====================================================== */
     const [discountRows] = await db.promise().query(
       `
@@ -1865,16 +1869,17 @@ exports.getBookingReceipt = async (req, res) => {
         updated_at
       FROM booking_discounts
       WHERE booking_id = ?
-      ORDER BY updated_at DESC, id DESC
-      LIMIT 1
+      ORDER BY FIELD(discount_type, 'senior', 'pwd', 'kid_free'), id ASC
       `,
       [id],
     );
 
     const bookingDiscount = discountRows[0] || null;
-    const discountTotal = bookingDiscount
-      ? Number(bookingDiscount.discount_amount || 0)
-      : 0;
+    const discountTotal = discountRows.reduce(
+      (sum, discount) =>
+        sum + Number(discount.discount_amount || 0),
+      0,
+    );
 
     const additionalChargesTotal = chargeRows.reduce(
       (sum, charge) => sum + Number(charge.charge_amount || 0),
@@ -1892,9 +1897,19 @@ exports.getBookingReceipt = async (req, res) => {
       0,
     );
 
+    const actualGuestCount = Number(
+      booking.actual_guest_count ??
+        booking.guest_count ??
+        0,
+    );
+
     const totalFreeEntrancePax = Math.min(
-      items.reduce((sum, item) => sum + Number(item.free_entrance_pax || 0), 0),
-      Number(booking.guest_count || 0),
+      items.reduce(
+        (sum, item) =>
+          sum + Number(item.free_entrance_pax || 0),
+        0,
+      ),
+      actualGuestCount,
     );
 
     booking.fullname = [
@@ -1912,14 +1927,12 @@ exports.getBookingReceipt = async (req, res) => {
     booking.check_in_time = booking.check_in_time;
     booking.check_out_time = booking.check_out_time;
     booking.booked_guests = Number(booking.guest_count || 0);
-    booking.actual_guests = Number(
-      booking.actual_guest_count ?? booking.guest_count ?? 0,
-    );
+    booking.actual_guests = actualGuestCount;
     booking.guests = booking.actual_guests;
     booking.free_entrance_pax = totalFreeEntrancePax;
 
     booking.chargeable_entrance_guests = Math.max(
-      Number(booking.guest_count || 0) - totalFreeEntrancePax,
+      booking.actual_guests - totalFreeEntrancePax,
       0,
     );
 
@@ -1929,8 +1942,21 @@ exports.getBookingReceipt = async (req, res) => {
     booking.items = items;
 
     booking.discount = bookingDiscount;
+    booking.discounts = discountRows;
+    booking.entrance_adjustments = discountRows;
     booking.discount_total = discountTotal;
     booking.front_desk_discount_total = discountTotal;
+    booking.entrance_adjustment_total = discountTotal;
+    booking.adjusted_entrance_fee = Math.max(
+      Number(booking.estimated_entrance_fee || 0) -
+        discountTotal,
+      0,
+    );
+    booking.entrance_fee_remaining = Math.max(
+      booking.adjusted_entrance_fee -
+        Number(booking.entrance_fee_collected || 0),
+      0,
+    );
 
     booking.additional_charges = chargeRows;
     booking.additional_charges_total = additionalChargesTotal;
@@ -2070,6 +2096,8 @@ exports.getAllBookings = async (req, res) => {
         r.checked_in_at,
         r.entrance_fee_paid,
         r.entrance_fee_collected,
+        COALESCE(discount_totals.entrance_adjustment_total, 0)
+          AS entrance_adjustment_total,
         r.extra_bed_count,
         r.extra_bed_fee,
         r.extra_bed_paid,
@@ -2118,6 +2146,14 @@ exports.getAllBookings = async (req, res) => {
         INNER JOIN accommodations a2 ON ri.accommodation_id = a2.id
         GROUP BY ri.reservation_id
       ) acc_list ON r.id = acc_list.reservation_id
+      LEFT JOIN (
+        SELECT
+          booking_id,
+          SUM(discount_amount) AS entrance_adjustment_total
+        FROM booking_discounts
+        GROUP BY booking_id
+      ) discount_totals
+        ON r.id = discount_totals.booking_id
       ${dateWhereClause}
       ORDER BY r.created_at DESC
       `,
@@ -2137,6 +2173,20 @@ exports.getAllBookings = async (req, res) => {
       guests: Number(row.actual_guest_count ?? row.guest_count ?? 0),
       booked_guests: Number(row.guest_count || 0),
       actual_guests: Number(row.actual_guest_count ?? row.guest_count ?? 0),
+      entrance_adjustment_total: Number(
+        row.entrance_adjustment_total || 0,
+      ),
+      adjusted_entrance_fee: Math.max(
+        Number(row.estimated_entrance_fee || 0) -
+          Number(row.entrance_adjustment_total || 0),
+        0,
+      ),
+      entrance_fee_remaining: Math.max(
+        Number(row.estimated_entrance_fee || 0) -
+          Number(row.entrance_adjustment_total || 0) -
+          Number(row.entrance_fee_collected || 0),
+        0,
+      ),
       room_name: row.accommodation_list || row.room_name || "N/A",
       items: [],
     }));
