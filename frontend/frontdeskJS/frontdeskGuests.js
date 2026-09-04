@@ -37,6 +37,23 @@ let selectedGuestAdjustmentBookingId = null;
 // for the reservation currently open in Guest Adjustment.
 let guestAdjustmentPaidExtraGuestTotal = 0;
 
+// STEP 3F-B2: Entrance Fee Adjustment state.
+let selectedEntranceAdjustmentBookingId = null;
+
+let currentEntranceAdjustmentMeta = {
+  entrance_rate_per_pax: 0,
+  senior_pwd_discount_rate: 0.2,
+  booked_guest_count: 0,
+  actual_guest_count: 1,
+  included_free_entrance_pax: 0,
+  chargeable_entrance_guests: 0,
+  gross_entrance_fee: 0,
+  total_entrance_deduction: 0,
+  final_entrance_fee: 0,
+  entrance_fee_collected: 0,
+  entrance_fee_remaining: 0,
+};
+
 // ============================================================
 // SECTION 1: STARTUP
 // ============================================================
