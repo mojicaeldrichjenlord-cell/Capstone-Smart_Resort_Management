@@ -23,12 +23,12 @@ Legend:
   - ✅ Extra guest charge
   - ✅ Duplicate prevention
   - ✅ Paid-charge difference handling
-- 🔧 Entrance Fee Adjustments — CURRENT / NEXT
-  - ⬜ Senior Citizen 20%
-  - ⬜ PWD 20%
-  - ⬜ Qualified kids free
-  - ⬜ Multiple adjustment types
-  - ⬜ Correct final entrance-fee calculation
+- 🔧 Entrance Fee Adjustments — CURRENT
+  - 🔧 Senior Citizen 20% — coded, verification pending
+  - 🔧 PWD 20% — coded, verification pending
+  - 🔧 Qualified kids free — coded, verification pending
+  - 🔧 Multiple adjustment types — coded, verification pending
+  - 🔧 Correct final entrance-fee calculation — coded, verification pending
 - ⬜ Extra Bed
   - ⬜ Quantity
   - ⬜ ₱200/bed current rule
