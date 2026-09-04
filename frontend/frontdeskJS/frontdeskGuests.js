@@ -748,6 +748,14 @@ function renderGuestAction(booking, bookingId, collectNow) {
         Guest Adjustment
       </button>
 
+      <button
+        type="button"
+        class="entrance-adjustment-action-btn"
+        onclick="openEntranceAdjustmentModal(${bookingId})"
+      >
+        Entrance Adjustment
+      </button>
+
       <span class="guest-action-disabled">
         Already Inside
       </span>
