@@ -410,6 +410,13 @@
   color: #0f766e !important;
 }
 
+.collection-helper-text {
+  margin-top: 5px;
+  color: #64748b;
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
 /* ======================================================
    SECTION 8: ACTION AREA
 ====================================================== */
@@ -437,6 +444,7 @@
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+  flex-wrap: wrap;
 }
 
 .checkin-btn {
@@ -552,7 +560,6 @@
     width: 100%;
   }
 }
-
 
 /* ======================================================
    STEP 3F-B1: GUEST ADJUSTMENT ACTION
@@ -875,7 +882,6 @@ body.guest-modal-open {
   }
 }
 
-
 /* ======================================================
    STEP 3F-B1 EDGE CASE:
    PAID EXTRA GUEST HISTORY + CURRENT DIFFERENCE
@@ -932,5 +938,558 @@ body.guest-modal-open {
   .guest-adjustment-payment-row {
     align-items: flex-start;
     flex-direction: column;
+  }
+}
+
+/* ======================================================
+   STEP 3F-B2: ENTRANCE ADJUSTMENT ACTION
+====================================================== */
+
+.entrance-adjustment-action-btn {
+  padding: 10px 14px;
+
+  border: none;
+  border-radius: 999px;
+
+  background: linear-gradient(
+    135deg,
+    #16a34a,
+    #15803d
+  );
+
+  color: #ffffff;
+
+  font-size: 0.84rem;
+  font-weight: 900;
+
+  cursor: pointer;
+
+  box-shadow:
+    0 9px 20px
+    rgba(22, 163, 74, 0.18);
+}
+
+.entrance-adjustment-action-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.02);
+}
+
+.entrance-adjustment-action-btn:active {
+  transform: translateY(0);
+}
+
+/* ======================================================
+   STEP 3F-B2: ENTRANCE ADJUSTMENT MODAL
+====================================================== */
+
+.entrance-adjustment-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9050;
+
+  display: none;
+  align-items: center;
+  justify-content: center;
+
+  padding: 22px;
+
+  background: rgba(15, 23, 42, 0.74);
+
+  backdrop-filter: blur(5px);
+}
+
+.entrance-adjustment-modal.show {
+  display: flex;
+}
+
+.entrance-adjustment-modal-box {
+  width: min(100%, 780px);
+  max-height: 90vh;
+
+  overflow-y: auto;
+
+  padding: 26px;
+
+  background: #ffffff;
+
+  border: 1px solid #dbe7ef;
+  border-radius: 26px;
+
+  box-shadow:
+    0 30px 78px
+    rgba(15, 23, 42, 0.34);
+}
+
+.entrance-adjustment-header {
+  margin-bottom: 18px;
+
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.entrance-adjustment-eyebrow {
+  margin: 0 0 5px;
+
+  color: #15803d;
+
+  font-size: 0.75rem;
+  font-weight: 950;
+  letter-spacing: 0.1em;
+}
+
+.entrance-adjustment-header h2 {
+  margin: 0 0 6px;
+
+  color: #0f172a;
+
+  font-size: 1.45rem;
+}
+
+.entrance-adjustment-header p {
+  margin: 0;
+
+  color: #64748b;
+
+  line-height: 1.55;
+}
+
+.entrance-adjustment-close-btn {
+  flex: 0 0 auto;
+
+  width: 42px;
+  height: 42px;
+
+  border: none;
+  border-radius: 999px;
+
+  background: #fee2e2;
+  color: #991b1b;
+
+  font-size: 1.4rem;
+  font-weight: 950;
+
+  cursor: pointer;
+}
+
+.current-entrance-adjustment-box {
+  margin-bottom: 18px;
+  padding: 15px 16px;
+
+  border: 1px solid #bbf7d0;
+  border-radius: 17px;
+
+  background: #ecfdf5;
+  color: #065f46;
+
+  line-height: 1.55;
+}
+
+.current-entrance-adjustment-box.empty {
+  border-color: #dbe7ef;
+
+  background: #f8fafc;
+  color: #64748b;
+}
+
+.current-entrance-adjustment-title {
+  display: block;
+  margin-bottom: 10px;
+
+  color: #14532d;
+}
+
+.current-entrance-adjustment-line {
+  padding: 7px 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+
+  border-bottom: 1px dashed #bbf7d0;
+}
+
+.current-entrance-adjustment-line:last-child {
+  border-bottom: none;
+}
+
+.current-entrance-adjustment-line strong {
+  white-space: nowrap;
+}
+
+.current-entrance-adjustment-line.total {
+  margin-top: 4px;
+  padding-top: 11px;
+
+  border-top: 1px solid #86efac;
+  border-bottom: none;
+
+  color: #14532d;
+  font-weight: 900;
+}
+
+/* ======================================================
+   STEP 3F-B2: CALCULATION CONTEXT
+====================================================== */
+
+.entrance-adjustment-meta-grid {
+  margin-bottom: 18px;
+
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 11px;
+}
+
+.entrance-adjustment-meta-item {
+  min-width: 0;
+
+  padding: 14px 15px;
+
+  border: 1px solid #dbe7ef;
+  border-radius: 16px;
+
+  background: #f8fafc;
+}
+
+.entrance-adjustment-meta-item.wide {
+  grid-column: span 3;
+
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.entrance-adjustment-meta-item span {
+  display: block;
+
+  margin-bottom: 6px;
+
+  color: #64748b;
+
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.entrance-adjustment-meta-item strong {
+  color: #0f172a;
+
+  font-size: 1.05rem;
+  font-weight: 950;
+}
+
+/* ======================================================
+   STEP 3F-B2: INPUTS
+====================================================== */
+
+.entrance-adjustment-input-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 13px;
+}
+
+.entrance-adjustment-form-group {
+  margin-bottom: 16px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.entrance-adjustment-form-group label {
+  color: #0f172a;
+
+  font-weight: 900;
+}
+
+.entrance-adjustment-form-group input,
+.entrance-adjustment-form-group textarea {
+  width: 100%;
+
+  padding: 13px 14px;
+
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+
+  background: #ffffff;
+  color: #0f172a;
+
+  font-size: 1rem;
+
+  outline: none;
+}
+
+.entrance-adjustment-form-group textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+
+.entrance-adjustment-form-group input:focus,
+.entrance-adjustment-form-group textarea:focus {
+  border-color: #16a34a;
+
+  box-shadow:
+    0 0 0 4px
+    rgba(22, 163, 74, 0.12);
+}
+
+.entrance-adjustment-form-group small {
+  color: #64748b;
+
+  line-height: 1.45;
+}
+
+/* ======================================================
+   STEP 3F-B2: LIVE BREAKDOWN
+====================================================== */
+
+.entrance-adjustment-breakdown {
+  margin: 4px 0 18px;
+  padding: 17px 18px;
+
+  border: 2px solid #bbf7d0;
+  border-radius: 18px;
+
+  background: #f0fdf4;
+}
+
+.entrance-adjustment-breakdown h3 {
+  margin: 0 0 12px;
+
+  color: #14532d;
+
+  font-size: 1rem;
+}
+
+.entrance-breakdown-row {
+  padding: 9px 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+
+  border-bottom: 1px dashed #bbf7d0;
+
+  color: #166534;
+
+  font-weight: 850;
+}
+
+.entrance-breakdown-row strong {
+  color: #15803d;
+  white-space: nowrap;
+}
+
+.entrance-breakdown-row.total-deduction {
+  margin-top: 4px;
+  padding-top: 13px;
+
+  border-top: 2px solid #86efac;
+}
+
+.entrance-breakdown-row.final-fee {
+  margin-top: 10px;
+  padding: 13px 14px;
+
+  border: none;
+  border-radius: 14px;
+
+  background: #ffffff;
+
+  color: #0f172a;
+
+  font-size: 1rem;
+}
+
+.entrance-breakdown-row.final-fee strong {
+  color: #0f172a;
+
+  font-size: 1.25rem;
+}
+
+.entrance-breakdown-row.remaining-fee {
+  padding: 13px 14px;
+
+  border: none;
+  border-radius: 14px;
+
+  background: #eff6ff;
+
+  color: #1e3a8a;
+}
+
+.entrance-breakdown-row.remaining-fee strong {
+  color: #1d4ed8;
+
+  font-size: 1.12rem;
+}
+
+.entrance-breakdown-row.overpaid-fee {
+  display: none;
+
+  margin-top: 10px;
+  padding: 13px 14px;
+
+  border: 1px solid #fed7aa;
+  border-radius: 14px;
+
+  background: #fff7ed;
+
+  color: #9a3412;
+}
+
+.entrance-breakdown-row.overpaid-fee.show {
+  display: flex;
+}
+
+.entrance-breakdown-row.overpaid-fee strong {
+  color: #c2410c;
+}
+
+/* ======================================================
+   STEP 3F-B2: POLICY / VALIDATION MESSAGE
+====================================================== */
+
+.entrance-adjustment-policy-note {
+  margin-bottom: 20px;
+  padding: 13px 15px;
+
+  border: 1px solid #bbf7d0;
+  border-radius: 15px;
+
+  background: #f0fdf4;
+  color: #166534;
+
+  line-height: 1.5;
+
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.entrance-adjustment-policy-note.invalid {
+  border-color: #fecaca;
+
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+/* ======================================================
+   STEP 3F-B2: MODAL ACTIONS
+====================================================== */
+
+.entrance-adjustment-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 11px;
+
+  flex-wrap: wrap;
+}
+
+.entrance-adjustment-save-btn,
+.entrance-adjustment-remove-btn,
+.entrance-adjustment-cancel-btn {
+  padding: 12px 17px;
+
+  border: none;
+  border-radius: 999px;
+
+  font-weight: 900;
+
+  cursor: pointer;
+}
+
+.entrance-adjustment-save-btn {
+  background: linear-gradient(
+    135deg,
+    #16a34a,
+    #15803d
+  );
+
+  color: #ffffff;
+}
+
+.entrance-adjustment-remove-btn {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.entrance-adjustment-cancel-btn {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.entrance-adjustment-save-btn:disabled,
+.entrance-adjustment-remove-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* ======================================================
+   STEP 3F-B2: RESPONSIVE
+====================================================== */
+
+@media (max-width: 900px) {
+  .entrance-adjustment-meta-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .entrance-adjustment-meta-item.wide {
+    grid-column: span 2;
+  }
+
+  .entrance-adjustment-input-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .guest-adjustment-action-btn,
+  .entrance-adjustment-action-btn,
+  .guest-action-disabled {
+    width: 100%;
+    text-align: center;
+  }
+
+  .entrance-adjustment-modal {
+    padding: 12px;
+  }
+
+  .entrance-adjustment-modal-box {
+    padding: 20px;
+
+    border-radius: 20px;
+  }
+
+  .entrance-adjustment-header {
+    gap: 12px;
+  }
+
+  .entrance-adjustment-meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .entrance-adjustment-meta-item.wide {
+    grid-column: span 1;
+  }
+
+  .current-entrance-adjustment-line,
+  .entrance-breakdown-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .entrance-adjustment-actions {
+    flex-direction: column;
+  }
+
+  .entrance-adjustment-save-btn,
+  .entrance-adjustment-remove-btn,
+  .entrance-adjustment-cancel-btn {
+    width: 100%;
+  }
+
+  .entrance-breakdown-row.overpaid-fee.show {
+    display: flex;
   }
 }

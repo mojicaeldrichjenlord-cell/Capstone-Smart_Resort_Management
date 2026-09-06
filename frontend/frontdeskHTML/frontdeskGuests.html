@@ -12,9 +12,6 @@
   </head>
 
   <body class="has-fixed-navbar">
-    <!-- ======================================================
-       FRONT DESK NAVBAR
-    ======================================================= -->
     <header class="navbar">
       <div class="logo">Arvic Seaside</div>
 
@@ -28,17 +25,11 @@
       </nav>
     </header>
 
-    <!-- ======================================================
-       PAGE WRAPPER
-    ======================================================= -->
     <main class="frontdesk-guests-wrapper">
       <a href="frontdeskDashboard.html" class="back-btn">
         ← Back to Dashboard
       </a>
 
-      <!-- ====================================================
-         HERO
-      ===================================================== -->
       <section class="guests-hero">
         <div>
           <p class="hero-eyebrow">FRONT DESK STAFF</p>
@@ -55,9 +46,6 @@
         </button>
       </section>
 
-      <!-- ====================================================
-         SUMMARY
-      ===================================================== -->
       <section class="guests-summary-grid">
         <article class="guest-summary-card ready">
           <span>Ready Today</span>
@@ -80,24 +68,17 @@
         </article>
       </section>
 
-      <!-- ====================================================
-         CHECK-IN RULE
-      ===================================================== -->
       <section class="checkin-rule-note">
         <strong>Front Desk Check-In Rule:</strong>
 
         <span>
           A reservation can be checked in when it is confirmed, the scheduled
           check-in date is today, and the required downpayment has already been
-          verified. The current system records the remaining accommodation
-          balance and estimated entrance fee as collected when Check In / Allow
-          Entry is confirmed.
+          verified. Guest Adjustment and Entrance Adjustment are handled after
+          the guest is already inside.
         </span>
       </section>
 
-      <!-- ====================================================
-         SEARCH / FILTER
-      ===================================================== -->
       <section class="guests-panel">
         <div class="panel-heading">
           <div>
@@ -135,9 +116,6 @@
         </div>
       </section>
 
-      <!-- ====================================================
-         GUEST RECORDS
-      ===================================================== -->
       <section class="guests-panel">
         <div class="panel-heading">
           <div>
@@ -159,31 +137,18 @@
         </div>
       </section>
 
-      <!-- ====================================================
-         STEP 3F-B STATUS NOTE
-      ===================================================== -->
       <section class="next-step-note">
-        <strong>Step 3F-B1:</strong>
+        <strong>Step 3F-B2:</strong>
 
         <span>
-          Guest Adjustment is now available for checked-in guests. Front Desk
-          can verify the actual onsite guest count and record an Extra Guest
-          Charge when the actual count is higher than the originally booked
-          count. Other Guests Inside tools will be added in the next substeps.
+          Guest Adjustment is complete. Entrance Fee Adjustment is now being
+          added for checked-in guests so Front Desk can verify Senior Citizen,
+          PWD, and qualified kid deductions using the verified actual guest
+          count and chargeable entrance guest count.
         </span>
       </section>
     </main>
 
-
-    <!-- ======================================================
-       STEP 3F-B1: GUEST ADJUSTMENT MODAL
-
-       Purpose:
-       - Verify actual onsite guest count after check-in
-       - Keep original booked guest count unchanged
-       - Calculate guests above the booked count
-       - Create/update one structured Extra Guest Charge
-    ======================================================= -->
     <div class="guest-adjustment-modal" id="guestAdjustmentModal">
       <div class="guest-adjustment-modal-box">
         <div class="guest-adjustment-header">
@@ -290,6 +255,212 @@
             type="button"
             class="guest-adjustment-cancel-btn"
             id="cancelGuestAdjustmentBtn"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="entrance-adjustment-modal" id="entranceAdjustmentModal">
+      <div class="entrance-adjustment-modal-box">
+        <div class="entrance-adjustment-header">
+          <div>
+            <p class="entrance-adjustment-eyebrow">FRONT DESK OPERATION</p>
+            <h2>Entrance Fee Adjustment</h2>
+
+            <p id="entranceAdjustmentGuestText">
+              Verify Senior Citizen, PWD, and qualified kid entrance
+              adjustments for this checked-in reservation.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="entrance-adjustment-close-btn"
+            id="closeEntranceAdjustmentBtn"
+            aria-label="Close entrance adjustment modal"
+          >
+            ×
+          </button>
+        </div>
+
+        <div
+          id="currentEntranceAdjustmentBox"
+          class="current-entrance-adjustment-box empty"
+        >
+          No entrance adjustment has been applied yet.
+        </div>
+
+        <div class="entrance-adjustment-meta-grid">
+          <div class="entrance-adjustment-meta-item">
+            <span>Booked Guests</span>
+            <strong id="entranceBookedGuestsText">0</strong>
+          </div>
+
+          <div class="entrance-adjustment-meta-item">
+            <span>Actual Guests</span>
+            <strong id="entranceActualGuestsText">0</strong>
+          </div>
+
+          <div class="entrance-adjustment-meta-item">
+            <span>Included Free Entrance</span>
+            <strong id="entranceIncludedFreeText">0 pax</strong>
+          </div>
+
+          <div class="entrance-adjustment-meta-item">
+            <span>Chargeable Entrance Guests</span>
+            <strong id="entranceChargeableGuestsText">0</strong>
+          </div>
+
+          <div class="entrance-adjustment-meta-item">
+            <span>Entrance Rate Per Pax</span>
+            <strong id="entranceRateText">₱0.00</strong>
+          </div>
+
+          <div class="entrance-adjustment-meta-item">
+            <span>Already Collected</span>
+            <strong id="entranceCollectedText">₱0.00</strong>
+          </div>
+
+          <div class="entrance-adjustment-meta-item wide">
+            <span>Gross Entrance Fee Before Adjustments</span>
+            <strong id="grossEntranceFeeText">₱0.00</strong>
+          </div>
+        </div>
+
+        <div class="entrance-adjustment-input-grid">
+          <div class="entrance-adjustment-form-group">
+            <label for="entranceSeniorPaxInput">Senior Citizen Pax</label>
+
+            <input
+              type="number"
+              id="entranceSeniorPaxInput"
+              min="0"
+              step="1"
+              value="0"
+            />
+
+            <small>Automatic 20% discount on entrance fee only.</small>
+          </div>
+
+          <div class="entrance-adjustment-form-group">
+            <label for="entrancePwdPaxInput">PWD Pax</label>
+
+            <input
+              type="number"
+              id="entrancePwdPaxInput"
+              min="0"
+              step="1"
+              value="0"
+            />
+
+            <small>Automatic 20% discount on entrance fee only.</small>
+          </div>
+
+          <div class="entrance-adjustment-form-group">
+            <label for="entranceKidFreePaxInput">Qualified Kid Pax</label>
+
+            <input
+              type="number"
+              id="entranceKidFreePaxInput"
+              min="0"
+              step="1"
+              value="0"
+            />
+
+            <small>
+              Free entrance after Front Desk verifies the resort height rule.
+            </small>
+          </div>
+        </div>
+
+        <div class="entrance-adjustment-form-group">
+          <label for="entranceAdjustmentNoteInput">Verification Note</label>
+
+          <textarea
+            id="entranceAdjustmentNoteInput"
+            placeholder="Example: 1 Senior ID verified, 1 PWD ID verified, 2 qualified kids height verified."
+          ></textarea>
+
+          <small>
+            Required. Record Senior/PWD ID verification and/or qualified kid
+            height verification.
+          </small>
+        </div>
+
+        <div class="entrance-adjustment-breakdown">
+          <h3>Entrance Fee Breakdown</h3>
+
+          <div class="entrance-breakdown-row">
+            <span>Senior Citizen Deduction</span>
+            <strong id="entranceSeniorDiscountText">-₱0.00</strong>
+          </div>
+
+          <div class="entrance-breakdown-row">
+            <span>PWD Deduction</span>
+            <strong id="entrancePwdDiscountText">-₱0.00</strong>
+          </div>
+
+          <div class="entrance-breakdown-row">
+            <span>Qualified Kid Deduction</span>
+            <strong id="entranceKidDiscountText">-₱0.00</strong>
+          </div>
+
+          <div class="entrance-breakdown-row total-deduction">
+            <span>Total Entrance Deduction</span>
+            <strong id="entranceTotalDeductionText">-₱0.00</strong>
+          </div>
+
+          <div class="entrance-breakdown-row final-fee">
+            <span>Final Entrance Fee</span>
+            <strong id="finalEntranceFeeText">₱0.00</strong>
+          </div>
+
+          <div class="entrance-breakdown-row remaining-fee">
+            <span>Remaining Entrance Fee</span>
+            <strong id="remainingEntranceFeeText">₱0.00</strong>
+          </div>
+
+          <div
+            class="entrance-breakdown-row overpaid-fee"
+            id="entranceOverpaidRow"
+          >
+            <span>Possible Entrance Overpayment</span>
+            <strong id="entranceOverpaidText">₱0.00</strong>
+          </div>
+        </div>
+
+        <div
+          class="entrance-adjustment-policy-note"
+          id="entranceAdjustmentPolicyNote"
+        >
+          Accommodation free entrance inclusions are applied first. Senior
+          Citizens and PWD guests receive 20% off the entrance fee only.
+          Qualified kids receive free entrance based on the resort height rule.
+        </div>
+
+        <div class="entrance-adjustment-actions">
+          <button
+            type="button"
+            class="entrance-adjustment-save-btn"
+            id="saveEntranceAdjustmentBtn"
+          >
+            Apply Entrance Adjustment
+          </button>
+
+          <button
+            type="button"
+            class="entrance-adjustment-remove-btn"
+            id="removeEntranceAdjustmentBtn"
+          >
+            Remove Adjustment
+          </button>
+
+          <button
+            type="button"
+            class="entrance-adjustment-cancel-btn"
+            id="cancelEntranceAdjustmentBtn"
           >
             Cancel
           </button>
