@@ -12,6 +12,10 @@ const db = require("../config/db");
 // - Preserve all already-paid Extra Guest Charge history.
 // - Create/update only the CURRENT unpaid difference.
 // - Prevent duplicate unpaid structured Extra Guest Charge rows.
+// - STEP 3F-B3: if the verified actual guest count changes after
+//   an entrance fee was already reviewed/collected, reopen the
+//   entrance payment flag so Front Desk must recalculate the
+//   entrance balance before checkout.
 // ============================================================
 
 function normalizeValue(value) {
@@ -126,7 +130,9 @@ const updateGuestAdjustment = async (req, res) => {
           guest_count,
           actual_guest_count,
           reservation_status,
-          is_checked_in
+          is_checked_in,
+          entrance_fee_paid,
+          entrance_fee_collected
         FROM reservations
         WHERE id = ?
         LIMIT 1
@@ -186,6 +192,23 @@ const updateGuestAdjustment = async (req, res) => {
     const bookedGuestCount =
       Number(
         reservation.guest_count || 0,
+      );
+
+    const previousActualGuestCount =
+      reservation.actual_guest_count === null ||
+      reservation.actual_guest_count === undefined
+        ? null
+        : Number(
+            reservation.actual_guest_count,
+          );
+
+    const actualGuestCountChanged =
+      previousActualGuestCount === null ||
+      previousActualGuestCount !== actualGuestCount;
+
+    const entranceFeeCollected =
+      toMoney(
+        reservation.entrance_fee_collected,
       );
 
     const extraGuestCount =
@@ -268,17 +291,30 @@ const updateGuestAdjustment = async (req, res) => {
       );
 
     // --------------------------------------------------------
-    // Always save the verified actual guest count.
+    // Save verified actual guest count.
     // Original guest_count remains unchanged.
+    //
+    // STEP 3F-B3:
+    // If actual guest count changed, entrance fee must be
+    // recalculated using that new verified count. Preserve the
+    // amount already collected, but reopen entrance_fee_paid=0.
+    // The Entrance Adjustment/Collection backend will decide if
+    // more is due or if an overpayment exists.
     // --------------------------------------------------------
     await connection.query(
       `
       UPDATE reservations
-      SET actual_guest_count = ?
+      SET
+        actual_guest_count = ?,
+        entrance_fee_paid = CASE
+          WHEN ? = 1 THEN 0
+          ELSE entrance_fee_paid
+        END
       WHERE id = ?
       `,
       [
         actualGuestCount,
+        actualGuestCountChanged ? 1 : 0,
         reservationId,
       ],
     );
@@ -432,6 +468,14 @@ const updateGuestAdjustment = async (req, res) => {
         "Guest adjustment saved. No additional Extra Guest Charge is required.";
     }
 
+    if (
+      actualGuestCountChanged &&
+      entranceFeeCollected > 0
+    ) {
+      message +=
+        " The actual guest count changed after an entrance payment was already collected. Reopen Entrance Adjustment and review the recalculated entrance balance before checkout.";
+    }
+
     return res.status(200).json({
       success: true,
       message,
@@ -441,6 +485,18 @@ const updateGuestAdjustment = async (req, res) => {
 
       actual_guest_count:
         actualGuestCount,
+
+      previous_actual_guest_count:
+        previousActualGuestCount,
+
+      actual_guest_count_changed:
+        actualGuestCountChanged,
+
+      entrance_fee_review_required:
+        actualGuestCountChanged,
+
+      entrance_fee_collected:
+        entranceFeeCollected,
 
       extra_guest_count:
         extraGuestCount,

@@ -138,13 +138,13 @@
       </section>
 
       <section class="next-step-note">
-        <strong>Step 3F-B2:</strong>
+        <strong>Step 3F-B3:</strong>
 
         <span>
-          Guest Adjustment is complete. Entrance Fee Adjustment is now being
-          added for checked-in guests so Front Desk can verify Senior Citizen,
-          PWD, and qualified kid deductions using the verified actual guest
-          count and chargeable entrance guest count.
+          After Guest Adjustment and any Senior Citizen, PWD, or qualified kid
+          entrance adjustment is finalized, Front Desk can collect the
+          server-calculated remaining entrance fee. The system preserves money
+          already collected and prevents duplicate entrance collection.
         </span>
       </section>
     </main>
@@ -270,8 +270,8 @@
             <h2>Entrance Fee Adjustment</h2>
 
             <p id="entranceAdjustmentGuestText">
-              Verify Senior Citizen, PWD, and qualified kid entrance
-              adjustments for this checked-in reservation.
+              Verify which chargeable guests qualify for the official
+              Kid/Senior/PWD special entrance rate.
             </p>
           </div>
 
@@ -314,8 +314,13 @@
           </div>
 
           <div class="entrance-adjustment-meta-item">
-            <span>Entrance Rate Per Pax</span>
+            <span>Adult Entrance Rate Per Pax</span>
             <strong id="entranceRateText">₱0.00</strong>
+          </div>
+
+          <div class="entrance-adjustment-meta-item">
+            <span>Kid / Senior / PWD Rate Per Pax</span>
+            <strong id="entranceSpecialRateText">₱0.00</strong>
           </div>
 
           <div class="entrance-adjustment-meta-item">
@@ -324,7 +329,7 @@
           </div>
 
           <div class="entrance-adjustment-meta-item wide">
-            <span>Gross Entrance Fee Before Adjustments</span>
+            <span>Gross Entrance Fee at Adult Rate</span>
             <strong id="grossEntranceFeeText">₱0.00</strong>
           </div>
         </div>
@@ -341,7 +346,7 @@
               value="0"
             />
 
-            <small>Automatic 20% discount on entrance fee only.</small>
+            <small>Uses the official Kid/Senior/PWD fixed entrance rate.</small>
           </div>
 
           <div class="entrance-adjustment-form-group">
@@ -355,11 +360,11 @@
               value="0"
             />
 
-            <small>Automatic 20% discount on entrance fee only.</small>
+            <small>Uses the official Kid/Senior/PWD fixed entrance rate.</small>
           </div>
 
           <div class="entrance-adjustment-form-group">
-            <label for="entranceKidFreePaxInput">Qualified Kid Pax</label>
+            <label for="entranceKidFreePaxInput">Kid Special-Rate Pax</label>
 
             <input
               type="number"
@@ -370,7 +375,7 @@
             />
 
             <small>
-              Free entrance after Front Desk verifies the resort height rule.
+              Uses the official Kid/Senior/PWD fixed entrance rate.
             </small>
           </div>
         </div>
@@ -380,12 +385,12 @@
 
           <textarea
             id="entranceAdjustmentNoteInput"
-            placeholder="Example: 1 Senior ID verified, 1 PWD ID verified, 2 qualified kids height verified."
+            placeholder="Example: 1 Senior ID verified, 1 PWD ID verified, 1 kid confirmed for special entrance rate."
           ></textarea>
 
           <small>
-            Required. Record Senior/PWD ID verification and/or qualified kid
-            height verification.
+            Required. Record how Front Desk verified each Senior/PWD/Kid
+            special-rate guest.
           </small>
         </div>
 
@@ -393,22 +398,22 @@
           <h3>Entrance Fee Breakdown</h3>
 
           <div class="entrance-breakdown-row">
-            <span>Senior Citizen Deduction</span>
+            <span>Senior Citizen Rate Adjustment</span>
             <strong id="entranceSeniorDiscountText">-₱0.00</strong>
           </div>
 
           <div class="entrance-breakdown-row">
-            <span>PWD Deduction</span>
+            <span>PWD Rate Adjustment</span>
             <strong id="entrancePwdDiscountText">-₱0.00</strong>
           </div>
 
           <div class="entrance-breakdown-row">
-            <span>Qualified Kid Deduction</span>
+            <span>Kid Rate Adjustment</span>
             <strong id="entranceKidDiscountText">-₱0.00</strong>
           </div>
 
           <div class="entrance-breakdown-row total-deduction">
-            <span>Total Entrance Deduction</span>
+            <span>Total Special-Rate Adjustment</span>
             <strong id="entranceTotalDeductionText">-₱0.00</strong>
           </div>
 
@@ -435,9 +440,11 @@
           class="entrance-adjustment-policy-note"
           id="entranceAdjustmentPolicyNote"
         >
-          Accommodation free entrance inclusions are applied first. Senior
-          Citizens and PWD guests receive 20% off the entrance fee only.
-          Qualified kids receive free entrance based on the resort height rule.
+          Room free-entrance inclusions are applied first. Among the remaining
+          chargeable guests, Kid/Senior/PWD guests use the resort's official
+          fixed special entrance rate instead of a percentage discount. The
+          ₱100 subsequent-day fee is not automated in this phase. Apply or
+          update the special-rate counts before collecting the final entrance fee.
         </div>
 
         <div class="entrance-adjustment-actions">
@@ -447,6 +454,15 @@
             id="saveEntranceAdjustmentBtn"
           >
             Apply Entrance Adjustment
+          </button>
+
+          <button
+            type="button"
+            class="entrance-adjustment-save-btn"
+            id="collectEntranceFeeBtn"
+            disabled
+          >
+            Loading Entrance Balance...
           </button>
 
           <button
@@ -471,5 +487,6 @@
     <script src="../sharedJS/toast.js"></script>
     <script src="../sharedJS/api-config.js"></script>
     <script src="../frontdeskJS/frontdeskGuests.js"></script>
+    <script src="../frontdeskJS/frontdeskEntranceCollection.js"></script>
   </body>
 </html>

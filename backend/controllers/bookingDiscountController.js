@@ -1,23 +1,58 @@
 const db = require("../config/db");
 
 // ============================================================
-// STEP 3F-B2: ENTRANCE FEE ADJUSTMENT CONTROLLER
+// STEP 3F-B2 + B3 PRICING CORRECTION: ENTRANCE FEE ADJUSTMENT / COLLECTION
 //
 // File:
 // backend/controllers/bookingDiscountController.js
 //
 // Purpose:
-// - Handle Senior Citizen, PWD, and Qualified Kid entrance
-//   adjustments for checked-in reservations.
+// - Handle Senior Citizen, PWD, and Kid SPECIAL entrance rates
+//   for checked-in reservations.
 // - Use the verified ACTUAL guest count after Guest Adjustment.
 // - Apply accommodation free-entrance inclusions FIRST.
 // - Support multiple adjustment types for one reservation.
-// - Keep Senior/PWD/Kid deductions separate from booking charges.
-// - Prevent qualified adjustment pax from exceeding the
-//   chargeable entrance guest count.
+// - Keep special-rate adjustments separate from booking charges.
+// - Prevent special-rate pax from exceeding the chargeable
+//   entrance guest count after room free-entrance inclusions.
+// - OFFICIAL ENTRANCE PRICING SOURCE OF TRUTH:
+//     Pool & Beach Adult: Day ₱250 / Overnight ₱300
+//     Pool & Beach Kid/Senior/PWD: Day ₱200 / Overnight ₱250
+//     Beach Only Adult: Day ₱150 / Overnight ₱200
+//     Beach Only Kid/Senior/PWD: Day ₱100 / Overnight ₱150
+// - The poster's ₱100 subsequent-day fee is intentionally NOT
+//   automated in this phase, per project decision.
+// - Database discount_type='kid_free' is retained only as a
+//   legacy internal key for compatibility; it now represents the
+//   Kid SPECIAL RATE adjustment, not free entrance.
+// - STEP 3F-B3: collect ONLY the server-calculated remaining
+//   entrance fee after Guest Adjustment and saved discounts.
+// - Protect against duplicate entrance collection.
+// - Re-open entrance balance automatically when a later saved
+//   adjustment increases the final fee.
+//
+// Important:
+// payment_transactions is still shaped around the legacy
+// PayMongo integration and does not yet contain a payment-purpose
+// column. For Step 3F-B3, onsite entrance collection remains in
+// reservations.entrance_fee_collected / entrance_fee_paid.
+// The payment ledger can be generalized during the later payment
+// architecture cleanup without mixing onsite entrance payments
+// into legacy gateway transactions.
 // ============================================================
 
-const SENIOR_PWD_DISCOUNT_RATE = 0.2;
+const MONEY_EPSILON = 0.005;
+
+const ENTRANCE_RATES = {
+  pool_beach: {
+    day: { adult: 250, special: 200 },
+    overnight: { adult: 300, special: 250 },
+  },
+  beach_only: {
+    day: { adult: 150, special: 100 },
+    overnight: { adult: 200, special: 150 },
+  },
+};
 
 function toNumber(value, fallback = 0) {
   const num = Number(value);
@@ -59,29 +94,33 @@ function hasOvernightStyleFromItems(items) {
   });
 }
 
-function getEntranceRate(entranceType, hasOvernight) {
-  const type = String(entranceType || "pool_beach").toLowerCase();
+function getEntranceRates(entranceType, hasOvernight) {
+  const type =
+    String(entranceType || "pool_beach").toLowerCase() ===
+    "beach_only"
+      ? "beach_only"
+      : "pool_beach";
 
-  if (type === "beach_only") {
-    return hasOvernight ? 200 : 150;
-  }
+  const period = hasOvernight ? "overnight" : "day";
+  const rates = ENTRANCE_RATES[type][period];
 
-  return hasOvernight ? 300 : 250;
+  return {
+    adult: Number(rates.adult || 0),
+    special: Number(rates.special || 0),
+  };
 }
 
-function calculateDeduction(discountType, entranceRate, qualifiedPax) {
+function calculateSpecialRateAdjustment(
+  adultRate,
+  specialRate,
+  qualifiedPax,
+) {
   const pax = Math.max(0, toWholeNumber(qualifiedPax, 0));
-  const rate = Math.max(0, toNumber(entranceRate, 0));
+  const adult = Math.max(0, toNumber(adultRate, 0));
+  const special = Math.max(0, toNumber(specialRate, 0));
+  const differencePerPax = Math.max(adult - special, 0);
 
-  if (discountType === "senior" || discountType === "pwd") {
-    return rate * SENIOR_PWD_DISCOUNT_RATE * pax;
-  }
-
-  if (discountType === "kid_free") {
-    return rate * pax;
-  }
-
-  return 0;
+  return differencePerPax * pax;
 }
 
 async function getEntranceAdjustmentContext(
@@ -95,11 +134,14 @@ async function getEntranceAdjustmentContext(
     `
     SELECT
       id,
+      reservation_code,
       guest_count,
       actual_guest_count,
       estimated_entrance_fee,
       entrance_fee_paid,
       entrance_fee_collected,
+      payment_status,
+      remaining_balance,
       note,
       reservation_status,
       is_checked_in
@@ -135,12 +177,25 @@ async function getEntranceAdjustmentContext(
 
   const entranceType = getEntranceTypeFromNote(reservation.note);
   const hasOvernight = hasOvernightStyleFromItems(itemRows);
-  const entranceRate = getEntranceRate(entranceType, hasOvernight);
+  const entranceRates = getEntranceRates(
+    entranceType,
+    hasOvernight,
+  );
+  const adultEntranceRate = entranceRates.adult;
+  const specialEntranceRate = entranceRates.special;
+  const specialRateDifference = Math.max(
+    adultEntranceRate - specialEntranceRate,
+    0,
+  );
 
   const bookedGuestCount = Math.max(
     0,
     Number(reservation.guest_count || 0),
   );
+
+  const hasVerifiedActualGuestCount =
+    reservation.actual_guest_count !== null &&
+    reservation.actual_guest_count !== undefined;
 
   const actualGuestCount = Math.max(
     1,
@@ -167,18 +222,31 @@ async function getEntranceAdjustmentContext(
     0,
   );
 
+  // Gross is expressed using the Adult entrance rate first.
+  // Saved Senior/PWD/Kid rows then subtract only the official
+  // Adult-vs-Special rate difference for qualified chargeable pax.
   const grossEntranceFee =
-    entranceRate * chargeableEntranceGuests;
+    adultEntranceRate * chargeableEntranceGuests;
 
   return {
     reservation,
     items: itemRows,
     entrance_type: entranceType,
     has_overnight_style: hasOvernight,
-    entrance_rate_per_pax: entranceRate,
-    senior_pwd_discount_rate: SENIOR_PWD_DISCOUNT_RATE,
+    // Backward-compatible alias used by the existing B2 frontend.
+    entrance_rate_per_pax: adultEntranceRate,
+    adult_entrance_rate_per_pax: adultEntranceRate,
+    special_entrance_rate_per_pax: specialEntranceRate,
+    special_rate_adjustment_per_pax: specialRateDifference,
+    // Dynamic ratio kept only for the older live-preview helper.
+    // The new companion frontend renders the official fixed rates.
+    senior_pwd_discount_rate:
+      adultEntranceRate > 0
+        ? specialRateDifference / adultEntranceRate
+        : 0,
     booked_guest_count: bookedGuestCount,
     actual_guest_count: actualGuestCount,
+    has_verified_actual_guest_count: hasVerifiedActualGuestCount,
     included_free_entrance_pax: includedFreeEntrancePax,
     chargeable_entrance_guests: chargeableEntranceGuests,
     gross_entrance_fee: grossEntranceFee,
@@ -210,29 +278,105 @@ function buildMeta(context, totalDeduction = 0) {
     Number(context.entrance_fee_collected || 0),
   );
 
+  const entranceFeeRemaining = Math.max(
+    finalEntranceFee - entranceFeeCollected,
+    0,
+  );
+
+  const entranceFeeOverpaid = Math.max(
+    entranceFeeCollected - finalEntranceFee,
+    0,
+  );
+
   return {
     entrance_type: context.entrance_type,
     has_overnight_style: context.has_overnight_style,
     entrance_rate_per_pax: context.entrance_rate_per_pax,
+    adult_entrance_rate_per_pax:
+      context.adult_entrance_rate_per_pax,
+    special_entrance_rate_per_pax:
+      context.special_entrance_rate_per_pax,
+    special_rate_adjustment_per_pax:
+      context.special_rate_adjustment_per_pax,
     senior_pwd_discount_rate: context.senior_pwd_discount_rate,
     booked_guest_count: context.booked_guest_count,
     actual_guest_count: context.actual_guest_count,
+    has_verified_actual_guest_count:
+      context.has_verified_actual_guest_count,
     included_free_entrance_pax: context.included_free_entrance_pax,
     chargeable_entrance_guests: context.chargeable_entrance_guests,
     gross_entrance_fee: context.gross_entrance_fee,
     total_entrance_deduction: deduction,
     final_entrance_fee: finalEntranceFee,
+    entrance_fee_paid: Number(context.entrance_fee_paid || 0),
     entrance_fee_collected: entranceFeeCollected,
-    entrance_fee_remaining: Math.max(
-      finalEntranceFee - entranceFeeCollected,
-      0,
-    ),
-    entrance_fee_overpaid: Math.max(
-      entranceFeeCollected - finalEntranceFee,
-      0,
-    ),
+    entrance_fee_remaining: entranceFeeRemaining,
+    entrance_fee_overpaid: entranceFeeOverpaid,
+    entrance_fee_financially_covered:
+      entranceFeeRemaining <= MONEY_EPSILON,
   };
 }
+
+async function getDiscountRows(queryable, bookingId) {
+  const [discountRows] = await queryable.query(
+    `
+    SELECT
+      id,
+      booking_id,
+      discount_type,
+      qualified_pax,
+      discount_amount,
+      discount_note,
+      created_at,
+      updated_at
+    FROM booking_discounts
+    WHERE booking_id = ?
+    ORDER BY
+      FIELD(discount_type, 'senior', 'pwd', 'kid_free'),
+      id ASC
+    `,
+    [bookingId],
+  );
+
+  return discountRows;
+}
+
+function getDiscountTotal(discountRows) {
+  return discountRows.reduce(
+    (sum, item) =>
+      sum + Number(item.discount_amount || 0),
+    0,
+  );
+}
+
+async function syncEntrancePaidFlag(
+  queryable,
+  bookingId,
+  meta,
+) {
+  const paidFlag =
+    Number(meta.entrance_fee_remaining || 0) <= MONEY_EPSILON
+      ? 1
+      : 0;
+
+  await queryable.query(
+    `
+    UPDATE reservations
+    SET entrance_fee_paid = ?
+    WHERE id = ?
+    `,
+    [paidFlag, bookingId],
+  );
+
+  meta.entrance_fee_paid = paidFlag;
+  meta.entrance_fee_financially_covered = paidFlag === 1;
+
+  return paidFlag;
+}
+
+// ============================================================
+// GET /api/bookings/:id/discounts
+// ============================================================
 
 const getBookingDiscount = async (req, res) => {
   try {
@@ -252,31 +396,12 @@ const getBookingDiscount = async (req, res) => {
       });
     }
 
-    const [discountRows] = await db.promise().query(
-      `
-      SELECT
-        id,
-        booking_id,
-        discount_type,
-        qualified_pax,
-        discount_amount,
-        discount_note,
-        created_at,
-        updated_at
-      FROM booking_discounts
-      WHERE booking_id = ?
-      ORDER BY
-        FIELD(discount_type, 'senior', 'pwd', 'kid_free'),
-        id ASC
-      `,
-      [bookingId],
+    const discountRows = await getDiscountRows(
+      db.promise(),
+      bookingId,
     );
 
-    const total = discountRows.reduce(
-      (sum, item) =>
-        sum + Number(item.discount_amount || 0),
-      0,
-    );
+    const total = getDiscountTotal(discountRows);
 
     return res.status(200).json({
       discounts: discountRows,
@@ -294,7 +419,251 @@ const getBookingDiscount = async (req, res) => {
   }
 };
 
+// ============================================================
+// STEP 3F-B3: COLLECT FINAL / REMAINING ENTRANCE FEE
+//
+// Uses the same existing PUT /:id/discounts route with body:
+// { "action": "collect_entrance_fee" }
+//
+// No amount is trusted from the frontend. The backend locks the
+// reservation, recalculates gross entrance, reloads saved
+// deductions, subtracts money already collected, and records only
+// the full remaining balance confirmed by Front Desk.
+// ============================================================
+
+async function collectEntranceFee(req, res) {
+  const connection = await db.promise().getConnection();
+
+  try {
+    const bookingId = Number(req.params.id);
+
+    if (!bookingId || Number.isNaN(bookingId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid booking ID.",
+      });
+    }
+
+    await connection.beginTransaction();
+
+    const context = await getEntranceAdjustmentContext(
+      bookingId,
+      connection,
+      true,
+    );
+
+    if (!context) {
+      await connection.rollback();
+
+      return res.status(404).json({
+        success: false,
+        message: "Reservation not found.",
+      });
+    }
+
+    const reservation = context.reservation;
+    const reservationStatus = normalizeText(
+      reservation.reservation_status,
+    ).toLowerCase();
+
+    if (
+      ["cancelled", "rejected", "completed"].includes(
+        reservationStatus,
+      )
+    ) {
+      await connection.rollback();
+
+      return res.status(400).json({
+        success: false,
+        message:
+          "Entrance fee collection is not allowed for cancelled, rejected, or completed reservations.",
+      });
+    }
+
+    if (Number(reservation.is_checked_in || 0) !== 1) {
+      await connection.rollback();
+
+      return res.status(400).json({
+        success: false,
+        message:
+          "Entrance fee can only be collected after the guest is checked in.",
+      });
+    }
+
+    if (!context.has_verified_actual_guest_count) {
+      await connection.rollback();
+
+      return res.status(400).json({
+        success: false,
+        message:
+          "Complete Guest Adjustment first so the actual onsite guest count is verified before collecting the entrance fee.",
+      });
+    }
+
+    const paymentStatus = normalizeText(
+      reservation.payment_status,
+    ).toLowerCase();
+
+    const remainingAccommodationBalance = Math.max(
+      0,
+      Number(reservation.remaining_balance || 0),
+    );
+
+    if (
+      paymentStatus !== "paid" ||
+      remainingAccommodationBalance > MONEY_EPSILON
+    ) {
+      await connection.rollback();
+
+      return res.status(400).json({
+        success: false,
+        message:
+          "The accommodation balance must be fully settled before collecting the final entrance fee.",
+      });
+    }
+
+    const discountRows = await getDiscountRows(
+      connection,
+      bookingId,
+    );
+
+    const total = getDiscountTotal(discountRows);
+    const meta = buildMeta(context, total);
+
+    const finalEntranceFee = Number(
+      meta.final_entrance_fee || 0,
+    );
+
+    const alreadyCollected = Number(
+      meta.entrance_fee_collected || 0,
+    );
+
+    const overpaid = Number(
+      meta.entrance_fee_overpaid || 0,
+    );
+
+    if (overpaid > MONEY_EPSILON) {
+      await connection.rollback();
+
+      return res.status(400).json({
+        success: false,
+        message:
+          `Entrance collection is already ₱${overpaid.toFixed(2)} above the current recalculated final entrance fee. Review the guest/discount adjustment and handle the overpayment before collecting again.`,
+        discounts: discountRows,
+        total,
+        meta,
+      });
+    }
+
+    const amountToCollect = Math.max(
+      finalEntranceFee - alreadyCollected,
+      0,
+    );
+
+    // --------------------------------------------------------
+    // Duplicate / zero-balance protection.
+    // If no money remains, simply synchronize the settled flag.
+    // This also handles legitimate ₱0 final entrance cases.
+    // --------------------------------------------------------
+    if (amountToCollect <= MONEY_EPSILON) {
+      await connection.query(
+        `
+        UPDATE reservations
+        SET entrance_fee_paid = 1
+        WHERE id = ?
+        `,
+        [bookingId],
+      );
+
+      await connection.commit();
+
+      meta.entrance_fee_paid = 1;
+      meta.entrance_fee_financially_covered = true;
+
+      return res.status(200).json({
+        success: true,
+        already_settled: true,
+        amount_collected_now: 0,
+        message:
+          finalEntranceFee <= MONEY_EPSILON
+            ? "No entrance fee remains due. The entrance fee is now marked settled."
+            : "Entrance fee is already fully collected. No duplicate collection was recorded.",
+        discounts: discountRows,
+        total,
+        meta,
+      });
+    }
+
+    // --------------------------------------------------------
+    // Front Desk confirms full remaining entrance collection.
+    // Set collected amount to the backend final fee, rather than
+    // adding a client-supplied amount. The reservation row is
+    // locked, so concurrent collection cannot duplicate payment.
+    // --------------------------------------------------------
+    await connection.query(
+      `
+      UPDATE reservations
+      SET
+        entrance_fee_collected = ?,
+        entrance_fee_paid = 1
+      WHERE id = ?
+      `,
+      [finalEntranceFee, bookingId],
+    );
+
+    await connection.commit();
+
+    meta.entrance_fee_collected = finalEntranceFee;
+    meta.entrance_fee_remaining = 0;
+    meta.entrance_fee_overpaid = 0;
+    meta.entrance_fee_paid = 1;
+    meta.entrance_fee_financially_covered = true;
+
+    return res.status(200).json({
+      success: true,
+      already_settled: false,
+      amount_collected_now: amountToCollect,
+      message:
+        `Entrance fee collection recorded successfully. Collected now: ₱${amountToCollect.toFixed(2)}.`,
+      discounts: discountRows,
+      total,
+      meta,
+    });
+  } catch (error) {
+    try {
+      await connection.rollback();
+    } catch (rollbackError) {
+      console.error(
+        "collectEntranceFee rollback error:",
+        rollbackError,
+      );
+    }
+
+    console.error("collectEntranceFee error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to collect entrance fee.",
+      error: error.message,
+    });
+  } finally {
+    connection.release();
+  }
+}
+
+// ============================================================
+// PUT /api/bookings/:id/discounts
+// - normal body = save Senior/PWD/Kid adjustment
+// - action=collect_entrance_fee = Step 3F-B3 collection
+// ============================================================
+
 const upsertBookingDiscount = async (req, res) => {
+  const action = normalizeText(req.body?.action).toLowerCase();
+
+  if (action === "collect_entrance_fee") {
+    return collectEntranceFee(req, res);
+  }
+
   const connection = await db.promise().getConnection();
 
   try {
@@ -310,9 +679,14 @@ const upsertBookingDiscount = async (req, res) => {
       toWholeNumber(req.body.pwd_pax, 0),
     );
 
-    const kidFreePax = Math.max(
+    // The old request field name is kept for compatibility with
+    // frontdeskGuests.js. It now means Kid SPECIAL-RATE pax.
+    const kidSpecialPax = Math.max(
       0,
-      toWholeNumber(req.body.kid_free_pax, 0),
+      toWholeNumber(
+        req.body.kid_pax ?? req.body.kid_free_pax,
+        0,
+      ),
     );
 
     const discountNote = normalizeText(req.body.discount_note);
@@ -324,12 +698,12 @@ const upsertBookingDiscount = async (req, res) => {
     }
 
     const totalQualifiedPax =
-      seniorPax + pwdPax + kidFreePax;
+      seniorPax + pwdPax + kidSpecialPax;
 
     if (totalQualifiedPax <= 0) {
       return res.status(400).json({
         message:
-          "Enter at least one Senior Citizen, PWD, or qualified kid before applying an entrance adjustment.",
+          "Enter at least one Senior Citizen, PWD, or Kid special-rate guest before applying an entrance adjustment.",
       });
     }
 
@@ -391,40 +765,45 @@ const upsertBookingDiscount = async (req, res) => {
 
       return res.status(400).json({
         message:
-          "Total qualified Senior/PWD/Kid pax cannot be greater than the chargeable entrance guest count after accommodation free-entrance inclusions.",
+          "Total Senior/PWD/Kid special-rate pax cannot be greater than the chargeable entrance guest count after accommodation free-entrance inclusions.",
       });
     }
 
-    const entranceRate = Number(
-      context.entrance_rate_per_pax || 0,
+    const adultEntranceRate = Number(
+      context.adult_entrance_rate_per_pax || 0,
+    );
+
+    const specialEntranceRate = Number(
+      context.special_entrance_rate_per_pax || 0,
     );
 
     const adjustments = [
       {
         discount_type: "senior",
         qualified_pax: seniorPax,
-        discount_amount: calculateDeduction(
-          "senior",
-          entranceRate,
+        discount_amount: calculateSpecialRateAdjustment(
+          adultEntranceRate,
+          specialEntranceRate,
           seniorPax,
         ),
       },
       {
         discount_type: "pwd",
         qualified_pax: pwdPax,
-        discount_amount: calculateDeduction(
-          "pwd",
-          entranceRate,
+        discount_amount: calculateSpecialRateAdjustment(
+          adultEntranceRate,
+          specialEntranceRate,
           pwdPax,
         ),
       },
       {
+        // Legacy internal enum key; semantics are now Kid Special Rate.
         discount_type: "kid_free",
-        qualified_pax: kidFreePax,
-        discount_amount: calculateDeduction(
-          "kid_free",
-          entranceRate,
-          kidFreePax,
+        qualified_pax: kidSpecialPax,
+        discount_amount: calculateSpecialRateAdjustment(
+          adultEntranceRate,
+          specialEntranceRate,
+          kidSpecialPax,
         ),
       },
     ];
@@ -470,39 +849,30 @@ const upsertBookingDiscount = async (req, res) => {
       }
     }
 
-    const [discountRows] = await connection.query(
-      `
-      SELECT
-        id,
-        booking_id,
-        discount_type,
-        qualified_pax,
-        discount_amount,
-        discount_note,
-        created_at,
-        updated_at
-      FROM booking_discounts
-      WHERE booking_id = ?
-      ORDER BY
-        FIELD(discount_type, 'senior', 'pwd', 'kid_free'),
-        id ASC
-      `,
-      [bookingId],
+    const discountRows = await getDiscountRows(
+      connection,
+      bookingId,
     );
 
-    const total = discountRows.reduce(
-      (sum, item) =>
-        sum + Number(item.discount_amount || 0),
-      0,
+    const total = getDiscountTotal(discountRows);
+    const meta = buildMeta(context, total);
+
+    // A later adjustment may increase or decrease the final fee.
+    // Keep entrance_fee_paid synchronized with the recalculated
+    // remaining amount while preserving money already collected.
+    await syncEntrancePaidFlag(
+      connection,
+      bookingId,
+      meta,
     );
 
     await connection.commit();
 
     return res.status(200).json({
-      message: "Entrance adjustments saved successfully.",
+      message: "Entrance special-rate adjustments saved successfully.",
       discounts: discountRows,
       total,
-      meta: buildMeta(context, total),
+      meta,
     });
   } catch (error) {
     try {
@@ -524,6 +894,10 @@ const upsertBookingDiscount = async (req, res) => {
     connection.release();
   }
 };
+
+// ============================================================
+// DELETE /api/bookings/:id/discounts
+// ============================================================
 
 const deleteBookingDiscount = async (req, res) => {
   const connection = await db.promise().getConnection();
@@ -578,6 +952,17 @@ const deleteBookingDiscount = async (req, res) => {
       [bookingId],
     );
 
+    const meta = buildMeta(context, 0);
+
+    // Removing a discount may increase the amount due again.
+    // Preserve previously collected money and reopen the paid flag
+    // whenever the recalculated final fee is now higher.
+    await syncEntrancePaidFlag(
+      connection,
+      bookingId,
+      meta,
+    );
+
     await connection.commit();
 
     return res.status(200).json({
@@ -586,7 +971,7 @@ const deleteBookingDiscount = async (req, res) => {
           ? "Entrance adjustments removed successfully."
           : "No entrance adjustments found for this reservation.",
       affectedRows: result.affectedRows,
-      meta: buildMeta(context, 0),
+      meta,
     });
   } catch (error) {
     try {
