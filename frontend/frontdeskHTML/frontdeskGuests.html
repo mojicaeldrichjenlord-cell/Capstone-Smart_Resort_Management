@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="../sharedCSS/global.css" />
     <link rel="stylesheet" href="../css/style.css" />
     <link rel="stylesheet" href="../frontdeskCSS/frontdeskGuests.css" />
+    <link rel="stylesheet" href="../frontdeskCSS/frontdeskExtraBed.css" />
   </head>
 
   <body class="has-fixed-navbar">
@@ -74,8 +75,8 @@
         <span>
           A reservation can be checked in when it is confirmed, the scheduled
           check-in date is today, and the required downpayment has already been
-          verified. Guest Adjustment and Entrance Adjustment are handled after
-          the guest is already inside.
+          verified. Guest Adjustment, Entrance Adjustment, and Extra Bed are
+          handled after the guest is already inside.
         </span>
       </section>
 
@@ -138,13 +139,13 @@
       </section>
 
       <section class="next-step-note">
-        <strong>Step 3F-B3:</strong>
+        <strong>Step 3F-C:</strong>
 
         <span>
-          After Guest Adjustment and any Senior Citizen, PWD, or qualified kid
-          entrance adjustment is finalized, Front Desk can collect the
-          server-calculated remaining entrance fee. The system preserves money
-          already collected and prevents duplicate entrance collection.
+          Extra Bed uses the resort's official ₱200 per bed rate. Front Desk
+          can change the current quantity for checked-in guests, while the
+          system preserves previously paid Extra Bed Charges and collects only
+          the remaining difference.
         </span>
       </section>
     </main>
@@ -484,9 +485,116 @@
       </div>
     </div>
 
+    <div class="extra-bed-modal" id="extraBedModal">
+      <div class="extra-bed-modal-box">
+        <div class="extra-bed-header">
+          <div>
+            <p class="extra-bed-eyebrow">FRONT DESK OPERATION</p>
+            <h2>Extra Bed</h2>
+
+            <p id="extraBedReservationText">
+              Manage Extra Bed quantity for this checked-in reservation.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="extra-bed-close-btn"
+            id="closeExtraBedBtn"
+            aria-label="Close Extra Bed modal"
+          >
+            ×
+          </button>
+        </div>
+
+        <div class="extra-bed-summary-grid">
+          <div class="extra-bed-summary-item">
+            <span>Official Rate Per Bed</span>
+            <strong id="extraBedRateText">₱200.00</strong>
+          </div>
+
+          <div class="extra-bed-summary-item">
+            <span>Previously Paid Extra Bed Charges</span>
+            <strong id="extraBedPaidTotalText">₱0.00</strong>
+          </div>
+        </div>
+
+        <div class="extra-bed-form-group">
+          <label for="extraBedCountInput">Extra Bed Quantity</label>
+
+          <input
+            type="number"
+            id="extraBedCountInput"
+            min="0"
+            step="1"
+            value="0"
+          />
+
+          <small>
+            Official resort rate is ₱200 per bed. If the quantity increases
+            after an earlier payment, only the new unpaid difference is due.
+          </small>
+        </div>
+
+        <div class="extra-bed-breakdown">
+          <h3>Extra Bed Breakdown</h3>
+
+          <div class="extra-bed-breakdown-row">
+            <span>Current Target Extra Bed Total</span>
+            <strong id="extraBedTargetTotalText">₱0.00</strong>
+          </div>
+
+          <div class="extra-bed-breakdown-row due">
+            <span>Remaining Extra Bed Fee</span>
+            <strong id="extraBedRemainingText">₱0.00</strong>
+          </div>
+
+          <div
+            class="extra-bed-breakdown-row overpaid"
+            id="extraBedOverpaidRow"
+          >
+            <span>Possible Extra Bed Overpayment</span>
+            <strong id="extraBedOverpaidText">₱0.00</strong>
+          </div>
+        </div>
+
+        <div class="extra-bed-status-note" id="extraBedStatusNote">
+          Loading current Extra Bed summary...
+        </div>
+
+        <div class="extra-bed-actions">
+          <button
+            type="button"
+            class="extra-bed-save-btn"
+            id="saveExtraBedBtn"
+          >
+            Apply Extra Bed Quantity
+          </button>
+
+          <button
+            type="button"
+            class="extra-bed-collect-btn"
+            id="collectExtraBedBtn"
+            disabled
+          >
+            Loading Extra Bed Balance...
+          </button>
+
+          <button
+            type="button"
+            class="extra-bed-cancel-btn"
+            id="cancelExtraBedBtn"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
     <script src="../sharedJS/toast.js"></script>
     <script src="../sharedJS/api-config.js"></script>
     <script src="../frontdeskJS/frontdeskGuests.js"></script>
     <script src="../frontdeskJS/frontdeskEntranceCollection.js"></script>
+    <script src="../frontdeskJS/frontdeskExtraBed.js"></script>
   </body>
 </html>
