@@ -6,7 +6,6 @@ const fs = require("fs");
 
 const {
   createBooking,
-  createPayMongoBooking,
   createWalkInBooking,
   getUserBookings,
   cancelBooking,
@@ -18,7 +17,7 @@ const {
   extendReservationItem,
   checkItemAvailability,
   requestBookingModification,
-} = require("../controllers/bookingController");
+} = require("../controllers/shared/bookingController");
 
 /* ======================================================
    FRONT DESK CHECK-IN CONTROLLER
@@ -138,21 +137,15 @@ const upload = multer({
    BOOKING CREATE ROUTES
 ====================================================== */
 
-// Legacy automated PayMongo reservation preparation.
-// Kept unchanged in R2-A. Full removal is R2-B.
-router.post(
-  "/paymongo",
-  createPayMongoBooking,
-);
-
-// Existing manual proof-upload customer flow remains unchanged.
+// Current temporary online flow:
+// customer submits GCash/Maya proof for verification.
+// PayPal Sandbox automation will replace this in Phase 2.
 router.post(
   "/",
   upload.single("proof_image"),
   createBooking,
 );
 
-// Manual reservation date guard runs after multer parses the form payload.
 router.post(
   "/walk-in",
   upload.single("proof_image"),
@@ -178,11 +171,6 @@ router.get(
 
 /* ======================================================
    ADDITIONAL CHARGES ROUTES
-
-   Important:
-   - These are kept before /:id/receipt.
-   - /:id/charges/paid marks all unpaid structured charges
-     for this reservation as paid.
 ====================================================== */
 
 router.get(
@@ -207,16 +195,6 @@ router.delete(
 
 /* ======================================================
    ENTRANCE ADJUSTMENT ROUTES
-
-   One reservation may contain one row for each type:
-   - senior
-   - pwd
-   - kid_free
-
-   The database UNIQUE key on:
-   booking_id + discount_type
-
-   prevents duplicate rows for the same adjustment type.
 ====================================================== */
 
 router.get(
@@ -262,15 +240,6 @@ router.put(
   updatePaymentStatus,
 );
 
-/* ======================================================
-   FRONT DESK CHECK-IN ROUTE
-
-   Uses frontdeskCheckInController.js instead of the old
-   check-in handler inside bookingController.js.
-
-   This prevents check-in from automatically marking the
-   entrance fee as fully paid/collected.
-====================================================== */
 router.put(
   "/:id/check-in",
   checkInBooking,

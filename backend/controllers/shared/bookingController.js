@@ -1,9 +1,9 @@
-// ============================================================
+﻿// ============================================================
 // COMMENTED VERSION
 // This copy keeps the same logic and adds block comments so groupmates can follow the code easier.
 // ============================================================
 
-const db = require("../config/db");
+const db = require("../../config/db");
 const fs = require("fs");
 
 // ============================================================
@@ -717,7 +717,7 @@ async function getReservationItems(reservationId) {
 // Purpose:
 // - Manual reservations must be traceable to the logged-in employee.
 // - Only active Administrator or Front Desk accounts may be recorded.
-// - Online customer and automated-payment reservations do not use created_by.
+// - Online customer reservations do not use created_by.
 // ============================================================
 async function validateManualReservationCreator(createdBy) {
   const creatorId = Number(createdBy);
@@ -811,11 +811,7 @@ async function createReservation({
   const cleanEntranceType = normalizeText(entrance_type || "pool_beach");
   const cleanNote = normalizeNullableText(note);
 
-  // PayMongo is still an ONLINE booking in the database.
-  // "paymongo" is only an internal controller mode so we can
-  // skip manual proof validation before redirecting to checkout.
   const isManualReservation = source === "manual";
-  const isPayMongoReservation = source === "paymongo";
   const databaseBookingSource =
     isManualReservation ? "manual" : "online";
 
@@ -825,10 +821,7 @@ async function createReservation({
     ? await validateManualReservationCreator(created_by)
     : null;
 
-  // Automated checkout determines the final method after payment.
-  const cleanPaymentMethod = isPayMongoReservation
-    ? "other"
-    : normalizeText(payment_method || "gcash");
+  const cleanPaymentMethod = normalizeText(payment_method || "gcash");
 
   const cleanProof = normalizeNullableText(proof_of_payment);
   const cleanProofImageData = normalizeNullableText(proof_image_data);
@@ -873,7 +866,7 @@ async function createReservation({
     };
   }
 
-  if (!isManualReservation && !isPayMongoReservation) {
+  if (!isManualReservation) {
     if (!["gcash", "paymaya"].includes(cleanPaymentMethod.toLowerCase())) {
       throw {
         status: 400,
@@ -1130,8 +1123,7 @@ async function createReservation({
   // Manual reservations are encoded by staff:
   // - Walk-in: Cash/GCash/Maya, full payment, auto checked-in.
   // - Facebook/Messenger: GCash/Maya proof, approved but not checked-in.
-  // Automated checkout starts unpaid until the provider confirms payment.
-  let paidAmount = 0;
+    let paidAmount = 0;
   let remainingBalance = accommodationTotal;
   let reservationStatus = "pending";
   let paymentStatus = "pending";
@@ -1140,13 +1132,7 @@ async function createReservation({
   let entranceFeePaid = 0;
   let entranceFeeCollected = 0;
 
-  if (isPayMongoReservation) {
-    // Automated online payment has not happened yet.
-    paidAmount = 0;
-    remainingBalance = accommodationTotal;
-    reservationStatus = "pending";
-    paymentStatus = "unpaid";
-  } else if (isWalkInManualReservation) {
+  if (isWalkInManualReservation) {
     paidAmount = accommodationTotal;
     remainingBalance = 0;
     reservationStatus = "approved";
@@ -1215,13 +1201,6 @@ async function createReservation({
     if (cleanProofReference) {
       noteParts.push(`Reference Number: ${cleanProofReference}`);
     }
-  } else if (isPayMongoReservation) {
-    noteParts.push(
-      "Online Reservation Payment: PayMongo automated checkout.",
-    );
-    noteParts.push(
-      "Payment Status: Awaiting PayMongo payment confirmation.",
-    );
   } else {
     noteParts.push(`Reference Number: ${cleanProofReference}`);
     noteParts.push(
@@ -1305,9 +1284,6 @@ async function createReservation({
 
     const reservationId = reservationResult.insertId;
 
-    // Automated-payment reservation may create a pending transaction row
-    // in the same database transaction as the reservation.
-    let paymentTransactionId = null;
 
     for (const item of reservationItems) {
       await connection.query(
@@ -1341,24 +1317,6 @@ async function createReservation({
       );
     }
 
-    if (isPayMongoReservation) {
-      const [paymentTransactionResult] = await connection.query(
-        `
-        INSERT INTO payment_transactions (
-          reservation_id,
-          provider,
-          amount,
-          currency,
-          payment_method,
-          status
-        )
-        VALUES (?, 'paymongo', ?, 'PHP', NULL, 'pending')
-        `,
-        [reservationId, requiredDownpayment],
-      );
-
-      paymentTransactionId = paymentTransactionResult.insertId;
-    }
 
     await connection.commit();
 
@@ -1366,7 +1324,6 @@ async function createReservation({
       reservationId,
       reservationCode,
       createdBy: manualCreatorId,
-      paymentTransactionId,
       requiredDownpayment,
       estimatedEntranceFee,
       accommodationTotal,
@@ -1375,9 +1332,7 @@ async function createReservation({
       isCheckedIn: Boolean(isCheckedIn),
       message: isManualReservation
         ? "Manual reservation created successfully."
-        : isPayMongoReservation
-          ? "Reservation prepared successfully for PayMongo checkout."
-          : "Reservation request submitted successfully. Please wait for admin payment verification.",
+        : "Reservation request submitted successfully. Please wait for admin payment verification.",
     };
   } catch (error) {
     await connection.rollback();
@@ -1422,63 +1377,6 @@ exports.createBooking = async (req, res) => {
 
     return res.status(error.status || 500).json({
       message: error.message || "Failed to create reservation.",
-      error: error.message,
-    });
-  }
-};
-
-// ============================================================
-// BACKEND/API HANDLER: Create PayMongo-ready reservation
-// Purpose:
-// - Reuses normal reservation validation and conflict logic.
-// - Does NOT require manual GCash/Maya proof/reference.
-// - Creates reservation + pending payment_transactions row.
-// - Does NOT mark anything paid.
-// ============================================================
-exports.createPayMongoBooking = async (req, res) => {
-  try {
-    const parsedBody = parseRequestReservationBody(req);
-    const user_id = Number(parsedBody.user_id);
-
-    if (!user_id) {
-      return res.status(400).json({
-        message: "User ID is required.",
-      });
-    }
-
-    // Automated checkout determines the final payment method later.
-    parsedBody.payment_method = "other";
-    parsedBody.payment_type = "downpayment";
-    parsedBody.proof_reference = null;
-    parsedBody.proof_of_payment = null;
-    parsedBody.proof_image_data = null;
-
-    const result = await createReservation({
-      source: "paymongo",
-      user_id,
-      body: parsedBody,
-      autoApprove: false,
-    });
-
-    return res.status(201).json({
-      success: true,
-      message: result.message,
-      bookingId: result.reservationId,
-      reservationCode: result.reservationCode,
-      paymentTransactionId: result.paymentTransactionId,
-      requiredDownpayment: result.requiredDownpayment,
-      accommodationTotal: result.accommodationTotal,
-      estimatedEntranceFee: result.estimatedEntranceFee,
-      paymentStatus: "unpaid",
-    });
-  } catch (error) {
-    console.error("createPayMongoBooking error:", error);
-
-    return res.status(error.status || 500).json({
-      success: false,
-      message:
-        error.message ||
-        "Failed to prepare reservation for automated checkout.",
       error: error.message,
     });
   }
@@ -2897,7 +2795,7 @@ exports.addAccommodationToReservation = async (req, res) => {
     const addOnNote =
       `Onsite add-on: ${accommodation.name} - ${newItem.slot_label}` +
       ` (${newItem.check_in_date} ${newItem.check_in_time} to ${newItem.check_out_date} ${newItem.check_out_time})` +
-      `, Stay Duration: ${newItem.stay_duration} ${newItem.slot_type === "night" ? "night(s)" : "day(s)"}, Cash Paid: ₱${newItem.item_price.toFixed(2)}`;
+      `, Stay Duration: ${newItem.stay_duration} ${newItem.slot_type === "night" ? "night(s)" : "day(s)"}, Cash Paid: â‚±${newItem.item_price.toFixed(2)}`;
 
     const updatedNote = [reservation.note, addOnNote]
       .filter(Boolean)
@@ -3177,7 +3075,7 @@ exports.extendReservationItem = async (req, res) => {
       `Onsite stay extension: ${item.accommodation_name} - ${item.slot_label}` +
       `, Added ${addedStayDuration} ${unitLabel}` +
       ` (${oldCheckOutDate} ${oldCheckOutTime} to ${newCheckOutDate} ${newCheckOutTime})` +
-      `, Cash Paid: ₱${extensionFee.toFixed(2)}`;
+      `, Cash Paid: â‚±${extensionFee.toFixed(2)}`;
 
     const updatedNote = [item.note, extensionNote].filter(Boolean).join(" | ");
 
@@ -3542,3 +3440,4 @@ exports.requestBookingModification = async (req, res) => {
     connection.release();
   }
 };
+

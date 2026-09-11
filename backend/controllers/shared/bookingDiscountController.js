@@ -33,7 +33,7 @@
 //
 // Important:
 // payment_transactions is still shaped around the legacy
-// PayMongo integration and does not yet contain a payment-purpose
+// payment integration and does not yet contain a payment-purpose
 // column. For Step 3F-B3, onsite entrance collection remains in
 // reservations.entrance_fee_collected / entrance_fee_paid.
 // The payment ledger can be generalized during the later payment
@@ -999,4 +999,6 @@ module.exports = {
   upsertBookingDiscount,
   deleteBookingDiscount,
 };
+
+
 

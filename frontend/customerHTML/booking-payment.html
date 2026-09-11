@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -138,7 +138,7 @@
     <header class="navbar">
       <div class="logo">Arvic Seaside</div>
 
-      <button id="menuToggle" class="menu-toggle" type="button">☰</button>
+      <button id="menuToggle" class="menu-toggle" type="button">â˜°</button>
 
       <nav id="mobileNav">
         <a href="index.html" class="confirm-transaction-exit">Home</a>
@@ -162,7 +162,7 @@
     <main class="payment-page-wrapper">
       <div class="payment-top-actions">
         <a href="booking.html" class="back-btn confirm-transaction-exit">
-          ← Back to Reservation Form
+          â† Back to Reservation Form
         </a>
       </div>
 
@@ -280,27 +280,27 @@
               <div class="payment-breakdown">
                 <div class="payment-row">
                   <span>Accommodation Total</span>
-                  <strong id="paymentAccommodationTotal">₱0.00</strong>
+                  <strong id="paymentAccommodationTotal">â‚±0.00</strong>
                 </div>
 
                 <div class="payment-row">
                   <span>Required Down Payment 50%</span>
-                  <strong id="paymentDownpayment">₱0.00</strong>
+                  <strong id="paymentDownpayment">â‚±0.00</strong>
                 </div>
 
                 <div class="payment-row">
                   <span>Remaining 50% Onsite</span>
-                  <strong id="paymentRemaining">₱0.00</strong>
+                  <strong id="paymentRemaining">â‚±0.00</strong>
                 </div>
 
                 <div class="payment-row">
                   <span>Estimated Entrance Fee</span>
-                  <strong id="paymentEntranceFee">₱0.00</strong>
+                  <strong id="paymentEntranceFee">â‚±0.00</strong>
                 </div>
 
                 <div class="payment-row">
                   <span>Total Reminder for Front Desk</span>
-                  <strong id="paymentFrontDeskReminder">₱0.00</strong>
+                  <strong id="paymentFrontDeskReminder">â‚±0.00</strong>
                 </div>
               </div>
 
@@ -315,7 +315,7 @@
                 The displayed entrance fee is only an estimate for the first day
                 of your stay. Guests who will continue using the pool or beach
                 facilities on succeeding days may be charged an additional
-                entrance fee of ₱100 per guest per day. This charge will be
+                entrance fee of â‚±100 per guest per day. This charge will be
                 assessed and collected at the front desk if applicable.
               </div>
             </section>
@@ -391,7 +391,7 @@
                   <span>06</span>
                   <p>
                     Guests who use pool or beach facilities on succeeding days
-                    of their stay may incur an additional entrance fee of ₱100
+                    of their stay may incur an additional entrance fee of â‚±100
                     per guest per day, subject to resort assessment.
                   </p>
                 </div>
@@ -417,7 +417,7 @@
           id="closeQrModalBtn"
           aria-label="Close QR modal"
         >
-          ×
+          Ã—
         </button>
 
         <div class="qr-modal-header">
@@ -472,7 +472,7 @@
     <script src="../sharedJS/toast.js"></script>
     <script src="../sharedJS/api-config.js"></script>
     <script src="../customerJS/booking-payment.js?v=qr-modal-4slots-20260617"></script>
-    <script src="../customerJS/paymongo-payment-prep.js?v=paymongo-step3"></script>
+
 
 
     <script>
@@ -483,8 +483,8 @@
         menuToggle.addEventListener("click", () => {
           mobileNav.classList.toggle("show");
           menuToggle.textContent = mobileNav.classList.contains("show")
-            ? "×"
-            : "☰";
+            ? "Ã—"
+            : "â˜°";
         });
       }
 
@@ -544,3 +544,4 @@
     </script>
   </body>
 </html>
+
