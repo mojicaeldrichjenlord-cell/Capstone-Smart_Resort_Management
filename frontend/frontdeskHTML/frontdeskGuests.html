@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="../sharedCSS/global.css" />
     <link rel="stylesheet" href="../css/style.css" />
     <link rel="stylesheet" href="../frontdeskCSS/frontdeskGuests.css" />
+    <link rel="stylesheet" href="../frontdeskCSS/frontdeskStay.css" />
     <link rel="stylesheet" href="../frontdeskCSS/frontdeskExtraBed.css" />
     <link rel="stylesheet" href="../frontdeskCSS/frontdeskAdditionalCharges.css" />
     <link rel="stylesheet" href="../frontdeskCSS/frontdeskUnpaidCharges.css" />
@@ -487,6 +488,210 @@
       </div>
     </div>
 
+
+    <div class="stay-modal" id="addAccommodationModal">
+      <div class="stay-modal-box">
+        <div class="stay-modal-header">
+          <div>
+            <p class="stay-modal-eyebrow">FRONT DESK OPERATION</p>
+            <h2>Add Accommodation</h2>
+
+            <p id="addAccommodationReservationText">
+              Add another accommodation to this active reservation.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="stay-modal-close-btn"
+            id="closeAddAccommodationBtn"
+            aria-label="Close Add Accommodation modal"
+          >
+            ×
+          </button>
+        </div>
+
+        <div class="stay-form-grid">
+          <div class="stay-form-group full">
+            <label for="addAccommodationSelect">Accommodation</label>
+
+            <select id="addAccommodationSelect">
+              <option value="">Loading accommodations...</option>
+            </select>
+
+            <small>
+              Only accommodations currently marked available are listed here.
+              The selected schedule is still checked against reservation
+              conflicts before it can be saved.
+            </small>
+          </div>
+
+          <div class="stay-form-group">
+            <label for="addAccommodationSlot">Schedule Type</label>
+
+            <select id="addAccommodationSlot">
+              <option value="day_tour">Day Tour</option>
+              <option value="night">Night</option>
+              <option value="day_extended">Day 22/23 Hours</option>
+              <option value="night_extended">Night 22/23 Hours</option>
+            </select>
+          </div>
+
+          <div class="stay-form-group">
+            <label for="addAccommodationDate">Reservation Date</label>
+
+            <input
+              type="date"
+              id="addAccommodationDate"
+            />
+          </div>
+
+          <div class="stay-form-group">
+            <label for="addAccommodationStayDuration">Stay Duration</label>
+
+            <select id="addAccommodationStayDuration">
+              <option value="1">1 day</option>
+              <option value="2">2 days</option>
+              <option value="3">3 days</option>
+              <option value="4">4 days</option>
+              <option value="5">5 days</option>
+            </select>
+
+            <small>
+              Day Tour and Night are fixed to one schedule. Multi-day duration
+              is enabled only for Day/Night 22 or 23 Hours.
+            </small>
+          </div>
+        </div>
+
+        <div class="stay-preview" id="addAccommodationPreview">
+          <strong>Add Accommodation Preview</strong>
+          <span>Complete the form to preview the accommodation balance.</span>
+        </div>
+
+        <div
+          class="stay-availability-status muted"
+          id="addAccommodationAvailabilityStatus"
+        >
+          Select accommodation and schedule to check availability.
+        </div>
+
+        <div class="stay-financial-note">
+          <strong>Important:</strong>
+          Adding an accommodation does not automatically record payment. The
+          accommodation price is added to the reservation's unpaid
+          accommodation balance and will be collected in the accommodation /
+          final-balance workflow.
+        </div>
+
+        <div class="stay-modal-actions">
+          <button
+            type="button"
+            class="stay-primary-btn"
+            id="saveAddAccommodationBtn"
+            disabled
+          >
+            Add as Unpaid Accommodation Balance
+          </button>
+
+          <button
+            type="button"
+            class="stay-cancel-btn"
+            id="cancelAddAccommodationBtn"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="stay-modal" id="extendStayModal">
+      <div class="stay-modal-box">
+        <div class="stay-modal-header">
+          <div>
+            <p class="stay-modal-eyebrow">FRONT DESK OPERATION</p>
+            <h2>Extend Stay</h2>
+
+            <p id="extendStayReservationText">
+              Extend one of the guest's existing accommodation items.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="stay-modal-close-btn"
+            id="closeExtendStayBtn"
+            aria-label="Close Extend Stay modal"
+          >
+            ×
+          </button>
+        </div>
+
+        <div class="stay-form-grid">
+          <div class="stay-form-group full">
+            <label for="extendStayItemSelect">Accommodation to Extend</label>
+
+            <select id="extendStayItemSelect"></select>
+
+            <small>
+              The extension starts from the selected item's current checkout.
+              The backend checks for conflicts before the extension is saved.
+            </small>
+          </div>
+
+          <div class="stay-form-group">
+            <label for="extendStayDurationSelect">Extension Duration</label>
+
+            <select id="extendStayDurationSelect">
+              <option value="1">1 day</option>
+              <option value="2">2 days</option>
+              <option value="3">3 days</option>
+              <option value="4">4 days</option>
+              <option value="5">5 days</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="stay-preview" id="extendStayPreview">
+          <strong>Extend Stay Preview</strong>
+          <span>Select an accommodation item to continue.</span>
+        </div>
+
+        <div
+          class="stay-availability-status muted"
+          id="extendStayAvailabilityStatus"
+        >
+          Select an accommodation and extension duration.
+        </div>
+
+        <div class="stay-financial-note">
+          <strong>Important:</strong>
+          Extending a stay does not automatically record payment. The
+          extension fee is added to the unpaid accommodation balance and will
+          be collected separately.
+        </div>
+
+        <div class="stay-modal-actions">
+          <button
+            type="button"
+            class="stay-primary-btn"
+            id="saveExtendStayBtn"
+            disabled
+          >
+            Add Extension as Unpaid Balance
+          </button>
+
+          <button
+            type="button"
+            class="stay-cancel-btn"
+            id="cancelExtendStayBtn"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div class="extra-bed-modal" id="extraBedModal">
       <div class="extra-bed-modal-box">
         <div class="extra-bed-header">
@@ -718,6 +923,7 @@
     <script src="../sharedJS/toast.js"></script>
     <script src="../sharedJS/api-config.js"></script>
     <script src="../frontdeskJS/frontdeskGuests.js"></script>
+    <script src="../frontdeskJS/frontdeskStay.js"></script>
     <script src="../frontdeskJS/frontdeskEntranceCollection.js"></script>
     <script src="../frontdeskJS/frontdeskExtraBed.js"></script>
     <script src="../frontdeskJS/frontdeskAdditionalCharges.js"></script>

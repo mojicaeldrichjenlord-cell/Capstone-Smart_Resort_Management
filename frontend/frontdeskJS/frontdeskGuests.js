@@ -26,6 +26,11 @@
 // - Uses verified actual guest count
 // - Shows gross, deductions, final fee, remaining, and overpayment
 //
+// STEP 3F-F:
+// - Add Accommodation and Extend Stay buttons for checked-in guests
+// - Detailed stay modals are handled by frontdeskStay.js
+// - New accommodation/extension amounts remain unpaid until later collection
+//
 // Existing backend used:
 // GET /api/bookings?scope=all
 // PUT /api/bookings/:id/check-in
@@ -1115,6 +1120,22 @@ function renderGuestAction(
         onclick="openEntranceAdjustmentModal(${bookingId})"
       >
         Entrance Adjustment
+      </button>
+
+      <button
+        type="button"
+        class="stay-add-action-btn"
+        onclick="openAddAccommodationModal(${bookingId})"
+      >
+        Add Accommodation
+      </button>
+
+      <button
+        type="button"
+        class="stay-extend-action-btn"
+        onclick="openExtendStayModal(${bookingId})"
+      >
+        Extend Stay
       </button>
 
       <span class="guest-action-disabled">

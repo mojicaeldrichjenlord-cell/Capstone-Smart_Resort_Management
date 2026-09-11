@@ -2487,7 +2487,9 @@ exports.checkItemAvailability = async (req, res) => {
         check_out_time: extensionWindow.check_out_time,
       };
 
-      ignoreReservationId = reservationId;
+      // Do not ignore the whole reservation; another item under the same
+      // reservation may still conflict with this extension window.
+      ignoreReservationId = null;
       accommodationName = item.accommodation_name || accommodationName;
     } else {
       const accommodationId = Number(req.body.accommodation_id || 0);
@@ -2668,6 +2670,7 @@ exports.addAccommodationToReservation = async (req, res) => {
       FROM reservations
       WHERE id = ?
       LIMIT 1
+      FOR UPDATE
       `,
       [reservationId],
     );
@@ -2751,6 +2754,11 @@ exports.addAccommodationToReservation = async (req, res) => {
       };
     }
 
+    /*
+      Do not ignore the guest's current reservation here.
+      If the same accommodation is already reserved by this reservation for an
+      overlapping schedule, the new add-on must also be blocked.
+    */
     await checkReservationConflicts(connection, [newItem]);
 
     await connection.query(
@@ -2785,17 +2793,37 @@ exports.addAccommodationToReservation = async (req, res) => {
 
     const oldAccommodationTotal = Number(reservation.accommodation_total || 0);
     const oldPaidAmount = Number(reservation.paid_amount || 0);
-    const oldRemainingBalance = Number(reservation.remaining_balance || 0);
 
+    /*
+      STEP 3F-F financial rule:
+      - Adding another accommodation does NOT mean payment was collected.
+      - paid_amount stays unchanged.
+      - The add-on increases accommodation_total and remaining_balance.
+      - required_downpayment is preserved because it represents the original
+        pre-arrival booking requirement, not an onsite add-on requirement.
+    */
     const newAccommodationTotal = oldAccommodationTotal + newItem.item_price;
-    const newPaidAmount = oldPaidAmount + newItem.item_price;
-    const newRemainingBalance = Math.max(oldRemainingBalance, 0);
-    const newRequiredDownpayment = newAccommodationTotal * 0.5;
+    const newPaidAmount = oldPaidAmount;
+    const newRemainingBalance = Math.max(
+      newAccommodationTotal - newPaidAmount,
+      0,
+    );
+    const newPaymentStatus =
+      newRemainingBalance <= 0
+        ? "paid"
+        : newPaidAmount > 0
+          ? "partially_paid"
+          : "unpaid";
+
+    const durationUnit = ["night", "night_extended"].includes(newItem.slot_type)
+      ? "night(s)"
+      : "day(s)";
 
     const addOnNote =
-      `Onsite add-on: ${accommodation.name} - ${newItem.slot_label}` +
+      `Onsite accommodation add-on (UNPAID): ${accommodation.name} - ${newItem.slot_label}` +
       ` (${newItem.check_in_date} ${newItem.check_in_time} to ${newItem.check_out_date} ${newItem.check_out_time})` +
-      `, Stay Duration: ${newItem.stay_duration} ${newItem.slot_type === "night" ? "night(s)" : "day(s)"}, Cash Paid: â‚±${newItem.item_price.toFixed(2)}`;
+      `, Stay Duration: ${newItem.stay_duration} ${durationUnit}` +
+      `, Accommodation Balance Added: ₱${newItem.item_price.toFixed(2)}`;
 
     const updatedNote = [reservation.note, addOnNote]
       .filter(Boolean)
@@ -2806,7 +2834,6 @@ exports.addAccommodationToReservation = async (req, res) => {
       UPDATE reservations
       SET
         accommodation_total = ?,
-        required_downpayment = ?,
         paid_amount = ?,
         remaining_balance = ?,
         payment_status = ?,
@@ -2815,10 +2842,9 @@ exports.addAccommodationToReservation = async (req, res) => {
       `,
       [
         newAccommodationTotal,
-        newRequiredDownpayment,
         newPaidAmount,
         newRemainingBalance,
-        newRemainingBalance > 0 ? "partially_paid" : "paid",
+        newPaymentStatus,
         updatedNote,
         reservationId,
       ],
@@ -2827,7 +2853,8 @@ exports.addAccommodationToReservation = async (req, res) => {
     await connection.commit();
 
     return res.status(201).json({
-      message: "Accommodation added to active reservation successfully.",
+      message:
+        "Accommodation added successfully. Its price was added to the unpaid accommodation balance.",
       reservationId,
       accommodation_name: accommodation.name,
       slot_label: newItem.slot_label,
@@ -2837,9 +2864,12 @@ exports.addAccommodationToReservation = async (req, res) => {
       check_out_date: newItem.check_out_date,
       check_out_time: newItem.check_out_time,
       item_price: newItem.item_price,
+      accommodation_balance_added: newItem.item_price,
       accommodation_total: newAccommodationTotal,
       paid_amount: newPaidAmount,
       remaining_balance: newRemainingBalance,
+      payment_status: newPaymentStatus,
+      payment_collected: false,
     });
   } catch (error) {
     await connection.rollback();
@@ -2940,6 +2970,7 @@ exports.extendReservationItem = async (req, res) => {
       INNER JOIN accommodation_categories c ON a.category_id = c.id
       WHERE r.id = ? AND ri.id = ?
       LIMIT 1
+      FOR UPDATE
       `,
       [reservationId, reservationItemId],
     );
@@ -3020,11 +3051,13 @@ exports.extendReservationItem = async (req, res) => {
       };
     }
 
-    await checkReservationConflicts(
-      connection,
-      [extensionWindow],
-      reservationId,
-    );
+    /*
+      The extension starts exactly at this item's current checkout, so the
+      current item does not overlap the extension window under the strict
+      conflict comparison. Do not ignore the whole reservation: another item
+      under the same reservation must still be able to block an overlap.
+    */
+    await checkReservationConflicts(connection, [extensionWindow]);
 
     const extensionFee = getExtensionFeeFromItem(
       item,
@@ -3043,12 +3076,26 @@ exports.extendReservationItem = async (req, res) => {
 
     const oldAccommodationTotal = Number(item.accommodation_total || 0);
     const oldPaidAmount = Number(item.paid_amount || 0);
-    const oldRemainingBalance = Number(item.remaining_balance || 0);
 
+    /*
+      STEP 3F-F financial rule:
+      - Extending the stay does NOT mean payment was collected.
+      - paid_amount stays unchanged.
+      - The extension increases accommodation_total and remaining_balance.
+      - required_downpayment stays as the original booking requirement.
+    */
     const newAccommodationTotal = oldAccommodationTotal + extensionFee;
-    const newPaidAmount = oldPaidAmount + extensionFee;
-    const newRemainingBalance = Math.max(oldRemainingBalance, 0);
-    const newRequiredDownpayment = newAccommodationTotal * 0.5;
+    const newPaidAmount = oldPaidAmount;
+    const newRemainingBalance = Math.max(
+      newAccommodationTotal - newPaidAmount,
+      0,
+    );
+    const newPaymentStatus =
+      newRemainingBalance <= 0
+        ? "paid"
+        : newPaidAmount > 0
+          ? "partially_paid"
+          : "unpaid";
 
     await connection.query(
       `
@@ -3072,10 +3119,10 @@ exports.extendReservationItem = async (req, res) => {
 
     const unitLabel = getExtensionUnitText(extensionType, addedStayDuration);
     const extensionNote =
-      `Onsite stay extension: ${item.accommodation_name} - ${item.slot_label}` +
+      `Onsite stay extension (UNPAID): ${item.accommodation_name} - ${item.slot_label}` +
       `, Added ${addedStayDuration} ${unitLabel}` +
       ` (${oldCheckOutDate} ${oldCheckOutTime} to ${newCheckOutDate} ${newCheckOutTime})` +
-      `, Cash Paid: â‚±${extensionFee.toFixed(2)}`;
+      `, Accommodation Balance Added: ₱${extensionFee.toFixed(2)}`;
 
     const updatedNote = [item.note, extensionNote].filter(Boolean).join(" | ");
 
@@ -3084,7 +3131,6 @@ exports.extendReservationItem = async (req, res) => {
       UPDATE reservations
       SET
         accommodation_total = ?,
-        required_downpayment = ?,
         paid_amount = ?,
         remaining_balance = ?,
         payment_status = ?,
@@ -3093,10 +3139,9 @@ exports.extendReservationItem = async (req, res) => {
       `,
       [
         newAccommodationTotal,
-        newRequiredDownpayment,
         newPaidAmount,
         newRemainingBalance,
-        newRemainingBalance > 0 ? "partially_paid" : "paid",
+        newPaymentStatus,
         updatedNote,
         reservationId,
       ],
@@ -3106,7 +3151,7 @@ exports.extendReservationItem = async (req, res) => {
 
     return res.status(200).json({
       message:
-        "Stay extended successfully. Extension was recorded as cash paid.",
+        "Stay extended successfully. The extension fee was added to the unpaid accommodation balance.",
       reservationId,
       reservation_item_id: reservationItemId,
       accommodation_name: item.accommodation_name,
@@ -3119,9 +3164,12 @@ exports.extendReservationItem = async (req, res) => {
       new_check_out_date: newCheckOutDate,
       new_check_out_time: newCheckOutTime,
       extension_fee: extensionFee,
+      accommodation_balance_added: extensionFee,
       accommodation_total: newAccommodationTotal,
       paid_amount: newPaidAmount,
       remaining_balance: newRemainingBalance,
+      payment_status: newPaymentStatus,
+      payment_collected: false,
     });
   } catch (error) {
     await connection.rollback();
