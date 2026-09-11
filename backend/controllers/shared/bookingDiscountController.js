@@ -1,4 +1,4 @@
-const db = require("../config/db");
+﻿const db = require("../../config/db");
 
 // ============================================================
 // STEP 3F-B2 + B3 PRICING CORRECTION: ENTRANCE FEE ADJUSTMENT / COLLECTION
@@ -16,11 +16,11 @@ const db = require("../config/db");
 // - Prevent special-rate pax from exceeding the chargeable
 //   entrance guest count after room free-entrance inclusions.
 // - OFFICIAL ENTRANCE PRICING SOURCE OF TRUTH:
-//     Pool & Beach Adult: Day ₱250 / Overnight ₱300
-//     Pool & Beach Kid/Senior/PWD: Day ₱200 / Overnight ₱250
-//     Beach Only Adult: Day ₱150 / Overnight ₱200
-//     Beach Only Kid/Senior/PWD: Day ₱100 / Overnight ₱150
-// - The poster's ₱100 subsequent-day fee is intentionally NOT
+//     Pool & Beach Adult: Day â‚±250 / Overnight â‚±300
+//     Pool & Beach Kid/Senior/PWD: Day â‚±200 / Overnight â‚±250
+//     Beach Only Adult: Day â‚±150 / Overnight â‚±200
+//     Beach Only Kid/Senior/PWD: Day â‚±100 / Overnight â‚±150
+// - The poster's â‚±100 subsequent-day fee is intentionally NOT
 //   automated in this phase, per project decision.
 // - Database discount_type='kid_free' is retained only as a
 //   legacy internal key for compatibility; it now represents the
@@ -548,7 +548,7 @@ async function collectEntranceFee(req, res) {
       return res.status(400).json({
         success: false,
         message:
-          `Entrance collection is already ₱${overpaid.toFixed(2)} above the current recalculated final entrance fee. Review the guest/discount adjustment and handle the overpayment before collecting again.`,
+          `Entrance collection is already â‚±${overpaid.toFixed(2)} above the current recalculated final entrance fee. Review the guest/discount adjustment and handle the overpayment before collecting again.`,
         discounts: discountRows,
         total,
         meta,
@@ -563,7 +563,7 @@ async function collectEntranceFee(req, res) {
     // --------------------------------------------------------
     // Duplicate / zero-balance protection.
     // If no money remains, simply synchronize the settled flag.
-    // This also handles legitimate ₱0 final entrance cases.
+    // This also handles legitimate â‚±0 final entrance cases.
     // --------------------------------------------------------
     if (amountToCollect <= MONEY_EPSILON) {
       await connection.query(
@@ -624,7 +624,7 @@ async function collectEntranceFee(req, res) {
       already_settled: false,
       amount_collected_now: amountToCollect,
       message:
-        `Entrance fee collection recorded successfully. Collected now: ₱${amountToCollect.toFixed(2)}.`,
+        `Entrance fee collection recorded successfully. Collected now: â‚±${amountToCollect.toFixed(2)}.`,
       discounts: discountRows,
       total,
       meta,
@@ -999,3 +999,4 @@ module.exports = {
   upsertBookingDiscount,
   deleteBookingDiscount,
 };
+

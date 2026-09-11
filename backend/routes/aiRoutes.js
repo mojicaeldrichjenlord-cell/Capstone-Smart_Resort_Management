@@ -6,7 +6,7 @@ const {
   createBookingFromChat,
   translateReplyToTagalog,
   translateReplyToTaglish,
-} = require("../controllers/geminiChatController");
+} = require("../controllers/ai/geminiChatController");
 
 router.post("/chat", chatWithGemini);
 router.post("/create-booking", createBookingFromChat);

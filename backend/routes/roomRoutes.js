@@ -19,7 +19,7 @@ const {
   updateRoom,
   deleteRoom,
   seedDefaultAccommodations,
-} = require("../controllers/roomController");
+} = require("../controllers/shared/roomController");
 
 router.get("/categories", getAccommodationCategories);
 router.post("/categories", createAccommodationCategory);

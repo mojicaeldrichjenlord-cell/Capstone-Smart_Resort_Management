@@ -7,7 +7,7 @@ const router = express.Router();
 const {
   getAllAdminBookings,
   updateAdminBookingStatus,
-} = require("../controllers/adminBookingController");
+} = require("../controllers/admin/adminBookingController");
 
 // ============================================================
 // FRONT DESK GUEST ADJUSTMENT

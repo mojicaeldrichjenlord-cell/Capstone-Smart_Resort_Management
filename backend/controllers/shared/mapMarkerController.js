@@ -1,4 +1,4 @@
-const db = require("../config/db");
+﻿const db = require("../../config/db");
 
 // GET ALL MARKERS
 exports.getMarkers = (req, res) => {

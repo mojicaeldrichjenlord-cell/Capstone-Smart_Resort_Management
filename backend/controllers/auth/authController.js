@@ -1,4 +1,4 @@
-// ============================================================
+﻿// ============================================================
 // SMARTRESORT AUTH CONTROLLER
 // Purpose:
 // - Register customer account
@@ -10,7 +10,7 @@
 // - Change password
 // ============================================================
 
-const db = require("../config/db");
+const db = require("../../config/db");
 const bcrypt = require("bcrypt");
 const axios = require("axios");
 

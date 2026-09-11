@@ -1,4 +1,4 @@
-const db = require("../config/db");
+﻿const db = require("../../config/db");
 
 function normalizeText(value) {
   return String(value || "").trim();
@@ -645,7 +645,7 @@ exports.seedDefaultAccommodations = async (req, res) => {
         name: "Standard Room",
         description: "Default room accommodation",
         amenities:
-          "Airconditioned room\nBed/s included\nFree pool and beach entrance for 2 pax\nExtra bed available: ₱200",
+          "Airconditioned room\nBed/s included\nFree pool and beach entrance for 2 pax\nExtra bed available: â‚±200",
         max_capacity: 4,
         free_entrance_pax: 2,
         image: "",

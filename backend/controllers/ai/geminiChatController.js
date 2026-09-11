@@ -1,5 +1,5 @@
-const { GoogleGenAI } = require("@google/genai");
-const db = require("../config/db");
+﻿const { GoogleGenAI } = require("@google/genai");
+const db = require("../../config/db");
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -334,8 +334,8 @@ function buildRoomsSummary(rooms, nights) {
       return [
         `${index + 1}. ${room.room_name}`,
         `   - Room ID: ${room.id}`,
-        `   - Price per night: ₱${formatCurrency(room.price)}`,
-        `   - Estimated total: ₱${formatCurrency(total)}`,
+        `   - Price per night: â‚±${formatCurrency(room.price)}`,
+        `   - Estimated total: â‚±${formatCurrency(total)}`,
         `   - Capacity: ${room.capacity}`,
         `   - Bed count: ${room.bed_count || "N/A"}`,
         `   - Bed type: ${room.bed_type || "N/A"}`,
@@ -355,7 +355,7 @@ function buildTopRecommendationSummary(rooms, nights) {
     .slice(0, 3)
     .map((room, index) => {
       const total = Number(room.price || 0) * Number(nights || 1);
-      return `${index + 1}. ${room.room_name} | ₱${formatCurrency(room.price)}/night | est. total ₱${formatCurrency(total)} | capacity ${room.capacity} | ${room.view_type || "no view info"} | ${room.aircon_type || "no aircon info"}`;
+      return `${index + 1}. ${room.room_name} | â‚±${formatCurrency(room.price)}/night | est. total â‚±${formatCurrency(total)} | capacity ${room.capacity} | ${room.view_type || "no view info"} | ${room.aircon_type || "no aircon info"}`;
     })
     .join("\n");
 }

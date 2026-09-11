@@ -4,7 +4,7 @@ const router = express.Router();
 const {
   updatePaymentStatus,
   markPaymentAsPaid,
-} = require("../controllers/adminPaymentController");
+} = require("../controllers/admin/adminPaymentController");
 
 router.put("/:id/mark-paid", markPaymentAsPaid);
 router.put("/:id", updatePaymentStatus);

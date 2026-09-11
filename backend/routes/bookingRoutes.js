@@ -48,7 +48,7 @@ const {
   addBookingCharge,
   markBookingChargesPaid,
   deleteBookingCharge,
-} = require("../controllers/bookingChargeController");
+} = require("../controllers/shared/bookingChargeController");
 
 /* ======================================================
    BOOKING DISCOUNT / ENTRANCE ADJUSTMENT CONTROLLER
@@ -65,7 +65,7 @@ const {
   getBookingDiscount,
   upsertBookingDiscount,
   deleteBookingDiscount,
-} = require("../controllers/bookingDiscountController");
+} = require("../controllers/shared/bookingDiscountController");
 
 /* ======================================================
    PAYMENT PROOF UPLOAD SETUP
@@ -139,7 +139,7 @@ const upload = multer({
 ====================================================== */
 
 // Legacy automated PayMongo reservation preparation.
-// Kept unchanged for now because PayPal migration belongs to Phase 2.
+// Kept unchanged in R2-A. Full removal is R2-B.
 router.post(
   "/paymongo",
   createPayMongoBooking,

@@ -6,7 +6,7 @@ const {
   createMarker,
   updateMarker,
   deleteMarker,
-} = require("../controllers/mapMarkerController");
+} = require("../controllers/shared/mapMarkerController");
 
 router.get("/", getMarkers);
 router.post("/", createMarker);

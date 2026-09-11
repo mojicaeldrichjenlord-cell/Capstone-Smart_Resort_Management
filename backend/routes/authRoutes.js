@@ -22,7 +22,7 @@ const {
   getProfile,
   updateProfile,
   changePassword,
-} = require("../controllers/authController");
+} = require("../controllers/auth/authController");
 
 // ============================================================
 // SECTION 2: Register and login routes

@@ -1,4 +1,4 @@
-const db = require("../config/db");
+﻿const db = require("../../config/db");
 
 const VALID_BOOKING_STATUSES = [
   "pending",
@@ -361,7 +361,7 @@ exports.updateGuestAdjustment = async (req, res) => {
       const chargeNote =
         `${extraGuestCount} additional guest${extraGuestCount === 1 ? "" : "s"} ` +
         `above the booked guest count of ${bookedGuestCount}. ` +
-        `Rate: ₱${extraGuestRate.toFixed(2)} per extra guest.`;
+        `Rate: â‚±${extraGuestRate.toFixed(2)} per extra guest.`;
 
       if (existingCharge) {
         await connection.query(
@@ -648,3 +648,4 @@ exports.markBookingAsCompleted = async (req, res) => {
     });
   }
 };
+
