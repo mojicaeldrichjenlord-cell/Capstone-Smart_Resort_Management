@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="../css/style.css" />
     <link rel="stylesheet" href="../frontdeskCSS/frontdeskGuests.css" />
     <link rel="stylesheet" href="../frontdeskCSS/frontdeskExtraBed.css" />
+    <link rel="stylesheet" href="../frontdeskCSS/frontdeskAdditionalCharges.css" />
   </head>
 
   <body class="has-fixed-navbar">
@@ -139,13 +140,13 @@
       </section>
 
       <section class="next-step-note">
-        <strong>Step 3F-C:</strong>
+        <strong>Step 3F-D:</strong>
 
         <span>
-          Extra Bed uses the resort's official ₱200 per bed rate. Front Desk
-          can change the current quantity for checked-in guests, while the
-          system preserves previously paid Extra Bed Charges and collects only
-          the remaining difference.
+          Front Desk can record Damage, Missing Item, Service, and Custom
+          Additional Charges for checked-in guests. New charges remain unpaid
+          until the next Collect Unpaid Charges step, and paid financial history
+          cannot be deleted.
         </span>
       </section>
     </main>
@@ -591,10 +592,133 @@
       </div>
     </div>
 
+    <div class="additional-charges-modal" id="additionalChargesModal">
+      <div class="additional-charges-modal-box">
+        <div class="additional-charges-header">
+          <div>
+            <p class="additional-charges-eyebrow">FRONT DESK OPERATION</p>
+            <h2>Additional Charges</h2>
+
+            <p id="additionalChargesReservationText">
+              Manage manual charges for this checked-in reservation.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="additional-charges-close-btn"
+            id="closeAdditionalChargesBtn"
+            aria-label="Close Additional Charges modal"
+          >
+            ×
+          </button>
+        </div>
+
+        <div class="additional-charges-summary">
+          <div class="additional-charges-summary-item">
+            <span>Total Manual Additional Charges</span>
+            <strong id="additionalChargesTotalText">₱0.00</strong>
+          </div>
+
+          <div class="additional-charges-summary-item">
+            <span>Unpaid Manual Additional Charges</span>
+            <strong id="additionalChargesUnpaidText">₱0.00</strong>
+          </div>
+        </div>
+
+        <div class="additional-charges-list" id="additionalChargesList">
+          <div class="additional-charges-empty">
+            Loading Additional Charges...
+          </div>
+        </div>
+
+        <div class="additional-charges-form">
+          <h3>Add Additional Charge</h3>
+
+          <div class="additional-charges-form-grid">
+            <div class="additional-charges-form-group">
+              <label for="additionalChargeType">Charge Category</label>
+
+              <select id="additionalChargeType">
+                <option value="damage">Damage</option>
+                <option value="missing_item">Missing Item</option>
+                <option value="service">Service</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+
+            <div class="additional-charges-form-group">
+              <label for="additionalChargeAmount">Amount</label>
+
+              <input
+                type="number"
+                id="additionalChargeAmount"
+                min="0.01"
+                step="0.01"
+                placeholder="0.00"
+              />
+            </div>
+
+            <div
+              class="additional-charges-form-group full custom"
+              id="additionalCustomNameWrap"
+            >
+              <label for="additionalCustomName">Custom Charge Name</label>
+
+              <input
+                type="text"
+                id="additionalCustomName"
+                maxlength="70"
+                placeholder="Example: Special equipment cleaning"
+              />
+            </div>
+
+            <div class="additional-charges-form-group full">
+              <label for="additionalChargeNote">
+                Verification / Charge Note
+              </label>
+
+              <textarea
+                id="additionalChargeNote"
+                maxlength="500"
+                placeholder="Example: Broken glass table verified by Front Desk."
+              ></textarea>
+            </div>
+          </div>
+
+          <div class="additional-charges-policy-note">
+            New manual Additional Charges are saved as unpaid. Payment is not
+            collected in this modal. Step 3F-E — Collect Unpaid Charges will
+            combine the guest's outstanding onsite charges into one collection
+            workflow.
+          </div>
+
+          <div class="additional-charges-actions">
+            <button
+              type="button"
+              class="additional-charges-save-btn"
+              id="saveAdditionalChargeBtn"
+            >
+              Add Unpaid Charge
+            </button>
+
+            <button
+              type="button"
+              class="additional-charges-cancel-btn"
+              id="cancelAdditionalChargesBtn"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script src="../sharedJS/toast.js"></script>
     <script src="../sharedJS/api-config.js"></script>
     <script src="../frontdeskJS/frontdeskGuests.js"></script>
     <script src="../frontdeskJS/frontdeskEntranceCollection.js"></script>
     <script src="../frontdeskJS/frontdeskExtraBed.js"></script>
+    <script src="../frontdeskJS/frontdeskAdditionalCharges.js"></script>
   </body>
 </html>

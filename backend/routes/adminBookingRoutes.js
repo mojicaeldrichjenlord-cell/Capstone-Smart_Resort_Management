@@ -20,12 +20,6 @@ const {
 
 // ============================================================
 // STEP 3F-C: FRONT DESK EXTRA BED
-//
-// Uses a dedicated controller so:
-// - ₱200/bed is calculated on the backend.
-// - paid Extra Bed history is preserved.
-// - later quantity increases create only the new unpaid difference.
-// - duplicate collection is blocked.
 // ============================================================
 const {
   getExtraBedSummary,
@@ -33,6 +27,26 @@ const {
   collectExtraBedFee,
 } = require(
   "../controllers/frontdeskExtraBedController",
+);
+
+// ============================================================
+// STEP 3F-D: FRONT DESK ADDITIONAL CHARGES
+//
+// Manual categories:
+// - Damage
+// - Missing Item
+// - Service
+// - Custom
+//
+// New rows remain unpaid here.
+// Step 3F-E will collect all unpaid onsite charges.
+// ============================================================
+const {
+  getAdditionalCharges,
+  addAdditionalCharge,
+  deleteAdditionalCharge,
+} = require(
+  "../controllers/frontdeskAdditionalChargeController",
 );
 
 // ============================================================
@@ -53,6 +67,9 @@ router.put(
   updateGuestAdjustment,
 );
 
+// ------------------------------------------------------------
+// Extra Bed
+// ------------------------------------------------------------
 router.get(
   "/:id/extra-bed",
   getExtraBedSummary,
@@ -63,11 +80,27 @@ router.put(
   updateExtraBed,
 );
 
-// Keep the existing endpoint name for compatibility.
-// It now collects only the backend-calculated remaining amount.
 router.put(
   "/:id/extra-bed-paid",
   collectExtraBedFee,
+);
+
+// ------------------------------------------------------------
+// Additional Charges
+// ------------------------------------------------------------
+router.get(
+  "/:id/additional-charges",
+  getAdditionalCharges,
+);
+
+router.post(
+  "/:id/additional-charges",
+  addAdditionalCharge,
+);
+
+router.delete(
+  "/:id/additional-charges/:chargeId",
+  deleteAdditionalCharge,
 );
 
 module.exports = router;
