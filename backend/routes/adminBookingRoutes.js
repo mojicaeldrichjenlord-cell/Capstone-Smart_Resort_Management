@@ -39,7 +39,6 @@ const {
 // - Custom
 //
 // New rows remain unpaid here.
-// Step 3F-E will collect all unpaid onsite charges.
 // ============================================================
 const {
   getAdditionalCharges,
@@ -47,6 +46,24 @@ const {
   deleteAdditionalCharge,
 } = require(
   "../controllers/frontdesk/frontdeskAdditionalChargeController",
+);
+
+// ============================================================
+// STEP 3F-E: FRONT DESK COLLECT UNPAID CHARGES
+//
+// Consolidates unpaid booking_charges:
+// - Extra Guest Charge
+// - Extra Bed Charge
+// - Manual Additional Charges
+// - Other valid onsite booking_charge rows
+//
+// Entrance Fee remains in the Entrance Adjustment workflow.
+// ============================================================
+const {
+  getUnpaidChargesSummary,
+  collectUnpaidCharges,
+} = require(
+  "../controllers/frontdesk/frontdeskUnpaidChargeController",
 );
 
 // ============================================================
@@ -101,6 +118,19 @@ router.post(
 router.delete(
   "/:id/additional-charges/:chargeId",
   deleteAdditionalCharge,
+);
+
+// ------------------------------------------------------------
+// Collect Unpaid Charges
+// ------------------------------------------------------------
+router.get(
+  "/:id/unpaid-charges",
+  getUnpaidChargesSummary,
+);
+
+router.put(
+  "/:id/unpaid-charges/collect",
+  collectUnpaidCharges,
 );
 
 module.exports = router;
