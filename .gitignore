@@ -1,4 +1,17 @@
+# Dependencies
 node_modules/
+
+# Environment / secrets
 .env
 backend/.env
+
+# Runtime uploads
 backend/uploads/
+
+# Local IDE settings
+.vscode/
+.idea/
+
+# Temporary database / ERD exports
+database/database_columns.csv
+database/database_foreign_keys.csv
