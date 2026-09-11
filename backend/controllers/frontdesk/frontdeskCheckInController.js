@@ -1,8 +1,8 @@
-const db = require("../config/db");
+const db = require("../../config/db");
 
 /* ======================================================
    FRONT DESK CHECK-IN CONTROLLER
-   File: backend/controllers/frontdeskCheckInController.js
+   File: backend/controllers/frontdesk/frontdeskCheckInController.js
 
    STEP 3F-B2 FINANCIAL CORRECTION
 

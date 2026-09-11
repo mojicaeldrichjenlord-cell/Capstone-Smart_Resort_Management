@@ -1,4 +1,4 @@
-const db = require("../config/db");
+const db = require("../../config/db");
 
 // ============================================================
 // STEP 3F-C: FRONT DESK EXTRA BED CONTROLLER

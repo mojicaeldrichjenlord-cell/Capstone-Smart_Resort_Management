@@ -1,10 +1,10 @@
-const db = require("../config/db");
+const db = require("../../config/db");
 
 // ============================================================
 // FRONT DESK GUEST ADJUSTMENT CONTROLLER
 //
 // File:
-// backend/controllers/frontdeskGuestAdjustmentController.js
+// backend/controllers/frontdesk/frontdeskGuestAdjustmentController.js
 //
 // Purpose:
 // - Preserve original booked guest count.

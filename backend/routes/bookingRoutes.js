@@ -28,7 +28,7 @@ const {
 ====================================================== */
 const {
   checkInBooking,
-} = require("../controllers/frontdeskCheckInController");
+} = require("../controllers/frontdesk/frontdeskCheckInController");
 
 /* ======================================================
    MANUAL RESERVATION DATE GUARD

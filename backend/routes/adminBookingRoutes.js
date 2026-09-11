@@ -15,7 +15,7 @@ const {
 const {
   updateGuestAdjustment,
 } = require(
-  "../controllers/frontdeskGuestAdjustmentController",
+  "../controllers/frontdesk/frontdeskGuestAdjustmentController",
 );
 
 // ============================================================
@@ -26,7 +26,7 @@ const {
   updateExtraBed,
   collectExtraBedFee,
 } = require(
-  "../controllers/frontdeskExtraBedController",
+  "../controllers/frontdesk/frontdeskExtraBedController",
 );
 
 // ============================================================
@@ -46,7 +46,7 @@ const {
   addAdditionalCharge,
   deleteAdditionalCharge,
 } = require(
-  "../controllers/frontdeskAdditionalChargeController",
+  "../controllers/frontdesk/frontdeskAdditionalChargeController",
 );
 
 // ============================================================
