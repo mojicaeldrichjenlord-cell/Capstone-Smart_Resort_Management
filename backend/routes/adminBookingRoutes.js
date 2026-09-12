@@ -31,14 +31,6 @@ const {
 
 // ============================================================
 // STEP 3F-D: FRONT DESK ADDITIONAL CHARGES
-//
-// Manual categories:
-// - Damage
-// - Missing Item
-// - Service
-// - Custom
-//
-// New rows remain unpaid here.
 // ============================================================
 const {
   getAdditionalCharges,
@@ -50,20 +42,22 @@ const {
 
 // ============================================================
 // STEP 3F-E: FRONT DESK COLLECT UNPAID CHARGES
-//
-// Consolidates unpaid booking_charges:
-// - Extra Guest Charge
-// - Extra Bed Charge
-// - Manual Additional Charges
-// - Other valid onsite booking_charge rows
-//
-// Entrance Fee remains in the Entrance Adjustment workflow.
 // ============================================================
 const {
   getUnpaidChargesSummary,
   collectUnpaidCharges,
 } = require(
   "../controllers/frontdesk/frontdeskUnpaidChargeController",
+);
+
+// ============================================================
+// STEP 3F-G: FRONT DESK ACCOMMODATION BALANCE COLLECTION
+// ============================================================
+const {
+  getAccommodationBalanceSummary,
+  collectAccommodationBalance,
+} = require(
+  "../controllers/frontdesk/frontdeskAccommodationBalanceController",
 );
 
 // ============================================================
@@ -131,6 +125,19 @@ router.get(
 router.put(
   "/:id/unpaid-charges/collect",
   collectUnpaidCharges,
+);
+
+// ------------------------------------------------------------
+// Accommodation Balance
+// ------------------------------------------------------------
+router.get(
+  "/:id/accommodation-balance",
+  getAccommodationBalanceSummary,
+);
+
+router.put(
+  "/:id/accommodation-balance/collect",
+  collectAccommodationBalance,
 );
 
 module.exports = router;
