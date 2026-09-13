@@ -60,6 +60,17 @@ const {
   "../controllers/frontdesk/frontdeskAccommodationBalanceController",
 );
 
+
+// ============================================================
+// STEP 3F-H: FRONT DESK FINAL CHECKOUT VALIDATION
+// ============================================================
+const {
+  getCheckoutSummary,
+  completeCheckout,
+} = require(
+  "../controllers/frontdesk/frontdeskCheckoutController",
+);
+
 // ============================================================
 // ADMIN / FRONT DESK BOOKING ROUTES
 // ============================================================
@@ -138,6 +149,19 @@ router.get(
 router.put(
   "/:id/accommodation-balance/collect",
   collectAccommodationBalance,
+);
+
+// ------------------------------------------------------------
+// Final Checkout Validation / Completion
+// ------------------------------------------------------------
+router.get(
+  "/:id/checkout-summary",
+  getCheckoutSummary,
+);
+
+router.put(
+  "/:id/checkout",
+  completeCheckout,
 );
 
 module.exports = router;
