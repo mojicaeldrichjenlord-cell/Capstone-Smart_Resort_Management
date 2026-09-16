@@ -495,7 +495,7 @@ function renderReservationCard(booking) {
             <div>Downpayment: <strong class="${getPaymentAmountHighlightClass(booking, booking.required_downpayment)}">₱${formatMoney(booking.required_downpayment)}</strong></div>
             <div>Paid: <strong>₱${formatMoney(booking.paid_amount)}</strong></div>
             <div>Remaining: <strong class="${getPaymentAmountHighlightClass(booking, booking.remaining_balance)}">₱${formatMoney(booking.remaining_balance)}</strong></div>            
-            <div>Entrance Fee: <strong>₱${formatMoney(booking.estimated_entrance_fee)}</strong></div>
+            <div>Entrance Fee: <strong>₱${formatMoney(getDisplayedEntranceFee(booking))}</strong></div>
             <div>Entrance Paid: <strong>${isEntranceFeePaid(booking) ? "Yes" : "No"}</strong></div>
             <div>Method: ${formatPaymentMethod(paymentMethod)}</div>
           </section>
@@ -561,6 +561,14 @@ function isEntranceFeePaid(booking) {
     Number(booking.entrance_fee_collected || 0) > 0 ||
     String(booking.entrance_fee_paid || "").toLowerCase() === "true"
   );
+}
+
+function getDisplayedEntranceFee(booking) {
+  if (isEntranceFeePaid(booking)) {
+    return Number(booking.entrance_fee_collected || 0);
+  }
+
+  return Number(booking.estimated_entrance_fee || 0);
 }
 
 function isDateToday(value, today) {
@@ -732,7 +740,7 @@ function renderCheckInButton(booking, bookingId, bookingStatus) {
       type="button"
       class="action-btn verify-payment-btn"
       onclick="checkInReservation(${bookingId}, this)"
-      title="Collect remaining balance and entrance fee, then allow entry."
+      title="Collect the remaining accommodation balance and allow entry. Entrance fee is finalized separately after Guest Adjustment and Entrance Adjustment."
     >
       Check In / Allow Entry
     </button>
@@ -786,7 +794,7 @@ async function verifyPayment(bookingId, button) {
 
 async function checkInReservation(bookingId, button) {
   const confirmed = confirm(
-    "Check in this guest and allow entry? This will record the remaining 50% as paid, mark the entrance fee as collected, and show the guest in Guests Inside.",
+    "Check in this guest and allow entry? This will settle the remaining accommodation balance and show the guest in Guests Inside. The entrance fee will be finalized and collected separately after Guest Adjustment and Entrance Adjustment.",
   );
 
   if (!confirmed) return;

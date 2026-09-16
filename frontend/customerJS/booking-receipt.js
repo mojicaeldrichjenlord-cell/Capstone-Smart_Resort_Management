@@ -5,6 +5,9 @@
 // - Check customer access
 // - Load a minimalist customer receipt
 // - Show final payment details conditionally after check-in/completion
+// - Include paid/unpaid Front Desk booking charges in receipt totals
+// - Use actual entrance collection after Front Desk finalization
+// - Prevent duplicate Extra Bed counting across legacy/new charge records
 // - Display Philippine time accurately
 // ============================================================
 
@@ -122,6 +125,46 @@ async function loadReceipt() {
     const extraBedFee = Number(booking.extra_bed_fee || 0);
     const extraBedPaid = isTruthy(booking.extra_bed_paid);
 
+    /*
+      Front Desk onsite charges are stored in booking_charges and returned
+      by GET /api/bookings/:id/receipt as additional_charges.
+      This includes Extra Guest, Extra Bed, Damage, Missing Item, Service,
+      Custom, and other onsite charges.
+    */
+    const additionalCharges = Array.isArray(booking.additional_charges)
+      ? booking.additional_charges
+      : [];
+
+    const additionalChargesTotal = Number(
+      booking.additional_charges_total || 0,
+    );
+    const paidAdditionalChargesTotal = getPaidBookingChargesTotal(
+      booking,
+      additionalCharges,
+    );
+    const unpaidAdditionalChargesTotal = getUnpaidBookingChargesTotal(
+      booking,
+      additionalCharges,
+    );
+
+    const hasExtraBedBookingCharge = additionalCharges.some(
+      isExtraBedBookingCharge,
+    );
+
+    /*
+      Legacy compatibility:
+      Older reservations may only use reservations.extra_bed_fee /
+      reservations.extra_bed_paid. Newer Front Desk flows can also store
+      Extra Bed in booking_charges. Never count both sources together.
+    */
+    const legacyExtraBedPaidFallback =
+      extraBedPaid && !hasExtraBedBookingCharge ? extraBedFee : 0;
+
+    const legacyExtraBedUnpaidFallback =
+      !extraBedPaid && extraBedFee > 0 && !hasExtraBedBookingCharge
+        ? extraBedFee
+        : 0;
+
     const isCheckedIn = isTruthy(booking.is_checked_in);
     const isCompleted = status === "completed";
 
@@ -136,28 +179,51 @@ async function loadReceipt() {
       extraBedFee > 0 ||
       entranceAdjustments.length > 0 ||
       entranceAdjustmentTotal > 0 ||
+      additionalCharges.length > 0 ||
+      additionalChargesTotal > 0 ||
+      paidAdditionalChargesTotal > 0 ||
+      unpaidAdditionalChargesTotal > 0 ||
       paymentStatus === "paid";
 
-    const entranceToCollect = entranceFeePaid ? 0 : estimatedEntranceFee;
-    const extraBedToCollect = extraBedPaid ? 0 : extraBedFee;
+    /*
+      Once Front Desk records entrance collection, entrance_fee_collected
+      is the actual collected amount and becomes the receipt source of truth.
+      Before collection, adjustedEntranceFee is only the current amount due.
+    */
+    const finalEntranceFee = entranceFeePaid
+      ? entranceFeeCollected
+      : adjustedEntranceFee;
+
+    const entranceToCollect = entranceFeePaid
+      ? 0
+      : Math.max(adjustedEntranceFee - entranceFeeCollected, 0);
 
     const simpleOnsiteReminder = Math.max(
-      remainingBalance + estimatedEntranceFee - entranceAdjustmentTotal,
+      remainingBalance +
+        adjustedEntranceFee +
+        unpaidAdditionalChargesTotal +
+        legacyExtraBedUnpaidFallback,
       0,
     );
 
+    /*
+      Final Total Collected must represent money that was actually recorded:
+      accommodation paid_amount
+      + actual entrance_fee_collected
+      + paid booking_charges
+      + legacy Extra Bed only when no matching booking_charge exists.
+    */
     const finalTotalCollected =
-      paidAmount + entranceFeeCollected + (extraBedPaid ? extraBedFee : 0);
-
-    const entranceAdjustmentToApply = entranceFeePaid
-      ? 0
-      : entranceAdjustmentTotal;
+      paidAmount +
+      entranceFeeCollected +
+      paidAdditionalChargesTotal +
+      legacyExtraBedPaidFallback;
 
     const finalOnsiteReminder = Math.max(
       remainingBalance +
         entranceToCollect +
-        extraBedToCollect -
-        entranceAdjustmentToApply,
+        unpaidAdditionalChargesTotal +
+        legacyExtraBedUnpaidFallback,
       0,
     );
 
@@ -241,10 +307,16 @@ async function loadReceipt() {
                   entranceAdjustmentTotal,
                   entranceFeePaid,
                   entranceFeeCollected,
+                  finalEntranceFee,
                   extraBedCount,
                   extraBedFee,
                   extraBedPaid,
                   extraBedPaidAt: booking.extra_bed_paid_at,
+                  hasExtraBedBookingCharge,
+                  additionalCharges,
+                  additionalChargesTotal,
+                  paidAdditionalChargesTotal,
+                  unpaidAdditionalChargesTotal,
                   finalTotalCollected,
                   finalOnsiteReminder,
                 })
@@ -343,6 +415,66 @@ function renderEntranceAdjustmentRows(adjustments) {
     .join("");
 }
 
+function isExtraBedBookingCharge(charge) {
+  const name = String(charge?.charge_name || "")
+    .trim()
+    .toLowerCase();
+
+  return name.includes("extra bed");
+}
+
+function getPaidBookingChargesTotal(booking, charges) {
+  if (
+    booking.paid_additional_charges_total !== undefined &&
+    booking.paid_additional_charges_total !== null
+  ) {
+    return Number(booking.paid_additional_charges_total || 0);
+  }
+
+  return charges
+    .filter((charge) => isTruthy(charge.is_paid))
+    .reduce((sum, charge) => sum + Number(charge.charge_amount || 0), 0);
+}
+
+function getUnpaidBookingChargesTotal(booking, charges) {
+  if (
+    booking.unpaid_additional_charges_total !== undefined &&
+    booking.unpaid_additional_charges_total !== null
+  ) {
+    return Number(booking.unpaid_additional_charges_total || 0);
+  }
+
+  return charges
+    .filter((charge) => !isTruthy(charge.is_paid))
+    .reduce((sum, charge) => sum + Number(charge.charge_amount || 0), 0);
+}
+
+function renderAdditionalChargeRows(charges) {
+  if (!charges.length) {
+    return "";
+  }
+
+  return charges
+    .map((charge) => {
+      const paid = isTruthy(charge.is_paid);
+      const note = String(charge.charge_note || "").trim();
+
+      return `
+        <div class="receipt-item">
+          <strong>${escapeHtml(charge.charge_name || "Onsite Charge")}</strong><br>
+          Amount: ₱${formatMoney(charge.charge_amount)}<br>
+          Status: ${paid ? "Paid" : "To collect onsite"}
+          ${
+            note
+              ? `<br>Note: ${escapeHtml(note)}`
+              : ""
+          }
+        </div>
+      `;
+    })
+    .join("");
+}
+
 // ============================================================
 // SECTION 3: Receipt sections
 // ============================================================
@@ -403,27 +535,69 @@ function renderFinalPaymentSummary(data) {
       ${amountRow("Accommodation Total", data.accommodationTotal)}
       ${amountRow("Accommodation Paid", data.paidAmount)}
       ${amountRow("Remaining Balance", data.remainingBalance)}
-      ${amountRow("Entrance Fee Estimate", data.estimatedEntranceFee)}
-      ${renderEntranceAdjustmentRows(data.entranceAdjustments || [])}
-      ${
-        data.entranceAdjustmentTotal > 0
-          ? amountRow("Adjusted Entrance Fee", data.adjustedEntranceFee)
-          : ""
-      }
-      ${amountRow("Entrance Fee Collected", data.entranceFeeCollected)}
-      ${textRow("Entrance Fee Status", data.entranceFeePaid ? "Collected" : "To collect onsite")}
 
       ${
-        data.extraBedCount > 0 || data.extraBedFee > 0
+        data.entranceFeePaid
+          ? amountRow("Final Entrance Fee", data.finalEntranceFee)
+          : `
+            ${amountRow("Entrance Fee Estimate", data.estimatedEntranceFee)}
+            ${renderEntranceAdjustmentRows(data.entranceAdjustments || [])}
+            ${
+              data.entranceAdjustmentTotal > 0
+                ? amountRow("Adjusted Entrance Fee", data.adjustedEntranceFee)
+                : ""
+            }
+          `
+      }
+
+      ${amountRow("Entrance Fee Collected", data.entranceFeeCollected)}
+      ${textRow(
+        "Entrance Fee Status",
+        data.entranceFeePaid ? "Collected" : "To collect onsite",
+      )}
+
+      ${
+        !data.hasExtraBedBookingCharge &&
+        (data.extraBedCount > 0 || data.extraBedFee > 0)
           ? `
             ${textRow("Extra Bed", `${data.extraBedCount} bed(s)`)}
             ${amountRow("Extra Bed Fee", data.extraBedFee)}
-            ${textRow("Extra Bed Status", data.extraBedPaid ? "Paid" : "To collect onsite")}
+            ${textRow(
+              "Extra Bed Status",
+              data.extraBedPaid ? "Paid" : "To collect onsite",
+            )}
             ${
               data.extraBedPaid && data.extraBedPaidAt
-                ? textRow("Extra Bed Paid At", formatPhilippineDateTime(data.extraBedPaidAt))
+                ? textRow(
+                    "Extra Bed Paid At",
+                    formatPhilippineDateTime(data.extraBedPaidAt),
+                  )
                 : ""
             }
+          `
+          : data.extraBedCount > 0
+            ? textRow("Extra Bed Count", `${data.extraBedCount} bed(s)`)
+            : ""
+      }
+
+      ${
+        data.additionalCharges.length
+          ? `
+            <div class="receipt-section-subtitle">
+              <strong>Onsite Booking Charges</strong>
+            </div>
+
+            ${renderAdditionalChargeRows(data.additionalCharges)}
+
+            ${amountRow("Onsite Charges Total", data.additionalChargesTotal)}
+            ${amountRow(
+              "Paid Onsite Charges",
+              data.paidAdditionalChargesTotal,
+            )}
+            ${amountRow(
+              "Unpaid Onsite Charges",
+              data.unpaidAdditionalChargesTotal,
+            )}
           `
           : ""
       }
