@@ -64,6 +64,7 @@ const {
   getBookingDiscount,
   upsertBookingDiscount,
   deleteBookingDiscount,
+  reconcileEntranceOverpayment,
 } = require("../controllers/shared/bookingDiscountController");
 
 /* ======================================================
@@ -210,6 +211,11 @@ router.put(
 router.delete(
   "/:id/discounts",
   deleteBookingDiscount,
+);
+
+router.post(
+  "/:id/entrance-reconciliation",
+  reconcileEntranceOverpayment,
 );
 
 /* ======================================================

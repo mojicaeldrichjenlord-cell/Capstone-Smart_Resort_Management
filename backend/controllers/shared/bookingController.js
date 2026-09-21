@@ -213,6 +213,45 @@ function getEntranceRate(entranceType, hasOvernight) {
   return hasOvernight ? 300 : 250;
 }
 
+
+function getEntranceTypeFromReservationNote(note) {
+  const text = String(note || "").toLowerCase();
+
+  if (text.includes("entrance type: beach only")) {
+    return "beach_only";
+  }
+
+  return "pool_beach";
+}
+
+function hasOvernightStyleFromReservationItems(items) {
+  return (Array.isArray(items) ? items : []).some((item) => {
+    const slotType = String(item.slot_type || "")
+      .trim()
+      .toLowerCase();
+
+    const slotLabel = String(item.slot_label || "")
+      .trim()
+      .toLowerCase();
+
+    // Same source-of-truth rule used by Front Desk entrance pricing:
+    // day_tour / day_extended = DAY rate
+    // night / night_extended  = OVERNIGHT rate
+    if (slotType) {
+      return (
+        slotType === "night" ||
+        slotType === "night_extended"
+      );
+    }
+
+    // Legacy fallback only when slot_type is missing.
+    return (
+      slotLabel.includes("night") ||
+      slotLabel.includes("overnight")
+    );
+  });
+}
+
 // ============================================================
 // BLOCK: Get total free entrance pax from items
 // Purpose: Handles the get total free entrance pax from items part of this file.
@@ -1097,7 +1136,10 @@ async function createReservation({
 
     accommodationTotal += slotConfig.price * stayDuration;
 
-    if (slotType === "night" || slotType === "day_extended" || slotType === "night_extended") {
+    // Entrance fee follows the selected DAY/NIGHT schedule family.
+    // Day 22/23 Hours remains a DAY entrance rate even if the stay crosses midnight.
+    // Only Night and Night 22/23 Hours use the overnight entrance rate.
+    if (slotType === "night" || slotType === "night_extended") {
       hasOvernightStyle = true;
     }
   }
@@ -1133,14 +1175,22 @@ async function createReservation({
   let entranceFeeCollected = 0;
 
   if (isWalkInManualReservation) {
+    /*
+      Final Front Desk Walk-in rule:
+      - Collect the full ACCOMMODATION amount during manual reservation.
+      - Automatically check the guest in because the guest is already onsite.
+      - Do NOT collect the entrance fee yet.
+      - The entrance fee remains estimated until Guest Adjustment and
+        Entrance Adjustment are completed after check-in.
+    */
     paidAmount = accommodationTotal;
     remainingBalance = 0;
     reservationStatus = "approved";
     paymentStatus = "paid";
     isCheckedIn = 1;
     checkedInAtSql = new Date();
-    entranceFeePaid = 1;
-    entranceFeeCollected = estimatedEntranceFee;
+    entranceFeePaid = 0;
+    entranceFeeCollected = 0;
   } else if (isFacebookManualReservation) {
     reservationStatus = "approved";
 
@@ -1191,6 +1241,9 @@ async function createReservation({
       );
       noteParts.push(
         "Walk-in guest automatically checked in after manual reservation creation.",
+      );
+      noteParts.push(
+        "Walk-in entrance fee is estimated only and will be finalized and collected after Guest Adjustment and Entrance Adjustment.",
       );
     } else if (cleanPaymentType === "full") {
       noteParts.push("Manual Reservation Payment Type: Full Payment");
@@ -1722,10 +1775,7 @@ exports.getBookingReceipt = async (req, res) => {
     const items = await getReservationItems(id);
 
     /* ======================================================
-       ADDITIONAL CHARGES
-       booking_charges.booking_id references reservations.id
-       Important:
-       - Include is_paid and paid_at so receipt knows what is still unpaid.
+       ONSITE BOOKING CHARGES
     ====================================================== */
     const [chargeRows] = await db.promise().query(
       `
@@ -1746,9 +1796,9 @@ exports.getBookingReceipt = async (req, res) => {
     );
 
     /* ======================================================
-       FRONT-DESK DISCOUNT
-       booking_discounts.booking_id references reservations.id.
-       One active discount adjustment may exist per reservation.
+       ENTRANCE SPECIAL-RATE ADJUSTMENTS
+
+       Do not LIMIT to one row. Senior, PWD, and Kid can coexist.
     ====================================================== */
     const [discountRows] = await db.promise().query(
       `
@@ -1763,37 +1813,168 @@ exports.getBookingReceipt = async (req, res) => {
         updated_at
       FROM booking_discounts
       WHERE booking_id = ?
-      ORDER BY updated_at DESC, id DESC
-      LIMIT 1
+      ORDER BY
+        FIELD(discount_type, 'senior', 'pwd', 'kid_free'),
+        id ASC
       `,
       [id],
     );
 
-    const bookingDiscount = discountRows[0] || null;
-    const discountTotal = bookingDiscount
-      ? Number(bookingDiscount.discount_amount || 0)
-      : 0;
+    /* ======================================================
+       ENTRANCE OVERPAYMENT RECONCILIATION AUDIT
+
+       reservations.entrance_fee_collected stays as the original
+       lifetime amount physically collected. Refund/correction rows
+       reduce the effective/net entrance money without deleting that
+       original financial history.
+    ====================================================== */
+    const [reconciliationRows] = await db.promise().query(
+      `
+      SELECT
+        id,
+        booking_id,
+        reconciliation_type,
+        amount,
+        note,
+        created_at
+      FROM entrance_fee_reconciliations
+      WHERE booking_id = ?
+      ORDER BY created_at ASC, id ASC
+      `,
+      [id],
+    );
 
     const additionalChargesTotal = chargeRows.reduce(
       (sum, charge) => sum + Number(charge.charge_amount || 0),
       0,
     );
 
-    const unpaidAdditionalChargesTotal = chargeRows.reduce((sum, charge) => {
-      return Number(charge.is_paid || 0) === 1
-        ? sum
-        : sum + Number(charge.charge_amount || 0);
-    }, 0);
+    const unpaidAdditionalChargesTotal = chargeRows.reduce(
+      (sum, charge) =>
+        Number(charge.is_paid || 0) === 1
+          ? sum
+          : sum + Number(charge.charge_amount || 0),
+      0,
+    );
 
     const paidAdditionalChargesTotal = Math.max(
       additionalChargesTotal - unpaidAdditionalChargesTotal,
       0,
     );
 
-    const totalFreeEntrancePax = Math.min(
-      items.reduce((sum, item) => sum + Number(item.free_entrance_pax || 0), 0),
-      Number(booking.guest_count || 0),
+    const actualGuestCount = Math.max(
+      0,
+      Number(
+        booking.actual_guest_count ??
+          booking.guest_count ??
+          0,
+      ),
     );
+
+    const totalFreeEntrancePax = Math.min(
+      items.reduce(
+        (sum, item) =>
+          sum + Number(item.free_entrance_pax || 0),
+        0,
+      ),
+      actualGuestCount,
+    );
+
+    const chargeableEntranceGuests = Math.max(
+      actualGuestCount - totalFreeEntrancePax,
+      0,
+    );
+
+    const entranceType =
+      getEntranceTypeFromReservationNote(
+        booking.note,
+      );
+
+    const hasOvernightStyle =
+      hasOvernightStyleFromReservationItems(
+        items,
+      );
+
+    const adultEntranceRate = getEntranceRate(
+      entranceType,
+      hasOvernightStyle,
+    );
+
+    const grossEntranceFee =
+      adultEntranceRate *
+      chargeableEntranceGuests;
+
+    const discountTotal = discountRows.reduce(
+      (sum, discount) =>
+        sum + Number(discount.discount_amount || 0),
+      0,
+    );
+
+    const finalEntranceFee = Math.max(
+      grossEntranceFee - discountTotal,
+      0,
+    );
+
+    const entranceCollectedGross = Math.max(
+      0,
+      Number(
+        booking.entrance_fee_collected ||
+          0,
+      ),
+    );
+
+    const entranceReconciledOut =
+      reconciliationRows.reduce(
+        (sum, row) =>
+          sum + Math.max(0, Number(row.amount || 0)),
+        0,
+      );
+
+    const entranceCollectedNet = Math.max(
+      entranceCollectedGross -
+        entranceReconciledOut,
+      0,
+    );
+
+    const entranceFeeRemaining = Math.max(
+      finalEntranceFee -
+        entranceCollectedNet,
+      0,
+    );
+
+    const entranceFeeOverpaid = Math.max(
+      entranceCollectedNet -
+        finalEntranceFee,
+      0,
+    );
+
+    const entranceRefundTotal =
+      reconciliationRows
+        .filter(
+          (row) =>
+            String(
+              row.reconciliation_type || "",
+            ).toLowerCase() === "refund",
+        )
+        .reduce(
+          (sum, row) =>
+            sum + Math.max(0, Number(row.amount || 0)),
+          0,
+        );
+
+    const entranceCorrectionTotal =
+      reconciliationRows
+        .filter(
+          (row) =>
+            String(
+              row.reconciliation_type || "",
+            ).toLowerCase() === "correction",
+        )
+        .reduce(
+          (sum, row) =>
+            sum + Math.max(0, Number(row.amount || 0)),
+          0,
+        );
 
     booking.fullname = [
       booking.first_name,
@@ -1809,33 +1990,79 @@ exports.getBookingReceipt = async (req, res) => {
     booking.check_out = booking.check_out_date;
     booking.check_in_time = booking.check_in_time;
     booking.check_out_time = booking.check_out_time;
-    booking.booked_guests = Number(booking.guest_count || 0);
-    booking.actual_guests = Number(
-      booking.actual_guest_count ?? booking.guest_count ?? 0,
+    booking.booked_guests = Number(
+      booking.guest_count || 0,
     );
-    booking.guests = booking.actual_guests;
+    booking.actual_guests = actualGuestCount;
+    booking.guests = actualGuestCount;
     booking.free_entrance_pax = totalFreeEntrancePax;
-
-    booking.chargeable_entrance_guests = Math.max(
-      Number(booking.guest_count || 0) - totalFreeEntrancePax,
-      0,
-    );
+    booking.chargeable_entrance_guests =
+      chargeableEntranceGuests;
 
     booking.room_name =
-      booking.accommodation_list || booking.room_name || "N/A";
+      booking.accommodation_list ||
+      booking.room_name ||
+      "N/A";
 
     booking.items = items;
 
-    booking.discount = bookingDiscount;
+    // Backward-compatible fields.
+    booking.discount =
+      discountRows[0] || null;
     booking.discount_total = discountTotal;
-    booking.front_desk_discount_total = discountTotal;
+    booking.front_desk_discount_total =
+      discountTotal;
+
+    // Full structured entrance-adjustment data.
+    booking.discounts = discountRows;
+    booking.entrance_adjustments =
+      discountRows;
+    booking.entrance_adjustment_total =
+      discountTotal;
+
+    // Authoritative CURRENT entrance calculation.
+    booking.entrance_type = entranceType;
+    booking.has_overnight_style =
+      hasOvernightStyle;
+    booking.adult_entrance_rate_per_pax =
+      adultEntranceRate;
+    booking.gross_entrance_fee =
+      grossEntranceFee;
+    booking.final_entrance_fee =
+      finalEntranceFee;
+
+    // Audit-safe collection/reconciliation fields.
+    booking.entrance_fee_collected_gross =
+      entranceCollectedGross;
+    booking.entrance_reconciliations =
+      reconciliationRows;
+    booking.entrance_reconciliation_total =
+      entranceReconciledOut;
+    booking.entrance_fee_reconciled_out =
+      entranceReconciledOut;
+    booking.entrance_refund_total =
+      entranceRefundTotal;
+    booking.entrance_correction_total =
+      entranceCorrectionTotal;
+    booking.entrance_fee_collected_net =
+      entranceCollectedNet;
+    booking.entrance_fee_remaining =
+      entranceFeeRemaining;
+    booking.entrance_fee_overpaid =
+      entranceFeeOverpaid;
 
     booking.additional_charges = chargeRows;
-    booking.additional_charges_total = additionalChargesTotal;
-    booking.unpaid_additional_charges_total = unpaidAdditionalChargesTotal;
-    booking.paid_additional_charges_total = paidAdditionalChargesTotal;
+    booking.additional_charges_total =
+      additionalChargesTotal;
+    booking.unpaid_additional_charges_total =
+      unpaidAdditionalChargesTotal;
+    booking.paid_additional_charges_total =
+      paidAdditionalChargesTotal;
     booking.additional_charges_paid =
-      chargeRows.length > 0 && unpaidAdditionalChargesTotal <= 0 ? 1 : 0;
+      chargeRows.length > 0 &&
+      unpaidAdditionalChargesTotal <= 0
+        ? 1
+        : 0;
 
     return res.status(200).json({
       booking,

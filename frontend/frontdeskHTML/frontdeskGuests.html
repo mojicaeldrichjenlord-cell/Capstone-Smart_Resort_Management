@@ -8,13 +8,15 @@
 
     <link rel="stylesheet" href="../sharedCSS/global.css" />
     <link rel="stylesheet" href="../css/style.css" />
-    <link rel="stylesheet" href="../frontdeskCSS/frontdeskGuests.css" />
     <link rel="stylesheet" href="../frontdeskCSS/frontdeskStay.css" />
     <link rel="stylesheet" href="../frontdeskCSS/frontdeskAccommodationBalance.css" />
     <link rel="stylesheet" href="../frontdeskCSS/frontdeskCheckout.css" />
     <link rel="stylesheet" href="../frontdeskCSS/frontdeskExtraBed.css" />
     <link rel="stylesheet" href="../frontdeskCSS/frontdeskAdditionalCharges.css" />
     <link rel="stylesheet" href="../frontdeskCSS/frontdeskUnpaidCharges.css" />
+    <!-- Loaded last so this page can apply one consistent visual system
+         across all Front Desk action buttons without changing JS behavior. -->
+    <link rel="stylesheet" href="../frontdeskCSS/frontdeskGuests.css" />
   </head>
 
   <body class="has-fixed-navbar">
@@ -330,7 +332,7 @@
           </div>
 
           <div class="entrance-adjustment-meta-item">
-            <span>Already Collected</span>
+            <span>Net Entrance Collected</span>
             <strong id="entranceCollectedText">₱0.00</strong>
           </div>
 
@@ -451,6 +453,65 @@
           fixed special entrance rate instead of a percentage discount. The
           ₱100 subsequent-day fee is not automated in this phase. Apply or
           update the special-rate counts before collecting the final entrance fee.
+        </div>
+
+        <div
+          class="entrance-adjustment-policy-note invalid"
+          id="entranceReconciliationPanel"
+          hidden
+        >
+          <strong>Entrance Overpayment Reconciliation</strong>
+
+          <p>
+            Preserve the original collection record and reconcile only the
+            current backend-calculated overpayment before checkout.
+          </p>
+
+          <p>
+            Originally Collected:
+            <strong id="entranceGrossCollectedText">₱0.00</strong>
+            &nbsp;|&nbsp;
+            Already Reconciled:
+            <strong id="entranceReconciledOutText">₱0.00</strong>
+            &nbsp;|&nbsp;
+            Current Overpayment:
+            <strong id="entranceReconciliationAmountText">₱0.00</strong>
+          </p>
+
+          <div class="entrance-adjustment-form-group">
+            <label for="entranceReconciliationType">
+              Reconciliation Type
+            </label>
+
+            <select id="entranceReconciliationType">
+              <option value="refund">Refunded to Guest</option>
+              <option value="correction">Payment Correction / Void</option>
+            </select>
+          </div>
+
+          <div class="entrance-adjustment-form-group">
+            <label for="entranceReconciliationNote">
+              Reconciliation Note
+            </label>
+
+            <textarea
+              id="entranceReconciliationNote"
+              maxlength="500"
+              placeholder="Example: ₱200 returned to guest after verified guest count decreased from 5 to 4."
+            ></textarea>
+
+            <small>
+              Required. Record what happened to the overpaid entrance money.
+            </small>
+          </div>
+
+          <button
+            type="button"
+            class="entrance-adjustment-save-btn"
+            id="reconcileEntranceOverpaymentBtn"
+          >
+            Confirm Overpayment Reconciliation
+          </button>
         </div>
 
         <div class="entrance-adjustment-actions">
@@ -932,6 +993,7 @@
     <script src="../frontdeskJS/frontdeskExtraBed.js"></script>
     <script src="../frontdeskJS/frontdeskAdditionalCharges.js"></script>
     <script src="../frontdeskJS/frontdeskUnpaidCharges.js"></script>
+    <script src="../frontdeskJS/frontdeskGuestActionsUI.js"></script>
   </body>
 </html>
 

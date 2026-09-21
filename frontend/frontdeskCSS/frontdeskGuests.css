@@ -1493,3 +1493,505 @@ body.guest-modal-open {
     display: flex;
   }
 }
+
+
+/* ======================================================
+   UI POLISH: MINIMAL FRONT DESK BUTTON SYSTEM
+   Visual-only override.
+   IMPORTANT:
+   - No IDs, event hooks, or JS behavior are changed.
+   - Primary = teal
+   - Secondary = white / slate
+   - Destructive = soft red
+   - Disabled = soft gray
+====================================================== */
+
+:root {
+  --fd-accent: #0f766e;
+  --fd-accent-hover: #115e59;
+  --fd-accent-soft: #f0fdfa;
+  --fd-border: #d7e0e8;
+  --fd-border-strong: #cbd5e1;
+  --fd-surface: #ffffff;
+  --fd-surface-soft: #f8fafc;
+  --fd-text: #0f172a;
+  --fd-text-muted: #64748b;
+  --fd-danger: #b91c1c;
+  --fd-danger-soft: #fef2f2;
+}
+
+.guest-card-footer {
+  align-items: flex-start;
+}
+
+.guest-state-message {
+  max-width: 235px;
+  padding-top: 9px;
+}
+
+.guest-actions {
+  flex: 1;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.guest-actions button,
+.guest-actions a.guest-action-link,
+.guest-actions .guest-action-disabled {
+  min-height: 40px;
+  padding: 9px 13px;
+  border: 1px solid var(--fd-border-strong);
+  border-radius: 10px;
+  background: var(--fd-surface);
+  color: #334155;
+  box-shadow: none;
+  font-size: 0.8rem;
+  font-weight: 800;
+  line-height: 1.1;
+  white-space: nowrap;
+  transform: none;
+  filter: none;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.guest-actions button:hover:not(:disabled),
+.guest-actions a.guest-action-link:hover {
+  border-color: #94b8b4;
+  background: var(--fd-accent-soft);
+  color: var(--fd-accent);
+  box-shadow: 0 3px 10px rgba(15, 118, 110, 0.08);
+  transform: none;
+  filter: none;
+}
+
+.guest-actions .checkin-btn,
+.guest-actions .entrance-adjustment-action-btn,
+.guest-actions .collect-unpaid-action-btn,
+.guest-actions .final-checkout-action-btn {
+  border-color: var(--fd-accent);
+  background: var(--fd-accent);
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.guest-actions .checkin-btn:hover:not(:disabled),
+.guest-actions .entrance-adjustment-action-btn:hover:not(:disabled),
+.guest-actions .collect-unpaid-action-btn:hover:not(:disabled),
+.guest-actions .final-checkout-action-btn:hover:not(:disabled) {
+  border-color: var(--fd-accent-hover);
+  background: var(--fd-accent-hover);
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(15, 118, 110, 0.13);
+}
+
+.guest-actions .guest-adjustment-action-btn,
+.guest-actions .stay-add-action-btn,
+.guest-actions .stay-extend-action-btn,
+.guest-actions .accommodation-balance-action-btn,
+.guest-actions .extra-bed-action-btn,
+.guest-actions .additional-charges-action-btn {
+  border-color: var(--fd-border-strong);
+  background: var(--fd-surface);
+  color: #334155;
+  box-shadow: none;
+}
+
+.guest-actions .guest-action-disabled {
+  border-color: #e2e8f0;
+  background: #f1f5f9;
+  color: #94a3b8;
+  cursor: default;
+}
+
+.guest-actions .guest-action-disabled.warning {
+  border-color: #e7d7b3;
+  background: #fffbeb;
+  color: #8a5b10;
+}
+
+/* Consistent modal buttons */
+.guest-adjustment-save-btn,
+.entrance-adjustment-save-btn,
+.stay-primary-btn,
+.accommodation-balance-collect-btn,
+.final-checkout-complete-btn,
+.extra-bed-save-btn,
+.extra-bed-collect-btn,
+.additional-charges-save-btn,
+.unpaid-charges-collect-btn {
+  border: 1px solid var(--fd-accent);
+  border-radius: 10px;
+  background: var(--fd-accent);
+  color: #ffffff;
+  box-shadow: none;
+  font-weight: 800;
+  transform: none;
+  filter: none;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.guest-adjustment-save-btn:hover:not(:disabled),
+.entrance-adjustment-save-btn:hover:not(:disabled),
+.stay-primary-btn:hover:not(:disabled),
+.accommodation-balance-collect-btn:hover:not(:disabled),
+.final-checkout-complete-btn:hover:not(:disabled),
+.extra-bed-save-btn:hover:not(:disabled),
+.extra-bed-collect-btn:hover:not(:disabled),
+.additional-charges-save-btn:hover:not(:disabled),
+.unpaid-charges-collect-btn:hover:not(:disabled) {
+  border-color: var(--fd-accent-hover);
+  background: var(--fd-accent-hover);
+  box-shadow: 0 4px 12px rgba(15, 118, 110, 0.13);
+}
+
+.guest-adjustment-cancel-btn,
+.entrance-adjustment-cancel-btn,
+.stay-cancel-btn,
+.accommodation-balance-cancel-btn,
+.final-checkout-cancel-btn,
+.extra-bed-cancel-btn,
+.additional-charges-cancel-btn,
+.unpaid-charges-cancel-btn {
+  border: 1px solid var(--fd-border);
+  border-radius: 10px;
+  background: var(--fd-surface-soft);
+  color: #475569;
+  box-shadow: none;
+  font-weight: 800;
+}
+
+.guest-adjustment-cancel-btn:hover,
+.entrance-adjustment-cancel-btn:hover,
+.stay-cancel-btn:hover,
+.accommodation-balance-cancel-btn:hover,
+.final-checkout-cancel-btn:hover,
+.extra-bed-cancel-btn:hover,
+.additional-charges-cancel-btn:hover,
+.unpaid-charges-cancel-btn:hover {
+  border-color: var(--fd-border-strong);
+  background: #f1f5f9;
+  color: var(--fd-text);
+}
+
+.entrance-adjustment-remove-btn,
+.delete-additional-charge-btn {
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  background: var(--fd-danger-soft);
+  color: var(--fd-danger);
+  box-shadow: none;
+  font-weight: 800;
+}
+
+.entrance-adjustment-remove-btn:hover:not(:disabled),
+.delete-additional-charge-btn:hover:not(:disabled) {
+  border-color: #fca5a5;
+  background: #fee2e2;
+}
+
+.guest-adjustment-save-btn:disabled,
+.entrance-adjustment-save-btn:disabled,
+.entrance-adjustment-remove-btn:disabled,
+.stay-primary-btn:disabled,
+.accommodation-balance-collect-btn:disabled,
+.final-checkout-complete-btn:disabled,
+.extra-bed-save-btn:disabled,
+.extra-bed-collect-btn:disabled,
+.additional-charges-save-btn:disabled,
+.unpaid-charges-collect-btn:disabled {
+  border-color: #dbe3ea;
+  background: #e8eef2;
+  color: #8a9aa9;
+  opacity: 1;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Neutral close controls */
+.guest-adjustment-close-btn,
+.entrance-adjustment-close-btn,
+.stay-modal-close-btn,
+.accommodation-balance-close-btn,
+.final-checkout-close-btn,
+.extra-bed-close-btn,
+.additional-charges-close-btn,
+.unpaid-charges-close-btn {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: var(--fd-surface-soft);
+  color: #64748b;
+  box-shadow: none;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease;
+}
+
+.guest-adjustment-close-btn:hover,
+.entrance-adjustment-close-btn:hover,
+.stay-modal-close-btn:hover,
+.accommodation-balance-close-btn:hover,
+.final-checkout-close-btn:hover,
+.extra-bed-close-btn:hover,
+.additional-charges-close-btn:hover,
+.unpaid-charges-close-btn:hover {
+  border-color: #fecaca;
+  background: var(--fd-danger-soft);
+  color: var(--fd-danger);
+}
+
+.guest-adjustment-eyebrow,
+.entrance-adjustment-eyebrow,
+.stay-modal-eyebrow,
+.accommodation-balance-eyebrow,
+.final-checkout-eyebrow,
+.extra-bed-eyebrow,
+.additional-charges-eyebrow,
+.unpaid-charges-eyebrow {
+  color: var(--fd-accent);
+}
+
+@media (max-width: 980px) {
+  .guest-card-footer {
+    flex-direction: column;
+  }
+
+  .guest-state-message {
+    max-width: none;
+    padding-top: 0;
+  }
+
+  .guest-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 700px) {
+  .guest-actions button,
+  .guest-actions a.guest-action-link,
+  .guest-actions .guest-action-disabled {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+
+/* ======================================================
+   UI POLISH V2: COMPACT / PROGRESSIVE GUEST ACTIONS
+   Visual-only layout for the dynamically rendered guest card actions.
+   Frequently used actions stay visible; secondary operations are moved
+   into a "More Actions" menu by frontdeskGuestActionsUI.js.
+====================================================== */
+
+.guest-actions.compact-actions-ready {
+  position: relative;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Keep the main row visually calm. */
+.guest-actions.compact-actions-ready > button,
+.guest-actions.compact-actions-ready > a,
+.guest-actions.compact-actions-ready > .guest-more-actions {
+  flex: 0 0 auto;
+}
+
+/* Redundant because the card already shows "Inside Resort"
+   and the state message below the guest details. */
+.guest-inside-redundant-status {
+  display: none !important;
+}
+
+/* ------------------------------------------------------
+   MORE ACTIONS DROPDOWN
+------------------------------------------------------ */
+
+.guest-more-actions {
+  position: relative;
+}
+
+.guest-more-actions > summary {
+  min-height: 40px;
+  padding: 9px 13px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+
+  border: 1px solid var(--fd-border-strong);
+  border-radius: 10px;
+
+  background: #ffffff;
+  color: #334155;
+
+  font-size: 0.8rem;
+  font-weight: 800;
+  line-height: 1.1;
+
+  cursor: pointer;
+  user-select: none;
+
+  list-style: none;
+
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.guest-more-actions > summary::-webkit-details-marker {
+  display: none;
+}
+
+.guest-more-actions > summary::after {
+  content: "⌄";
+  margin-top: -2px;
+
+  color: #64748b;
+
+  font-size: 0.9rem;
+  font-weight: 900;
+
+  transition: transform 0.16s ease;
+}
+
+.guest-more-actions[open] > summary {
+  border-color: #94b8b4;
+
+  background: var(--fd-accent-soft);
+  color: var(--fd-accent);
+
+  box-shadow: 0 3px 10px rgba(15, 118, 110, 0.08);
+}
+
+.guest-more-actions[open] > summary::after {
+  transform: rotate(180deg);
+}
+
+.guest-more-actions-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 120;
+
+  width: 238px;
+  padding: 7px;
+
+  display: grid;
+  gap: 3px;
+
+  border: 1px solid #dbe3ea;
+  border-radius: 12px;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 16px 38px rgba(15, 23, 42, 0.14),
+    0 3px 10px rgba(15, 23, 42, 0.06);
+}
+
+/* Secondary actions inside More Actions should feel like menu items,
+   not another collection of full CTA buttons. */
+.guest-more-actions-menu button,
+.guest-more-actions-menu a {
+  width: 100%;
+  min-height: 40px;
+  padding: 10px 11px;
+
+  display: block;
+
+  border: 0 !important;
+  border-radius: 8px !important;
+
+  background: transparent !important;
+  color: #334155 !important;
+
+  box-shadow: none !important;
+
+  text-align: left;
+  font-size: 0.8rem;
+  font-weight: 750;
+
+  transform: none !important;
+  filter: none !important;
+}
+
+.guest-more-actions-menu button:hover:not(:disabled),
+.guest-more-actions-menu a:hover {
+  background: #f1f7f6 !important;
+  color: var(--fd-accent) !important;
+}
+
+/* Collect Unpaid remains important, but inside the menu it gets
+   a subtle separator rather than another filled pill. */
+.guest-more-actions-menu .collect-unpaid-action-btn {
+  margin-top: 4px;
+  padding-top: 12px;
+
+  border-top: 1px solid #e2e8f0 !important;
+  border-radius: 0 0 8px 8px !important;
+
+  color: var(--fd-accent) !important;
+}
+
+/* Final Checkout stays visually primary and is always placed last. */
+.guest-actions.compact-actions-ready > .final-checkout-action-btn {
+  margin-left: 2px;
+}
+
+/* ------------------------------------------------------
+   DESKTOP / TABLET RESPONSIVE BEHAVIOR
+------------------------------------------------------ */
+
+@media (max-width: 1120px) {
+  .guest-actions.compact-actions-ready {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 760px) {
+  .guest-actions.compact-actions-ready {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .guest-actions.compact-actions-ready > button,
+  .guest-actions.compact-actions-ready > a,
+  .guest-actions.compact-actions-ready > .guest-more-actions {
+    width: 100%;
+  }
+
+  .guest-more-actions > summary {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .guest-more-actions-menu {
+    left: 0;
+    right: auto;
+
+    width: min(270px, calc(100vw - 48px));
+  }
+
+  .guest-actions.compact-actions-ready > .final-checkout-action-btn {
+    margin-left: 0;
+  }
+}
+
+@media (max-width: 500px) {
+  .guest-actions.compact-actions-ready {
+    grid-template-columns: 1fr;
+  }
+}

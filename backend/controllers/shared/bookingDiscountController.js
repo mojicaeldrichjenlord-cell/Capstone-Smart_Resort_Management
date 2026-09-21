@@ -30,6 +30,8 @@
 // - Protect against duplicate entrance collection.
 // - Re-open entrance balance automatically when a later saved
 //   adjustment increases the final fee.
+// - Preserve original entrance collections and reconcile later
+//   overpayments through entrance_fee_reconciliations.
 //
 // Important:
 // payment_transactions is still shaped around the legacy
@@ -80,17 +82,40 @@ function getEntranceTypeFromNote(note) {
 
 function hasOvernightStyleFromItems(items) {
   return items.some((item) => {
-    const slotText = String(
-      `${item.slot_type || ""} ${item.slot_label || ""}`,
-    ).toLowerCase();
+    const slotType = String(item.slot_type || "")
+      .trim()
+      .toLowerCase();
 
-    return (
-      slotText.includes("night") ||
-      slotText.includes("overnight") ||
-      slotText.includes("22") ||
-      slotText.includes("23") ||
-      slotText.includes("extended")
-    );
+    const slotLabel = String(item.slot_label || "")
+      .trim()
+      .toLowerCase();
+
+    // Entrance pricing follows the DAY/NIGHT schedule family.
+    // IMPORTANT:
+    // - day / day_extended = DAY entrance rate
+    // - night / night_extended = OVERNIGHT entrance rate
+    //
+    // Do not classify a schedule as overnight just because its
+    // label contains "22", "23", or "extended". A Day 22/23 Hours
+    // stay can cross midnight while still using the DAY entrance rate.
+    if (
+      slotType === "night" ||
+      slotType === "night_extended"
+    ) {
+      return true;
+    }
+
+    // Fallback only for legacy rows whose slot_type may be missing.
+    // Explicit "night"/"overnight" wording is still treated as night,
+    // but a label such as "Day 22 Hours" remains a DAY schedule.
+    if (!slotType) {
+      return (
+        slotLabel.includes("overnight") ||
+        slotLabel.includes("night")
+      );
+    }
+
+    return false;
   });
 }
 
@@ -262,7 +287,12 @@ async function getEntranceAdjustmentContext(
   };
 }
 
-function buildMeta(context, totalDeduction = 0) {
+function buildMeta(
+  context,
+  totalDeduction = 0,
+  totalQualifiedPax = 0,
+  totalReconciledOut = 0,
+) {
   const deduction = Math.max(
     0,
     Number(totalDeduction || 0),
@@ -273,20 +303,62 @@ function buildMeta(context, totalDeduction = 0) {
     0,
   );
 
-  const entranceFeeCollected = Math.max(
+  // Preserve the original lifetime amount physically collected
+  // from the guest in reservations.entrance_fee_collected.
+  const entranceFeeCollectedGross = Math.max(
     0,
     Number(context.entrance_fee_collected || 0),
   );
 
+  // Refund/correction rows reduce the EFFECTIVE entrance money
+  // without erasing the original collection history.
+  const entranceFeeReconciledOut = Math.max(
+    0,
+    Number(totalReconciledOut || 0),
+  );
+
+  const entranceReconciliationExcess = Math.max(
+    entranceFeeReconciledOut - entranceFeeCollectedGross,
+    0,
+  );
+
+  const entranceFeeCollectedNet = Math.max(
+    entranceFeeCollectedGross - entranceFeeReconciledOut,
+    0,
+  );
+
   const entranceFeeRemaining = Math.max(
-    finalEntranceFee - entranceFeeCollected,
+    finalEntranceFee - entranceFeeCollectedNet,
     0,
   );
 
   const entranceFeeOverpaid = Math.max(
-    entranceFeeCollected - finalEntranceFee,
+    entranceFeeCollectedNet - finalEntranceFee,
     0,
   );
+
+  const savedQualifiedPax = Math.max(
+    0,
+    toWholeNumber(totalQualifiedPax, 0),
+  );
+
+  const chargeableGuests = Math.max(
+    0,
+    toWholeNumber(context.chargeable_entrance_guests, 0),
+  );
+
+  const specialRateAdjustmentInvalid =
+    savedQualifiedPax > chargeableGuests;
+
+  const excessSpecialRatePax = Math.max(
+    savedQualifiedPax - chargeableGuests,
+    0,
+  );
+
+  const entranceReconciliationRequired =
+    specialRateAdjustmentInvalid ||
+    entranceFeeOverpaid > MONEY_EPSILON ||
+    entranceReconciliationExcess > MONEY_EPSILON;
 
   return {
     entrance_type: context.entrance_type,
@@ -309,11 +381,25 @@ function buildMeta(context, totalDeduction = 0) {
     total_entrance_deduction: deduction,
     final_entrance_fee: finalEntranceFee,
     entrance_fee_paid: Number(context.entrance_fee_paid || 0),
-    entrance_fee_collected: entranceFeeCollected,
+
+    // Backward-compatible field used by the current Front Desk UI:
+    // this now means NET entrance money after reconciliation.
+    entrance_fee_collected: entranceFeeCollectedNet,
+
+    entrance_fee_collected_gross: entranceFeeCollectedGross,
+    entrance_fee_reconciled_out: entranceFeeReconciledOut,
+    entrance_reconciliation_excess: entranceReconciliationExcess,
     entrance_fee_remaining: entranceFeeRemaining,
     entrance_fee_overpaid: entranceFeeOverpaid,
+    total_saved_special_rate_pax: savedQualifiedPax,
+    special_rate_adjustment_invalid: specialRateAdjustmentInvalid,
+    excess_special_rate_pax: excessSpecialRatePax,
+    entrance_reconciliation_required: entranceReconciliationRequired,
     entrance_fee_financially_covered:
-      entranceFeeRemaining <= MONEY_EPSILON,
+      entranceFeeRemaining <= MONEY_EPSILON &&
+      entranceFeeOverpaid <= MONEY_EPSILON &&
+      entranceReconciliationExcess <= MONEY_EPSILON &&
+      !specialRateAdjustmentInvalid,
   };
 }
 
@@ -341,10 +427,54 @@ async function getDiscountRows(queryable, bookingId) {
   return discountRows;
 }
 
+
+async function getEntranceReconciliationRows(
+  queryable,
+  bookingId,
+  lock = false,
+) {
+  const lockSql = lock ? "FOR UPDATE" : "";
+
+  const [rows] = await queryable.query(
+    `
+    SELECT
+      id,
+      booking_id,
+      reconciliation_type,
+      amount,
+      note,
+      created_at
+    FROM entrance_fee_reconciliations
+    WHERE booking_id = ?
+    ORDER BY created_at ASC, id ASC
+    ${lockSql}
+    `,
+    [bookingId],
+  );
+
+  return rows;
+}
+
+function getEntranceReconciledOutTotal(rows) {
+  return rows.reduce(
+    (sum, row) =>
+      sum + Math.max(0, Number(row.amount || 0)),
+    0,
+  );
+}
+
 function getDiscountTotal(discountRows) {
   return discountRows.reduce(
     (sum, item) =>
       sum + Number(item.discount_amount || 0),
+    0,
+  );
+}
+
+function getQualifiedPaxTotal(discountRows) {
+  return discountRows.reduce(
+    (sum, item) =>
+      sum + Math.max(0, toWholeNumber(item.qualified_pax, 0)),
     0,
   );
 }
@@ -355,7 +485,10 @@ async function syncEntrancePaidFlag(
   meta,
 ) {
   const paidFlag =
-    Number(meta.entrance_fee_remaining || 0) <= MONEY_EPSILON
+    Number(meta.entrance_fee_remaining || 0) <= MONEY_EPSILON &&
+    Number(meta.entrance_fee_overpaid || 0) <= MONEY_EPSILON &&
+    Number(meta.entrance_reconciliation_excess || 0) <= MONEY_EPSILON &&
+    !meta.special_rate_adjustment_invalid
       ? 1
       : 0;
 
@@ -370,6 +503,10 @@ async function syncEntrancePaidFlag(
 
   meta.entrance_fee_paid = paidFlag;
   meta.entrance_fee_financially_covered = paidFlag === 1;
+  meta.entrance_reconciliation_required =
+    Boolean(meta.special_rate_adjustment_invalid) ||
+    Number(meta.entrance_fee_overpaid || 0) > MONEY_EPSILON ||
+    Number(meta.entrance_reconciliation_excess || 0) > MONEY_EPSILON;
 
   return paidFlag;
 }
@@ -396,18 +533,33 @@ const getBookingDiscount = async (req, res) => {
       });
     }
 
-    const discountRows = await getDiscountRows(
-      db.promise(),
-      bookingId,
-    );
+    const [discountRows, reconciliationRows] = await Promise.all([
+      getDiscountRows(
+        db.promise(),
+        bookingId,
+      ),
+      getEntranceReconciliationRows(
+        db.promise(),
+        bookingId,
+      ),
+    ]);
 
     const total = getDiscountTotal(discountRows);
+    const totalQualifiedPax = getQualifiedPaxTotal(discountRows);
+    const totalReconciledOut =
+      getEntranceReconciledOutTotal(reconciliationRows);
 
     return res.status(200).json({
       discounts: discountRows,
       discount: discountRows[0] || null,
       total,
-      meta: buildMeta(context, total),
+      reconciliations: reconciliationRows,
+      meta: buildMeta(
+        context,
+        total,
+        totalQualifiedPax,
+        totalReconciledOut,
+      ),
     });
   } catch (error) {
     console.error("getBookingDiscount error:", error);
@@ -522,13 +674,42 @@ async function collectEntranceFee(req, res) {
       });
     }
 
-    const discountRows = await getDiscountRows(
-      connection,
-      bookingId,
-    );
+    const [discountRows, reconciliationRows] = await Promise.all([
+      getDiscountRows(
+        connection,
+        bookingId,
+      ),
+      getEntranceReconciliationRows(
+        connection,
+        bookingId,
+        true,
+      ),
+    ]);
 
     const total = getDiscountTotal(discountRows);
-    const meta = buildMeta(context, total);
+    const totalQualifiedPax = getQualifiedPaxTotal(discountRows);
+    const totalReconciledOut =
+      getEntranceReconciledOutTotal(reconciliationRows);
+
+    const meta = buildMeta(
+      context,
+      total,
+      totalQualifiedPax,
+      totalReconciledOut,
+    );
+
+    if (meta.special_rate_adjustment_invalid) {
+      await connection.rollback();
+
+      return res.status(400).json({
+        success: false,
+        message:
+          `Saved Senior/PWD/Kid special-rate pax (${meta.total_saved_special_rate_pax}) exceed the current chargeable entrance guest count (${meta.chargeable_entrance_guests}). Correct the Entrance Adjustment before collecting or checking out.`,
+        discounts: discountRows,
+        total,
+        meta,
+      });
+    }
 
     const finalEntranceFee = Number(
       meta.final_entrance_fee || 0,
@@ -600,6 +781,10 @@ async function collectEntranceFee(req, res) {
     // adding a client-supplied amount. The reservation row is
     // locked, so concurrent collection cannot duplicate payment.
     // --------------------------------------------------------
+    const newGrossCollected =
+      Number(meta.entrance_fee_collected_gross || 0) +
+      amountToCollect;
+
     await connection.query(
       `
       UPDATE reservations
@@ -608,12 +793,15 @@ async function collectEntranceFee(req, res) {
         entrance_fee_paid = 1
       WHERE id = ?
       `,
-      [finalEntranceFee, bookingId],
+      [newGrossCollected, bookingId],
     );
 
     await connection.commit();
 
-    meta.entrance_fee_collected = finalEntranceFee;
+    meta.entrance_fee_collected_gross = newGrossCollected;
+    meta.entrance_fee_collected =
+      Number(meta.entrance_fee_collected || 0) +
+      amountToCollect;
     meta.entrance_fee_remaining = 0;
     meta.entrance_fee_overpaid = 0;
     meta.entrance_fee_paid = 1;
@@ -849,13 +1037,29 @@ const upsertBookingDiscount = async (req, res) => {
       }
     }
 
-    const discountRows = await getDiscountRows(
-      connection,
-      bookingId,
-    );
+    const [discountRows, reconciliationRows] = await Promise.all([
+      getDiscountRows(
+        connection,
+        bookingId,
+      ),
+      getEntranceReconciliationRows(
+        connection,
+        bookingId,
+        true,
+      ),
+    ]);
 
     const total = getDiscountTotal(discountRows);
-    const meta = buildMeta(context, total);
+    const savedQualifiedPax = getQualifiedPaxTotal(discountRows);
+    const totalReconciledOut =
+      getEntranceReconciledOutTotal(reconciliationRows);
+
+    const meta = buildMeta(
+      context,
+      total,
+      savedQualifiedPax,
+      totalReconciledOut,
+    );
 
     // A later adjustment may increase or decrease the final fee.
     // Keep entrance_fee_paid synchronized with the recalculated
@@ -952,7 +1156,22 @@ const deleteBookingDiscount = async (req, res) => {
       [bookingId],
     );
 
-    const meta = buildMeta(context, 0);
+    const reconciliationRows =
+      await getEntranceReconciliationRows(
+        connection,
+        bookingId,
+        true,
+      );
+
+    const totalReconciledOut =
+      getEntranceReconciledOutTotal(reconciliationRows);
+
+    const meta = buildMeta(
+      context,
+      0,
+      0,
+      totalReconciledOut,
+    );
 
     // Removing a discount may increase the amount due again.
     // Preserve previously collected money and reopen the paid flag
@@ -994,10 +1213,243 @@ const deleteBookingDiscount = async (req, res) => {
   }
 };
 
+
+// ============================================================
+// POST /api/bookings/:id/entrance-reconciliation
+//
+// Front Desk confirms the CURRENT server-calculated entrance
+// overpayment as either:
+// - refund     = cash/value returned to the guest
+// - correction = invalid/erroneous collection corrected/voided
+//
+// The browser does NOT send a trusted money amount.
+// The backend locks the reservation, recalculates the current
+// overpayment, and records exactly that amount for audit history.
+// ============================================================
+
+const reconcileEntranceOverpayment = async (req, res) => {
+  const connection = await db.promise().getConnection();
+
+  try {
+    const bookingId = Number(req.params.id);
+    const reconciliationType = normalizeText(
+      req.body?.reconciliation_type,
+    ).toLowerCase();
+    const note = normalizeText(req.body?.note);
+
+    if (!bookingId || Number.isNaN(bookingId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid booking ID.",
+      });
+    }
+
+    if (!["refund", "correction"].includes(reconciliationType)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Choose either Refunded to Guest or Payment Correction.",
+      });
+    }
+
+    if (!note) {
+      return res.status(400).json({
+        success: false,
+        message: "Reconciliation note is required.",
+      });
+    }
+
+    await connection.beginTransaction();
+
+    const context = await getEntranceAdjustmentContext(
+      bookingId,
+      connection,
+      true,
+    );
+
+    if (!context) {
+      await connection.rollback();
+
+      return res.status(404).json({
+        success: false,
+        message: "Reservation not found.",
+      });
+    }
+
+    const reservation = context.reservation;
+    const reservationStatus = normalizeText(
+      reservation.reservation_status,
+    ).toLowerCase();
+
+    if (
+      ["cancelled", "rejected", "completed"].includes(
+        reservationStatus,
+      )
+    ) {
+      await connection.rollback();
+
+      return res.status(400).json({
+        success: false,
+        message:
+          "Entrance overpayment reconciliation is only available for active checked-in reservations.",
+      });
+    }
+
+    if (Number(reservation.is_checked_in || 0) !== 1) {
+      await connection.rollback();
+
+      return res.status(400).json({
+        success: false,
+        message:
+          "Entrance overpayment reconciliation requires a checked-in guest.",
+      });
+    }
+
+    const [discountRows, reconciliationRows] = await Promise.all([
+      getDiscountRows(
+        connection,
+        bookingId,
+      ),
+      getEntranceReconciliationRows(
+        connection,
+        bookingId,
+        true,
+      ),
+    ]);
+
+    const totalDeduction = getDiscountTotal(discountRows);
+    const totalQualifiedPax = getQualifiedPaxTotal(discountRows);
+    const totalReconciledOut =
+      getEntranceReconciledOutTotal(reconciliationRows);
+
+    const metaBefore = buildMeta(
+      context,
+      totalDeduction,
+      totalQualifiedPax,
+      totalReconciledOut,
+    );
+
+    if (metaBefore.special_rate_adjustment_invalid) {
+      await connection.rollback();
+
+      return res.status(400).json({
+        success: false,
+        message:
+          "Correct the saved Senior/PWD/Kid special-rate quantities before reconciling an entrance overpayment.",
+        meta: metaBefore,
+      });
+    }
+
+    if (
+      Number(metaBefore.entrance_reconciliation_excess || 0) >
+      MONEY_EPSILON
+    ) {
+      await connection.rollback();
+
+      return res.status(409).json({
+        success: false,
+        message:
+          "Existing entrance reconciliation records exceed the original collected amount. Review the reconciliation history before continuing.",
+        meta: metaBefore,
+      });
+    }
+
+    const amountToReconcile = Number(
+      Number(metaBefore.entrance_fee_overpaid || 0).toFixed(2),
+    );
+
+    if (amountToReconcile <= MONEY_EPSILON) {
+      await connection.rollback();
+
+      return res.status(400).json({
+        success: false,
+        message:
+          "No entrance overpayment currently requires reconciliation.",
+        meta: metaBefore,
+      });
+    }
+
+    await connection.query(
+      `
+      INSERT INTO entrance_fee_reconciliations (
+        booking_id,
+        reconciliation_type,
+        amount,
+        note
+      )
+      VALUES (?, ?, ?, ?)
+      `,
+      [
+        bookingId,
+        reconciliationType,
+        amountToReconcile,
+        note,
+      ],
+    );
+
+    const updatedRows =
+      await getEntranceReconciliationRows(
+        connection,
+        bookingId,
+        true,
+      );
+
+    const updatedReconciledOut =
+      getEntranceReconciledOutTotal(updatedRows);
+
+    const metaAfter = buildMeta(
+      context,
+      totalDeduction,
+      totalQualifiedPax,
+      updatedReconciledOut,
+    );
+
+    await syncEntrancePaidFlag(
+      connection,
+      bookingId,
+      metaAfter,
+    );
+
+    await connection.commit();
+
+    return res.status(200).json({
+      success: true,
+      reconciliation_type: reconciliationType,
+      amount_reconciled_now: amountToReconcile,
+      message:
+        reconciliationType === "refund"
+          ? `Entrance overpayment of ₱${amountToReconcile.toFixed(2)} recorded as refunded to the guest.`
+          : `Entrance overpayment of ₱${amountToReconcile.toFixed(2)} recorded as a payment correction.`,
+      reconciliations: updatedRows,
+      meta: metaAfter,
+    });
+  } catch (error) {
+    try {
+      await connection.rollback();
+    } catch (rollbackError) {
+      console.error(
+        "reconcileEntranceOverpayment rollback error:",
+        rollbackError,
+      );
+    }
+
+    console.error("reconcileEntranceOverpayment error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to reconcile entrance overpayment.",
+      error: error.message,
+    });
+  } finally {
+    connection.release();
+  }
+};
+
 module.exports = {
   getBookingDiscount,
   upsertBookingDiscount,
   deleteBookingDiscount,
+  reconcileEntranceOverpayment,
 };
 
 

@@ -18,9 +18,9 @@
 //
 // STEP 3F-B2:
 // - Entrance Fee Adjustment for checked-in guests
-// - Senior Citizen 20% entrance discount
-// - PWD 20% entrance discount
-// - Qualified Kid free entrance
+// - Senior Citizen fixed special entrance rate
+// - PWD fixed special entrance rate
+// - Kid fixed special entrance rate
 // - Multiple adjustment types in one reservation
 // - Accommodation free entrance inclusions applied first
 // - Uses verified actual guest count
@@ -61,7 +61,14 @@ let currentEntranceAdjustmentMeta = {
   entrance_type: "pool_beach",
   has_overnight_style: false,
   entrance_rate_per_pax: 0,
+  adult_entrance_rate_per_pax: 0,
+  special_entrance_rate_per_pax: 0,
+  special_rate_adjustment_per_pax: 0,
   senior_pwd_discount_rate: 0.2,
+  total_saved_special_rate_pax: 0,
+  special_rate_adjustment_invalid: false,
+  excess_special_rate_pax: 0,
+  entrance_reconciliation_required: false,
   booked_guest_count: 0,
   actual_guest_count: 1,
   included_free_entrance_pax: 0,
@@ -70,6 +77,9 @@ let currentEntranceAdjustmentMeta = {
   total_entrance_deduction: 0,
   final_entrance_fee: 0,
   entrance_fee_collected: 0,
+  entrance_fee_collected_gross: 0,
+  entrance_fee_reconciled_out: 0,
+  entrance_reconciliation_excess: 0,
   entrance_fee_remaining: 0,
   entrance_fee_overpaid: 0,
 };
@@ -290,6 +300,16 @@ function setupGuestEvents() {
     ?.addEventListener(
       "click",
       removeEntranceAdjustment,
+    );
+
+
+  document
+    .getElementById(
+      "reconcileEntranceOverpaymentBtn",
+    )
+    ?.addEventListener(
+      "click",
+      reconcileEntranceOverpayment,
     );
 
   document
@@ -2202,17 +2222,17 @@ function formatEntranceAdjustmentType(
       .toLowerCase();
 
   if (value === "senior") {
-    return "Senior Citizen 20%";
+    return "Senior Citizen Special Rate";
   }
 
   if (value === "pwd") {
-    return "PWD 20%";
+    return "PWD Special Rate";
   }
 
   if (
     value === "kid_free"
   ) {
-    return "Qualified Kid Free";
+    return "Kid Special Rate";
   }
 
   return "Entrance Adjustment";
@@ -2401,6 +2421,54 @@ async function loadEntranceAdjustment() {
             0,
         ),
 
+      adult_entrance_rate_per_pax:
+        Number(
+          meta
+            .adult_entrance_rate_per_pax ??
+            meta.entrance_rate_per_pax ??
+            0,
+        ),
+
+      special_entrance_rate_per_pax:
+        Number(
+          meta
+            .special_entrance_rate_per_pax ||
+            0,
+        ),
+
+      special_rate_adjustment_per_pax:
+        Number(
+          meta
+            .special_rate_adjustment_per_pax ||
+            0,
+        ),
+
+      total_saved_special_rate_pax:
+        Number(
+          meta
+            .total_saved_special_rate_pax ||
+            0,
+        ),
+
+      special_rate_adjustment_invalid:
+        Boolean(
+          meta
+            .special_rate_adjustment_invalid,
+        ),
+
+      excess_special_rate_pax:
+        Number(
+          meta
+            .excess_special_rate_pax ||
+            0,
+        ),
+
+      entrance_reconciliation_required:
+        Boolean(
+          meta
+            .entrance_reconciliation_required,
+        ),
+
       senior_pwd_discount_rate:
         Number(
           meta
@@ -2461,6 +2529,28 @@ async function loadEntranceAdjustment() {
         Number(
           meta
             .entrance_fee_collected ||
+            0,
+        ),
+
+      entrance_fee_collected_gross:
+        Number(
+          meta
+            .entrance_fee_collected_gross ??
+            meta.entrance_fee_collected ??
+            0,
+        ),
+
+      entrance_fee_reconciled_out:
+        Number(
+          meta
+            .entrance_fee_reconciled_out ||
+            0,
+        ),
+
+      entrance_reconciliation_excess:
+        Number(
+          meta
+            .entrance_reconciliation_excess ||
             0,
         ),
 
@@ -2705,15 +2795,28 @@ function calculateEntranceAdjustmentPreview() {
   const entranceRate =
     Number(
       currentEntranceAdjustmentMeta
+        .adult_entrance_rate_per_pax ||
+      currentEntranceAdjustmentMeta
         .entrance_rate_per_pax ||
         0,
     );
 
-  const discountRate =
+  const specialRate =
     Number(
       currentEntranceAdjustmentMeta
-        .senior_pwd_discount_rate ||
-        0.2,
+        .special_entrance_rate_per_pax ||
+        0,
+    );
+
+  const adjustmentPerPax =
+    Math.max(
+      Number(
+        currentEntranceAdjustmentMeta
+          .special_rate_adjustment_per_pax ||
+          (entranceRate - specialRate) ||
+          0,
+      ),
+      0,
     );
 
   const grossEntranceFee =
@@ -2733,23 +2836,21 @@ function calculateEntranceAdjustmentPreview() {
   const seniorDiscount =
     Math.max(
       0,
-      entranceRate *
-        discountRate *
+      adjustmentPerPax *
         seniorPax,
     );
 
   const pwdDiscount =
     Math.max(
       0,
-      entranceRate *
-        discountRate *
+      adjustmentPerPax *
         pwdPax,
     );
 
   const kidDiscount =
     Math.max(
       0,
-      entranceRate *
+      adjustmentPerPax *
         kidFreePax,
     );
 
@@ -2919,6 +3020,70 @@ function updateEntranceAdjustmentPreview() {
     );
   }
 
+  const reconciliationPanel =
+    document.getElementById(
+      "entranceReconciliationPanel",
+    );
+
+  const reconcileButton =
+    document.getElementById(
+      "reconcileEntranceOverpaymentBtn",
+    );
+
+  const serverOverpayment =
+    Number(
+      currentEntranceAdjustmentMeta
+        .entrance_fee_overpaid ||
+        0,
+    );
+
+  const savedAdjustmentInvalid =
+    Boolean(
+      currentEntranceAdjustmentMeta
+        .special_rate_adjustment_invalid,
+    );
+
+  if (reconciliationPanel) {
+    reconciliationPanel.hidden =
+      serverOverpayment <= 0;
+  }
+
+  setText(
+    "entranceGrossCollectedText",
+    `₱${formatMoney(
+      currentEntranceAdjustmentMeta
+        .entrance_fee_collected_gross ||
+        0,
+    )}`,
+  );
+
+  setText(
+    "entranceReconciledOutText",
+    `₱${formatMoney(
+      currentEntranceAdjustmentMeta
+        .entrance_fee_reconciled_out ||
+        0,
+    )}`,
+  );
+
+  setText(
+    "entranceReconciliationAmountText",
+    `₱${formatMoney(
+      serverOverpayment,
+    )}`,
+  );
+
+  if (reconcileButton) {
+    reconcileButton.disabled =
+      serverOverpayment <= 0 ||
+      savedAdjustmentInvalid;
+
+    reconcileButton.textContent =
+      savedAdjustmentInvalid
+        ? "Correct Entrance Adjustment First"
+        : "Confirm Overpayment Reconciliation";
+  }
+
   const policyNote =
     document.getElementById(
       "entranceAdjustmentPolicyNote",
@@ -2937,20 +3102,34 @@ function updateEntranceAdjustmentPreview() {
       preview.pwdPax +
       preview.kidFreePax;
 
+    const specialRate =
+      Number(
+        currentEntranceAdjustmentMeta
+          .special_entrance_rate_per_pax ||
+          0,
+      );
+
     const baseMessage =
-      `Qualified adjustment pax: ${totalQualified} / ${chargeableGuests} chargeable entrance guests. ` +
-      "Senior/PWD receive 20% off entrance fee only. Qualified kids receive free entrance.";
+      `Qualified special-rate pax: ${totalQualified} / ${chargeableGuests} chargeable entrance guests. ` +
+      `The current special entrance rate is ₱${formatMoney(specialRate)} per qualified Senior/PWD/Kid guest.`;
+
+    const policySavedAdjustmentInvalid =
+      Boolean(
+        currentEntranceAdjustmentMeta
+          .special_rate_adjustment_invalid,
+      );
 
     if (
       totalQualified >
-      chargeableGuests
+      chargeableGuests ||
+      policySavedAdjustmentInvalid
     ) {
       policyNote.classList.add(
         "invalid",
       );
 
       policyNote.textContent =
-        `${baseMessage} The current quantities exceed the allowed chargeable guest count.`;
+        `${baseMessage} The saved/current special-rate quantities exceed the allowed chargeable guest count. Correct the quantities and Apply Entrance Adjustment before collection or checkout.`;
     } else {
       policyNote.classList.remove(
         "invalid",
@@ -2986,7 +3165,7 @@ function validateEntranceAdjustmentInput() {
     },
     {
       label:
-        "Qualified Kid pax",
+        "Kid special-rate pax",
       value:
         values.kidFreePax,
     },
@@ -3021,7 +3200,7 @@ function validateEntranceAdjustmentInput() {
     return {
       valid: false,
       message:
-        "Enter at least one Senior Citizen, PWD, or qualified kid before applying an entrance adjustment.",
+        "Enter at least one Senior Citizen, PWD, or Kid special-rate guest before applying an entrance adjustment.",
     };
   }
 
@@ -3300,6 +3479,203 @@ async function removeEntranceAdjustment() {
       removeBtn.textContent =
         originalText;
     }
+  }
+}
+
+// ------------------------------------------------------------
+// Reconcile CURRENT server-calculated entrance overpayment.
+// The browser never supplies the money amount.
+// ------------------------------------------------------------
+
+async function reconcileEntranceOverpayment() {
+  if (!selectedEntranceAdjustmentBookingId) {
+    showMessage(
+      "No selected reservation.",
+      "error",
+    );
+    return;
+  }
+
+  const reconciliationType =
+    String(
+      document.getElementById(
+        "entranceReconciliationType",
+      )?.value || "",
+    )
+      .trim()
+      .toLowerCase();
+
+  const note =
+    String(
+      document.getElementById(
+        "entranceReconciliationNote",
+      )?.value || "",
+    ).trim();
+
+  if (!["refund", "correction"].includes(reconciliationType)) {
+    showMessage(
+      "Choose a valid reconciliation type.",
+      "error",
+    );
+    return;
+  }
+
+  if (!note) {
+    showMessage(
+      "Please add a reconciliation note.",
+      "error",
+    );
+
+    document
+      .getElementById(
+        "entranceReconciliationNote",
+      )
+      ?.focus();
+
+    return;
+  }
+
+  if (
+    currentEntranceAdjustmentMeta
+      .special_rate_adjustment_invalid
+  ) {
+    showMessage(
+      "Correct the saved Entrance Adjustment before reconciling the overpayment.",
+      "error",
+    );
+    return;
+  }
+
+  const amount =
+    Number(
+      currentEntranceAdjustmentMeta
+        .entrance_fee_overpaid ||
+        0,
+    );
+
+  if (amount <= 0) {
+    showMessage(
+      "No entrance overpayment currently requires reconciliation.",
+      "error",
+    );
+    return;
+  }
+
+  const label =
+    reconciliationType === "refund"
+      ? "Refunded to Guest"
+      : "Payment Correction / Void";
+
+  const confirmed =
+    confirm(
+      [
+        "Confirm entrance overpayment reconciliation?",
+        "",
+        `Type: ${label}`,
+        `Current server-calculated overpayment: ₱${formatMoney(amount)}`,
+        "",
+        "The original entrance collection will be preserved for audit history.",
+        "A separate reconciliation record will reduce the net entrance collected amount.",
+      ].join("\n"),
+    );
+
+  if (!confirmed) {
+    return;
+  }
+
+  const button =
+    document.getElementById(
+      "reconcileEntranceOverpaymentBtn",
+    );
+
+  const originalText =
+    button?.textContent ||
+    "Confirm Overpayment Reconciliation";
+
+  try {
+    if (button) {
+      button.disabled = true;
+      button.textContent =
+        "Reconciling...";
+    }
+
+    const response =
+      await fetch(
+        `${API_BASE}/bookings/${Number(
+          selectedEntranceAdjustmentBookingId,
+        )}/entrance-reconciliation`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            reconciliation_type:
+              reconciliationType,
+            note,
+          }),
+        },
+      );
+
+    const data =
+      await readJsonResponseSafely(
+        response,
+      );
+
+    if (!response.ok) {
+      throw new Error(
+        data.message ||
+          "Failed to reconcile entrance overpayment.",
+      );
+    }
+
+    showMessage(
+      data.message ||
+        "Entrance overpayment reconciled successfully.",
+      "success",
+    );
+
+    const noteInput =
+      document.getElementById(
+        "entranceReconciliationNote",
+      );
+
+    if (noteInput) {
+      noteInput.value = "";
+    }
+
+    await loadEntranceAdjustment();
+    await loadGuestBookings();
+
+    const filter =
+      document.getElementById(
+        "arrivalFilter",
+      );
+
+    if (filter) {
+      filter.value = "inside";
+      applyGuestFilters();
+    }
+  } catch (error) {
+    console.error(
+      "reconcileEntranceOverpayment error:",
+      error,
+    );
+
+    showMessage(
+      error.message ||
+        "Failed to reconcile entrance overpayment.",
+      "error",
+    );
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent =
+        originalText;
+    }
+
+    updateEntranceAdjustmentPreview();
   }
 }
 

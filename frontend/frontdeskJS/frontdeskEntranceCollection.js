@@ -447,11 +447,20 @@
     }
 
     if (alreadyCollected + MONEY_EPSILON >= finalEntranceFee) {
+      const reconciledOut = Math.max(
+        0,
+        toNumber(meta.entrance_fee_reconciled_out, 0),
+      );
+
       button.disabled = true;
       button.textContent = "Entrance Fee Settled";
 
       setPolicyMessage(
-        "The recalculated entrance fee is already fully covered. Duplicate entrance collection is disabled.",
+        reconciledOut > MONEY_EPSILON
+          ? `Entrance overpayment reconciliation is recorded. Net entrance collection is ₱${formatPeso(
+              alreadyCollected,
+            )}. Duplicate entrance collection is disabled.`
+          : "The recalculated entrance fee is already fully covered. Duplicate entrance collection is disabled.",
         false,
       );
       return;
@@ -789,12 +798,17 @@
       const savedAdjustmentObserver = new MutationObserver(() => {
         patchSavedAdjustmentLabels();
 
-        // Programmatic input values are populated by the old B2
-        // loader before this box is rendered, so this is a reliable
-        // point to redraw the official fixed-rate preview.
+        /*
+          The main Entrance Adjustment file can save/remove/reconcile
+          values independently from this companion script.
+
+          Refresh the backend meta whenever the saved-adjustment box is
+          rebuilt so the collection button never keeps a stale
+          "Entrance Overpayment - Review" state after reconciliation.
+        */
         setTimeout(() => {
-          renderOfficialPricingPreview();
-        }, 0);
+          refreshEntranceCollectionState();
+        }, 60);
       });
 
       savedAdjustmentObserver.observe(currentBox, {

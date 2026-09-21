@@ -12,6 +12,8 @@
 // - Correctly read day_tour / night / day_extended / night_extended
 // - Correctly compute accommodation total and 50% downpayment
 // - Correctly multiply extended-stay price by stay_duration
+// - Treat Day 22/23 Hours as DAY entrance rate and Night 22/23 Hours as NIGHT
+// - Walk-in collects accommodation only; entrance is finalized after check-in
 // - Handle Cash / GCash / Maya manual payment rules
 // - Send created_by using the logged-in staff account
 // - Submit manual reservation to backend
@@ -964,11 +966,7 @@ function renderReservationSummary() {
         formatEntranceType(walkInDraft.entrance_type),
       )}<br />
 
-      <strong>${
-        isWalkInManualReservation()
-          ? "Entrance Fee"
-          : "Estimated Entrance Fee"
-      }:</strong>
+      <strong>Estimated Entrance Fee:</strong>
       ₱${formatMoney(computedTotals.estimatedEntranceFee)}
     </div>
 
@@ -1244,11 +1242,11 @@ function updatePaymentBreakdown() {
     computedTotals.estimatedEntranceFee;
 
   // Walk-in:
-  // guest is already onsite and full accommodation + entrance fee are
-  // collected during this manual reservation flow.
-  const walkInTotalDue =
-    computedTotals.accommodationTotal +
-    computedTotals.estimatedEntranceFee;
+  // collect the FULL ACCOMMODATION only during manual reservation.
+  // The entrance fee remains an estimate until Guest Adjustment and
+  // Entrance Adjustment are completed after the automatic check-in.
+  const walkInAmountDueNow =
+    computedTotals.accommodationTotal;
 
   computedTotals.paidAmount = paidAmount;
   computedTotals.remainingBalance = remainingBalance;
@@ -1318,32 +1316,33 @@ function updatePaymentBreakdown() {
 
     setText(
       "paymentEntranceLabel",
-      "Entrance Fee",
+      "Estimated Entrance Fee",
     );
 
     setText(
       "paymentTotalDueLabel",
-      "Total Amount Due",
+      "Amount Due Now",
     );
 
     setText(
       "paymentFrontDeskReminder",
-      `₱${formatMoney(walkInTotalDue)}`,
+      `₱${formatMoney(walkInAmountDueNow)}`,
     );
 
     setText(
       "paymentTotalCollected",
-      `₱${formatMoney(walkInTotalDue)}`,
+      `₱${formatMoney(walkInAmountDueNow)}`,
     );
 
     if (collectionNote) {
       collectionNote.innerHTML = `
         <strong>Walk-in Collection:</strong><br />
-        The guest is already onsite. Full accommodation payment
-        and the current entrance fee are collected during this
-        manual reservation. After successful submission, the
-        reservation is marked paid and the guest is automatically
-        checked in.
+        The guest is already onsite. Collect the full accommodation
+        amount during this manual reservation. The entrance fee shown
+        above is only an estimate and is not collected yet. After the
+        reservation is automatically checked in, verify actual guests,
+        apply Entrance Adjustment, then collect the final entrance fee
+        separately.
       `;
     }
 
@@ -2211,10 +2210,12 @@ function computeTotals() {
       Number(slot.price || 0) *
       stayDuration;
 
+    // Entrance rate follows the selected DAY/NIGHT schedule family.
+    // Day 22/23 Hours remains a DAY entrance rate even though the stay
+    // itself crosses midnight. Only Night / Night 22/23 Hours uses the
+    // overnight entrance rate.
     if (
       item.slot_type === "night" ||
-      item.slot_type ===
-        "day_extended" ||
       item.slot_type ===
         "night_extended"
     ) {

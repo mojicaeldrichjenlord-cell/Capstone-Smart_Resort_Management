@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>Final Receipt | Arvic Seaside Front Desk</title>
+
+  <link rel="stylesheet" href="../sharedCSS/global.css" />
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../frontdeskCSS/frontdesk-booking-receipt.css" />
+</head>
+
+<body class="has-fixed-navbar">
+  <header class="navbar">
+    <div class="logo">Arvic Seaside</div>
+
+    <nav>
+      <a href="frontdeskDashboard.html">Dashboard</a>
+      <a href="frontdeskReservations.html">Reservations</a>
+      <a href="frontdeskPayments.html">Payments</a>
+      <a href="frontdeskGuests.html">Guests</a>
+      <a href="../adminHTML/admin-walkin.html">Manual Reservation</a>
+      <a href="#" id="logoutBtn">Logout</a>
+    </nav>
+  </header>
+
+  <main class="receipt-page">
+    <div class="top-actions">
+      <a href="frontdeskGuests.html" class="back-btn">← Back to Guest Management</a>
+
+      <button id="printThermalBtn" class="print-btn" type="button">
+        Print Final Receipt
+      </button>
+    </div>
+
+    <section class="receipt-preview-card">
+      <div class="preview-header">
+        <div>
+          <p class="receipt-eyebrow">FRONT DESK</p>
+          <h1>Final Thermal Receipt</h1>
+        </div>
+
+        <p class="preview-helper">
+          Receipt preview is shown automatically. Printing is optional.
+        </p>
+      </div>
+
+      <div class="receipt-preview-stage">
+        <div id="thermalReceipt" class="thermal-receipt-shell">
+          <div class="thermal-inner">
+            <div class="thermal-center">Loading final receipt...</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="../sharedJS/toast.js"></script>
+  <script src="../sharedJS/api-config.js"></script>
+  <script src="../frontdeskJS/frontdesk-booking-receipt.js"></script>
+</body>
+</html>

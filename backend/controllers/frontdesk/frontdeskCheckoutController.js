@@ -61,16 +61,32 @@ function getEntranceTypeFromNote(note) {
 
 function hasOvernightStyle(items) {
   return items.some((item) => {
-    const text = normalizeLower(
-      `${item.slot_type || ""} ${item.slot_label || ""}`,
-    );
+    const slotType = normalizeLower(item.slot_type);
+    const slotLabel = normalizeLower(item.slot_label);
+
+    /*
+      Final entrance-rate classification:
+      - day_tour      -> DAY rate
+      - day_extended  -> DAY rate
+      - night         -> OVERNIGHT rate
+      - night_extended-> OVERNIGHT rate
+
+      Do not classify "22 Hours", "23 Hours", or generic "extended"
+      labels as overnight. Those can belong to day_extended bookings.
+
+      slot_type is the source of truth whenever available.
+      slot_label is only a fallback for older records that have no slot_type.
+    */
+    if (slotType) {
+      return (
+        slotType === "night" ||
+        slotType === "night_extended"
+      );
+    }
 
     return (
-      text.includes("night") ||
-      text.includes("overnight") ||
-      text.includes("22") ||
-      text.includes("23") ||
-      text.includes("extended")
+      slotLabel.includes("night") ||
+      slotLabel.includes("overnight")
     );
   });
 }
@@ -195,6 +211,34 @@ async function getDiscountRows(connection, reservationId, lock = false) {
   return rows;
 }
 
+
+async function getEntranceReconciliationRows(
+  connection,
+  reservationId,
+  lock = false,
+) {
+  const lockSql = lock ? "FOR UPDATE" : "";
+
+  const [rows] = await connection.query(
+    `
+    SELECT
+      id,
+      booking_id,
+      reconciliation_type,
+      amount,
+      note,
+      created_at
+    FROM entrance_fee_reconciliations
+    WHERE booking_id = ?
+    ORDER BY created_at ASC, id ASC
+    ${lockSql}
+    `,
+    [reservationId],
+  );
+
+  return rows;
+}
+
 async function getChargeRows(connection, reservationId, lock = false) {
   const lockSql = lock ? "FOR UPDATE" : "";
 
@@ -244,7 +288,12 @@ function calculateAccommodationSummary(reservation) {
   };
 }
 
-function calculateEntranceSummary(reservation, items, discountRows) {
+function calculateEntranceSummary(
+  reservation,
+  items,
+  discountRows,
+  reconciliationRows = [],
+) {
   const entranceType = getEntranceTypeFromNote(reservation.note);
   const overnightStyle = hasOvernightStyle(items);
   const adultRate = getAdultEntranceRate(entranceType, overnightStyle);
@@ -279,13 +328,53 @@ function calculateEntranceSummary(reservation, items, discountRows) {
     (sum, row) => sum + toMoney(row.discount_amount),
     0,
   );
+
+  const totalSavedSpecialRatePax = discountRows.reduce(
+    (sum, row) =>
+      sum + Math.max(0, Math.floor(toNumber(row.qualified_pax, 0))),
+    0,
+  );
+
+  const specialRateAdjustmentInvalid =
+    totalSavedSpecialRatePax > chargeableGuests;
+
+  const excessSpecialRatePax = Math.max(
+    totalSavedSpecialRatePax - chargeableGuests,
+    0,
+  );
+
   const finalEntranceFee = Math.max(
     grossEntranceFee - totalAdjustment,
     0,
   );
-  const collected = toMoney(reservation.entrance_fee_collected);
-  const remaining = Math.max(finalEntranceFee - collected, 0);
-  const overpaid = Math.max(collected - finalEntranceFee, 0);
+  const collectedGross = toMoney(
+    reservation.entrance_fee_collected,
+  );
+
+  const reconciledOut = reconciliationRows.reduce(
+    (sum, row) => sum + toMoney(row.amount),
+    0,
+  );
+
+  const reconciliationExcess = Math.max(
+    reconciledOut - collectedGross,
+    0,
+  );
+
+  const collectedNet = Math.max(
+    collectedGross - reconciledOut,
+    0,
+  );
+
+  const remaining = Math.max(
+    finalEntranceFee - collectedNet,
+    0,
+  );
+
+  const overpaid = Math.max(
+    collectedNet - finalEntranceFee,
+    0,
+  );
 
   return {
     entrance_type: entranceType,
@@ -298,14 +387,22 @@ function calculateEntranceSummary(reservation, items, discountRows) {
     chargeable_entrance_guests: chargeableGuests,
     gross_entrance_fee: grossEntranceFee,
     total_entrance_adjustment: totalAdjustment,
+    total_saved_special_rate_pax: totalSavedSpecialRatePax,
+    special_rate_adjustment_invalid: specialRateAdjustmentInvalid,
+    excess_special_rate_pax: excessSpecialRatePax,
     final_entrance_fee: finalEntranceFee,
-    entrance_fee_collected: collected,
+    entrance_fee_collected_gross: collectedGross,
+    entrance_fee_reconciled_out: reconciledOut,
+    entrance_fee_collected: collectedNet,
+    entrance_reconciliation_excess: reconciliationExcess,
     entrance_fee_remaining: remaining,
     entrance_fee_overpaid: overpaid,
     stored_entrance_fee_paid: Number(reservation.entrance_fee_paid || 0),
     settled:
       remaining <= MONEY_EPSILON &&
-      overpaid <= MONEY_EPSILON,
+      overpaid <= MONEY_EPSILON &&
+      reconciliationExcess <= MONEY_EPSILON &&
+      !specialRateAdjustmentInvalid,
   };
 }
 
@@ -462,6 +559,28 @@ function buildBlockers({
     });
   }
 
+  if (entrance.special_rate_adjustment_invalid) {
+    blockers.push({
+      code: "entrance_adjustment_invalid",
+      label: "Entrance Adjustment Review",
+      amount: 0,
+      message:
+        `Saved Senior/PWD/Kid special-rate pax (${entrance.total_saved_special_rate_pax}) exceed the current chargeable entrance guest count (${entrance.chargeable_entrance_guests}). Correct Entrance Adjustment before checkout.`,
+    });
+  }
+
+  if (
+    entrance.entrance_reconciliation_excess > MONEY_EPSILON
+  ) {
+    blockers.push({
+      code: "entrance_reconciliation_review",
+      label: "Entrance Reconciliation Review",
+      amount: entrance.entrance_reconciliation_excess,
+      message:
+        "Recorded entrance reconciliation exceeds the original collected entrance money. Review the reconciliation history before checkout.",
+    });
+  }
+
   if (entrance.entrance_fee_overpaid > MONEY_EPSILON) {
     blockers.push({
       code: "entrance_overpayment",
@@ -529,17 +648,24 @@ async function buildCheckoutSummary(
     return null;
   }
 
-  const [items, discounts, charges] = await Promise.all([
-    getReservationItems(connection, reservationId),
-    getDiscountRows(connection, reservationId, lock),
-    getChargeRows(connection, reservationId, lock),
-  ]);
+  const [items, discounts, charges, entranceReconciliations] =
+    await Promise.all([
+      getReservationItems(connection, reservationId),
+      getDiscountRows(connection, reservationId, lock),
+      getChargeRows(connection, reservationId, lock),
+      getEntranceReconciliationRows(
+        connection,
+        reservationId,
+        lock,
+      ),
+    ]);
 
   const accommodation = calculateAccommodationSummary(reservation);
   const entrance = calculateEntranceSummary(
     reservation,
     items,
     discounts,
+    entranceReconciliations,
   );
   const bookingCharges = calculateBookingChargeSummary(charges);
   const extraBed = calculateExtraBedSummary(

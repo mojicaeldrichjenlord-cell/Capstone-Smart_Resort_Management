@@ -204,6 +204,15 @@
 
             <button
               type="button"
+              class="final-checkout-complete-btn"
+              id="viewFinalReceiptBtn"
+              hidden
+            >
+              View Final Receipt
+            </button>
+
+            <button
+              type="button"
               class="final-checkout-cancel-btn"
               id="cancelFinalCheckoutBtn"
             >
@@ -225,6 +234,93 @@
     if (element) element.textContent = String(value);
   }
 
+  function setCheckoutReviewSectionsVisible(visible) {
+    [
+      ".final-checkout-summary-grid",
+      ".final-checkout-status-grid",
+      "#finalCheckoutBlockers",
+      ".final-checkout-policy-note",
+      ".final-checkout-warning",
+    ].forEach((selector) => {
+      const element = document.querySelector(selector);
+      if (element) {
+        element.hidden = !visible;
+      }
+    });
+  }
+
+  function getFinalReceiptUrl(reservationId) {
+    const id = Number(reservationId);
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return "";
+    }
+
+    return `../frontdeskHTML/frontdesk-booking-receipt.html?id=${encodeURIComponent(id)}`;
+  }
+
+  function showCheckoutSuccess(reservationId, reservationCode, message) {
+    const completeButton = document.getElementById("completeFinalCheckoutBtn");
+    const receiptButton = document.getElementById("viewFinalReceiptBtn");
+    const cancelButton = document.getElementById("cancelFinalCheckoutBtn");
+    const blockers = document.getElementById("finalCheckoutBlockers");
+
+    /*
+      After a successful checkout, the backend has already written:
+        reservation_status = 'completed'
+        is_checked_in = 0
+
+      The validation summary was loaded BEFORE that write, so its visible
+      Reservation Status can still say "Approved" unless we refresh it here.
+      Update the success-state display immediately so the modal matches the
+      saved backend result and the final receipt.
+    */
+    setText("checkoutReservationStatusText", "Completed");
+
+    if (currentSummary) {
+      currentSummary.reservation_status = "completed";
+      currentSummary.already_completed = true;
+      currentSummary.checkout_allowed = true;
+    }
+
+    setCheckoutReviewSectionsVisible(false);
+
+    setText(
+      "finalCheckoutReservationText",
+      `${reservationCode || `Reservation #${reservationId}`} has been completed successfully.`,
+    );
+
+    const heading = getModal()?.querySelector(".final-checkout-header h2");
+    if (heading) {
+      heading.textContent = "Checkout Completed";
+    }
+
+    if (blockers) {
+      blockers.className = "final-checkout-blockers ready";
+      blockers.innerHTML = `
+        <strong>Checkout completed successfully.</strong>
+        <span>${String(
+          message ||
+            "The guest has been checked out and the final receipt is ready.",
+        )}</span>
+      `;
+    }
+
+    if (completeButton) {
+      completeButton.hidden = true;
+      completeButton.disabled = true;
+    }
+
+    if (receiptButton) {
+      receiptButton.hidden = false;
+      receiptButton.dataset.reservationId = String(reservationId);
+    }
+
+    if (cancelButton) {
+      cancelButton.textContent = "Close";
+    }
+  }
+
   function resetModal() {
     currentSummary = null;
 
@@ -243,10 +339,29 @@
       blockers.textContent = "Loading final checkout requirements...";
     }
 
+    setCheckoutReviewSectionsVisible(true);
+
+    const heading = getModal()?.querySelector(".final-checkout-header h2");
+    if (heading) {
+      heading.textContent = "Final Checkout Validation";
+    }
+
     const button = document.getElementById("completeFinalCheckoutBtn");
     if (button) {
+      button.hidden = false;
       button.disabled = true;
       button.textContent = "Loading Validation...";
+    }
+
+    const receiptButton = document.getElementById("viewFinalReceiptBtn");
+    if (receiptButton) {
+      receiptButton.hidden = true;
+      delete receiptButton.dataset.reservationId;
+    }
+
+    const cancelButton = document.getElementById("cancelFinalCheckoutBtn");
+    if (cancelButton) {
+      cancelButton.textContent = "Cancel";
     }
   }
 
@@ -484,12 +599,23 @@
         throw new Error(data.message || "Checkout is still blocked.");
       }
 
-      notify(
-        data.message || "Checkout completed successfully.",
-        "success",
-      );
+      const completedReservationId = activeReservationId;
+      const completedReservationCode = activeReservationCode;
+      const successMessage =
+        data.message || "Checkout completed successfully.";
 
-      closeModal();
+      notify(successMessage, "success");
+
+      /*
+        Keep the checkout modal open after successful checkout so Front Desk
+        can immediately open the final thermal receipt. The guest list still
+        refreshes in the background, so completed guests leave Already Inside.
+      */
+      showCheckoutSuccess(
+        completedReservationId,
+        completedReservationCode,
+        successMessage,
+      );
 
       if (typeof loadGuestBookings === "function") {
         await loadGuestBookings();
@@ -529,6 +655,21 @@
     document
       .getElementById("completeFinalCheckoutBtn")
       ?.addEventListener("click", completeCheckout);
+
+    document
+      .getElementById("viewFinalReceiptBtn")
+      ?.addEventListener("click", () => {
+        const button = document.getElementById("viewFinalReceiptBtn");
+        const reservationId = Number(button?.dataset.reservationId);
+        const receiptUrl = getFinalReceiptUrl(reservationId);
+
+        if (!receiptUrl) {
+          notify("Unable to open the final receipt.", "error");
+          return;
+        }
+
+        window.open(receiptUrl, "_blank", "noopener");
+      });
 
     getModal()?.addEventListener("click", (event) => {
       if (event.target === getModal()) {
