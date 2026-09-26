@@ -23,99 +23,89 @@
        Kept here so you can copy-paste this HTML without touching CSS first.
     ======================================================= -->
     <style>
-      .qr-open-card {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        padding: 16px;
-        border: 1px solid #dbeafe;
+      .paypal-payment-section {
+        margin-top: 18px;
+        padding: 18px;
+        border: 1px solid #cbd5e1;
         border-radius: 18px;
-        background: linear-gradient(135deg, #ecfeff, #ffffff);
+        background: #ffffff;
       }
 
-      .qr-open-card p {
+      .paypal-payment-header {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 10px;
+      }
+
+      .paypal-payment-header h3 {
+        margin: 2px 0 0;
+        color: #0f172a;
+        font-size: 1.15rem;
+      }
+
+      .paypal-kicker {
+        margin: 0;
+        color: #0f766e;
+        font-size: 0.76rem;
+        font-weight: 900;
+        letter-spacing: 0.12em;
+      }
+
+      .paypal-sandbox-badge {
+        display: inline-flex;
+        align-items: center;
+        min-height: 30px;
+        padding: 5px 10px;
+        border-radius: 999px;
+        background: #eff6ff;
+        color: #1d4ed8;
+        font-size: 0.78rem;
+        font-weight: 800;
+      }
+
+      .paypal-payment-copy,
+      .paypal-payment-help {
         margin: 0;
         color: #475569;
-        line-height: 1.5;
+        line-height: 1.55;
       }
 
-      .qr-open-btn {
-        width: 100%;
-        border: none;
-        border-radius: 14px;
-        padding: 13px 16px;
-        background: linear-gradient(135deg, #14b8a6, #0891b2);
-        color: #ffffff;
-        font-weight: 900;
-        cursor: pointer;
-        box-shadow: 0 14px 30px rgba(8, 145, 178, 0.22);
-      }
-
-      .qr-open-btn:hover {
-        filter: brightness(0.98);
-        transform: translateY(-1px);
-      }
-
-      .qr-modal {
-        position: fixed;
-        inset: 0;
-        z-index: 9000;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        padding: 18px;
-        background: rgba(15, 23, 42, 0.78);
-        backdrop-filter: blur(4px);
-      }
-
-      .qr-modal.show {
+      .paypal-amount-row {
         display: flex;
-      }
-
-      .qr-modal-box {
-        position: relative;
-        width: min(440px, 94vw);
-        max-height: 90vh;
-        overflow-y: auto;
-        background: #ffffff;
-        border-radius: 24px;
-        padding: 20px;
-        box-shadow: 0 26px 70px rgba(15, 23, 42, 0.32);
-      }
-
-      .qr-modal-close {
-        position: absolute;
-        top: 14px;
-        right: 14px;
-        width: 42px;
-        height: 42px;
-        border: none;
-        border-radius: 999px;
-        background: #fee2e2;
-        color: #b91c1c;
-        font-size: 1.4rem;
-        font-weight: 900;
-        cursor: pointer;
-      }
-
-      .qr-modal-header {
-        padding-right: 46px;
-        margin-bottom: 14px;
-      }
-
-      .qr-modal-header h2 {
-        margin: 0 0 4px;
+        justify-content: space-between;
+        gap: 16px;
+        margin: 16px 0;
+        padding: 14px 16px;
+        border-radius: 14px;
+        background: #f8fafc;
         color: #0f172a;
       }
 
-      .qr-modal-header p {
-        margin: 0;
-        color: #64748b;
+      .paypal-amount-row strong {
+        color: #0f766e;
+      }
+
+      .paypal-sdk-status {
+        margin: 12px 0;
+        padding: 11px 13px;
+        border-radius: 12px;
+        background: #f8fafc;
+        color: #475569;
+        font-size: 0.9rem;
         line-height: 1.45;
       }
 
-      .qr-modal .qr-payment-card {
+      .paypal-payment-help {
         margin-top: 12px;
+        font-size: 0.88rem;
+      }
+
+      #paypalButton {
+        display: block;
+        width: 100%;
+        min-height: 44px;
       }
 
       @media (max-width: 768px) {
@@ -123,11 +113,7 @@
           grid-template-columns: 1fr;
         }
 
-        .qr-modal {
-          align-items: flex-start;
-          padding-top: 70px;
         }
-      }
     </style>
   </head>
 
@@ -138,7 +124,7 @@
     <header class="navbar">
       <div class="logo">Arvic Seaside</div>
 
-      <button id="menuToggle" class="menu-toggle" type="button">â˜°</button>
+      <button id="menuToggle" class="menu-toggle" type="button">☰</button>
 
       <nav id="mobileNav">
         <a href="index.html" class="confirm-transaction-exit">Home</a>
@@ -162,7 +148,7 @@
     <main class="payment-page-wrapper">
       <div class="payment-top-actions">
         <a href="booking.html" class="back-btn confirm-transaction-exit">
-          â† Back to Reservation Form
+          ← Back to Reservation Form
         </a>
       </div>
 
@@ -170,9 +156,9 @@
         <div class="payment-title-block">
           <h1>Reservation Payment</h1>
 
-          <p>
-            Review your reservation, open the selected payment QR code, then
-            upload your proof of transaction for admin verification.
+          <p id="paymentPageIntro">
+            Review your reservation and complete the required 50% accommodation
+            downpayment through PayPal.
           </p>
         </div>
 
@@ -187,52 +173,48 @@
             </section>
 
             <!-- ======================================================
-               PAYMENT FORM
+               PAYPAL-ONLY CUSTOMER PAYMENT
             ======================================================= -->
             <section class="section-box">
-              <h2>Payment Details</h2>
+              <h2>Online Payment</h2>
 
-              <div id="paymentForm" class="payment-form-wrapper">
+              <!--
+                Customer online bookings use PayPal only.
+                This hidden field keeps the payment script explicit while
+                removing the old GCash/Maya customer choices from the UI.
+              -->
+              <select id="paymentMethod" hidden aria-hidden="true">
+                <option value="paypal" selected>PayPal</option>
+              </select>
+
+              <div class="payment-form-wrapper">
                 <div class="payment-form-grid">
-                  <div class="payment-form-group">
-                    <label for="paymentMethod">Payment Method</label>
-
-                    <select id="paymentMethod" required>
-                      <option value="gcash">GCash</option>
-                      <option value="paymaya">Maya / PayMaya</option>
-                    </select>
-                  </div>
-
-                  <div class="payment-form-group">
-                    <label for="paymentReference">Reference Number</label>
-
-                    <input
-                      type="text"
-                      id="paymentReference"
-                      placeholder="GCash: 1234-5678-9012-3"
-                      inputmode="numeric"
-                      autocomplete="off"
-                      required
-                    />
-
-                    <small id="paymentReferenceHelp" class="field-help">
-                      GCash requires exactly 13 digits. Maya / PayMaya allows 6
-                      to 30 digits.
-                    </small>
-                  </div>
-
                   <div class="payment-form-group full-width">
-                    <label for="paymentProof">Proof of Transaction</label>
+                    <label>Payment Method</label>
 
-                    <input
-                      type="file"
-                      id="paymentProof"
-                      accept="image/png,image/jpeg,image/jpg,image/webp,image/heic,image/heif"
-                      required
-                    />
+                    <div
+                      style="
+                        min-height: 48px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: space-between;
+                        gap: 12px;
+                        padding: 12px 14px;
+                        border: 1px solid #cbd5e1;
+                        border-radius: 14px;
+                        background: #f8fafc;
+                      "
+                    >
+                      <div>
+                        <strong style="display:block;color:#0f172a;">
+                          PayPal
+                        </strong>
+                        <small class="field-help">
+                          Automated online payment for customer reservations.
+                        </small>
+                      </div>
 
-                    <div id="proofPreview" class="proof-preview">
-                      No screenshot selected yet.
+                      <span class="paypal-sandbox-badge">Sandbox</span>
                     </div>
                   </div>
 
@@ -243,27 +225,52 @@
 
                     <textarea
                       id="paymentReminderNote"
-                      placeholder="Example: Payment sent under a different account name"
+                      placeholder="Example: Special payment note or reservation concern"
                     ></textarea>
                   </div>
                 </div>
+              </div>
 
-                <div class="payment-actions">
-                  <button
-                    id="submitReservationBtn"
-                    type="button"
-                    class="btn-primary full-btn"
-                  >
-                    Submit Reservation
-                  </button>
+              <div
+                id="paypalPaymentSection"
+                class="paypal-payment-section"
+              >
+                <div class="paypal-payment-header">
+                  <div>
+                    <p class="paypal-kicker">AUTOMATED ONLINE PAYMENT</p>
+                    <h3>Pay 50% with PayPal</h3>
+                  </div>
 
-                  <a
-                    href="booking.html"
-                    class="back-btn-full confirm-transaction-exit"
-                  >
-                    Back
-                  </a>
+                  <span class="paypal-sandbox-badge">Sandbox</span>
                 </div>
+
+                <p class="paypal-payment-copy">
+                  PayPal will collect only the required 50% accommodation
+                  downpayment. Entrance fees, the remaining accommodation
+                  balance, and onsite charges are not included in this payment.
+                </p>
+
+                <div class="paypal-amount-row">
+                  <span>PayPal Downpayment</span>
+                  <strong id="paypalDownpaymentAmount">₱0.00</strong>
+                </div>
+
+                <div id="paypalSdkStatus" class="paypal-sdk-status">
+                  Preparing PayPal Sandbox...
+                </div>
+
+                <paypal-button
+                  id="paypalButton"
+                  type="pay"
+                  hidden
+                ></paypal-button>
+
+                <p class="paypal-payment-help">
+                  After PayPal confirms the payment, the system automatically
+                  records the downpayment and confirms the reservation. No GCash
+                  or Maya reference number, QR payment, or proof screenshot is
+                  required for customer online bookings.
+                </p>
               </div>
 
               <p id="paymentMessage" class="message"></p>
@@ -280,27 +287,27 @@
               <div class="payment-breakdown">
                 <div class="payment-row">
                   <span>Accommodation Total</span>
-                  <strong id="paymentAccommodationTotal">â‚±0.00</strong>
+                  <strong id="paymentAccommodationTotal">₱0.00</strong>
                 </div>
 
                 <div class="payment-row">
                   <span>Required Down Payment 50%</span>
-                  <strong id="paymentDownpayment">â‚±0.00</strong>
+                  <strong id="paymentDownpayment">₱0.00</strong>
                 </div>
 
                 <div class="payment-row">
                   <span>Remaining 50% Onsite</span>
-                  <strong id="paymentRemaining">â‚±0.00</strong>
+                  <strong id="paymentRemaining">₱0.00</strong>
                 </div>
 
                 <div class="payment-row">
                   <span>Estimated Entrance Fee</span>
-                  <strong id="paymentEntranceFee">â‚±0.00</strong>
+                  <strong id="paymentEntranceFee">₱0.00</strong>
                 </div>
 
                 <div class="payment-row">
                   <span>Total Reminder for Front Desk</span>
-                  <strong id="paymentFrontDeskReminder">â‚±0.00</strong>
+                  <strong id="paymentFrontDeskReminder">₱0.00</strong>
                 </div>
               </div>
 
@@ -315,31 +322,8 @@
                 The displayed entrance fee is only an estimate for the first day
                 of your stay. Guests who will continue using the pool or beach
                 facilities on succeeding days may be charged an additional
-                entrance fee of â‚±100 per guest per day. This charge will be
+                entrance fee of ₱100 per guest per day. This charge will be
                 assessed and collected at the front desk if applicable.
-              </div>
-            </section>
-
-            <!-- ======================================================
-               QR PAYMENT BUTTON
-               QR itself opens in a modal to keep the layout clean.
-            ======================================================= -->
-            <section class="section-box">
-              <h2>Scan to Pay</h2>
-
-              <div class="qr-open-card">
-                <p>
-                  Open the QR code for your selected payment method, then upload
-                  the transaction screenshot below.
-                </p>
-
-                <button id="openQrModalBtn" type="button" class="qr-open-btn">
-                  View Payment QR
-                </button>
-
-                <small id="qrMethodPreview" class="field-help">
-                  Selected method: GCash
-                </small>
               </div>
             </section>
 
@@ -357,9 +341,9 @@
 
                 <div class="policy-item">
                   <span>02</span>
-                  <p>
-                    Reservation remains pending until admin verifies your
-                    payment proof.
+                  <p id="policyPaymentStatusText">
+                    Customer online reservations are confirmed automatically
+                    only after PayPal reports a successful captured downpayment.
                   </p>
                 </div>
 
@@ -391,46 +375,20 @@
                   <span>06</span>
                   <p>
                     Guests who use pool or beach facilities on succeeding days
-                    of their stay may incur an additional entrance fee of â‚±100
+                    of their stay may incur an additional entrance fee of ₱100
                     per guest per day, subject to resort assessment.
                   </p>
                 </div>
               </div>
 
               <div class="policy-acknowledgement">
-                By submitting, you agree to these resort policies.
+                By continuing with PayPal, you agree to these resort policies.
               </div>
             </section>
           </aside>
         </div>
       </div>
     </main>
-
-    <!-- ======================================================
-       QR PAYMENT MODAL
-    ====================================================== -->
-    <div class="qr-modal" id="qrPaymentModal">
-      <div class="qr-modal-box">
-        <button
-          type="button"
-          class="qr-modal-close"
-          id="closeQrModalBtn"
-          aria-label="Close QR modal"
-        >
-          Ã—
-        </button>
-
-        <div class="qr-modal-header">
-          <h2>Scan Payment QR</h2>
-          <p>
-            Scan this QR using your selected payment app. After payment, enter
-            your reference number and upload the screenshot.
-          </p>
-        </div>
-
-        <div id="qrPlaceholderBox" class="qr-payment-card"></div>
-      </div>
-    </div>
 
     <!-- ======================================================
        CANCEL TRANSACTION CONFIRMATION MODAL
@@ -471,7 +429,7 @@
     ======================================================= -->
     <script src="../sharedJS/toast.js"></script>
     <script src="../sharedJS/api-config.js"></script>
-    <script src="../customerJS/booking-payment.js?v=qr-modal-4slots-20260617"></script>
+    <script src="../customerJS/booking-payment.js?v=paypal-only-customer-20260924"></script>
 
 
 
@@ -483,8 +441,8 @@
         menuToggle.addEventListener("click", () => {
           mobileNav.classList.toggle("show");
           menuToggle.textContent = mobileNav.classList.contains("show")
-            ? "Ã—"
-            : "â˜°";
+            ? "×"
+            : "☰";
         });
       }
 

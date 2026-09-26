@@ -4,23 +4,31 @@ const db = require("../../config/db");
    FRONT DESK CHECK-IN CONTROLLER
    File: backend/controllers/frontdesk/frontdeskCheckInController.js
 
-   STEP 3F-B2 FINANCIAL CORRECTION
+   PHASE 2 CHECK-IN FINANCIAL SEPARATION
 
    Purpose:
-   - Keep Front Desk check-in separate from entrance-fee collection.
-   - Collect/finalize the remaining ACCOMMODATION balance at check-in.
+   - Check-in / Allow Entry changes guest-presence state only.
+   - Do NOT collect or auto-settle the remaining accommodation balance.
+   - Preserve payment_status, paid_amount, and remaining_balance exactly
+     as they were before check-in.
    - Do NOT automatically mark the entrance fee as paid.
    - Do NOT automatically copy the estimated entrance fee into
      entrance_fee_collected.
-   - Allow Entrance Adjustment to happen after the guest is inside.
+   - Remaining accommodation is collected after entry through the
+     dedicated Accommodation Balance workflow.
+   - Allow Guest Adjustment and Entrance Adjustment after entry.
 
    Correct operational flow:
 
-   Verified downpayment
+   Verified downpayment / full payment
         ↓
    Ready Today
         ↓
-   Check In / collect remaining accommodation balance
+   Check In / Allow Entry
+        ↓
+   Guest is Inside Resort
+        ↓
+   Accommodation Balance (if any)
         ↓
    Guest Adjustment
         ↓
@@ -31,8 +39,8 @@ const db = require("../../config/db");
    Checkout
 
    Important:
-   payment_status / paid_amount / remaining_balance currently represent
-   the ACCOMMODATION payment lifecycle.
+   payment_status / paid_amount / remaining_balance represent the
+   ACCOMMODATION payment lifecycle and are NOT modified by check-in.
 
    Entrance payment is tracked separately using:
    - estimated_entrance_fee
@@ -291,13 +299,17 @@ const checkInBooking = async (req, res) => {
     }
 
     // --------------------------------------------------
-    // ACCOMMODATION PAYMENT
+    // CHECK-IN / ALLOW ENTRY ONLY
     //
-    // At this point the Front Desk confirms that the
-    // remaining accommodation balance has been collected.
+    // Financial separation rule:
+    // - Check-in does NOT collect the accommodation balance.
+    // - payment_status remains unchanged.
+    // - paid_amount remains unchanged.
+    // - remaining_balance remains unchanged.
+    // - entrance fee fields remain unchanged.
     //
-    // IMPORTANT:
-    // Entrance fee is intentionally NOT changed here.
+    // Any remaining accommodation balance is collected later
+    // through Front Desk -> Accommodation Balance.
     // --------------------------------------------------
     const accommodationTotal =
       Math.max(
@@ -305,6 +317,15 @@ const checkInBooking = async (req, res) => {
         toMoney(
           reservation
             .accommodation_total,
+        ),
+      );
+
+    const paidAmountBeforeCheckIn =
+      Math.max(
+        0,
+        toMoney(
+          reservation
+            .paid_amount,
         ),
       );
 
@@ -322,17 +343,11 @@ const checkInBooking = async (req, res) => {
       UPDATE reservations
       SET
         reservation_status = 'approved',
-        payment_status = 'paid',
-        paid_amount = ?,
-        remaining_balance = 0,
         is_checked_in = 1,
         checked_in_at = NOW()
       WHERE id = ?
       `,
-      [
-        accommodationTotal,
-        bookingId,
-      ],
+      [bookingId],
     );
 
     await connection.commit();
@@ -341,7 +356,9 @@ const checkInBooking = async (req, res) => {
       success: true,
 
       message:
-        "Guest checked in successfully. Remaining accommodation balance was recorded as collected. Entrance fee remains separate for Front Desk adjustment and final collection.",
+        remainingAccommodationBalance > 0
+          ? "Guest checked in successfully. The remaining accommodation balance was preserved for the Accommodation Balance workflow."
+          : "Guest checked in successfully. Accommodation is already fully paid.",
 
       reservation_id:
         bookingId,
@@ -351,19 +368,23 @@ const checkInBooking = async (req, res) => {
           .reservation_code,
 
       payment_status:
-        "paid",
+        reservation
+          .payment_status,
 
       accommodation_total:
         accommodationTotal,
 
       accommodation_collected_at_check_in:
-        remainingAccommodationBalance,
+        0,
+
+      accommodation_balance_preserved:
+        true,
 
       paid_amount:
-        accommodationTotal,
+        paidAmountBeforeCheckIn,
 
       remaining_balance:
-        0,
+        remainingAccommodationBalance,
 
       // Entrance values are returned unchanged on purpose.
       estimated_entrance_fee:

@@ -4,13 +4,18 @@
 // Purpose:
 // - Read booking draft from sessionStorage
 // - Show reservation summary and payment breakdown
-// - Show GCash/Maya QR in modal
-// - Submit reservation with payment proof
+// - Preserve GCash/Maya QR + proof verification flow
+// - Add automated PayPal Sandbox checkout
+// - Create PayPal reservation/order on the backend
+// - Capture approved PayPal payment on the backend
 // - Supports 4 slot types:
 //   day_tour, night, day_extended, night_extended
 // ============================================================
 
 const BOOKING_DRAFT_KEY = "smartresort_booking_draft_v2";
+const PAYPAL_PENDING_KEY = "smartresort_paypal_pending_v1";
+const PAYPAL_SDK_SCRIPT_ID = "paypal-web-sdk-v6";
+const PAYPAL_SDK_URL = "https://www.sandbox.paypal.com/web-sdk/v6/core";
 
 const PAYMENT_DETAILS = {
   gcash: {
@@ -31,6 +36,11 @@ let bookingDraft = null;
 let availableAccommodations = [];
 let currentDownpaymentAmount = 0;
 let isSubmittingReservation = false;
+
+let paypalSdkInstance = null;
+let paypalPaymentSession = null;
+let paypalSetupPromise = null;
+let paypalButtonBound = false;
 
 // ============================================================
 // SECTION 1: Page startup
@@ -58,6 +68,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupPaymentForm();
   updateQrPlaceholder();
   updatePaymentReferenceUI();
+  updatePaymentMethodUI();
 });
 
 // ============================================================
@@ -269,9 +280,10 @@ function isLongStaySlot(slotType) {
 }
 
 function isOvernightStyleSlot(slotType) {
-  return ["night", "day_extended", "night_extended"].includes(
-    String(slotType || ""),
-  );
+  // Final entrance-fee rule:
+  // Day Tour and Day 22/23 Hours use DAY entrance rates.
+  // Only Night and Night 22/23 Hours use OVERNIGHT entrance rates.
+  return ["night", "night_extended"].includes(String(slotType || ""));
 }
 
 // ============================================================
@@ -357,6 +369,14 @@ function renderDraftSummary() {
 
   document.getElementById("paymentFrontDeskReminder").textContent =
     `₱${formatMoney(remaining + entranceFee)}`;
+
+  const paypalDownpaymentAmount = document.getElementById(
+    "paypalDownpaymentAmount",
+  );
+
+  if (paypalDownpaymentAmount) {
+    paypalDownpaymentAmount.textContent = `₱${formatMoney(downpayment)}`;
+  }
 
   updateQrPlaceholder();
 }
@@ -467,6 +487,7 @@ function setupPaymentForm() {
     paymentMethod.addEventListener("change", () => {
       updateQrPlaceholder();
       updatePaymentReferenceUI();
+      updatePaymentMethodUI();
     });
   }
 
@@ -581,6 +602,21 @@ function updatePaymentReferenceUI() {
   const referenceInput = document.getElementById("paymentReference");
   const helpText = document.getElementById("paymentReferenceHelp");
 
+  if (method === "paypal") {
+    if (referenceInput) {
+      referenceInput.value = "";
+      referenceInput.placeholder = "Not required for PayPal";
+      referenceInput.removeAttribute("required");
+    }
+
+    if (helpText) {
+      helpText.textContent =
+        "PayPal payments are verified automatically. No reference number is required.";
+    }
+
+    return;
+  }
+
   if (referenceInput) {
     referenceInput.placeholder =
       method === "gcash"
@@ -588,6 +624,7 @@ function updatePaymentReferenceUI() {
         : "Maya: 1234-5678-9012";
 
     referenceInput.setAttribute("maxlength", method === "gcash" ? "16" : "37");
+    referenceInput.setAttribute("required", "required");
     referenceInput.value = formatReferenceNumberForDisplay(
       referenceInput.value,
       method,
@@ -599,6 +636,540 @@ function updatePaymentReferenceUI() {
       method === "gcash"
         ? "GCash reference number must be exactly 13 digits."
         : "Maya / PayMaya reference number must be numbers only, 6 to 30 digits.";
+  }
+}
+
+// ============================================================
+// SECTION 11B: Payment method UI + PayPal Sandbox
+// ============================================================
+
+function isPayPalSelected() {
+  return (
+    String(document.getElementById("paymentMethod")?.value || "").toLowerCase() ===
+    "paypal"
+  );
+}
+
+function setElementHidden(element, hidden) {
+  if (!element) return;
+  element.hidden = Boolean(hidden);
+  element.style.display = hidden ? "none" : "";
+}
+
+function setPayPalStatus(message, type = "info") {
+  const status = document.getElementById("paypalSdkStatus");
+  if (!status) return;
+
+  status.textContent = message;
+
+  if (type === "error") {
+    status.style.background = "#fef2f2";
+    status.style.color = "#b91c1c";
+  } else if (type === "success") {
+    status.style.background = "#ecfdf5";
+    status.style.color = "#047857";
+  } else {
+    status.style.background = "#f8fafc";
+    status.style.color = "#475569";
+  }
+}
+
+function updatePaymentMethodUI() {
+  const method =
+    String(document.getElementById("paymentMethod")?.value || "gcash").toLowerCase();
+
+  const isPayPal = method === "paypal";
+
+  const manualReferenceGroup = document.getElementById("manualReferenceGroup");
+  const manualProofGroup = document.getElementById("manualProofGroup");
+  const manualPaymentActions = document.getElementById("manualPaymentActions");
+  const qrPaymentSection = document.getElementById("qrPaymentSection");
+  const paypalPaymentSection = document.getElementById("paypalPaymentSection");
+  const paymentProof = document.getElementById("paymentProof");
+  const paymentReference = document.getElementById("paymentReference");
+  const paymentPageIntro = document.getElementById("paymentPageIntro");
+  const policyPaymentStatusText = document.getElementById(
+    "policyPaymentStatusText",
+  );
+
+  setElementHidden(manualReferenceGroup, isPayPal);
+  setElementHidden(manualProofGroup, isPayPal);
+  setElementHidden(manualPaymentActions, isPayPal);
+  setElementHidden(qrPaymentSection, isPayPal);
+  setElementHidden(paypalPaymentSection, !isPayPal);
+
+  if (paymentProof) {
+    if (isPayPal) {
+      paymentProof.removeAttribute("required");
+    } else {
+      paymentProof.setAttribute("required", "required");
+    }
+  }
+
+  if (paymentReference) {
+    if (isPayPal) {
+      paymentReference.removeAttribute("required");
+    } else {
+      paymentReference.setAttribute("required", "required");
+    }
+  }
+
+  if (paymentPageIntro) {
+    paymentPageIntro.textContent = isPayPal
+      ? "Review your reservation and complete the required 50% accommodation downpayment through PayPal Sandbox."
+      : "Review your reservation, open the selected payment QR code, then upload your proof of transaction for admin verification.";
+  }
+
+  if (policyPaymentStatusText) {
+    policyPaymentStatusText.textContent = isPayPal
+      ? "For PayPal, the reservation is confirmed automatically only after PayPal reports a successful captured downpayment."
+      : "For GCash/Maya, the reservation remains pending until the submitted payment proof is verified.";
+  }
+
+  if (isPayPal) {
+    preparePayPalCheckout().catch((error) => {
+      console.error("preparePayPalCheckout error:", error);
+      setPayPalStatus(
+        error.message || "Unable to prepare PayPal Sandbox.",
+        "error",
+      );
+    });
+  }
+}
+
+function loadPayPalSdk() {
+  if (window.paypal?.createInstance) {
+    return Promise.resolve();
+  }
+
+  const existingScript = document.getElementById(PAYPAL_SDK_SCRIPT_ID);
+
+  if (existingScript) {
+    return new Promise((resolve, reject) => {
+      if (window.paypal?.createInstance) {
+        resolve();
+        return;
+      }
+
+      existingScript.addEventListener("load", () => resolve(), { once: true });
+      existingScript.addEventListener(
+        "error",
+        () => reject(new Error("Failed to load PayPal Sandbox SDK.")),
+        { once: true },
+      );
+    });
+  }
+
+  return new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.id = PAYPAL_SDK_SCRIPT_ID;
+    script.src = PAYPAL_SDK_URL;
+    script.async = true;
+
+    script.onload = () => {
+      if (window.paypal?.createInstance) {
+        resolve();
+      } else {
+        reject(new Error("PayPal SDK loaded but createInstance is unavailable."));
+      }
+    };
+
+    script.onerror = () => {
+      reject(new Error("Failed to load PayPal Sandbox SDK."));
+    };
+
+    document.head.appendChild(script);
+  });
+}
+
+async function fetchPayPalClientConfig() {
+  const response = await fetch(`${API_BASE}/paypal/config`, {
+    headers: {
+      Accept: "application/json",
+    },
+  });
+
+  const data = await safeReadJson(response);
+
+  if (!response.ok || !data?.success || !data?.clientId) {
+    throw new Error(data?.message || "PayPal configuration is unavailable.");
+  }
+
+  if (String(data.environment || "").toLowerCase() !== "sandbox") {
+    throw new Error("PayPal is not currently configured for Sandbox mode.");
+  }
+
+  return data;
+}
+
+function getPayPalDraftSignature() {
+  if (!bookingDraft) return "";
+
+  const signatureSource = {
+    user_id: bookingDraft.user_id || null,
+    first_name: bookingDraft.first_name || "",
+    middle_name: bookingDraft.middle_name || "",
+    last_name: bookingDraft.last_name || "",
+    contact_no: bookingDraft.contact_no || "",
+    guest_count: Number(bookingDraft.guest_count || 0),
+    entrance_type: bookingDraft.entrance_type || "",
+    note: bookingDraft.note || "",
+    items: Array.isArray(bookingDraft.items) ? bookingDraft.items : [],
+  };
+
+  return JSON.stringify(signatureSource);
+}
+
+function readPendingPayPalReservation() {
+  const raw = sessionStorage.getItem(PAYPAL_PENDING_KEY);
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    sessionStorage.removeItem(PAYPAL_PENDING_KEY);
+    return null;
+  }
+}
+
+function savePendingPayPalReservation(data) {
+  sessionStorage.setItem(PAYPAL_PENDING_KEY, JSON.stringify(data));
+}
+
+function clearPendingPayPalReservation() {
+  sessionStorage.removeItem(PAYPAL_PENDING_KEY);
+}
+
+async function createPayPalReservationIfNeeded() {
+  const user = JSON.parse(localStorage.getItem("user"));
+
+  if (!user?.id) {
+    throw new Error("User session is missing. Please login again.");
+  }
+
+  if (!bookingDraft) {
+    throw new Error("Reservation draft is missing.");
+  }
+
+  const currentSignature = getPayPalDraftSignature();
+  const pending = readPendingPayPalReservation();
+
+  if (
+    pending?.bookingId &&
+    pending?.draftSignature === currentSignature
+  ) {
+    return {
+      bookingId: Number(pending.bookingId),
+      reservationCode: pending.reservationCode || "",
+      reused: true,
+    };
+  }
+
+  // A different booking draft must not silently reuse an older PayPal
+  // reservation from this browser tab.
+  if (pending) {
+    clearPendingPayPalReservation();
+  }
+
+  const paymentReminderNote = document
+    .getElementById("paymentReminderNote")
+    ?.value.trim();
+
+  const payload = {
+    ...bookingDraft,
+    user_id: bookingDraft.user_id || user.id,
+    payment_method: "paypal",
+    payment_type: "downpayment",
+    proof_reference: "",
+    proof_image_data: null,
+    note: [bookingDraft.note, paymentReminderNote].filter(Boolean).join(" | "),
+  };
+
+  setPayPalStatus("Creating your reservation securely...", "info");
+
+  const response = await fetch(`${API_BASE}/bookings`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const data = await safeReadJson(response);
+
+  if (!response.ok) {
+    throw new Error(data?.message || "Failed to create PayPal reservation.");
+  }
+
+  const bookingId = Number(
+    data?.bookingId || data?.reservationId || data?.id || 0,
+  );
+
+  if (!bookingId) {
+    throw new Error(
+      "Reservation was created but the backend did not return a reservation ID.",
+    );
+  }
+
+  const reservationCode = String(data?.reservationCode || "");
+
+  savePendingPayPalReservation({
+    bookingId,
+    reservationCode,
+    draftSignature: currentSignature,
+    createdAt: new Date().toISOString(),
+  });
+
+  return {
+    bookingId,
+    reservationCode,
+    reused: false,
+  };
+}
+
+async function createPayPalOrderForCheckout() {
+  const reservation = await createPayPalReservationIfNeeded();
+
+  setPayPalStatus(
+    reservation.reused
+      ? "Reopening your existing PayPal checkout..."
+      : "Creating PayPal Sandbox order...",
+    "info",
+  );
+
+  const response = await fetch(
+    `${API_BASE}/paypal/reservations/${reservation.bookingId}/order`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({}),
+    },
+  );
+
+  const data = await safeReadJson(response);
+
+  if (!response.ok || !data?.orderId) {
+    throw new Error(data?.message || "Failed to create PayPal order.");
+  }
+
+  setPayPalStatus(
+    `PayPal order ready for ${data.currency || "PHP"} ${data.amount || formatMoney(currentDownpaymentAmount)}.`,
+    "success",
+  );
+
+  return {
+    orderId: data.orderId,
+  };
+}
+
+async function capturePayPalOrderForCheckout(orderId) {
+  const pending = readPendingPayPalReservation();
+
+  if (!pending?.bookingId) {
+    throw new Error(
+      "Pending PayPal reservation information is missing. Please restart the reservation process.",
+    );
+  }
+
+  setPayPalStatus("PayPal approved. Capturing your downpayment...", "info");
+
+  const response = await fetch(
+    `${API_BASE}/paypal/reservations/${pending.bookingId}/capture`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        orderId,
+      }),
+    },
+  );
+
+  const data = await safeReadJson(response);
+
+  if (!response.ok || !data?.success) {
+    throw new Error(data?.message || "PayPal capture failed.");
+  }
+
+  return data;
+}
+
+async function preparePayPalCheckout() {
+  if (paypalPaymentSession && paypalSdkInstance) {
+    return;
+  }
+
+  if (paypalSetupPromise) {
+    return paypalSetupPromise;
+  }
+
+  paypalSetupPromise = (async () => {
+    setPayPalStatus("Loading PayPal Sandbox...", "info");
+
+    const [config] = await Promise.all([
+      fetchPayPalClientConfig(),
+      loadPayPalSdk(),
+    ]);
+
+    if (!window.paypal?.createInstance) {
+      throw new Error("PayPal Sandbox SDK is unavailable.");
+    }
+
+    paypalSdkInstance = await window.paypal.createInstance({
+      clientId: config.clientId,
+      components: ["paypal-payments"],
+      pageType: "checkout",
+    });
+
+    const paymentMethods = await paypalSdkInstance.findEligibleMethods({
+      currencyCode: config.currency || "PHP",
+    });
+
+    if (!paymentMethods?.isEligible?.("paypal")) {
+      throw new Error(
+        "PayPal checkout is not eligible in this Sandbox session.",
+      );
+    }
+
+    paypalPaymentSession =
+      paypalSdkInstance.createPayPalOneTimePaymentSession({
+        async onApprove(data) {
+          try {
+            isSubmittingReservation = true;
+
+            const captureResult = await capturePayPalOrderForCheckout(
+              data.orderId,
+            );
+
+            setPayPalStatus(
+              `Payment captured successfully. Reservation ${captureResult.reservationCode || ""} is confirmed.`,
+              "success",
+            );
+
+            showMessage(
+              "PayPal downpayment received. Your reservation is confirmed.",
+              "success",
+            );
+
+            sessionStorage.removeItem(BOOKING_DRAFT_KEY);
+            clearPendingPayPalReservation();
+
+            setTimeout(() => {
+              redirectToMyBookings();
+            }, 900);
+          } catch (error) {
+            isSubmittingReservation = false;
+            console.error("PayPal onApprove capture error:", error);
+
+            setPayPalStatus(
+              error.message ||
+                "PayPal approved the checkout, but the backend could not finalize the payment.",
+              "error",
+            );
+
+            showMessage(
+              error.message || "Unable to finalize PayPal payment.",
+              "error",
+            );
+          }
+        },
+
+        onCancel() {
+          isSubmittingReservation = false;
+
+          setPayPalStatus(
+            "PayPal checkout was cancelled. Your pending reservation is preserved so you can try again.",
+            "info",
+          );
+
+          showMessage(
+            "PayPal checkout cancelled. You can click the PayPal button to try again.",
+            "error",
+          );
+        },
+
+        onError(error) {
+          isSubmittingReservation = false;
+          console.error("PayPal payment session error:", error);
+
+          setPayPalStatus(
+            "PayPal encountered an error. Please try again.",
+            "error",
+          );
+
+          showMessage(
+            "PayPal encountered an error. Please try again.",
+            "error",
+          );
+        },
+      });
+
+    const paypalButton = document.getElementById("paypalButton");
+
+    if (!paypalButton) {
+      throw new Error("PayPal button element is missing from the payment page.");
+    }
+
+    paypalButton.removeAttribute("hidden");
+
+    if (!paypalButtonBound) {
+      paypalButton.addEventListener("click", async (event) => {
+        event.preventDefault();
+
+        if (isSubmittingReservation) {
+          return;
+        }
+
+        try {
+          isSubmittingReservation = true;
+
+          setPayPalStatus(
+            "Preparing PayPal Sandbox checkout...",
+            "info",
+          );
+
+          await paypalPaymentSession.start(
+            {
+              presentationMode: "auto",
+            },
+            createPayPalOrderForCheckout(),
+          );
+        } catch (error) {
+          isSubmittingReservation = false;
+          console.error("PayPal checkout start error:", error);
+
+          setPayPalStatus(
+            error.message || "Unable to start PayPal checkout.",
+            "error",
+          );
+
+          showMessage(
+            error.message || "Unable to start PayPal checkout.",
+            "error",
+          );
+        }
+      });
+
+      paypalButtonBound = true;
+    }
+
+    setPayPalStatus(
+      "PayPal Sandbox is ready. Click the PayPal button to continue.",
+      "success",
+    );
+  })();
+
+  try {
+    await paypalSetupPromise;
+  } catch (error) {
+    paypalSetupPromise = null;
+    throw error;
   }
 }
 
@@ -679,6 +1250,17 @@ async function submitReservation(e) {
 
   const paymentMethod =
     document.getElementById("paymentMethod")?.value || "gcash";
+
+  if (String(paymentMethod).toLowerCase() === "paypal") {
+    showMessage(
+      "Use the PayPal button to complete your automated downpayment.",
+      "error",
+    );
+    preparePayPalCheckout().catch((error) => {
+      console.error("preparePayPalCheckout error:", error);
+    });
+    return false;
+  }
   const paymentReferenceInput = document.getElementById("paymentReference");
   const paymentReference = normalizeReferenceNumber(
     paymentReferenceInput?.value || "",

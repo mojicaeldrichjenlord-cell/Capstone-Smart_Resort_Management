@@ -14,7 +14,7 @@
 // - Correctly multiply extended-stay price by stay_duration
 // - Treat Day 22/23 Hours as DAY entrance rate and Night 22/23 Hours as NIGHT
 // - Walk-in collects accommodation only; entrance is finalized after check-in
-// - Handle Cash / GCash / Maya manual payment rules
+// - Handle Cash / GCash / Maya / PayPal manual payment rules
 // - Send created_by using the logged-in staff account
 // - Submit manual reservation to backend
 // ============================================================
@@ -28,6 +28,15 @@ const ADMIN_WALKIN_SUCCESS_RESET_KEY =
 const ADMIN_WALKIN_SUCCESS_REDIRECT_HASH =
   "#manual-reservation-created";
 
+const ADMIN_FRONTDESK_PAYPAL_PENDING_KEY =
+  "smartresort_frontdesk_paypal_pending_v1";
+
+const PAYPAL_SDK_SCRIPT_ID =
+  "paypal-web-sdk-v6-frontdesk";
+
+const PAYPAL_SDK_URL =
+  "https://www.sandbox.paypal.com/web-sdk/v6/core";
+
 let walkInDraft = null;
 let availableAccommodations = [];
 let isSubmittingManualReservation = false;
@@ -38,6 +47,12 @@ let isSubmittingManualReservation = false;
 // success response, leaving the staff on the payment page.
 let manualReservationRedirectStarted = false;
 let manualReservationWatchdogTimer = null;
+
+let frontDeskPayPalSdkInstance = null;
+let frontDeskPayPalPaymentSession = null;
+let frontDeskPayPalSetupPromise = null;
+let frontDeskPayPalButtonBound = false;
+let frontDeskPayPalReservationCreating = false;
 
 let computedTotals = {
   accommodationTotal: 0,
@@ -81,6 +96,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   await loadAccommodations();
 
+  ensureFrontDeskPayPalUi();
   setupPaymentForm();
   renderReservationSummary();
   updatePaymentRequirementUI();
@@ -681,20 +697,32 @@ function enforcePaymentOptionsByReservationType() {
   const previousMethod = String(paymentMethod.value || "").toLowerCase();
   const previousType = String(paymentType.value || "").toLowerCase();
 
+  const pending = readFrontDeskPayPalPending();
+  const currentDraftSignature = getFrontDeskPayPalDraftSignature();
+
+  const hasMatchingPendingPayPal =
+    Boolean(pending?.bookingId) &&
+    Boolean(currentDraftSignature) &&
+    pending?.draftSignature === currentDraftSignature;
+
   paymentMethod.disabled = false;
 
   if (isWalkInManualReservation()) {
-    // Walk-in guests may pay onsite using Cash, GCash, or Maya.
-    // Payment is still locked to FULL because the guest is already onsite.
+    // Walk-in:
+    // Cash / GCash / Maya / PayPal
+    // Full accommodation payment only.
     paymentMethod.innerHTML = `
       <option value="cash">Cash</option>
       <option value="gcash">GCash</option>
       <option value="paymaya">Maya / PayMaya</option>
+      <option value="paypal">PayPal</option>
     `;
 
-    paymentMethod.value = ["cash", "gcash", "paymaya"].includes(previousMethod)
-      ? previousMethod
-      : "cash";
+    paymentMethod.value = hasMatchingPendingPayPal
+      ? "paypal"
+      : ["cash", "gcash", "paymaya", "paypal"].includes(previousMethod)
+        ? previousMethod
+        : "cash";
 
     paymentType.innerHTML = `<option value="full">Full Payment</option>`;
     paymentType.value = "full";
@@ -702,28 +730,57 @@ function enforcePaymentOptionsByReservationType() {
     paymentType.title =
       "Walk-in reservations must be full payment only.";
 
+    if (hasMatchingPendingPayPal) {
+      paymentMethod.disabled = true;
+      paymentMethod.title =
+        "A pending PayPal reservation already exists. Complete the PayPal checkout before changing payment method.";
+    } else {
+      paymentMethod.title = "";
+    }
+
     return;
   }
 
+  // Facebook / Messenger:
+  // GCash / Maya / PayPal. Cash is intentionally excluded.
   paymentMethod.innerHTML = `
     <option value="gcash">GCash</option>
     <option value="paymaya">Maya / PayMaya</option>
+    <option value="paypal">PayPal</option>
   `;
 
-  paymentMethod.value = ["gcash", "paymaya"].includes(previousMethod)
-    ? previousMethod
-    : "gcash";
+  paymentMethod.value = hasMatchingPendingPayPal
+    ? "paypal"
+    : ["gcash", "paymaya", "paypal"].includes(previousMethod)
+      ? previousMethod
+      : "gcash";
 
-  paymentType.disabled = false;
-  paymentType.title = "";
   paymentType.innerHTML = `
     <option value="downpayment">50% Down Payment</option>
     <option value="full">Full Payment</option>
   `;
 
-  paymentType.value = ["downpayment", "full"].includes(previousType)
-    ? previousType
-    : "downpayment";
+  paymentType.value = hasMatchingPendingPayPal
+    ? pending.paymentType === "full"
+      ? "full"
+      : "downpayment"
+    : ["downpayment", "full"].includes(previousType)
+      ? previousType
+      : "downpayment";
+
+  if (hasMatchingPendingPayPal) {
+    paymentMethod.disabled = true;
+    paymentType.disabled = true;
+    paymentMethod.title =
+      "A pending PayPal reservation already exists. Complete the PayPal checkout before changing payment method.";
+    paymentType.title =
+      "The PayPal payment type is locked because the reservation has already been created.";
+  } else {
+    paymentMethod.disabled = false;
+    paymentType.disabled = false;
+    paymentMethod.title = "";
+    paymentType.title = "";
+  }
 }
 
 // ============================================================
@@ -864,7 +921,16 @@ function setupPaymentForm() {
   if (paymentType) {
     paymentType.addEventListener(
       "change",
-      updatePaymentBreakdown,
+      () => {
+        updatePaymentBreakdown();
+
+        if (
+          String(paymentMethod?.value || "").toLowerCase() ===
+          "paypal"
+        ) {
+          updateFrontDeskPayPalAmountDisplay();
+        }
+      },
     );
   }
 
@@ -912,8 +978,8 @@ function setupPaymentForm() {
   if (submitBtn) {
     submitBtn.type = "button";
 
-    // Only ONE submit handler is attached.
-    // The old inline onclick in the HTML was removed.
+    // Manual Cash / GCash / Maya continues through the existing submit path.
+    // PayPal uses its own PayPal button and this handler only acts as a guard.
     submitBtn.addEventListener(
       "click",
       submitManualReservation,
@@ -1063,10 +1129,13 @@ function renderReservationItem(item, index) {
 
 function updatePaymentRequirementUI() {
   enforcePaymentOptionsByReservationType();
+  ensureFrontDeskPayPalUi();
 
   const method =
-    document.getElementById("paymentMethod")?.value ||
-    "cash";
+    String(
+      document.getElementById("paymentMethod")?.value ||
+        "cash",
+    ).toLowerCase();
 
   const paymentType =
     document.getElementById("paymentType");
@@ -1098,13 +1167,18 @@ function updatePaymentRequirementUI() {
   const paymentRuleNote =
     document.getElementById("paymentRuleNote");
 
+  const submitBtn =
+    document.getElementById("submitPaymentBtn");
+
+  const paypalSection =
+    document.getElementById("frontDeskPayPalSection");
+
   const isWalkIn = isWalkInManualReservation();
   const isCash = method === "cash";
+  const isPayPal = method === "paypal";
   const isEWallet = ["gcash", "paymaya"].includes(method);
 
-  // Screenshot is required for every manual GCash/Maya payment.
-  // Reference number is optional, but if entered it must match the
-  // selected payment method's expected format.
+  // Only manual GCash/Maya requires screenshot proof.
   const requiresScreenshot = isEWallet;
 
   if (paymentType && isWalkIn) {
@@ -1116,12 +1190,13 @@ function updatePaymentRequirementUI() {
 
   if (proofReference) {
     proofReference.required = false;
-    proofReference.disabled = isCash;
+    proofReference.disabled = isCash || isPayPal;
 
-    if (isCash) {
+    if (isCash || isPayPal) {
       proofReference.value = "";
-      proofReference.placeholder =
-        "Not required for cash payment";
+      proofReference.placeholder = isPayPal
+        ? "Not required for PayPal"
+        : "Not required for cash payment";
       proofReference.removeAttribute("maxlength");
     } else {
       proofReference.placeholder =
@@ -1144,26 +1219,26 @@ function updatePaymentRequirementUI() {
 
   if (proofImage) {
     proofImage.required = requiresScreenshot;
-    proofImage.disabled = isCash;
+    proofImage.disabled = isCash || isPayPal;
 
-    if (isCash) {
+    if (isCash || isPayPal) {
       proofImage.value = "";
     }
   }
 
-  if (proofPreview && isCash) {
+  if (proofPreview && (isCash || isPayPal)) {
     proofPreview.style.display = "none";
     proofPreview.src = "";
   }
 
   if (referenceGroup) {
     referenceGroup.style.display =
-      isCash ? "none" : "flex";
+      isEWallet ? "flex" : "none";
   }
 
   if (proofGroup) {
     proofGroup.style.display =
-      isCash ? "none" : "flex";
+      isEWallet ? "flex" : "none";
   }
 
   if (referenceRequiredText) {
@@ -1185,30 +1260,75 @@ function updatePaymentRequirementUI() {
   }
 
   if (methodHelp) {
-    methodHelp.textContent = isWalkIn
-      ? "Walk-in accepts Cash, GCash, or Maya. GCash/Maya requires a proof screenshot; reference number is optional."
-      : "Facebook/Messenger uses GCash or Maya. Proof screenshot is required; reference number is optional.";
+    if (isWalkIn) {
+      methodHelp.textContent =
+        "Walk-in accepts Cash, GCash, Maya, or PayPal. GCash/Maya requires a proof screenshot; PayPal is verified automatically.";
+    } else {
+      methodHelp.textContent =
+        "Facebook/Messenger accepts GCash, Maya, or PayPal. GCash/Maya requires a proof screenshot; PayPal is verified automatically.";
+    }
   }
 
   if (paymentRuleNote) {
-    paymentRuleNote.innerHTML = isWalkIn
-      ? `
-        <strong>Walk-in Rule:</strong><br />
-        Walk-in guests are already onsite. Payment may be
-        Cash, GCash, or Maya and must be full accommodation
-        payment. For GCash/Maya, upload the payment screenshot;
-        the reference number is optional. The reservation will
-        be automatically checked in after submission.
-      `
-      : `
-        <strong>Facebook / Messenger Rule:</strong><br />
-        GCash or Maya is required. Upload the payment proof
-        screenshot before submitting. The reference number is
-        optional.
-      `;
+    if (isPayPal) {
+      paymentRuleNote.innerHTML = isWalkIn
+        ? `
+          <strong>Walk-in PayPal Rule:</strong><br />
+          Pay the full accommodation amount through PayPal. The
+          reservation remains pending and the guest is not checked in
+          until PayPal reports a successful capture. Entrance fee is
+          still finalized and collected separately after Guest Adjustment.
+        `
+        : `
+          <strong>Facebook / Messenger PayPal Rule:</strong><br />
+          PayPal may collect either the selected 50% downpayment or the
+          full accommodation amount. The reservation is approved only
+          after PayPal reports a successful capture. Entrance fee remains
+          for later Front Desk collection.
+        `;
+    } else {
+      paymentRuleNote.innerHTML = isWalkIn
+        ? `
+          <strong>Walk-in Rule:</strong><br />
+          Walk-in guests are already onsite. Payment may be
+          Cash, GCash, or Maya and must be full accommodation
+          payment. For GCash/Maya, upload the payment screenshot;
+          the reference number is optional. The reservation will
+          be automatically checked in after submission.
+        `
+        : `
+          <strong>Facebook / Messenger Rule:</strong><br />
+          GCash or Maya requires a payment proof screenshot.
+          The reference number is optional.
+        `;
+    }
+  }
+
+  if (submitBtn) {
+    submitBtn.style.display = isPayPal ? "none" : "";
+  }
+
+  if (paypalSection) {
+    paypalSection.style.display = isPayPal ? "block" : "none";
   }
 
   updatePaymentBreakdown();
+  updateFrontDeskPayPalAmountDisplay();
+
+  if (isPayPal) {
+    prepareFrontDeskPayPalCheckout().catch((error) => {
+      console.error(
+        "prepareFrontDeskPayPalCheckout error:",
+        error,
+      );
+
+      setFrontDeskPayPalStatus(
+        error.message ||
+          "Unable to prepare PayPal Sandbox.",
+        "error",
+      );
+    });
+  }
 }
 
 // ============================================================
@@ -1219,6 +1339,13 @@ function updatePaymentBreakdown() {
   computedTotals = computeTotals();
 
   const isWalkIn = isWalkInManualReservation();
+
+  const paymentMethod = String(
+    document.getElementById("paymentMethod")?.value ||
+      "cash",
+  ).toLowerCase();
+
+  const isPayPal = paymentMethod === "paypal";
 
   const paymentType =
     document.getElementById("paymentType")?.value ||
@@ -1234,17 +1361,10 @@ function updatePaymentBreakdown() {
     0,
   );
 
-  // Facebook/Messenger:
-  // remaining accommodation + estimated entrance fee is still a future
-  // Front Desk collection reminder.
   const frontDeskReminder =
     remainingBalance +
     computedTotals.estimatedEntranceFee;
 
-  // Walk-in:
-  // collect the FULL ACCOMMODATION only during manual reservation.
-  // The entrance fee remains an estimate until Guest Adjustment and
-  // Entrance Adjustment are completed after the automatic check-in.
   const walkInAmountDueNow =
     computedTotals.accommodationTotal;
 
@@ -1282,10 +1402,6 @@ function updatePaymentBreakdown() {
     )}`,
   );
 
-  // ----------------------------------------------------------
-  // Dynamic labels/rows by reservation type
-  // ----------------------------------------------------------
-
   const downpaymentRow =
     document.getElementById("paymentDownpaymentRow");
 
@@ -1300,7 +1416,6 @@ function updatePaymentBreakdown() {
     );
 
   if (isWalkIn) {
-    // Walk-in is full payment only, so 50% downpayment is irrelevant.
     if (downpaymentRow) {
       downpaymentRow.style.display = "none";
     }
@@ -1311,7 +1426,9 @@ function updatePaymentBreakdown() {
 
     setText(
       "paymentPaidLabel",
-      "Accommodation Paid",
+      isPayPal
+        ? "PayPal Amount to Pay"
+        : "Accommodation Paid",
     );
 
     setText(
@@ -1335,17 +1452,26 @@ function updatePaymentBreakdown() {
     );
 
     if (collectionNote) {
-      collectionNote.innerHTML = `
-        <strong>Walk-in Collection:</strong><br />
-        The guest is already onsite. Collect the full accommodation
-        amount during this manual reservation. The entrance fee shown
-        above is only an estimate and is not collected yet. After the
-        reservation is automatically checked in, verify actual guests,
-        apply Entrance Adjustment, then collect the final entrance fee
-        separately.
-      `;
+      collectionNote.innerHTML = isPayPal
+        ? `
+          <strong>Walk-in PayPal Collection:</strong><br />
+          PayPal will collect the full accommodation amount. The
+          guest is checked in only after successful PayPal capture.
+          Entrance fee remains an estimate and is collected separately
+          after Guest Adjustment and Entrance Adjustment.
+        `
+        : `
+          <strong>Walk-in Collection:</strong><br />
+          The guest is already onsite. Collect the full accommodation
+          amount during this manual reservation. The entrance fee shown
+          above is only an estimate and is not collected yet. After the
+          reservation is automatically checked in, verify actual guests,
+          apply Entrance Adjustment, then collect the final entrance fee
+          separately.
+        `;
     }
 
+    updateFrontDeskPayPalAmountDisplay();
     return;
   }
 
@@ -1360,7 +1486,9 @@ function updatePaymentBreakdown() {
 
   setText(
     "paymentPaidLabel",
-    "Paid Amount",
+    isPayPal
+      ? "PayPal Amount to Pay"
+      : "Paid Amount",
   );
 
   setText(
@@ -1379,13 +1507,22 @@ function updatePaymentBreakdown() {
   );
 
   if (collectionNote) {
-    collectionNote.innerHTML = `
-      <strong>Reminder:</strong><br />
-      Entrance fee is not included in the downpayment computation.
-      It remains an estimate for Front Desk collection during guest
-      arrival/check-in.
-    `;
+    collectionNote.innerHTML = isPayPal
+      ? `
+        <strong>PayPal Reminder:</strong><br />
+        PayPal collects only the selected accommodation payment
+        (50% downpayment or full accommodation). Entrance fee is not
+        included and remains for later Front Desk collection.
+      `
+      : `
+        <strong>Reminder:</strong><br />
+        Entrance fee is not included in the downpayment computation.
+        It remains an estimate for Front Desk collection during guest
+        arrival/check-in.
+      `;
   }
+
+  updateFrontDeskPayPalAmountDisplay();
 }
 
 // ============================================================
@@ -1412,10 +1549,6 @@ async function submitManualReservation(event) {
     return;
   }
 
-  // ----------------------------------------------------------
-  // Identify the employee creating the manual reservation.
-  // ----------------------------------------------------------
-
   const loggedInUser = getLoggedInUser();
   const createdBy = Number(loggedInUser?.id || 0);
   const loggedInRole = String(
@@ -1441,8 +1574,26 @@ async function submitManualReservation(event) {
   }
 
   const paymentMethod =
-    document.getElementById("paymentMethod")?.value ||
-    "cash";
+    String(
+      document.getElementById("paymentMethod")?.value ||
+        "cash",
+    ).toLowerCase();
+
+  if (paymentMethod === "paypal") {
+    showMessage(
+      "Use the PayPal button to complete the automated PayPal payment.",
+      "error",
+    );
+
+    prepareFrontDeskPayPalCheckout().catch((error) => {
+      console.error(
+        "prepareFrontDeskPayPalCheckout error:",
+        error,
+      );
+    });
+
+    return;
+  }
 
   const paymentTypeSelect =
     document.getElementById("paymentType");
@@ -1474,10 +1625,6 @@ async function submitManualReservation(event) {
 
   const requiresScreenshot =
     isProofRequired(paymentMethod);
-
-  // ----------------------------------------------------------
-  // Validate reservation/payment rules.
-  // ----------------------------------------------------------
 
   if (
     !Array.isArray(walkInDraft.items) ||
@@ -1516,7 +1663,7 @@ async function submitManualReservation(event) {
     !["cash", "gcash", "paymaya"].includes(paymentMethod)
   ) {
     showMessage(
-      "Walk-in reservations only accept Cash, GCash, or Maya.",
+      "Walk-in reservations only accept Cash, GCash, Maya, or PayPal.",
       "error",
     );
     return;
@@ -1527,15 +1674,16 @@ async function submitManualReservation(event) {
     !["gcash", "paymaya"].includes(paymentMethod)
   ) {
     showMessage(
-      "Facebook/Messenger reservations must use GCash or Maya only.",
+      "Facebook/Messenger reservations must use GCash, Maya, or PayPal.",
       "error",
     );
     return;
   }
 
-  // Reference is optional for manual GCash/Maya payments.
-  // If the staff enters one, validate its format.
-  if (proofReference && ["gcash", "paymaya"].includes(paymentMethod)) {
+  if (
+    proofReference &&
+    ["gcash", "paymaya"].includes(paymentMethod)
+  ) {
     const referenceValidation =
       validateReferenceNumberByMethod(
         proofReference,
@@ -1561,35 +1709,16 @@ async function submitManualReservation(event) {
     return;
   }
 
-  // ----------------------------------------------------------
-  // IMPORTANT: Do NOT convert the uploaded screenshot to Base64.
-  //
-  // The screenshot is already appended to FormData below as a real file.
-  // Converting it again to Base64 makes the request/database unnecessarily
-  // large and can flood the backend terminal with a huge data:image string.
-  //
-  // The backend will save the uploaded file path in proof_of_payment.
-  // ----------------------------------------------------------
-
   const payload = {
     ...walkInDraft,
-
-    // Employee account that encoded the reservation.
     created_by: createdBy,
-
     reservation_type:
       getManualReservationType(),
-
     payment_method: paymentMethod,
     payment_type: paymentType,
-
     proof_reference:
       proofReference || null,
-
-    // Keep legacy Base64 field empty.
-    // Actual proof is sent as multipart FormData file.
     proof_image_data: null,
-
     note: combineNotes(
       walkInDraft.note,
       paymentNote,
@@ -1613,14 +1742,6 @@ async function submitManualReservation(event) {
       submitBtn.style.cursor = "not-allowed";
     }
 
-    // --------------------------------------------------------
-    // Send multipart/form-data so multer can receive the proof
-    // screenshot as req.file.
-    //
-    // IMPORTANT:
-    // Do NOT manually set Content-Type here. The browser must add
-    // the multipart boundary automatically.
-    // --------------------------------------------------------
     const formData = new FormData();
 
     formData.append(
@@ -1636,11 +1757,6 @@ async function submitManualReservation(event) {
       );
     }
 
-    // --------------------------------------------------------
-    // Capture the current latest reservation ID BEFORE POST.
-    // The watchdog can then detect only a newly-created matching
-    // reservation and redirect even if the POST response never finishes.
-    // --------------------------------------------------------
     const baselineReservationId =
       await getManualReservationBaselineId();
 
@@ -1659,20 +1775,7 @@ async function submitManualReservation(event) {
       },
     );
 
-    const responseText = await response.text();
-
-    let data = {};
-
-    try {
-      data = responseText
-        ? JSON.parse(responseText)
-        : {};
-    } catch (jsonError) {
-      console.warn(
-        "Manual reservation response was not JSON:",
-        responseText,
-      );
-    }
+    const data = await readFrontDeskJsonResponse(response);
 
     if (!response.ok) {
       throw new Error(
@@ -1681,7 +1784,6 @@ async function submitManualReservation(event) {
       );
     }
 
-    // Reservation was saved successfully.
     sessionStorage.removeItem(
       ADMIN_WALKIN_DRAFT_KEY,
     );
@@ -1691,14 +1793,6 @@ async function submitManualReservation(event) {
       "1",
     );
 
-    // --------------------------------------------------------
-    // SUCCESS CONFIRMED
-    //
-    // 1. Show a real success message.
-    //    manualReservationRoleNav.js watches this as a second fallback.
-    //
-    // 2. Mark this URL and navigate to the correct Guests page.
-    // --------------------------------------------------------
     const successMessage =
       data.message ||
       "Manual reservation created successfully.";
@@ -1716,8 +1810,6 @@ async function submitManualReservation(event) {
       error,
     );
 
-    // If the watchdog already confirmed that the reservation exists and
-    // started navigation, do not show a false failure message.
     if (manualReservationRedirectStarted) {
       return;
     }
@@ -1737,6 +1829,1013 @@ async function submitManualReservation(event) {
       submitBtn.style.opacity = "1";
       submitBtn.style.cursor = "pointer";
     }
+  }
+}
+
+// ============================================================
+// SECTION 12.1: Front Desk PayPal Sandbox checkout
+//
+// Initial-reservation PayPal only:
+// - Walk-in: full accommodation payment
+// - Facebook/Messenger: selected 50% or full accommodation payment
+// - Entrance fee is excluded
+// - Remaining-balance PayPal is implemented separately later
+// ============================================================
+
+function ensureFrontDeskPayPalUi() {
+  if (
+    document.getElementById("frontDeskPayPalSection")
+  ) {
+    return;
+  }
+
+  const form =
+    document.getElementById("adminPaymentForm");
+
+  if (!form) {
+    return;
+  }
+
+  ensureFrontDeskPayPalStyles();
+
+  const section = document.createElement("div");
+  section.id = "frontDeskPayPalSection";
+  section.className = "frontdesk-paypal-section";
+  section.style.display = "none";
+
+  section.innerHTML = `
+    <div class="frontdesk-paypal-header">
+      <div>
+        <div class="frontdesk-paypal-kicker">
+          AUTOMATED PAYPAL PAYMENT
+        </div>
+        <strong id="frontDeskPayPalTitle">
+          Pay with PayPal
+        </strong>
+      </div>
+
+      <span class="frontdesk-paypal-badge">
+        Sandbox
+      </span>
+    </div>
+
+    <div class="frontdesk-paypal-amount-row">
+      <span>Amount to Pay</span>
+      <strong id="frontDeskPayPalAmount">
+        ₱0.00
+      </strong>
+    </div>
+
+    <div
+      id="frontDeskPayPalStatus"
+      class="frontdesk-paypal-status"
+    >
+      Preparing PayPal Sandbox...
+    </div>
+
+    <paypal-button
+      id="frontDeskPayPalButton"
+      type="pay"
+      hidden
+    ></paypal-button>
+
+    <p class="frontdesk-paypal-help">
+      No GCash/Maya reference number or proof screenshot is
+      required for PayPal. Payment is recorded only after PayPal
+      reports a successful capture.
+    </p>
+  `;
+
+  const submitBtn =
+    document.getElementById("submitPaymentBtn");
+
+  if (submitBtn?.parentElement) {
+    submitBtn.parentElement.insertBefore(
+      section,
+      submitBtn,
+    );
+  } else {
+    form.appendChild(section);
+  }
+}
+
+function ensureFrontDeskPayPalStyles() {
+  if (
+    document.getElementById(
+      "frontDeskPayPalDynamicStyles",
+    )
+  ) {
+    return;
+  }
+
+  const style = document.createElement("style");
+  style.id = "frontDeskPayPalDynamicStyles";
+
+  style.textContent = `
+    .frontdesk-paypal-section {
+      width: 100%;
+      margin: 16px 0;
+      padding: 18px;
+      border: 1px solid #cbd5e1;
+      border-radius: 18px;
+      background: #ffffff;
+      box-sizing: border-box;
+    }
+
+    .frontdesk-paypal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+
+    .frontdesk-paypal-kicker {
+      color: #0f766e;
+      font-size: 0.78rem;
+      font-weight: 900;
+      letter-spacing: 0.12em;
+      margin-bottom: 4px;
+    }
+
+    .frontdesk-paypal-header strong {
+      color: #0f172a;
+      font-size: 1.05rem;
+    }
+
+    .frontdesk-paypal-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 7px 11px;
+      border-radius: 999px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-size: 0.78rem;
+      font-weight: 900;
+    }
+
+    .frontdesk-paypal-amount-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 13px 14px;
+      margin-bottom: 12px;
+      border-radius: 14px;
+      background: #f8fafc;
+      color: #0f172a;
+    }
+
+    .frontdesk-paypal-amount-row strong {
+      color: #0f766e;
+      font-size: 1rem;
+    }
+
+    .frontdesk-paypal-status {
+      padding: 12px 14px;
+      margin-bottom: 12px;
+      border-radius: 14px;
+      background: #f8fafc;
+      color: #475569;
+      line-height: 1.45;
+      font-size: 0.9rem;
+    }
+
+    .frontdesk-paypal-help {
+      margin: 12px 0 0;
+      color: #64748b;
+      line-height: 1.55;
+      font-size: 0.88rem;
+    }
+
+    #frontDeskPayPalButton {
+      display: block;
+      width: 100%;
+      min-height: 48px;
+    }
+  `;
+
+  document.head.appendChild(style);
+}
+
+function setFrontDeskPayPalStatus(
+  message,
+  type = "info",
+) {
+  const status =
+    document.getElementById(
+      "frontDeskPayPalStatus",
+    );
+
+  if (!status) return;
+
+  status.textContent = message;
+
+  if (type === "error") {
+    status.style.background = "#fef2f2";
+    status.style.color = "#b91c1c";
+  } else if (type === "success") {
+    status.style.background = "#ecfdf5";
+    status.style.color = "#047857";
+  } else {
+    status.style.background = "#f8fafc";
+    status.style.color = "#475569";
+  }
+}
+
+function getFrontDeskPayPalAmount() {
+  const isWalkIn = isWalkInManualReservation();
+
+  if (isWalkIn) {
+    return Number(
+      computedTotals.accommodationTotal || 0,
+    );
+  }
+
+  const paymentType =
+    document.getElementById("paymentType")?.value ||
+    "downpayment";
+
+  return paymentType === "full"
+    ? Number(
+        computedTotals.accommodationTotal || 0,
+      )
+    : Number(
+        computedTotals.requiredDownpayment || 0,
+      );
+}
+
+function updateFrontDeskPayPalAmountDisplay() {
+  const amountEl =
+    document.getElementById(
+      "frontDeskPayPalAmount",
+    );
+
+  const titleEl =
+    document.getElementById(
+      "frontDeskPayPalTitle",
+    );
+
+  if (amountEl) {
+    amountEl.textContent =
+      `₱${formatMoney(
+        getFrontDeskPayPalAmount(),
+      )}`;
+  }
+
+  if (titleEl) {
+    if (isWalkInManualReservation()) {
+      titleEl.textContent =
+        "Walk-in Full Payment with PayPal";
+    } else {
+      const paymentType =
+        document.getElementById("paymentType")?.value ||
+        "downpayment";
+
+      titleEl.textContent =
+        paymentType === "full"
+          ? "Facebook/Messenger Full Payment with PayPal"
+          : "Facebook/Messenger 50% Downpayment with PayPal";
+    }
+  }
+}
+
+function getFrontDeskPayPalDraftSignature() {
+  if (!walkInDraft) {
+    return "";
+  }
+
+  return JSON.stringify({
+    first_name: walkInDraft.first_name || "",
+    middle_name: walkInDraft.middle_name || "",
+    last_name: walkInDraft.last_name || "",
+    contact_no: walkInDraft.contact_no || "",
+    guest_count: Number(
+      walkInDraft.guest_count || 0,
+    ),
+    entrance_type:
+      walkInDraft.entrance_type || "",
+    reservation_type:
+      getManualReservationType(),
+    note: walkInDraft.note || "",
+    items: Array.isArray(walkInDraft.items)
+      ? walkInDraft.items
+      : [],
+  });
+}
+
+function readFrontDeskPayPalPending() {
+  const raw =
+    sessionStorage.getItem(
+      ADMIN_FRONTDESK_PAYPAL_PENDING_KEY,
+    );
+
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(raw);
+  } catch (error) {
+    sessionStorage.removeItem(
+      ADMIN_FRONTDESK_PAYPAL_PENDING_KEY,
+    );
+
+    return null;
+  }
+}
+
+function saveFrontDeskPayPalPending(data) {
+  sessionStorage.setItem(
+    ADMIN_FRONTDESK_PAYPAL_PENDING_KEY,
+    JSON.stringify(data),
+  );
+}
+
+function clearFrontDeskPayPalPending() {
+  sessionStorage.removeItem(
+    ADMIN_FRONTDESK_PAYPAL_PENDING_KEY,
+  );
+}
+
+async function readFrontDeskJsonResponse(response) {
+  const text = await response.text();
+
+  if (!text) {
+    return {};
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    console.error(
+      "Non-JSON response from server:",
+      text,
+    );
+
+    throw new Error(
+      "Server returned an invalid response. Check the backend terminal.",
+    );
+  }
+}
+
+function validateFrontDeskPayPalBeforeReservation() {
+  if (!walkInDraft) {
+    throw new Error(
+      "Missing manual reservation draft.",
+    );
+  }
+
+  const loggedInUser = getLoggedInUser();
+  const createdBy = Number(
+    loggedInUser?.id || 0,
+  );
+
+  const role = String(
+    loggedInUser?.role || "",
+  ).toLowerCase();
+
+  if (!createdBy) {
+    throw new Error(
+      "Your logged-in staff account could not be identified. Please log in again.",
+    );
+  }
+
+  if (!["admin", "frontdesk"].includes(role)) {
+    throw new Error(
+      "Only Front Desk Staff or Administrator accounts can create manual reservations.",
+    );
+  }
+
+  if (
+    !Array.isArray(walkInDraft.items) ||
+    !walkInDraft.items.length
+  ) {
+    throw new Error(
+      "No accommodation item was found in this reservation. Please go back and select an accommodation.",
+    );
+  }
+
+  const reservationDateValidation =
+    validateManualReservationDraftDates();
+
+  if (!reservationDateValidation.valid) {
+    throw new Error(
+      reservationDateValidation.message,
+    );
+  }
+
+  computedTotals = computeTotals();
+
+  if (computedTotals.accommodationTotal <= 0) {
+    throw new Error(
+      "Accommodation price could not be read. Please go back and review the reservation.",
+    );
+  }
+
+  const paymentMethod =
+    String(
+      document.getElementById("paymentMethod")?.value ||
+        "",
+    ).toLowerCase();
+
+  if (paymentMethod !== "paypal") {
+    throw new Error(
+      "Select PayPal before starting PayPal checkout.",
+    );
+  }
+
+  const paymentType =
+    isWalkInManualReservation()
+      ? "full"
+      : document.getElementById("paymentType")?.value ||
+        "downpayment";
+
+  return {
+    loggedInUser,
+    createdBy,
+    paymentType,
+  };
+}
+
+async function createFrontDeskPayPalReservationIfNeeded() {
+  const {
+    createdBy,
+    paymentType,
+  } = validateFrontDeskPayPalBeforeReservation();
+
+  const draftSignature =
+    getFrontDeskPayPalDraftSignature();
+
+  const pending =
+    readFrontDeskPayPalPending();
+
+  if (
+    pending?.bookingId &&
+    pending?.draftSignature === draftSignature
+  ) {
+    if (
+      pending.paymentType &&
+      pending.paymentType !== paymentType
+    ) {
+      throw new Error(
+        "This PayPal reservation was already created with a different payment type. Complete the existing PayPal checkout first.",
+      );
+    }
+
+    enforcePaymentOptionsByReservationType();
+
+    return {
+      bookingId: Number(pending.bookingId),
+      reservationCode:
+        pending.reservationCode || "",
+      reused: true,
+    };
+  }
+
+  if (pending?.bookingId) {
+    throw new Error(
+      "A different pending PayPal reservation already exists in this browser tab. Complete or cancel that reservation before starting another PayPal reservation.",
+    );
+  }
+
+  const paymentNote =
+    document
+      .getElementById("paymentNote")
+      ?.value.trim() || "";
+
+  const payload = {
+    ...walkInDraft,
+    created_by: createdBy,
+    reservation_type:
+      getManualReservationType(),
+    payment_method: "paypal",
+    payment_type: paymentType,
+    proof_reference: null,
+    proof_image_data: null,
+    note: combineNotes(
+      walkInDraft.note,
+      paymentNote,
+    ),
+  };
+
+  setFrontDeskPayPalStatus(
+    "Creating the pending manual reservation...",
+    "info",
+  );
+
+  frontDeskPayPalReservationCreating = true;
+
+  try {
+    const formData = new FormData();
+
+    formData.append(
+      "payload",
+      JSON.stringify(payload),
+    );
+
+    // IMPORTANT:
+    // Do not start the old manual-reservation watchdog here.
+    // A PayPal reservation must stay on this page until capture succeeds.
+    const response = await fetch(
+      `${API_BASE}/bookings/walk-in`,
+      {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+        },
+        body: formData,
+      },
+    );
+
+    const data =
+      await readFrontDeskJsonResponse(response);
+
+    if (!response.ok) {
+      throw new Error(
+        data.message ||
+          "Failed to create the PayPal manual reservation.",
+      );
+    }
+
+    const bookingId = Number(
+      data.bookingId ||
+        data.reservationId ||
+        data.id ||
+        0,
+    );
+
+    if (!bookingId) {
+      throw new Error(
+        "Reservation was created but the backend did not return a reservation ID.",
+      );
+    }
+
+    const pendingData = {
+      bookingId,
+      reservationCode:
+        String(data.reservationCode || ""),
+      draftSignature,
+      paymentType,
+      reservationType:
+        getManualReservationType(),
+      createdAt: new Date().toISOString(),
+    };
+
+    saveFrontDeskPayPalPending(
+      pendingData,
+    );
+
+    enforcePaymentOptionsByReservationType();
+
+    setFrontDeskPayPalStatus(
+      "Reservation created. Preparing PayPal order...",
+      "success",
+    );
+
+    return {
+      bookingId,
+      reservationCode:
+        pendingData.reservationCode,
+      reused: false,
+    };
+  } finally {
+    frontDeskPayPalReservationCreating = false;
+  }
+}
+
+async function createFrontDeskPayPalOrder() {
+  const reservation =
+    await createFrontDeskPayPalReservationIfNeeded();
+
+  setFrontDeskPayPalStatus(
+    reservation.reused
+      ? "Reopening the existing PayPal checkout..."
+      : "Creating PayPal Sandbox order...",
+    "info",
+  );
+
+  const response = await fetch(
+    `${API_BASE}/paypal/reservations/${reservation.bookingId}/order`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({}),
+    },
+  );
+
+  const data =
+    await readFrontDeskJsonResponse(response);
+
+  if (!response.ok || !data?.orderId) {
+    throw new Error(
+      data?.message ||
+        "Failed to create PayPal order.",
+    );
+  }
+
+  setFrontDeskPayPalStatus(
+    `${data.paymentLabel || "PayPal payment"} ready: ${data.currency || "PHP"} ${data.amount || formatMoney(getFrontDeskPayPalAmount())}.`,
+    "success",
+  );
+
+  return {
+    orderId: data.orderId,
+  };
+}
+
+async function captureFrontDeskPayPalOrder(
+  orderId,
+) {
+  const pending =
+    readFrontDeskPayPalPending();
+
+  if (!pending?.bookingId) {
+    throw new Error(
+      "Pending PayPal reservation information is missing. Please reopen the manual reservation.",
+    );
+  }
+
+  setFrontDeskPayPalStatus(
+    "PayPal approved. Capturing payment...",
+    "info",
+  );
+
+  const response = await fetch(
+    `${API_BASE}/paypal/reservations/${pending.bookingId}/capture`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        orderId,
+      }),
+    },
+  );
+
+  const data =
+    await readFrontDeskJsonResponse(response);
+
+  if (!response.ok || !data?.success) {
+    throw new Error(
+      data?.message ||
+        "PayPal capture failed.",
+    );
+  }
+
+  return data;
+}
+
+function loadFrontDeskPayPalSdk() {
+  if (window.paypal?.createInstance) {
+    return Promise.resolve();
+  }
+
+  const existingScript =
+    document.getElementById(
+      PAYPAL_SDK_SCRIPT_ID,
+    );
+
+  if (existingScript) {
+    return new Promise((resolve, reject) => {
+      if (window.paypal?.createInstance) {
+        resolve();
+        return;
+      }
+
+      existingScript.addEventListener(
+        "load",
+        () => resolve(),
+        { once: true },
+      );
+
+      existingScript.addEventListener(
+        "error",
+        () =>
+          reject(
+            new Error(
+              "Failed to load PayPal Sandbox SDK.",
+            ),
+          ),
+        { once: true },
+      );
+    });
+  }
+
+  return new Promise((resolve, reject) => {
+    const script =
+      document.createElement("script");
+
+    script.id = PAYPAL_SDK_SCRIPT_ID;
+    script.src = PAYPAL_SDK_URL;
+    script.async = true;
+
+    script.onload = () => {
+      if (window.paypal?.createInstance) {
+        resolve();
+      } else {
+        reject(
+          new Error(
+            "PayPal SDK loaded but createInstance is unavailable.",
+          ),
+        );
+      }
+    };
+
+    script.onerror = () => {
+      reject(
+        new Error(
+          "Failed to load PayPal Sandbox SDK.",
+        ),
+      );
+    };
+
+    document.head.appendChild(script);
+  });
+}
+
+async function fetchFrontDeskPayPalConfig() {
+  const response = await fetch(
+    `${API_BASE}/paypal/config`,
+    {
+      headers: {
+        Accept: "application/json",
+      },
+    },
+  );
+
+  const data =
+    await readFrontDeskJsonResponse(response);
+
+  if (
+    !response.ok ||
+    !data?.success ||
+    !data?.clientId
+  ) {
+    throw new Error(
+      data?.message ||
+        "PayPal configuration is unavailable.",
+    );
+  }
+
+  if (
+    String(
+      data.environment || "",
+    ).toLowerCase() !== "sandbox"
+  ) {
+    throw new Error(
+      "PayPal is not currently configured for Sandbox mode.",
+    );
+  }
+
+  return data;
+}
+
+async function prepareFrontDeskPayPalCheckout() {
+  ensureFrontDeskPayPalUi();
+
+  if (
+    frontDeskPayPalPaymentSession &&
+    frontDeskPayPalSdkInstance
+  ) {
+    const button =
+      document.getElementById(
+        "frontDeskPayPalButton",
+      );
+
+    button?.removeAttribute("hidden");
+
+    setFrontDeskPayPalStatus(
+      "PayPal Sandbox is ready. Click the PayPal button to continue.",
+      "success",
+    );
+
+    return;
+  }
+
+  if (frontDeskPayPalSetupPromise) {
+    return frontDeskPayPalSetupPromise;
+  }
+
+  frontDeskPayPalSetupPromise = (async () => {
+    setFrontDeskPayPalStatus(
+      "Loading PayPal Sandbox...",
+      "info",
+    );
+
+    const [config] = await Promise.all([
+      fetchFrontDeskPayPalConfig(),
+      loadFrontDeskPayPalSdk(),
+    ]);
+
+    frontDeskPayPalSdkInstance =
+      await window.paypal.createInstance({
+        clientId: config.clientId,
+        components: ["paypal-payments"],
+        pageType: "checkout",
+      });
+
+    const paymentMethods =
+      await frontDeskPayPalSdkInstance
+        .findEligibleMethods({
+          currencyCode:
+            config.currency || "PHP",
+        });
+
+    if (
+      !paymentMethods?.isEligible?.("paypal")
+    ) {
+      throw new Error(
+        "PayPal checkout is not eligible in this Sandbox session.",
+      );
+    }
+
+    frontDeskPayPalPaymentSession =
+      frontDeskPayPalSdkInstance
+        .createPayPalOneTimePaymentSession({
+          async onApprove(data) {
+            try {
+              isSubmittingManualReservation = true;
+
+              const captureResult =
+                await captureFrontDeskPayPalOrder(
+                  data.orderId,
+                );
+
+              setFrontDeskPayPalStatus(
+                `PayPal payment captured successfully. ${captureResult.paymentLabel || ""}`,
+                "success",
+              );
+
+              showMessage(
+                captureResult.message ||
+                  "PayPal payment captured successfully.",
+                "success",
+              );
+
+              const pending =
+                readFrontDeskPayPalPending();
+
+              sessionStorage.removeItem(
+                ADMIN_WALKIN_DRAFT_KEY,
+              );
+
+              sessionStorage.setItem(
+                ADMIN_WALKIN_SUCCESS_RESET_KEY,
+                "1",
+              );
+
+              clearFrontDeskPayPalPending();
+
+              window.setTimeout(() => {
+                redirectAfterSuccessfulManualReservation({
+                  bookingId:
+                    captureResult.reservationId ||
+                    pending?.bookingId,
+                  reservationCode:
+                    captureResult.reservationCode ||
+                    pending?.reservationCode,
+                });
+              }, 700);
+            } catch (error) {
+              isSubmittingManualReservation = false;
+
+              console.error(
+                "Front Desk PayPal capture error:",
+                error,
+              );
+
+              setFrontDeskPayPalStatus(
+                error.message ||
+                  "PayPal approved the checkout, but the backend could not finalize the payment.",
+                "error",
+              );
+
+              showMessage(
+                error.message ||
+                  "Unable to finalize PayPal payment.",
+                "error",
+              );
+            }
+          },
+
+          onCancel() {
+            isSubmittingManualReservation = false;
+
+            setFrontDeskPayPalStatus(
+              "PayPal checkout was cancelled. The pending reservation is preserved so you can retry the same PayPal checkout.",
+              "info",
+            );
+
+            showMessage(
+              "PayPal checkout cancelled. Click the PayPal button to try again.",
+              "error",
+            );
+          },
+
+          onError(error) {
+            isSubmittingManualReservation = false;
+
+            console.error(
+              "Front Desk PayPal payment-session error:",
+              error,
+            );
+
+            setFrontDeskPayPalStatus(
+              "PayPal encountered an error. The pending reservation is preserved for retry.",
+              "error",
+            );
+
+            showMessage(
+              "PayPal encountered an error. Please try again.",
+              "error",
+            );
+          },
+        });
+
+    const paypalButton =
+      document.getElementById(
+        "frontDeskPayPalButton",
+      );
+
+    if (!paypalButton) {
+      throw new Error(
+        "Front Desk PayPal button element is missing.",
+      );
+    }
+
+    paypalButton.removeAttribute("hidden");
+
+    if (!frontDeskPayPalButtonBound) {
+      paypalButton.addEventListener(
+        "click",
+        async (event) => {
+          event.preventDefault();
+
+          if (
+            isSubmittingManualReservation ||
+            frontDeskPayPalReservationCreating
+          ) {
+            return;
+          }
+
+          try {
+            isSubmittingManualReservation = true;
+
+            setFrontDeskPayPalStatus(
+              "Preparing PayPal Sandbox checkout...",
+              "info",
+            );
+
+            await frontDeskPayPalPaymentSession.start(
+              {
+                presentationMode: "auto",
+              },
+              createFrontDeskPayPalOrder(),
+            );
+          } catch (error) {
+            isSubmittingManualReservation = false;
+
+            console.error(
+              "Front Desk PayPal checkout start error:",
+              error,
+            );
+
+            setFrontDeskPayPalStatus(
+              error.message ||
+                "Unable to start PayPal checkout.",
+              "error",
+            );
+
+            showMessage(
+              error.message ||
+                "Unable to start PayPal checkout.",
+              "error",
+            );
+          }
+        },
+      );
+
+      frontDeskPayPalButtonBound = true;
+    }
+
+    setFrontDeskPayPalStatus(
+      "PayPal Sandbox is ready. Click the PayPal button to continue.",
+      "success",
+    );
+  })();
+
+  try {
+    await frontDeskPayPalSetupPromise;
+  } catch (error) {
+    frontDeskPayPalSetupPromise = null;
+    throw error;
   }
 }
 

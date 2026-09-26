@@ -7,7 +7,7 @@
 // - Load active reservation records
 // - Identify Ready Today / Inside / Needs Payment / Upcoming
 // - Search/filter guest arrivals
-// - Check In / Allow Entry
+// - Check In / Allow Entry without auto-collecting accommodation balance
 //
 // STEP 3F-B1:
 // - Guest Adjustment for checked-in guests
@@ -845,7 +845,7 @@ function renderGuestCard(
   const collectionHeading =
     state === "inside"
       ? "Collection Summary"
-      : "Check-In Collection";
+      : "Arrival Payment Status";
 
   const entranceLabel =
     state === "inside"
@@ -1060,7 +1060,7 @@ function renderGuestCard(
               `
               : `
                 <span>
-                  Accommodation to Collect at Check-In:
+                  Accommodation Balance After Entry:
                   <strong
                     class="${
                       accommodationCollectNow > 0
@@ -1075,8 +1075,10 @@ function renderGuestCard(
                 </span>
 
                 <small class="collection-helper-text">
-                  The entrance fee is not collected by the Check-In action.
-                  It is finalized after Guest Adjustment and Entrance Adjustment.
+                  Check In / Allow Entry does not collect or auto-settle this
+                  accommodation balance. If an amount remains, collect it after
+                  entry using Accommodation Balance. Entrance fee remains a
+                  separate Front Desk workflow.
                 </small>
               `
           }
@@ -1096,7 +1098,6 @@ function renderGuestCard(
           ${renderGuestAction(
             booking,
             bookingId,
-            accommodationCollectNow,
           )}
         </div>
       </div>
@@ -1107,7 +1108,6 @@ function renderGuestCard(
 function renderGuestAction(
   booking,
   bookingId,
-  accommodationCollectNow,
 ) {
   const state =
     getGuestState(booking);
@@ -1117,7 +1117,7 @@ function renderGuestAction(
       <button
         type="button"
         class="btn-primary checkin-btn"
-        onclick="checkInGuest(${bookingId}, ${accommodationCollectNow}, this)"
+        onclick="checkInGuest(${bookingId}, this)"
       >
         Check In / Allow Entry
       </button>
@@ -1215,7 +1215,6 @@ function renderGuestAction(
 
 async function checkInGuest(
   bookingId,
-  accommodationCollectNow,
   button,
 ) {
   if (!bookingId) {
@@ -1260,20 +1259,18 @@ async function checkInGuest(
     [
       "Check in this guest and allow entry?",
       "",
-      `Remaining accommodation balance: ₱${formatMoney(
+      `Current remaining accommodation balance: ₱${formatMoney(
         remainingBalance,
       )}`,
       `Estimated entrance fee: ₱${formatMoney(
         entranceFee,
       )} (finalized after guest/entrance adjustment)`,
-      `Accommodation to collect now: ₱${formatMoney(
-        accommodationCollectNow,
-      )}`,
       "",
-      "The Check-In action records the remaining accommodation balance only.",
-      "Entrance fee collection is handled separately after Guest Adjustment and Entrance Adjustment.",
-      "",
-      "Confirm only after the Front Desk has collected the remaining accommodation balance.",
+      "Check In / Allow Entry does NOT collect or mark the remaining accommodation balance as paid.",
+      remainingBalance > 0
+        ? "After entry, use Accommodation Balance to collect the remaining accommodation payment."
+        : "Accommodation is already fully paid.",
+      "Entrance fee collection remains separate after Guest Adjustment and Entrance Adjustment.",
     ].join("\n"),
   );
 
@@ -1315,7 +1312,9 @@ async function checkInGuest(
     }
 
     showMessage(
-      "Guest checked in successfully. The reservation is now inside the resort.",
+      remainingBalance > 0
+        ? "Guest checked in successfully. Remaining accommodation balance is still unpaid and can now be collected through Accommodation Balance."
+        : "Guest checked in successfully. The reservation is now inside the resort.",
       "success",
     );
 

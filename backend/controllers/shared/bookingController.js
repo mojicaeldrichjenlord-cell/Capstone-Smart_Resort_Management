@@ -860,7 +860,13 @@ async function createReservation({
     ? await validateManualReservationCreator(created_by)
     : null;
 
-  const cleanPaymentMethod = normalizeText(payment_method || "gcash");
+  // Final payment-source rule:
+  // - Customer online booking: PayPal only.
+  // - Front Desk manual booking: method is selected by staff and validated
+  //   below according to Walk-in vs Facebook/Messenger rules.
+  const cleanPaymentMethod = normalizeText(
+    payment_method || (isManualReservation ? "cash" : "paypal"),
+  );
 
   const cleanProof = normalizeNullableText(proof_of_payment);
   const cleanProofImageData = normalizeNullableText(proof_image_data);
@@ -906,45 +912,36 @@ async function createReservation({
   }
 
   if (!isManualReservation) {
-    if (!["gcash", "paymaya"].includes(cleanPaymentMethod.toLowerCase())) {
-      throw {
-        status: 400,
-        message: "Online reservations only accept GCash or PayMaya payments.",
-      };
-    }
+    const onlinePaymentMethod = cleanPaymentMethod.toLowerCase();
 
-    if (!cleanProofReference) {
+    /*
+      FINAL CUSTOMER ONLINE PAYMENT RULE:
+      - Customer-account reservations use PayPal ONLY.
+      - GCash/Maya proof-upload checkout is no longer accepted for customer
+        online reservations, even if someone bypasses the frontend and calls
+        this API directly.
+      - PayPal starts with no manual reference/proof. The separate PayPal
+        order + capture endpoints verify and record the payment.
+    */
+    if (onlinePaymentMethod !== "paypal") {
       throw {
         status: 400,
-        message: "Reference number is required.",
-      };
-    }
-
-    if (!proofReferenceValidation.valid) {
-      throw {
-        status: 400,
-        message: proofReferenceValidation.message,
-      };
-    }
-
-    if (!cleanProof && !cleanProofImageData) {
-      throw {
-        status: 400,
-        message: "Payment proof or reference is required.",
+        message:
+          "Customer online reservations accept PayPal only.",
       };
     }
   }
 
   if (isWalkInManualReservation) {
     if (
-      !["cash", "gcash", "paymaya"].includes(
+      !["cash", "gcash", "paymaya", "paypal"].includes(
         cleanPaymentMethod.toLowerCase(),
       )
     ) {
       throw {
         status: 400,
         message:
-          "Walk-in manual reservations only accept Cash, GCash, or Maya.",
+          "Walk-in manual reservations only accept Cash, GCash, Maya, or PayPal.",
       };
     }
 
@@ -1000,22 +997,26 @@ async function createReservation({
 
   if (isFacebookManualReservation) {
     if (
-      !["gcash", "paymaya"].includes(
+      !["gcash", "paymaya", "paypal"].includes(
         cleanPaymentMethod.toLowerCase(),
       )
     ) {
       throw {
         status: 400,
         message:
-          "Facebook/Messenger manual reservations must use GCash or PayMaya only.",
+          "Facebook/Messenger manual reservations must use GCash, Maya, or PayPal.",
       };
     }
 
+    const isFacebookManualWallet = ["gcash", "paymaya"].includes(
+      cleanPaymentMethod.toLowerCase(),
+    );
+
     /*
-      Facebook/Messenger proof:
-      - Screenshot is required.
-      - Reference is optional.
-      - If reference is supplied, its method-specific format is validated.
+      Facebook/Messenger payment evidence rule:
+      - GCash/Maya: screenshot is required; reference is optional.
+      - PayPal: no manual screenshot/reference is required because the
+        automated PayPal capture flow will be the payment evidence.
     */
     const hasFacebookProofScreenshot =
       Boolean(cleanProofImageData) ||
@@ -1028,15 +1029,16 @@ async function createReservation({
           )
       );
 
-    if (!hasFacebookProofScreenshot) {
+    if (isFacebookManualWallet && !hasFacebookProofScreenshot) {
       throw {
         status: 400,
         message:
-          "Proof screenshot is required for Facebook/Messenger reservations.",
+          "Proof screenshot is required for Facebook/Messenger GCash or Maya payments.",
       };
     }
 
     if (
+      isFacebookManualWallet &&
       cleanProofReference &&
       !proofReferenceValidation.valid
     ) {
@@ -1161,11 +1163,13 @@ async function createReservation({
 
   const requiredDownpayment = accommodationTotal * 0.5;
 
-  // Online customer reservations start as pending until admin verifies proof.
-  // Manual reservations are encoded by staff:
-  // - Walk-in: Cash/GCash/Maya, full payment, auto checked-in.
-  // - Facebook/Messenger: GCash/Maya proof, approved but not checked-in.
-    let paidAmount = 0;
+  // Payment-state rules:
+  // - Customer online: PayPal only; stays pending until automated capture.
+  // - Front Desk Walk-in Cash/GCash/Maya: full payment, auto checked-in.
+  // - Front Desk Facebook GCash/Maya: staff-recorded payment, approved.
+  // - Any Front Desk PayPal reservation: NEVER mark paid/approved/check-in
+  //   before PayPal capture. It stays pending for the automated PayPal step.
+  let paidAmount = 0;
   let remainingBalance = accommodationTotal;
   let reservationStatus = "pending";
   let paymentStatus = "pending";
@@ -1174,9 +1178,12 @@ async function createReservation({
   let entranceFeePaid = 0;
   let entranceFeeCollected = 0;
 
-  if (isWalkInManualReservation) {
+  const isManualPayPal =
+    isManualReservation && cleanPaymentMethod.toLowerCase() === "paypal";
+
+  if (isWalkInManualReservation && !isManualPayPal) {
     /*
-      Final Front Desk Walk-in rule:
+      Front Desk Walk-in Cash/GCash/Maya rule:
       - Collect the full ACCOMMODATION amount during manual reservation.
       - Automatically check the guest in because the guest is already onsite.
       - Do NOT collect the entrance fee yet.
@@ -1191,7 +1198,7 @@ async function createReservation({
     checkedInAtSql = new Date();
     entranceFeePaid = 0;
     entranceFeeCollected = 0;
-  } else if (isFacebookManualReservation) {
+  } else if (isFacebookManualReservation && !isManualPayPal) {
     reservationStatus = "approved";
 
     if (cleanPaymentType === "full") {
@@ -1203,6 +1210,18 @@ async function createReservation({
       remainingBalance = accommodationTotal - paidAmount;
       paymentStatus = "partially_paid";
     }
+  } else if (isManualPayPal) {
+    // PayPal is automated. Never trust a manual reservation form to claim
+    // that PayPal money was received. The PayPal capture controller will
+    // update these fields after PayPal reports a successful capture.
+    paidAmount = 0;
+    remainingBalance = accommodationTotal;
+    reservationStatus = "pending";
+    paymentStatus = "pending";
+    isCheckedIn = 0;
+    checkedInAtSql = null;
+    entranceFeePaid = 0;
+    entranceFeeCollected = 0;
   }
 
   const noteParts = [];
@@ -1228,14 +1247,37 @@ async function createReservation({
       }`,
     );
 
-    if (isWalkInManualReservation) {
-      const manualPaymentMethodLabel =
-        cleanPaymentMethod.toLowerCase() === "gcash"
-          ? "GCash"
-          : cleanPaymentMethod.toLowerCase() === "paymaya"
-            ? "Maya / PayMaya"
+    const manualPaymentMethodLabel =
+      cleanPaymentMethod.toLowerCase() === "gcash"
+        ? "GCash"
+        : cleanPaymentMethod.toLowerCase() === "paymaya"
+          ? "Maya / PayMaya"
+          : cleanPaymentMethod.toLowerCase() === "paypal"
+            ? "PayPal"
             : "Cash";
 
+    if (isManualPayPal) {
+      const intendedPayPalPayment =
+        isWalkInManualReservation || cleanPaymentType === "full"
+          ? "Full Payment"
+          : "50% Down Payment";
+
+      noteParts.push(
+        `Manual Reservation Payment Method: ${manualPaymentMethodLabel}`,
+      );
+      noteParts.push(
+        `PayPal Intended Payment Type: ${intendedPayPalPayment}`,
+      );
+      noteParts.push(
+        "Manual PayPal Payment Status: Pending PayPal approval and capture.",
+      );
+
+      if (isWalkInManualReservation) {
+        noteParts.push(
+          "Walk-in PayPal guest will be checked in only after successful PayPal capture.",
+        );
+      }
+    } else if (isWalkInManualReservation) {
       noteParts.push(
         `Manual Reservation Payment Type: Full ${manualPaymentMethodLabel} Payment`,
       );
@@ -1246,18 +1288,29 @@ async function createReservation({
         "Walk-in entrance fee is estimated only and will be finalized and collected after Guest Adjustment and Entrance Adjustment.",
       );
     } else if (cleanPaymentType === "full") {
-      noteParts.push("Manual Reservation Payment Type: Full Payment");
+      noteParts.push(
+        `Manual Reservation Payment Type: Full ${manualPaymentMethodLabel} Payment`,
+      );
     } else {
-      noteParts.push("Manual Reservation Payment Type: 50% Down Payment");
+      noteParts.push(
+        `Manual Reservation Payment Type: 50% ${manualPaymentMethodLabel} Down Payment`,
+      );
     }
 
-    if (cleanProofReference) {
+    if (cleanProofReference && !isManualPayPal) {
       noteParts.push(`Reference Number: ${cleanProofReference}`);
     }
   } else {
-    noteParts.push(`Reference Number: ${cleanProofReference}`);
+    // Customer online checkout is PayPal-only.
+    noteParts.push("Online Payment Method: PayPal");
     noteParts.push(
-      "Online Reservation Payment Status: Pending admin verification of submitted GCash/Maya proof.",
+      `PayPal Required Downpayment: ₱${requiredDownpayment.toFixed(2)} (50% of accommodation total)`,
+    );
+    noteParts.push(
+      "Online Reservation Payment Status: Pending PayPal approval and capture.",
+    );
+    noteParts.push(
+      "Entrance fee is excluded from the PayPal downpayment and will be finalized onsite.",
     );
   }
 
@@ -1383,9 +1436,12 @@ async function createReservation({
       totalFreeEntrancePax,
       chargeableEntranceGuests,
       isCheckedIn: Boolean(isCheckedIn),
+      paymentMethod: cleanPaymentMethod.toLowerCase(),
       message: isManualReservation
-        ? "Manual reservation created successfully."
-        : "Reservation request submitted successfully. Please wait for admin payment verification.",
+        ? isManualPayPal
+          ? "Manual reservation created successfully. Continue to PayPal before recording the reservation as paid or checked in."
+          : "Manual reservation created successfully."
+        : "Reservation created successfully. Continue to PayPal to pay the required 50% accommodation downpayment.",
     };
   } catch (error) {
     await connection.rollback();
@@ -1421,6 +1477,10 @@ exports.createBooking = async (req, res) => {
       message: result.message,
       bookingId: result.reservationId,
       reservationCode: result.reservationCode,
+      paymentMethod: result.paymentMethod,
+      requiredDownpayment: result.requiredDownpayment,
+      accommodationTotal: result.accommodationTotal,
+      estimatedEntranceFee: result.estimatedEntranceFee,
       proofPath: parsedBody.proof_of_payment || null,
       proofImageDataSaved: Boolean(parsedBody.proof_image_data),
       isCheckedIn: Boolean(result.isCheckedIn),

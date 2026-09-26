@@ -51,15 +51,17 @@ const {
 );
 
 // ============================================================
-// STEP 3F-G: FRONT DESK ACCOMMODATION BALANCE COLLECTION
+// STEP 3F-G / PHASE 2 STEP 2.11:
+// FRONT DESK ACCOMMODATION BALANCE COLLECTION
 // ============================================================
 const {
   getAccommodationBalanceSummary,
   collectAccommodationBalance,
+  createAccommodationBalancePayPalOrder,
+  captureAccommodationBalancePayPalOrder,
 } = require(
   "../controllers/frontdesk/frontdeskAccommodationBalanceController",
 );
-
 
 // ============================================================
 // STEP 3F-H: FRONT DESK FINAL CHECKOUT VALIDATION
@@ -146,9 +148,21 @@ router.get(
   getAccommodationBalanceSummary,
 );
 
+// Manual collection only: Cash / GCash / Maya
 router.put(
   "/:id/accommodation-balance/collect",
   collectAccommodationBalance,
+);
+
+// Automated PayPal remaining accommodation balance
+router.post(
+  "/:id/accommodation-balance/paypal/order",
+  createAccommodationBalancePayPalOrder,
+);
+
+router.post(
+  "/:id/accommodation-balance/paypal/capture",
+  captureAccommodationBalancePayPalOrder,
 );
 
 // ------------------------------------------------------------

@@ -19,6 +19,7 @@ const adminBookingRoutes = require("./routes/adminBookingRoutes");
 const adminPaymentRoutes = require("./routes/adminPaymentRoutes");
 const aiRoutes = require("./routes/aiRoutes");
 const mapMarkerRoutes = require("./routes/mapMarkerRoutes");
+const paypalRoutes = require("./routes/paypalRoutes");
 
 const app = express();
 
@@ -44,6 +45,7 @@ app.use("/api/admin/bookings", adminBookingRoutes);
 app.use("/api/admin/payments", adminPaymentRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/map-markers", mapMarkerRoutes);
+app.use("/api/paypal", paypalRoutes);
 
 const PORT = process.env.PORT || 5000;
 
