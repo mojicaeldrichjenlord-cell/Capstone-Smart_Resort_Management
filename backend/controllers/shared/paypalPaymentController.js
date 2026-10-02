@@ -29,6 +29,28 @@ const {
 
 const PAYPAL_CURRENCY = "PHP";
 
+const PAYPAL_DEMO_MODE = ["1", "true", "yes", "on"].includes(
+  String(process.env.PAYPAL_DEMO_MODE || "")
+    .trim()
+    .toLowerCase(),
+);
+
+const configuredPayPalDemoAmount = Number(
+  process.env.PAYPAL_DEMO_AMOUNT || 1,
+);
+
+const PAYPAL_DEMO_AMOUNT =
+  Number.isFinite(configuredPayPalDemoAmount) &&
+  configuredPayPalDemoAmount > 0
+    ? Math.round(
+        (configuredPayPalDemoAmount + Number.EPSILON) * 100,
+      ) / 100
+    : 1;
+
+const PAYPAL_DEMO_USER_ID = Number(
+  process.env.PAYPAL_DEMO_USER_ID || 0,
+);
+
 function toMoney(value) {
   const number = Number(value || 0);
   return Math.round((number + Number.EPSILON) * 100) / 100;
@@ -36,6 +58,35 @@ function toMoney(value) {
 
 function normalizeStatus(value) {
   return String(value || "").trim().toLowerCase();
+}
+
+function isPayPalDemoReservation(reservation) {
+  if (!PAYPAL_DEMO_MODE) {
+    return false;
+  }
+
+  if (
+    !Number.isInteger(PAYPAL_DEMO_USER_ID) ||
+    PAYPAL_DEMO_USER_ID <= 0
+  ) {
+    return false;
+  }
+
+  return (
+    Number(reservation?.user_id || 0) ===
+    PAYPAL_DEMO_USER_ID
+  );
+}
+
+function getPayPalChargeAmount(
+  paymentPlan,
+  reservation,
+) {
+  const officialAmount = toMoney(paymentPlan?.amount);
+
+  return isPayPalDemoReservation(reservation)
+    ? PAYPAL_DEMO_AMOUNT
+    : officialAmount;
 }
 
 function buildCreateRequestId(reservationId, attemptNumber) {
@@ -423,9 +474,19 @@ exports.getPayPalClientConfig = async (req, res) => {
     clientId,
     currency: PAYPAL_CURRENCY,
     environment:
-      String(process.env.PAYPAL_BASE_URL || "").includes("sandbox")
+      String(
+        process.env.PAYPAL_BASE_URL ||
+          "https://api-m.sandbox.paypal.com",
+      ).includes("sandbox")
         ? "sandbox"
         : "live",
+    demoMode: PAYPAL_DEMO_MODE,
+    demoAmount: PAYPAL_DEMO_MODE
+      ? PAYPAL_DEMO_AMOUNT.toFixed(2)
+      : null,
+    demoAccountConfigured:
+      Number.isInteger(PAYPAL_DEMO_USER_ID) &&
+      PAYPAL_DEMO_USER_ID > 0,
   });
 };
 
@@ -456,6 +517,18 @@ exports.createOrderForReservation = async (req, res) => {
     const paymentPlan =
       validateReservationForPayPalOrder(reservation);
 
+    const officialPaymentAmount =
+      toMoney(paymentPlan.amount);
+
+    const isDemoPayment =
+      isPayPalDemoReservation(reservation);
+
+    const paypalChargeAmount =
+      getPayPalChargeAmount(
+        paymentPlan,
+        reservation,
+      );
+
     const requiredDownpayment =
       calculateRequiredDownpayment(reservation);
 
@@ -484,7 +557,7 @@ exports.createOrderForReservation = async (req, res) => {
     const reusableOrder =
       await tryReuseExistingOrder(
         latestTransaction,
-        paymentPlan.amount,
+        paypalChargeAmount,
       );
 
     if (reusableOrder) {
@@ -496,7 +569,8 @@ exports.createOrderForReservation = async (req, res) => {
         transactionId: reusableOrder.transactionId,
         orderId: reusableOrder.paypalOrder.id,
         orderStatus: reusableOrder.paypalOrder.status,
-        amount: paymentPlan.amount.toFixed(2),
+        amount: officialPaymentAmount.toFixed(2),
+        demoPayment: isDemoPayment,
         currency: PAYPAL_CURRENCY,
         paymentFlow: paymentPlan.flow,
         paymentLabel: paymentPlan.label,
@@ -514,10 +588,12 @@ exports.createOrderForReservation = async (req, res) => {
     );
 
     const paypalOrder = await createPayPalOrder({
-      amount: paymentPlan.amount,
+      amount: paypalChargeAmount,
       currency: PAYPAL_CURRENCY,
       reservationCode: reservation.reservation_code,
-      description: paymentPlan.description,
+      description: isDemoPayment
+        ? `${paymentPlan.description} (Capstone demo charge)`
+        : paymentPlan.description,
       requestId,
     });
 
@@ -549,7 +625,7 @@ exports.createOrderForReservation = async (req, res) => {
           reservationId,
           paypalOrder.id,
           paypalOrder.status || null,
-          paymentPlan.amount,
+          paypalChargeAmount,
           PAYPAL_CURRENCY,
         ],
       );
@@ -585,7 +661,8 @@ exports.createOrderForReservation = async (req, res) => {
       transactionId,
       orderId: paypalOrder.id,
       orderStatus: paypalOrder.status,
-      amount: paymentPlan.amount.toFixed(2),
+      amount: officialPaymentAmount.toFixed(2),
+      demoPayment: isDemoPayment,
       currency: PAYPAL_CURRENCY,
       paymentFlow: paymentPlan.flow,
       paymentLabel: paymentPlan.label,
@@ -744,7 +821,15 @@ async function finalizeSuccessfulPayPalCapture({
   capture,
 }) {
   const paymentPlan = buildPayPalPaymentPlan(reservation);
-  const expectedAmount = paymentPlan.amount;
+  const officialPaymentAmount =
+    toMoney(paymentPlan.amount);
+  const isDemoPayment =
+    isPayPalDemoReservation(reservation);
+  const expectedAmount =
+    getPayPalChargeAmount(
+      paymentPlan,
+      reservation,
+    );
 
   assertPayPalAmountAndCurrency({
     expectedAmount,
@@ -892,6 +977,32 @@ async function finalizeSuccessfulPayPalCapture({
       }
     }
 
+    if (isDemoPayment) {
+      const demoAuditNote =
+        `[PAYPAL DEMO] Actual PayPal capture: PHP ${expectedAmount.toFixed(
+          2,
+        )}; workflow credited official reservation payment: PHP ${officialPaymentAmount.toFixed(
+          2,
+        )}.`;
+
+      await connection.query(
+        `
+          UPDATE reservations
+          SET note = CASE
+            WHEN note LIKE '%[PAYPAL DEMO]%'
+              THEN note
+            ELSE CONCAT_WS(
+              ' | ',
+              NULLIF(note, ''),
+              ?
+            )
+          END
+          WHERE id = ?
+        `,
+        [demoAuditNote, reservation.id],
+      );
+    }
+
     await connection.commit();
 
     return {
@@ -906,7 +1017,8 @@ async function finalizeSuccessfulPayPalCapture({
         lockedTransaction.paypal_capture_status ||
         capture.status ||
         "COMPLETED",
-      amount: expectedAmount.toFixed(2),
+      amount: officialPaymentAmount.toFixed(2),
+      demoPayment: isDemoPayment,
       currency: PAYPAL_CURRENCY,
       paymentFlow: paymentPlan.flow,
       paymentLabel: paymentPlan.label,
@@ -1012,6 +1124,13 @@ exports.captureOrderForReservation = async (req, res) => {
     }
 
     const paymentPlan = buildPayPalPaymentPlan(reservation);
+    const isDemoPayment =
+      isPayPalDemoReservation(reservation);
+    const paypalChargeAmount =
+      getPayPalChargeAmount(
+        paymentPlan,
+        reservation,
+      );
 
     const transaction = await findPayPalTransactionByOrder(
       reservationId,
@@ -1029,7 +1148,7 @@ exports.captureOrderForReservation = async (req, res) => {
     if (
       Math.abs(
         toMoney(transaction.amount) -
-          toMoney(paymentPlan.amount),
+          toMoney(paypalChargeAmount),
       ) > 0.009
     ) {
       return res.status(409).json({
@@ -1055,7 +1174,8 @@ exports.captureOrderForReservation = async (req, res) => {
         orderId,
         captureId: transaction.paypal_capture_id,
         captureStatus: transaction.paypal_capture_status,
-        amount: paymentPlan.amount.toFixed(2),
+        amount: toMoney(paymentPlan.amount).toFixed(2),
+        demoPayment: isDemoPayment,
         currency: PAYPAL_CURRENCY,
         paymentFlow: paymentPlan.flow,
         paymentLabel: paymentPlan.label,

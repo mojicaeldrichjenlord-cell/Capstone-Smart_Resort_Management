@@ -15,7 +15,10 @@
 const BOOKING_DRAFT_KEY = "smartresort_booking_draft_v2";
 const PAYPAL_PENDING_KEY = "smartresort_paypal_pending_v1";
 const PAYPAL_SDK_SCRIPT_ID = "paypal-web-sdk-v6";
-const PAYPAL_SDK_URL = "https://www.sandbox.paypal.com/web-sdk/v6/core";
+const PAYPAL_SANDBOX_SDK_URL =
+  "https://www.sandbox.paypal.com/web-sdk/v6/core";
+const PAYPAL_LIVE_SDK_URL =
+  "https://www.paypal.com/web-sdk/v6/core";
 
 const PAYMENT_DETAILS = {
   gcash: {
@@ -716,7 +719,7 @@ function updatePaymentMethodUI() {
 
   if (paymentPageIntro) {
     paymentPageIntro.textContent = isPayPal
-      ? "Review your reservation and complete the required 50% accommodation downpayment through PayPal Sandbox."
+      ? "Review your reservation and complete the required 50% accommodation downpayment through PayPal."
       : "Review your reservation, open the selected payment QR code, then upload your proof of transaction for admin verification.";
   }
 
@@ -730,14 +733,14 @@ function updatePaymentMethodUI() {
     preparePayPalCheckout().catch((error) => {
       console.error("preparePayPalCheckout error:", error);
       setPayPalStatus(
-        error.message || "Unable to prepare PayPal Sandbox.",
+        error.message || "Unable to prepare PayPal.",
         "error",
       );
     });
   }
 }
 
-function loadPayPalSdk() {
+function loadPayPalSdk(environment = "sandbox") {
   if (window.paypal?.createInstance) {
     return Promise.resolve();
   }
@@ -754,7 +757,7 @@ function loadPayPalSdk() {
       existingScript.addEventListener("load", () => resolve(), { once: true });
       existingScript.addEventListener(
         "error",
-        () => reject(new Error("Failed to load PayPal Sandbox SDK.")),
+        () => reject(new Error("Failed to load PayPal SDK.")),
         { once: true },
       );
     });
@@ -763,7 +766,17 @@ function loadPayPalSdk() {
   return new Promise((resolve, reject) => {
     const script = document.createElement("script");
     script.id = PAYPAL_SDK_SCRIPT_ID;
-    script.src = PAYPAL_SDK_URL;
+
+    const normalizedEnvironment =
+      String(environment || "")
+        .trim()
+        .toLowerCase();
+
+    script.src =
+      normalizedEnvironment === "live"
+        ? PAYPAL_LIVE_SDK_URL
+        : PAYPAL_SANDBOX_SDK_URL;
+
     script.async = true;
 
     script.onload = () => {
@@ -775,7 +788,7 @@ function loadPayPalSdk() {
     };
 
     script.onerror = () => {
-      reject(new Error("Failed to load PayPal Sandbox SDK."));
+      reject(new Error("Failed to load PayPal SDK."));
     };
 
     document.head.appendChild(script);
@@ -795,9 +808,18 @@ async function fetchPayPalClientConfig() {
     throw new Error(data?.message || "PayPal configuration is unavailable.");
   }
 
-  if (String(data.environment || "").toLowerCase() !== "sandbox") {
-    throw new Error("PayPal is not currently configured for Sandbox mode.");
+  const environment =
+    String(data.environment || "")
+      .trim()
+      .toLowerCase();
+
+  if (!["sandbox", "live"].includes(environment)) {
+    throw new Error(
+      "PayPal environment must be either sandbox or live.",
+    );
   }
+
+  data.environment = environment;
 
   return data;
 }
@@ -934,7 +956,7 @@ async function createPayPalOrderForCheckout() {
   setPayPalStatus(
     reservation.reused
       ? "Reopening your existing PayPal checkout..."
-      : "Creating PayPal Sandbox order...",
+      : "Creating PayPal order...",
     "info",
   );
 
@@ -1010,15 +1032,15 @@ async function preparePayPalCheckout() {
   }
 
   paypalSetupPromise = (async () => {
-    setPayPalStatus("Loading PayPal Sandbox...", "info");
+    setPayPalStatus("Loading PayPal...", "info");
 
-    const [config] = await Promise.all([
-      fetchPayPalClientConfig(),
-      loadPayPalSdk(),
-    ]);
+    const config =
+      await fetchPayPalClientConfig();
+
+    await loadPayPalSdk(config.environment);
 
     if (!window.paypal?.createInstance) {
-      throw new Error("PayPal Sandbox SDK is unavailable.");
+      throw new Error("PayPal SDK is unavailable.");
     }
 
     paypalSdkInstance = await window.paypal.createInstance({
@@ -1033,7 +1055,7 @@ async function preparePayPalCheckout() {
 
     if (!paymentMethods?.isEligible?.("paypal")) {
       throw new Error(
-        "PayPal checkout is not eligible in this Sandbox session.",
+        "PayPal checkout is not eligible in this session.",
       );
     }
 
@@ -1130,7 +1152,7 @@ async function preparePayPalCheckout() {
           isSubmittingReservation = true;
 
           setPayPalStatus(
-            "Preparing PayPal Sandbox checkout...",
+            "Preparing PayPal checkout...",
             "info",
           );
 
@@ -1160,7 +1182,7 @@ async function preparePayPalCheckout() {
     }
 
     setPayPalStatus(
-      "PayPal Sandbox is ready. Click the PayPal button to continue.",
+      "PayPal is ready. Click the PayPal button to continue.",
       "success",
     );
   })();
