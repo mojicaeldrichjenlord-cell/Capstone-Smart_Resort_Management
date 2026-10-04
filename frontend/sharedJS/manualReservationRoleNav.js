@@ -4,14 +4,17 @@
 // File:
 // frontend/sharedJS/manualReservationRoleNav.js
 //
-// Front Desk navigation:
-// Dashboard | Reservations | Payments | Guests | Manual Reservation | Logout
+// Final role rule:
+// - Manual Reservation is a Front Desk operation.
+// - Administrator accounts are redirected back to the Admin dashboard.
+// - Legacy "staff" is normalized to Front Desk.
 // ============================================================
 
 document.addEventListener("DOMContentLoaded", () => {
   const user = getManualPageUser();
 
   if (!user) {
+    window.location.replace("../authHTML/login.html");
     return;
   }
 
@@ -24,8 +27,19 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   if (role === "admin") {
-    configureAdministratorManualPage();
+    window.location.replace("admin.html");
+    return;
   }
+
+  const routes = {
+    customer: "../customerHTML/index.html",
+    manager: "../managerHTML/managerDashboard.html",
+    housekeeping: "../housekeepingHTML/housekeepingDashboard.html",
+  };
+
+  window.location.replace(
+    routes[role] || "../authHTML/login.html",
+  );
 });
 
 // ============================================================
@@ -54,33 +68,15 @@ function normalizeManualPageRole(role) {
 }
 
 // ============================================================
-// SECTION 2: Administrator navigation
-// ============================================================
-
-function configureAdministratorManualPage() {
-  const logo = document.getElementById("manualRoleLogo");
-
-  if (logo) {
-    logo.textContent = "SmartResort Admin";
-  }
-
-  document.querySelectorAll("[data-admin-only]").forEach((element) => {
-    element.hidden = false;
-  });
-
-  document.querySelectorAll("[data-dashboard-link]").forEach((element) => {
-    element.href = "admin.html";
-  });
-}
-
-// ============================================================
-// SECTION 3: Front Desk navigation
+// SECTION 2: Front Desk navigation
 // ============================================================
 
 function configureFrontDeskManualPage() {
   const logo = document.getElementById("manualRoleLogo");
   const nav = document.getElementById("manualRoleNav");
-  const manualLink = document.querySelector("[data-manual-reservation-link]");
+  const manualLink = document.querySelector(
+    "[data-manual-reservation-link]",
+  );
 
   if (logo) {
     logo.textContent = "Arvic Seaside";
@@ -91,10 +87,12 @@ function configureFrontDeskManualPage() {
     "SmartResort Front Desk",
   );
 
-  document.querySelectorAll("[data-admin-only]").forEach((element) => {
-    element.hidden = true;
-    element.style.display = "none";
-  });
+  document
+    .querySelectorAll("[data-admin-only]")
+    .forEach((element) => {
+      element.hidden = true;
+      element.style.display = "none";
+    });
 
   if (nav && manualLink) {
     addFrontDeskNavLink({
@@ -126,12 +124,20 @@ function configureFrontDeskManualPage() {
     });
   }
 
-  document.querySelectorAll("[data-dashboard-link]").forEach((element) => {
-    element.href = "../frontdeskHTML/frontdeskDashboard.html";
-  });
+  document
+    .querySelectorAll("[data-dashboard-link]")
+    .forEach((element) => {
+      element.href =
+        "../frontdeskHTML/frontdeskDashboard.html";
+    });
 }
 
-function addFrontDeskNavLink({ id, href, label, before }) {
+function addFrontDeskNavLink({
+  id,
+  href,
+  label,
+  before,
+}) {
   if (document.getElementById(id)) {
     return;
   }
@@ -142,17 +148,23 @@ function addFrontDeskNavLink({ id, href, label, before }) {
   link.href = href;
   link.textContent = label;
 
-  before.parentElement?.insertBefore(link, before);
+  before.parentElement?.insertBefore(
+    link,
+    before,
+  );
 }
 
 // ============================================================
-// SECTION 4: Successful Front Desk submission redirect
+// SECTION 3: Successful Front Desk submission redirect
 // ============================================================
 
 function setupFrontDeskSuccessfulReservationRedirect() {
-  const isPaymentPage = window.location.pathname
-    .toLowerCase()
-    .endsWith("/admin-walkin-payment.html");
+  const isPaymentPage =
+    window.location.pathname
+      .toLowerCase()
+      .endsWith(
+        "/admin-walkin-payment.html",
+      );
 
   if (!isPaymentPage) {
     return;
@@ -172,11 +184,9 @@ function setupFrontDeskSuccessfulReservationRedirect() {
     );
   };
 
-  // ----------------------------------------------------------
   // Fallback A:
-  // If the successful payment page unexpectedly reloaded, the payment JS
-  // leaves this hash marker in the URL.
-  // ----------------------------------------------------------
+  // If the successful payment page unexpectedly reloaded,
+  // the payment JS leaves this hash marker in the URL.
   if (
     window.location.hash ===
     "#manual-reservation-created"
@@ -185,12 +195,12 @@ function setupFrontDeskSuccessfulReservationRedirect() {
     return;
   }
 
-  // ----------------------------------------------------------
   // Fallback B:
   // Watch the payment page success message.
-  // ----------------------------------------------------------
   const messageElement =
-    document.getElementById("adminPaymentMessage");
+    document.getElementById(
+      "adminPaymentMessage",
+    );
 
   if (!messageElement) {
     return;
@@ -209,7 +219,9 @@ function setupFrontDeskSuccessfulReservationRedirect() {
 
     const looksSuccessful =
       message.includes("success") ||
-      message.includes("created successfully");
+      message.includes(
+        "created successfully",
+      );
 
     if (!looksSuccessful) {
       return;

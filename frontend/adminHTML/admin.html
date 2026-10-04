@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Admin Dashboard | SmartResort</title>
+
     <link rel="stylesheet" href="../sharedCSS/global.css" />
     <link rel="stylesheet" href="../css/style.css" />
     <link rel="stylesheet" href="../adminCSS/admin.css" />
@@ -12,10 +13,9 @@
   <body class="has-fixed-navbar">
     <header class="navbar">
       <div class="logo">SmartResort Admin</div>
+
       <nav>
         <a href="admin.html">Bookings</a>
-        <a href="admin-walkin.html">Manual Reservation</a>
-        <a href="admin-guests-inside.html">Guests Inside</a>
         <a href="admin-rooms.html">Accommodations</a>
         <a href="admin-map-editor.html">Map Editor</a>
         <a href="admin-reports.html">Reports</a>
@@ -26,38 +26,89 @@
 
     <main class="admin-wrapper">
       <section class="admin-hero">
-        <h1>Admin Reservation Dashboard</h1>
+        <h1>Admin Reservation Monitoring</h1>
+
         <p>
-          Manage online and manual reservations, monitor today’s resort
-          activity, check in arriving guests, track payment progress, and review
-          all reservation records in one dashboard.
+          Monitor reservation and payment records, review receipts and payment
+          proof, and manage resort system configuration. Daily onsite operations
+          such as manual reservations, payment verification, check-in, guest
+          adjustments, charges, and checkout are handled by Front Desk.
         </p>
+
         <div class="hero-actions">
-          <a href="admin-walkin.html" class="hero-btn primary">+ Create Manual Reservation</a>
-          <a href="admin-guests-inside.html" class="hero-btn secondary">View Guests Inside</a>
-          <a href="admin-rooms.html" class="hero-btn secondary">Manage Accommodations</a>
+          <a href="admin-rooms.html" class="hero-btn primary">
+            Manage Accommodations
+          </a>
+
+          <a href="admin-map-editor.html" class="hero-btn secondary">
+            Manage Map
+          </a>
+
+          <a href="admin-reports.html" class="hero-btn secondary">
+            View Reports
+          </a>
         </div>
       </section>
 
       <section class="admin-overview-grid">
-        <div class="overview-card"><div class="overview-label">Total Reservations</div><div class="overview-value" id="totalBookings">0</div><div class="overview-note">Today's online and manual records</div></div>
-        <div class="overview-card"><div class="overview-label">Partially Paid</div><div class="overview-value" id="partiallyPaidCount">0</div><div class="overview-note">Downpayment paid / balance onsite</div></div>
-        <div class="overview-card"><div class="overview-label">Approved</div><div class="overview-value" id="approvedCount">0</div><div class="overview-note">Confirmed reservations</div></div>
-        <div class="overview-card"><div class="overview-label">Paid</div><div class="overview-value" id="paidCount">0</div><div class="overview-note">Fully paid bookings</div></div>
-        <div class="overview-card"><div class="overview-label">Online Today</div><div class="overview-value" id="onlineToday">0</div><div class="overview-note">Customer online reservations today</div></div>
-        <div class="overview-card"><div class="overview-label">Walk-ins Today</div><div class="overview-value" id="walkinToday">0</div><div class="overview-note">Manual reservations today</div></div>
-        <div class="overview-card"><div class="overview-label">Guests Inside</div><div class="overview-value" id="guestsInside">0</div><div class="overview-note">Checked-in guests currently inside</div></div>
-        <div class="overview-card"><div class="overview-label">Today Revenue</div><div class="overview-value" id="todayRevenue">₱0</div><div class="overview-note">Based on paid amount today</div></div>
+        <div class="overview-card">
+          <div class="overview-label">Total Reservations</div>
+          <div class="overview-value" id="totalBookings">0</div>
+          <div class="overview-note">All reservation records</div>
+        </div>
+
+        <div class="overview-card">
+          <div class="overview-label">Partially Paid</div>
+          <div class="overview-value" id="partiallyPaidCount">0</div>
+          <div class="overview-note">Reservations with remaining accommodation balance</div>
+        </div>
+
+        <div class="overview-card">
+          <div class="overview-label">Approved</div>
+          <div class="overview-value" id="approvedCount">0</div>
+          <div class="overview-note">Confirmed reservations</div>
+        </div>
+
+        <div class="overview-card">
+          <div class="overview-label">Paid</div>
+          <div class="overview-value" id="paidCount">0</div>
+          <div class="overview-note">Fully paid accommodation records</div>
+        </div>
+
+        <div class="overview-card">
+          <div class="overview-label">Online Today</div>
+          <div class="overview-value" id="onlineToday">0</div>
+          <div class="overview-note">Customer online reservations created today</div>
+        </div>
+
+        <div class="overview-card">
+          <div class="overview-label">Manual Today</div>
+          <div class="overview-value" id="walkinToday">0</div>
+          <div class="overview-note">Front Desk manual reservations created today</div>
+        </div>
+
+        <div class="overview-card">
+          <div class="overview-label">Guests Inside</div>
+          <div class="overview-value" id="guestsInside">0</div>
+          <div class="overview-note">Currently checked-in guests</div>
+        </div>
+
+        <div class="overview-card">
+          <div class="overview-label">Today Revenue</div>
+          <div class="overview-value" id="todayRevenue">₱0</div>
+          <div class="overview-note">Collected amounts recorded today</div>
+        </div>
       </section>
 
       <section class="admin-panel">
         <div class="panel-header">
           <div>
             <h2>Search and Filter</h2>
+
             <p>
-              Default view shows active/current reservations only. Completed,
-              cancelled, and rejected records are still searchable and available
-              through the status filter.
+              Active/current reservations are shown by default. Completed,
+              cancelled, and rejected records remain available through search
+              and filters.
             </p>
           </div>
         </div>
@@ -65,10 +116,17 @@
         <div class="filter-grid">
           <div class="filter-item">
             <label for="searchInput">Search</label>
-            <input type="text" id="searchInput" placeholder="Search reservation code, name, phone, email, accommodation..." />
+
+            <input
+              type="text"
+              id="searchInput"
+              placeholder="Search reservation code, guest, phone, email, accommodation..."
+            />
           </div>
+
           <div class="filter-item">
             <label for="statusFilter">Reservation Status</label>
+
             <select id="statusFilter">
               <option value="active" selected>Active / Current</option>
               <option value="pending">Pending</option>
@@ -79,8 +137,10 @@
               <option value="all">All Records</option>
             </select>
           </div>
+
           <div class="filter-item">
             <label for="paymentStatusFilter">Payment Status</label>
+
             <select id="paymentStatusFilter">
               <option value="">All</option>
               <option value="pending">Pending</option>
@@ -90,13 +150,16 @@
               <option value="rejected">Rejected</option>
             </select>
           </div>
+
           <div class="filter-item">
             <label for="paymentMethodFilter">Payment Method</label>
+
             <select id="paymentMethodFilter">
               <option value="">All</option>
               <option value="cash">Cash</option>
               <option value="gcash">GCash</option>
-              <option value="paymaya">PayMaya</option>
+              <option value="paymaya">Maya</option>
+              <option value="paypal">PayPal</option>
             </select>
           </div>
         </div>
@@ -106,12 +169,15 @@
         <div class="panel-header">
           <div>
             <h2>Reservation Records</h2>
+
             <p>
-              Active/current reservations are shown by default. Use search or
-              filters to review completed, cancelled, rejected, pending, and
-              approved records.
+              Admin monitoring view. Payment verification, check-in, guest
+              adjustments, onsite collections, and checkout are handled by
+              Front Desk. Admin may still review receipts, proof, and perform
+              an administrative reservation cancellation before check-in.
             </p>
           </div>
+
           <button id="refreshBtn" class="refresh-btn">Refresh</button>
         </div>
 
@@ -119,11 +185,36 @@
           <table class="admin-table">
             <thead>
               <tr>
-                <th>ID</th><th>Reservation Code</th><th>Source</th><th>Customer</th><th>Phone</th><th>Email</th><th>Accommodation</th><th>Check In Date</th><th>Check In Time</th><th>Check Out Date</th><th>Check Out Time</th><th>Guests</th><th>Total</th><th>Down Payment</th><th>Reservation Status</th><th>Payment Method</th><th>Payment Reference</th><th>Proof</th><th>Payment Status</th><th>Created</th><th>Actions</th>
+                <th>ID</th>
+                <th>Reservation Code</th>
+                <th>Source</th>
+                <th>Customer</th>
+                <th>Phone</th>
+                <th>Email</th>
+                <th>Accommodation</th>
+                <th>Check In Date</th>
+                <th>Check In Time</th>
+                <th>Check Out Date</th>
+                <th>Check Out Time</th>
+                <th>Guests</th>
+                <th>Total</th>
+                <th>Down Payment</th>
+                <th>Reservation Status</th>
+                <th>Payment Method</th>
+                <th>Payment Reference</th>
+                <th>Proof</th>
+                <th>Payment Status</th>
+                <th>Created</th>
+                <th>Actions</th>
               </tr>
             </thead>
+
             <tbody id="adminBookingsTableBody">
-              <tr><td colspan="21" class="table-message">Loading reservations...</td></tr>
+              <tr>
+                <td colspan="21" class="table-message">
+                  Loading reservations...
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
