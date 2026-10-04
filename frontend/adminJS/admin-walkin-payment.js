@@ -34,8 +34,11 @@ const ADMIN_FRONTDESK_PAYPAL_PENDING_KEY =
 const PAYPAL_SDK_SCRIPT_ID =
   "paypal-web-sdk-v6-frontdesk";
 
-const PAYPAL_SDK_URL =
+const PAYPAL_SANDBOX_SDK_URL =
   "https://www.sandbox.paypal.com/web-sdk/v6/core";
+
+const PAYPAL_LIVE_SDK_URL =
+  "https://www.paypal.com/web-sdk/v6/core";
 
 let walkInDraft = null;
 let availableAccommodations = [];
@@ -1324,7 +1327,7 @@ function updatePaymentRequirementUI() {
 
       setFrontDeskPayPalStatus(
         error.message ||
-          "Unable to prepare PayPal Sandbox.",
+          "Unable to prepare PayPal.",
         "error",
       );
     });
@@ -2412,7 +2415,7 @@ async function createFrontDeskPayPalOrder() {
   setFrontDeskPayPalStatus(
     reservation.reused
       ? "Reopening the existing PayPal checkout..."
-      : "Creating PayPal Sandbox order...",
+      : "Creating PayPal order...",
     "info",
   );
 
@@ -2492,7 +2495,7 @@ async function captureFrontDeskPayPalOrder(
   return data;
 }
 
-function loadFrontDeskPayPalSdk() {
+function loadFrontDeskPayPalSdk(environment = "sandbox") {
   if (window.paypal?.createInstance) {
     return Promise.resolve();
   }
@@ -2520,7 +2523,7 @@ function loadFrontDeskPayPalSdk() {
         () =>
           reject(
             new Error(
-              "Failed to load PayPal Sandbox SDK.",
+              "Failed to load PayPal SDK.",
             ),
           ),
         { once: true },
@@ -2533,7 +2536,17 @@ function loadFrontDeskPayPalSdk() {
       document.createElement("script");
 
     script.id = PAYPAL_SDK_SCRIPT_ID;
-    script.src = PAYPAL_SDK_URL;
+
+    const normalizedEnvironment =
+      String(environment || "")
+        .trim()
+        .toLowerCase();
+
+    script.src =
+      normalizedEnvironment === "live"
+        ? PAYPAL_LIVE_SDK_URL
+        : PAYPAL_SANDBOX_SDK_URL;
+
     script.async = true;
 
     script.onload = () => {
@@ -2551,7 +2564,7 @@ function loadFrontDeskPayPalSdk() {
     script.onerror = () => {
       reject(
         new Error(
-          "Failed to load PayPal Sandbox SDK.",
+          "Failed to load PayPal SDK.",
         ),
       );
     };
@@ -2584,15 +2597,18 @@ async function fetchFrontDeskPayPalConfig() {
     );
   }
 
-  if (
-    String(
-      data.environment || "",
-    ).toLowerCase() !== "sandbox"
-  ) {
+  const environment =
+    String(data.environment || "")
+      .trim()
+      .toLowerCase();
+
+  if (!["sandbox", "live"].includes(environment)) {
     throw new Error(
-      "PayPal is not currently configured for Sandbox mode.",
+      "PayPal environment must be either sandbox or live.",
     );
   }
+
+  data.environment = environment;
 
   return data;
 }
@@ -2612,7 +2628,7 @@ async function prepareFrontDeskPayPalCheckout() {
     button?.removeAttribute("hidden");
 
     setFrontDeskPayPalStatus(
-      "PayPal Sandbox is ready. Click the PayPal button to continue.",
+      "PayPal is ready. Click the PayPal button to continue.",
       "success",
     );
 
@@ -2625,14 +2641,16 @@ async function prepareFrontDeskPayPalCheckout() {
 
   frontDeskPayPalSetupPromise = (async () => {
     setFrontDeskPayPalStatus(
-      "Loading PayPal Sandbox...",
+      "Loading PayPal...",
       "info",
     );
 
-    const [config] = await Promise.all([
-      fetchFrontDeskPayPalConfig(),
-      loadFrontDeskPayPalSdk(),
-    ]);
+    const config =
+      await fetchFrontDeskPayPalConfig();
+
+    await loadFrontDeskPayPalSdk(
+      config.environment,
+    );
 
     frontDeskPayPalSdkInstance =
       await window.paypal.createInstance({
@@ -2652,7 +2670,7 @@ async function prepareFrontDeskPayPalCheckout() {
       !paymentMethods?.isEligible?.("paypal")
     ) {
       throw new Error(
-        "PayPal checkout is not eligible in this Sandbox session.",
+        "PayPal checkout is not eligible in this session.",
       );
     }
 
@@ -2789,7 +2807,7 @@ async function prepareFrontDeskPayPalCheckout() {
             isSubmittingManualReservation = true;
 
             setFrontDeskPayPalStatus(
-              "Preparing PayPal Sandbox checkout...",
+              "Preparing PayPal checkout...",
               "info",
             );
 
@@ -2826,7 +2844,7 @@ async function prepareFrontDeskPayPalCheckout() {
     }
 
     setFrontDeskPayPalStatus(
-      "PayPal Sandbox is ready. Click the PayPal button to continue.",
+      "PayPal is ready. Click the PayPal button to continue.",
       "success",
     );
   })();

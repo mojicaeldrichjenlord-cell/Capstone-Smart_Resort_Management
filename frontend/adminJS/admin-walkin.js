@@ -1,29 +1,13 @@
-// ============================================================
-// SMARTRESORT ADMIN WALK-IN SCRIPT
-// Purpose:
-// - Check admin access
-// - Load available accommodations
-// - Build manual reservation items
-// - Searchable accommodation picker
-// - Compute estimated entrance fee and down payment
-// - Save draft to sessionStorage
-// - Continue to manual payment screen
-// - Works from frontend/adminHTML/admin-walkin.html
-// ============================================================
-
 const ADMIN_WALKIN_DRAFT_KEY = "smartresort_admin_walkin_draft_v2";
 const ADMIN_WALKIN_SUCCESS_RESET_KEY = "smartresort_admin_walkin_success_reset";
 
 let availableAccommodations = [];
 let bookingItemCounter = 0;
 
-// ============================================================
-// SECTION 1: Page startup
-// Checks admin access, loads rooms, sets events, and restores draft.
-// ============================================================
-
 document.addEventListener("DOMContentLoaded", async () => {
-  checkAdminAccess();
+  if (!checkAdminAccess()) {
+    return;
+  }
   setupLogout();
   setupGlobalPickerClose();
   prepareManualReservationDraft();
@@ -47,7 +31,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     refreshAllAccommodationPickers();
     updateSummary();
 
-    // Some browsers apply autofill after DOMContentLoaded.
     setTimeout(() => {
       forceClearManualForm();
       ensureAtLeastOneBookingItem();
@@ -57,32 +40,63 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 });
 
-// ============================================================
-// SECTION 2: Administrator / Front Desk access checker
-// Redirects unauthenticated users or accounts without manual-reservation access.
-// ============================================================
-
 function checkAdminAccess() {
-  const user = JSON.parse(localStorage.getItem("user"));
+  let user = null;
+
+  try {
+    user = JSON.parse(
+      localStorage.getItem("user") || "null",
+    );
+  } catch (error) {
+    console.error(
+      "Manual reservation user parse error:",
+      error,
+    );
+  }
 
   if (!user) {
     alert("Please login first.");
-    window.location.href = "../authHTML/login.html";
-    return;
+
+    window.location.replace(
+      "../authHTML/login.html",
+    );
+
+    return false;
   }
 
-  const role = String(user.role || "").toLowerCase();
+  let role = String(user.role || "")
+    .trim()
+    .toLowerCase();
 
-  if (!["admin", "frontdesk"].includes(role)) {
-    alert("Access denied. Administrator or Front Desk account required.");
-    window.location.href = "../index.html";
+  if (role === "staff") {
+    role = "frontdesk";
   }
+
+  if (role === "frontdesk") {
+    return true;
+  }
+
+  const routes = {
+    admin: "admin.html",
+    manager:
+      "../managerHTML/managerDashboard.html",
+    housekeeping:
+      "../housekeepingHTML/housekeepingDashboard.html",
+    customer:
+      "../customerHTML/index.html",
+  };
+
+  alert(
+    "Access denied. Manual reservations are handled by Front Desk.",
+  );
+
+  window.location.replace(
+    routes[role] ||
+      "../authHTML/login.html",
+  );
+
+  return false;
 }
-
-// ============================================================
-// SECTION 3: Logout
-// Clears localStorage user and returns to auth login page.
-// ============================================================
 
 function setupLogout() {
   const logoutBtn = document.getElementById("logoutBtn");
@@ -102,11 +116,6 @@ function setupLogout() {
     }, 700);
   });
 }
-
-// ============================================================
-// SECTION 4: Load available accommodations
-// Gets accommodation records from backend.
-// ============================================================
 
 async function loadAccommodations() {
   try {
@@ -142,11 +151,6 @@ async function loadAccommodations() {
   }
 }
 
-// ============================================================
-// SECTION 5: Setup manual reservation form
-// Connects add item, input changes, and form submit.
-// ============================================================
-
 function setupManualForm() {
   const addItemBtn = document.getElementById("addItemBtn");
   const form = document.getElementById("walkInForm");
@@ -177,12 +181,6 @@ function setupManualForm() {
     form.addEventListener("submit", goToPaymentScreen);
   }
 }
-
-
-// ============================================================
-// SECTION 5.1: Manual reservation type
-// Adds a clear choice between walk-in and Facebook/Messenger booking.
-// ============================================================
 
 function setupReservationTypeField() {
   if (document.getElementById("manualReservationType")) {
@@ -230,18 +228,6 @@ function formatManualReservationType(type) {
   return type === "facebook" ? "Facebook / Messenger Reservation" : "Walk-in Guest";
 }
 
-
-// ============================================================
-// SECTION 5.2: Manual reservation date rules
-//
-// Final rule:
-// - Walk-in Guest = TODAY ONLY because the guest is already onsite.
-// - Facebook / Messenger = TODAY OR FUTURE.
-//
-// This protects the manual reservation UI from creating a future reservation
-// that is immediately auto-checked-in as a walk-in.
-// ============================================================
-
 function setupManualReservationDateRules() {
   const reservationType = document.getElementById("manualReservationType");
 
@@ -288,13 +274,10 @@ function applyManualReservationDateRules() {
     dateInput.min = today;
 
     if (reservationType === "walkin") {
-      // Walk-in means the guest is physically onsite now.
-      // Force every accommodation item to today's date.
       dateInput.max = today;
       dateInput.value = today;
       dateInput.title = "Walk-in reservations are limited to today only.";
     } else {
-      // Facebook/Messenger reservations may be today or a future date.
       dateInput.removeAttribute("max");
       dateInput.title =
         "Facebook/Messenger reservations may use today or a future date.";
@@ -349,11 +332,6 @@ function validateManualReservationDates(items, reservationType) {
   };
 }
 
-// ============================================================
-// SECTION 5.1: Contact number validation
-// Keeps contact number numeric and exactly 11 digits, starting with 09.
-// ============================================================
-
 function setupContactNumberInputGuard() {
   const contactInput = document.getElementById("contactNo");
   if (!contactInput) return;
@@ -373,11 +351,6 @@ function setupContactNumberInputGuard() {
 function isValidPhilippineMobileNumber(contactNo) {
   return /^09\d{9}$/.test(String(contactNo || "").trim());
 }
-
-// ============================================================
-// SECTION 6: Continue to payment screen
-// Saves walk-in reservation draft and redirects to payment page.
-// ============================================================
 
 function goToPaymentScreen(e) {
   e.preventDefault();
@@ -434,11 +407,6 @@ function goToPaymentScreen(e) {
 
   window.location.href = "admin-walkin-payment.html";
 }
-
-// ============================================================
-// SECTION 7: Add booking item card
-// Creates one accommodation selector card.
-// ============================================================
 
 function addBookingItem(preselectedId = null) {
   const wrap = document.getElementById("bookingItemsWrap");
@@ -598,10 +566,6 @@ function addBookingItem(preselectedId = null) {
   applyManualReservationDateRules();
 }
 
-// ============================================================
-// SECTION 8: Searchable accommodation picker
-// ============================================================
-
 function bindAccommodationPicker(card, itemId) {
   const pickerButton = card.querySelector(".accommodation-picker-button");
   const pickerPanel = card.querySelector(".accommodation-picker-panel");
@@ -734,13 +698,6 @@ function setupGlobalPickerClose() {
   });
 }
 
-// ============================================================
-// SECTION 9: Manual draft/session handling
-// - New manual reservation from navbar/dashboard starts blank.
-// - Back from payment page restores draft for editing.
-// - Create Another after success starts blank.
-// ============================================================
-
 function refreshAllAccommodationPickers() {
   document.querySelectorAll(".booking-item-card").forEach((card) => {
     const itemId = Number(card.dataset.itemId || 0);
@@ -836,11 +793,6 @@ function ensureAtLeastOneBookingItem() {
   }
 }
 
-// ============================================================
-// SECTION 10: Restore draft
-// Restores data only when returning from payment screen.
-// ============================================================
-
 function restoreDraftIfAny() {
   const raw = sessionStorage.getItem(ADMIN_WALKIN_DRAFT_KEY);
   if (!raw) return;
@@ -892,11 +844,6 @@ function restoreDraftIfAny() {
   }
 }
 
-// ============================================================
-// SECTION 10: Refresh item titles after remove
-// Keeps item numbering readable.
-// ============================================================
-
 function refreshTitles() {
   const cards = [...document.querySelectorAll(".booking-item-card")];
 
@@ -922,11 +869,6 @@ function refreshTitles() {
     }
   });
 }
-
-// ============================================================
-// SECTION 11: Accommodation helpers
-// Gets selected accommodation and available slot options.
-// ============================================================
 
 function getAccommodationById(id) {
   return (
@@ -1015,12 +957,6 @@ function getSlotOptions(accommodation) {
   ];
 }
 
-// ============================================================
-// SECTION 12: Populate slot dropdown
-// Updates slot options based on selected accommodation.
-// ============================================================
-
-
 function getStayDuration(item) {
   return Math.max(1, Math.min(5, Number(item?.stay_duration || 1)));
 }
@@ -1095,11 +1031,6 @@ function populateSlotOptions(itemId) {
   populateStayDurationOptions(itemId);
 }
 
-// ============================================================
-// SECTION 13: Update item preview
-// Shows selected accommodation schedule, price, and map label.
-// ============================================================
-
 function updateItemPreview(itemId) {
   const card = document.querySelector(
     `.booking-item-card[data-item-id="${itemId}"]`
@@ -1167,11 +1098,6 @@ function updateItemPreview(itemId) {
   `;
 }
 
-// ============================================================
-// SECTION 14: Collect booking items
-// Gets selected accommodation, slot, and date from all cards.
-// ============================================================
-
 function collectBookingItems() {
   const cards = [...document.querySelectorAll(".booking-item-card")];
   const items = [];
@@ -1199,11 +1125,6 @@ function collectBookingItems() {
   return items;
 }
 
-// ============================================================
-// SECTION 15: Calculate checkout date
-// Handles overnight slots where checkout date becomes next day.
-// ============================================================
-
 function calculateCheckOutDate(checkInDate, startTime, endTime, stayDuration = 1) {
   if (!checkInDate || !startTime || !endTime) return checkInDate || "-";
 
@@ -1226,13 +1147,6 @@ function calculateCheckOutDate(checkInDate, startTime, endTime, stayDuration = 1
   return checkInDate;
 }
 
-// ============================================================
-// SECTION 15.1: Local date formatter
-// Converts a Date object to YYYY-MM-DD without UTC timezone shifting.
-// This fixes the missing toInputDateValue() error used by Night and
-// Day/Night 22/23 Hours checkout-date calculations.
-// ============================================================
-
 function toInputDateValue(dateValue) {
   const date =
     dateValue instanceof Date
@@ -1249,11 +1163,6 @@ function toInputDateValue(dateValue) {
 
   return `${year}-${month}-${day}`;
 }
-
-// ============================================================
-// SECTION 16: Entrance fee calculation
-// Estimates entrance fee after free entrance pax deduction.
-// ============================================================
 
 function getTotalFreeEntrancePax(items, guestCount) {
   let total = 0;
@@ -1293,11 +1202,6 @@ function getEstimatedEntranceFee() {
   return chargeableGuests * rate;
 }
 
-// ============================================================
-// SECTION 17: Update summary
-// Updates all amount preview boxes.
-// ============================================================
-
 function updateSummary() {
   const items = collectBookingItems();
 
@@ -1330,11 +1234,6 @@ function updateSummary() {
   document.getElementById("highlightRemainingBalance").textContent = `₱${formatMoney(remainingBalance)}`;
   document.getElementById("highlightEntranceFee").textContent = `₱${formatMoney(estimatedEntranceFee)}`;
 }
-
-// ============================================================
-// SECTION 18: Format helpers
-// Formats money, time, dates, messages, and safe HTML.
-// ============================================================
 
 function formatMoney(value) {
   return Number(value || 0).toLocaleString(undefined, {
