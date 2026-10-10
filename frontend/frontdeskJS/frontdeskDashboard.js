@@ -1,12 +1,14 @@
 // ============================================================
 // SMARTRESORT FRONT DESK DASHBOARD
-// Create: frontend/frontdeskJS/frontdeskDashboard.js
+// File: frontend/frontdeskJS/frontdeskDashboard.js
+// Logout security: clear both Front Desk authentication token and user session.
 // ============================================================
 
 document.addEventListener("DOMContentLoaded", () => {
   const user = getLoggedInUser();
 
   if (!user) {
+    clearFrontDeskSession();
     window.location.href = "../authHTML/login.html";
     return;
   }
@@ -21,7 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (
     String(user.account_status || "active").toLowerCase() === "disabled"
   ) {
-    localStorage.removeItem("user");
+    clearFrontDeskSession();
     window.location.href = "../authHTML/login.html";
     return;
   }
@@ -51,12 +53,18 @@ function renderAccount(user) {
   if (email) email.textContent = user.email || "-";
 }
 
+function clearFrontDeskSession() {
+  sessionStorage.removeItem("frontDeskToken");
+  localStorage.removeItem("user");
+}
+
 function setupLogout() {
   const logoutBtn = document.getElementById("logoutBtn");
   if (!logoutBtn) return;
 
-  logoutBtn.addEventListener("click", () => {
-    localStorage.removeItem("user");
+  logoutBtn.addEventListener("click", (event) => {
+    event.preventDefault();
+    clearFrontDeskSession();
 
     if (typeof showToast === "function") {
       showToast("Logged out successfully.", "success");

@@ -39,6 +39,55 @@ const {
 } = require("../middleware/manualReservationDateGuard");
 
 /* ======================================================
+   MANUAL RESERVATION AUTHORIZATION
+   - Validate a signed token and active Front Desk role before upload.
+   - Never trust client-provided created_by; bind it to the token.
+====================================================== */
+const {
+  requireFrontDeskAuth,
+} = require("../middleware/frontDeskAuth");
+
+function bindAuthenticatedFrontDeskCreator(req, res, next) {
+  const creatorId = Number(req.frontDeskUser?.id);
+  if (!Number.isSafeInteger(creatorId) || creatorId <= 0) {
+    return res.status(401).json({
+      message: "Please log in to your Front Desk account again.",
+    });
+  }
+
+  try {
+    if (req.body && Object.prototype.hasOwnProperty.call(req.body, "payload")) {
+      const payload = typeof req.body.payload === "string"
+        ? JSON.parse(req.body.payload)
+        : req.body.payload;
+
+      if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+        return res.status(400).json({
+          message: "Invalid reservation payload format.",
+        });
+      }
+
+      // The booking controller reads and parses req.body.payload.
+      req.body.payload = JSON.stringify({
+        ...payload,
+        created_by: creatorId,
+      });
+    } else {
+      req.body = {
+        ...(req.body || {}),
+        created_by: creatorId,
+      };
+    }
+
+    return next();
+  } catch (error) {
+    return res.status(400).json({
+      message: "Invalid reservation payload format.",
+    });
+  }
+}
+
+/* ======================================================
    BOOKING CHARGE CONTROLLER
    Used for admin/staff additional charges before checkout.
 ====================================================== */
@@ -138,18 +187,20 @@ const upload = multer({
    BOOKING CREATE ROUTES
 ====================================================== */
 
-// Current temporary online flow:
-// customer submits GCash/Maya proof for verification.
-// PayPal Sandbox automation will replace this in Phase 2.
+// Customer online reservation flow is unchanged.
 router.post(
   "/",
   upload.single("proof_image"),
   createBooking,
 );
 
+// Only authenticated Front Desk users can create manual reservations.
+// Authorization MUST execute before payment proof upload.
 router.post(
   "/walk-in",
+  requireFrontDeskAuth,
   upload.single("proof_image"),
+  bindAuthenticatedFrontDeskCreator,
   validateManualReservationDate,
   createWalkInBooking,
 );

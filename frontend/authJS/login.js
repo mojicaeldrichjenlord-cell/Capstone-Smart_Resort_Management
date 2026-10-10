@@ -4,6 +4,10 @@
 //
 // Final roles:
 // customer, admin, frontdesk, manager, housekeeping
+//
+// Front Desk receives a signed, short-lived bearer token from the
+// backend after successful authentication. The token is stored in
+// sessionStorage, not in the user profile / localStorage.
 // ============================================================
 
 const loginForm = document.getElementById("loginForm");
@@ -118,6 +122,28 @@ if (loginForm) {
         throw new Error(
           "Your account role is not recognized. Please contact the resort administrator.",
         );
+      }
+
+      // The server only issues a Front Desk token after checking the
+      // employee's password, role, and active/verified account status.
+      // Never use the ID or role from localStorage as API authentication.
+      if (role === "frontdesk") {
+        const frontDeskToken = data.frontDeskToken;
+
+        if (
+          typeof frontDeskToken !== "string" ||
+          !/^fd1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(frontDeskToken)
+        ) {
+          throw new Error(
+            "Secure Front Desk login token was not returned. Check backend authentication configuration and log in again.",
+          );
+        }
+
+        sessionStorage.setItem("frontDeskToken", frontDeskToken);
+      } else {
+        // Prevent a prior Front Desk session from being reused after
+        // changing to a different account in this browser tab.
+        sessionStorage.removeItem("frontDeskToken");
       }
 
       localStorage.setItem(
