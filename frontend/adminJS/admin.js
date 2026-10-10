@@ -374,27 +374,10 @@ function updateSummaryCards(bookings) {
       );
     }).length;
 
-  const guestsInside =
-    bookings
-      .filter((booking) => {
-        return (
-          getReservationStatus(
-            booking,
-          ) === "approved" &&
-          isBookingCheckedIn(booking)
-        );
-      })
-      .reduce(
-        (sum, booking) =>
-          sum +
-          Number(
-            booking.guests ??
-              booking.actual_guest_count ??
-              booking.guest_count ??
-              0,
-          ),
-        0,
-      );
+  // Count only active checked-in stays, not expired test stays.
+  // Old checked-in records remain visible for Front Desk follow-up.
+  const guestPresence = getGuestPresenceCounts(bookings);
+  const guestsInside = guestPresence.activeGuests;
 
   const todayRevenue =
     bookings.reduce(
@@ -442,6 +425,14 @@ function updateSummaryCards(bookings) {
     guestsInside,
   );
 
+  const insideNote = document.getElementById("guestsInsideNote");
+  if (insideNote) {
+    const overdue = guestPresence.overdueBookings;
+    insideNote.textContent = overdue
+      ? `Within checkout schedule · ${overdue} overdue checked-in ${overdue === 1 ? "reservation" : "reservations"} for Front Desk review`
+      : "Currently checked-in guests within checkout schedule";
+  }
+
   setText(
     "todayRevenue",
     `₱${formatMoney(todayRevenue)}`,
@@ -467,6 +458,73 @@ function isBookingCheckedIn(booking) {
       booking.is_checked_in || "",
     ).toLowerCase() === "true"
   );
+}
+
+// Returns the latest checkout across all accommodations in a reservation.
+// Date and TIME database values are interpreted as resort-local Manila time.
+function getScheduledLatestCheckoutMs(booking) {
+  const entries =
+    Array.isArray(booking.items) && booking.items.length
+      ? booking.items
+      : [booking];
+
+  const checkoutTimes = entries
+    .map((entry) => {
+      const date = String(
+        entry.check_out_date || entry.check_out || "",
+      ).slice(0, 10);
+      const time = String(entry.check_out_time || "").trim();
+
+      if (
+        !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+        !/^(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?$/.test(time)
+      ) {
+        return NaN;
+      }
+
+      const localTime = time.length === 5 ? `${time}:00` : time;
+      return Date.parse(`${date}T${localTime}+08:00`);
+    })
+    .filter(Number.isFinite);
+
+  return checkoutTimes.length
+    ? Math.max(...checkoutTimes)
+    : null;
+}
+
+function getGuestPresenceCounts(bookings, nowMs = Date.now()) {
+  let activeGuests = 0;
+  let overdueBookings = 0;
+
+  for (const booking of bookings) {
+    if (
+      getReservationStatus(booking) !== "approved" ||
+      !isBookingCheckedIn(booking)
+    ) {
+      continue;
+    }
+
+    const latestCheckoutMs = getScheduledLatestCheckoutMs(booking);
+
+    // Keep an unscheduled checked-in record visible instead of silently
+    // hiding it; only established expired schedules count as overdue.
+    if (latestCheckoutMs !== null && latestCheckoutMs <= nowMs) {
+      overdueBookings += 1;
+      continue;
+    }
+
+    activeGuests += Math.max(
+      0,
+      Number(
+        booking.actual_guest_count ??
+          booking.guests ??
+          booking.guest_count ??
+          0,
+      ) || 0,
+    );
+  }
+
+  return { activeGuests, overdueBookings };
 }
 
 function isDateToday(value, today) {
