@@ -89,8 +89,10 @@ router.put(
   updateAdminBookingStatus,
 );
 
+// Guest counts and extra-guest charges may only be adjusted by Front Desk.
 router.put(
   "/:id/guest-adjustment",
+  requireFrontDeskAuth,
   updateGuestAdjustment,
 );
 

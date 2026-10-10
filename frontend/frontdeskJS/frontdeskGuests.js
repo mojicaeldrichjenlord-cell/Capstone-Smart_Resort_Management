@@ -2002,6 +2002,15 @@ async function saveGuestAdjustment() {
     return;
   }
 
+  const frontDeskToken = sessionStorage.getItem("frontDeskToken");
+  if (!frontDeskToken) {
+    showMessage(
+      "Front Desk session is missing. Please log in again before adjusting guests.",
+      "error",
+    );
+    return;
+  }
+
   const originalText =
     saveBtn?.textContent ||
     "Apply Guest Adjustment";
@@ -2023,6 +2032,7 @@ async function saveGuestAdjustment() {
           headers: {
             "Content-Type":
               "application/json",
+            Authorization: `Bearer ${frontDeskToken}`,
           },
           body:
             JSON.stringify({
