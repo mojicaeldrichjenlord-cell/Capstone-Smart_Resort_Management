@@ -489,12 +489,18 @@
     isLoading = true;
 
     try {
+      const frontDeskToken = sessionStorage.getItem("frontDeskToken");
+      if (!frontDeskToken) {
+        throw new Error("Front Desk session is missing. Please log in again.");
+      }
+
       const response = await fetch(
         `${API_BASE}/admin/bookings/${activeReservationId}/checkout-summary`,
         {
           method: "GET",
           headers: {
             Accept: "application/json",
+            Authorization: `Bearer ${frontDeskToken}`,
           },
           cache: "no-store",
         },
@@ -577,6 +583,11 @@
     isCompleting = true;
 
     try {
+      const frontDeskToken = sessionStorage.getItem("frontDeskToken");
+      if (!frontDeskToken) {
+        throw new Error("Front Desk session is missing. Please log in again.");
+      }
+
       if (button) {
         button.disabled = true;
         button.textContent = "Completing Checkout...";
@@ -588,6 +599,7 @@
           method: "PUT",
           headers: {
             Accept: "application/json",
+            Authorization: `Bearer ${frontDeskToken}`,
           },
         },
       );

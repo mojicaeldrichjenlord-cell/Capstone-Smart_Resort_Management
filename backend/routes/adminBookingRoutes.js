@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const { requireAdminAuth } = require("../middleware/adminAuth");
+const { requireFrontDeskAuth } = require("../middleware/frontDeskAuth");
 
 // ============================================================
 // EXISTING ADMIN BOOKING OPERATIONS
@@ -172,11 +173,13 @@ router.post(
 // ------------------------------------------------------------
 router.get(
   "/:id/checkout-summary",
+  requireFrontDeskAuth,
   getCheckoutSummary,
 );
 
 router.put(
   "/:id/checkout",
+  requireFrontDeskAuth,
   completeCheckout,
 );
 
