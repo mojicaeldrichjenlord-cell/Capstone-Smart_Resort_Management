@@ -1243,6 +1243,16 @@ async function checkInGuest(
     return;
   }
 
+  // A signed Front Desk session is required to admit guests.
+  const frontDeskToken = sessionStorage.getItem("frontDeskToken");
+  if (!frontDeskToken) {
+    showMessage(
+      "Front Desk session is missing. Please log in again before checking in guests.",
+      "error",
+    );
+    return;
+  }
+
   const remainingBalance =
     toMoney(
       booking
@@ -1297,6 +1307,7 @@ async function checkInGuest(
           headers: {
             "Content-Type":
               "application/json",
+            Authorization: `Bearer ${frontDeskToken}`,
           },
         },
       );

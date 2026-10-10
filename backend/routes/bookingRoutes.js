@@ -299,8 +299,10 @@ router.put(
   updatePaymentStatus,
 );
 
+// Only an authenticated Front Desk session can admit a guest.
 router.put(
   "/:id/check-in",
+  requireFrontDeskAuth,
   checkInBooking,
 );
 
