@@ -540,6 +540,16 @@ async function verifyPayment(bookingId, button) {
     return;
   }
 
+  // Payment verification requires the signed Front Desk login session.
+  const frontDeskToken = sessionStorage.getItem("frontDeskToken");
+  if (!frontDeskToken) {
+    showMessage(
+      "Front Desk session is missing. Please log in again before verifying payment.",
+      "error",
+    );
+    return;
+  }
+
   const confirmed = confirm(
     "Verify this payment proof? This will record the required 50% accommodation downpayment as paid and confirm the reservation.",
   );
@@ -562,6 +572,7 @@ async function verifyPayment(bookingId, button) {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${frontDeskToken}`,
         },
         body: JSON.stringify({
           payment_status: "partially_paid",

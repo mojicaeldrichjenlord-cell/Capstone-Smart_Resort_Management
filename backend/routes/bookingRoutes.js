@@ -294,8 +294,10 @@ router.put(
   updateBookingStatus,
 );
 
+// Only an authenticated Front Desk session can verify payment proof.
 router.put(
   "/:id/payment-status",
+  requireFrontDeskAuth,
   updatePaymentStatus,
 );
 
