@@ -15,24 +15,46 @@
 // ============================================================
 
 document.addEventListener("DOMContentLoaded", () => {
-  const user = JSON.parse(localStorage.getItem("user"));
-
-  if (!user) {
-    alert("Please login first.");
-    window.location.href = "../authHTML/login.html";
-    return;
-  }
-
-  if (user.role !== "admin") {
-    alert("Access denied. Admin only.");
-    window.location.href = "../index.html";
-    return;
-  }
+  const user = getAuthorizedAdminProfileUser();
+  if (!user) return;
 
   setupLogout();
   loadProfile(user.id);
   setupPasswordForm(user.id);
 });
+
+function getAuthorizedAdminProfileUser() {
+  let user = null;
+
+  try {
+    user = JSON.parse(localStorage.getItem("user") || "null");
+  } catch (error) {
+    console.error("Invalid stored account data:", error);
+  }
+
+  if (!user) {
+    alert("Please login first.");
+    window.location.href = "../authHTML/login.html";
+    return null;
+  }
+
+  const role = String(user.role || "").trim().toLowerCase();
+  if (role !== "admin") {
+    const destinations = {
+      customer: "../customerHTML/index.html",
+      frontdesk: "../frontdeskHTML/frontdeskDashboard.html",
+      staff: "../frontdeskHTML/frontdeskDashboard.html",
+      manager: "../managerHTML/managerDashboard.html",
+      housekeeping: "../housekeepingHTML/housekeepingDashboard.html",
+    };
+
+    alert("Access denied. Admin only.");
+    window.location.href = destinations[role] || "../authHTML/login.html";
+    return null;
+  }
+
+  return user;
+}
 
 // ============================================================
 // SECTION 2: Logout
