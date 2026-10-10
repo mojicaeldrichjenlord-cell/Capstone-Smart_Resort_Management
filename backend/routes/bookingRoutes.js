@@ -46,6 +46,7 @@ const {
 const {
   requireFrontDeskAuth,
 } = require("../middleware/frontDeskAuth");
+const { requireAdminAuth } = require("../middleware/adminAuth");
 
 function bindAuthenticatedFrontDeskCreator(req, res, next) {
   const creatorId = Number(req.frontDeskUser?.id);
@@ -289,6 +290,7 @@ router.put(
 
 router.put(
   "/:id/status",
+  requireAdminAuth,
   updateBookingStatus,
 );
 

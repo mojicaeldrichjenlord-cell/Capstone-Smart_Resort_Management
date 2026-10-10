@@ -33,6 +33,7 @@ document.addEventListener(
   (event) => {
     if (event.target?.closest?.("#logoutBtn")) {
       sessionStorage.removeItem("frontDeskToken");
+      sessionStorage.removeItem("adminToken");
     }
   },
   true,

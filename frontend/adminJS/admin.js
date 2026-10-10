@@ -1280,6 +1280,11 @@ async function updateReservationStatusOnly(
   bookingId,
   status,
 ) {
+  const adminToken = sessionStorage.getItem("adminToken");
+  if (!adminToken) {
+    throw new Error("Administrator session expired. Please log in again.");
+  }
+
   const response = await fetch(
     `${API_BASE}/bookings/${bookingId}/status`,
     {
@@ -1287,6 +1292,7 @@ async function updateReservationStatusOnly(
       headers: {
         "Content-Type":
           "application/json",
+        Authorization: `Bearer ${adminToken}`,
       },
       body: JSON.stringify({
         status,

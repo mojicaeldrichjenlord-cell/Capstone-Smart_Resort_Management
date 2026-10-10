@@ -140,10 +140,23 @@ if (loginForm) {
         }
 
         sessionStorage.setItem("frontDeskToken", frontDeskToken);
-      } else {
-        // Prevent a prior Front Desk session from being reused after
-        // changing to a different account in this browser tab.
+        sessionStorage.removeItem("adminToken");
+      } else if (role === "admin") {
+        const adminToken = data.adminToken;
+        if (
+          typeof adminToken !== "string" ||
+          !/^adm1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(adminToken)
+        ) {
+          throw new Error(
+            "Secure Administrator login token was not returned. Check backend authentication configuration and log in again.",
+          );
+        }
+        sessionStorage.setItem("adminToken", adminToken);
         sessionStorage.removeItem("frontDeskToken");
+      } else {
+        // Prevent stale privileged sessions when switching user roles.
+        sessionStorage.removeItem("frontDeskToken");
+        sessionStorage.removeItem("adminToken");
       }
 
       localStorage.setItem(

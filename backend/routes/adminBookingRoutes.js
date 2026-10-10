@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+const { requireAdminAuth } = require("../middleware/adminAuth");
 
 // ============================================================
 // EXISTING ADMIN BOOKING OPERATIONS
@@ -83,6 +84,7 @@ router.get(
 
 router.put(
   "/:id/status",
+  requireAdminAuth,
   updateAdminBookingStatus,
 );
 

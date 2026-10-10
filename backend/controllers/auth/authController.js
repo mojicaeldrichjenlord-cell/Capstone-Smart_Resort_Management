@@ -14,6 +14,7 @@ const db = require("../../config/db");
 const bcrypt = require("bcrypt");
 const axios = require("axios");
 const { issueFrontDeskToken } = require("../../middleware/frontDeskAuth");
+const { issueAdminToken } = require("../../middleware/adminAuth");
 
 // ============================================================
 // SECTION 1: Email normalizer
@@ -637,6 +638,7 @@ exports.login = async (req, res) => {
     // Client-provided created_by is not proof of identity.
     const role = String(user.role || "").trim().toLowerCase();
     let frontDeskToken = null;
+    let adminToken = null;
 
     if (role === "frontdesk" || role === "staff") {
       try {
@@ -651,10 +653,24 @@ exports.login = async (req, res) => {
       }
     }
 
+    if (role === "admin") {
+      try {
+        adminToken = issueAdminToken(user.id);
+      } catch (tokenError) {
+        console.error("Administrator token configuration error:", tokenError.message);
+        return res.status(503).json({
+          success: false,
+          message:
+            "Administrator secure login is not configured. Set FRONTDESK_TOKEN_SECRET in the backend environment.",
+        });
+      }
+    }
+
     return res.status(200).json({
       success: true,
       message: "Login successful.",
       ...(frontDeskToken ? { frontDeskToken } : {}),
+      ...(adminToken ? { adminToken } : {}),
       user: {
         id: user.id,
         fullname: user.fullname,
