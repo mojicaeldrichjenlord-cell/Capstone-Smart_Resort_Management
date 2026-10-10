@@ -36,7 +36,7 @@ const DEFAULT_MARKERS = [
 // ============================================================
 
 document.addEventListener("DOMContentLoaded", () => {
-  checkAdminAccess();
+  if (!checkAdminAccess()) return;
   setupLogout();
   setupEvents();
   initMapEditor();
@@ -48,18 +48,34 @@ document.addEventListener("DOMContentLoaded", () => {
 // ============================================================
 
 function checkAdminAccess() {
-  const user = JSON.parse(localStorage.getItem("user"));
+  let user = null;
+  try {
+    user = JSON.parse(localStorage.getItem("user") || "null");
+  } catch (error) {
+    console.error("Invalid stored account data:", error);
+  }
 
   if (!user) {
     alert("Please login first.");
     window.location.href = "../authHTML/login.html";
-    return;
+    return false;
   }
 
-  if (user.role !== "admin") {
-    alert("Access denied. Admin only.");
-    window.location.href = "../index.html";
+  const role = String(user.role || "").trim().toLowerCase();
+  if (role !== "admin") {
+    const destinations = {
+      customer: "../customerHTML/index.html",
+      frontdesk: "../frontdeskHTML/frontdeskDashboard.html",
+      staff: "../frontdeskHTML/frontdeskDashboard.html",
+      manager: "../managerHTML/managerDashboard.html",
+      housekeeping: "../housekeepingHTML/housekeepingDashboard.html",
+    };
+    alert("Access denied. Administrator account required.");
+    window.location.href = destinations[role] || "../authHTML/login.html";
+    return false;
   }
+
+  return true;
 }
 
 // ============================================================
