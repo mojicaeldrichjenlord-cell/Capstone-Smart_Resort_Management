@@ -228,21 +228,25 @@ router.get(
 
 router.get(
   "/:id/charges",
+  requireFrontDeskAuth,
   getBookingCharges,
 );
 
 router.post(
   "/:id/charges",
+  requireFrontDeskAuth,
   addBookingCharge,
 );
 
 router.put(
   "/:id/charges/paid",
+  requireFrontDeskAuth,
   markBookingChargesPaid,
 );
 
 router.delete(
   "/charges/:chargeId",
+  requireFrontDeskAuth,
   deleteBookingCharge,
 );
 
@@ -252,21 +256,25 @@ router.delete(
 
 router.get(
   "/:id/discounts",
+  requireFrontDeskAuth,
   getBookingDiscount,
 );
 
 router.put(
   "/:id/discounts",
+  requireFrontDeskAuth,
   upsertBookingDiscount,
 );
 
 router.delete(
   "/:id/discounts",
+  requireFrontDeskAuth,
   deleteBookingDiscount,
 );
 
 router.post(
   "/:id/entrance-reconciliation",
+  requireFrontDeskAuth,
   reconcileEntranceOverpayment,
 );
 

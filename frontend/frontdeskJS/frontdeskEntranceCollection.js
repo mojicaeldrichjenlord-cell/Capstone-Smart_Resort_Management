@@ -41,6 +41,14 @@
 
   const MONEY_EPSILON = 0.005;
 
+  function requireFrontDeskEntranceAuthorization() {
+    const token = sessionStorage.getItem("frontDeskToken");
+    if (!token) {
+      throw new Error("Front Desk session is missing. Please log in again.");
+    }
+    return `Bearer ${token}`;
+  }
+
   // ==========================================================
   // HELPERS
   // ==========================================================
@@ -487,6 +495,7 @@
         {
           method: "GET",
           headers: {
+            Authorization: requireFrontDeskEntranceAuthorization(),
             Accept: "application/json",
           },
           cache: "no-store",
@@ -639,6 +648,7 @@
         {
           method: "PUT",
           headers: {
+            Authorization: requireFrontDeskEntranceAuthorization(),
             "Content-Type": "application/json",
             Accept: "application/json",
           },

@@ -41,6 +41,15 @@
 // DELETE /api/bookings/:id/discounts
 // ============================================================
 
+// Entrance adjustments and charge history require an authenticated Front Desk session.
+function requireFrontDeskFinancialAuthorization() {
+  const token = sessionStorage.getItem("frontDeskToken");
+  if (!token) {
+    throw new Error("Front Desk session is missing. Please log in again.");
+  }
+  return `Bearer ${token}`;
+}
+
 let allGuestBookings = [];
 
 // ============================================================
@@ -1560,6 +1569,7 @@ async function loadGuestAdjustmentChargeSummary(
         {
           method: "GET",
           headers: {
+            Authorization: requireFrontDeskFinancialAuthorization(),
             Accept:
               "application/json",
           },
@@ -2400,6 +2410,7 @@ async function loadEntranceAdjustment() {
         {
           method: "GET",
           headers: {
+            Authorization: requireFrontDeskFinancialAuthorization(),
             Accept:
               "application/json",
           },
@@ -3316,6 +3327,7 @@ async function saveEntranceAdjustment() {
         {
           method: "PUT",
           headers: {
+            Authorization: requireFrontDeskFinancialAuthorization(),
             "Content-Type":
               "application/json",
           },
@@ -3443,6 +3455,7 @@ async function removeEntranceAdjustment() {
           method:
             "DELETE",
           headers: {
+            Authorization: requireFrontDeskFinancialAuthorization(),
             Accept:
               "application/json",
           },
@@ -3627,6 +3640,7 @@ async function reconcileEntranceOverpayment() {
         {
           method: "POST",
           headers: {
+            Authorization: requireFrontDeskFinancialAuthorization(),
             "Content-Type":
               "application/json",
           },
