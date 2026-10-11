@@ -75,6 +75,16 @@
     alert(message);
   }
 
+  function requireFrontDeskSessionToken() {
+    const token = sessionStorage.getItem("frontDeskToken");
+    if (!token) {
+      throw new Error(
+        "Front Desk session is missing. Please log in again.",
+      );
+    }
+    return token;
+  }
+
   async function readJsonSafely(response) {
     try {
       return await response.json();
@@ -879,6 +889,7 @@
           method: "GET",
           headers: {
             Accept: "application/json",
+            Authorization: `Bearer ${requireFrontDeskSessionToken()}`,
           },
           cache: "no-store",
         },
@@ -1186,6 +1197,7 @@
             Accept: "application/json",
             "Content-Type":
               "application/json",
+            Authorization: `Bearer ${requireFrontDeskSessionToken()}`,
           },
           body: JSON.stringify({
             payment_method: method,
@@ -1383,6 +1395,7 @@
           Accept: "application/json",
           "Content-Type":
             "application/json",
+          Authorization: `Bearer ${requireFrontDeskSessionToken()}`,
         },
         body: JSON.stringify({}),
       },
@@ -1441,6 +1454,7 @@
           Accept: "application/json",
           "Content-Type":
             "application/json",
+          Authorization: `Bearer ${requireFrontDeskSessionToken()}`,
         },
         body: JSON.stringify({
           orderId,

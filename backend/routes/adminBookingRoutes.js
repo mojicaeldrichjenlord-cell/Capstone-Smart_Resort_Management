@@ -160,25 +160,31 @@ router.put(
 // ------------------------------------------------------------
 // Accommodation Balance
 // ------------------------------------------------------------
+// Accommodation balance is a Front Desk-only financial workflow.
+// Verify the signed staff session before reading balances or modifying payments.
 router.get(
   "/:id/accommodation-balance",
+  requireFrontDeskAuth,
   getAccommodationBalanceSummary,
 );
 
 // Manual collection only: Cash / GCash / Maya
 router.put(
   "/:id/accommodation-balance/collect",
+  requireFrontDeskAuth,
   collectAccommodationBalance,
 );
 
-// Automated PayPal remaining accommodation balance
+// Automated PayPal balance orders and captures also require Front Desk.
 router.post(
   "/:id/accommodation-balance/paypal/order",
+  requireFrontDeskAuth,
   createAccommodationBalancePayPalOrder,
 );
 
 router.post(
   "/:id/accommodation-balance/paypal/capture",
+  requireFrontDeskAuth,
   captureAccommodationBalancePayPalOrder,
 );
 
