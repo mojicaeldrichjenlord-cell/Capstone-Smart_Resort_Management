@@ -10,6 +10,14 @@
 // - Payment is NOT automatically marked as collected here
 // ============================================================
 
+function getFrontDeskStayAuthorization() {
+  const token = sessionStorage.getItem("frontDeskToken");
+  if (!token) {
+    throw new Error("Front Desk session is missing. Please log in again.");
+  }
+  return `Bearer ${token}`;
+}
+
 let frontdeskStayAccommodations = [];
 
 let selectedAddAccommodationBookingId = null;
@@ -723,6 +731,7 @@ async function submitAddAccommodation() {
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
+          Authorization: getFrontDeskStayAuthorization(),
         },
         body: JSON.stringify({
           accommodation_id: payload.accommodation_id,
@@ -1098,6 +1107,7 @@ async function submitExtendStay() {
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
+          Authorization: getFrontDeskStayAuthorization(),
         },
         body: JSON.stringify({
           reservation_item_id: Number(item.id),

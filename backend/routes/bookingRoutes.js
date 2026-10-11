@@ -316,13 +316,17 @@ router.put(
   checkInBooking,
 );
 
+// Only Front Desk staff may add onsite accommodations or extend guest stays.
+// Both operations affect availability and the remaining accommodation balance.
 router.post(
   "/:id/add-accommodation",
+  requireFrontDeskAuth,
   addAccommodationToReservation,
 );
 
 router.post(
   "/:id/extend-stay",
+  requireFrontDeskAuth,
   extendReservationItem,
 );
 
