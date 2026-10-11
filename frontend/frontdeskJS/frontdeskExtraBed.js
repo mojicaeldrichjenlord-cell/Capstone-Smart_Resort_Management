@@ -620,6 +620,11 @@
     }
 
     try {
+      const frontDeskToken = sessionStorage.getItem("frontDeskToken");
+      if (!frontDeskToken) {
+        throw new Error("Front Desk session is missing. Please log in again.");
+      }
+
       const response =
         await fetch(
           `${API_BASE}/admin/bookings/${activeReservationId}/extra-bed`,
@@ -628,6 +633,7 @@
             headers: {
               Accept:
                 "application/json",
+              Authorization: `Bearer ${frontDeskToken}`,
             },
             cache:
               "no-store",
@@ -693,6 +699,11 @@
     }
 
     try {
+      const frontDeskToken = sessionStorage.getItem("frontDeskToken");
+      if (!frontDeskToken) {
+        throw new Error("Front Desk session is missing. Please log in again.");
+      }
+
       isSaving = true;
       updateButtons();
 
@@ -706,6 +717,7 @@
                 "application/json",
               Accept:
                 "application/json",
+              Authorization: `Bearer ${frontDeskToken}`,
             },
             body:
               JSON.stringify({
@@ -890,6 +902,11 @@
     }
 
     try {
+      const frontDeskToken = sessionStorage.getItem("frontDeskToken");
+      if (!frontDeskToken) {
+        throw new Error("Front Desk session is missing. Please log in again.");
+      }
+
       isCollecting = true;
       updateButtons();
 
@@ -901,6 +918,7 @@
             headers: {
               Accept:
                 "application/json",
+              Authorization: `Bearer ${frontDeskToken}`,
             },
           },
         );

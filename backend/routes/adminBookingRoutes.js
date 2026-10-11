@@ -99,18 +99,23 @@ router.put(
 // ------------------------------------------------------------
 // Extra Bed
 // ------------------------------------------------------------
+// Extra Bed rates, quantity, and collection are Front Desk operations.
+// Authenticate before reading fee information or changing charges.
 router.get(
   "/:id/extra-bed",
+  requireFrontDeskAuth,
   getExtraBedSummary,
 );
 
 router.put(
   "/:id/extra-bed",
+  requireFrontDeskAuth,
   updateExtraBed,
 );
 
 router.put(
   "/:id/extra-bed-paid",
+  requireFrontDeskAuth,
   collectExtraBedFee,
 );
 
