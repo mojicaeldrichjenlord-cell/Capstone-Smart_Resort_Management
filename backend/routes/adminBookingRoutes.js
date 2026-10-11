@@ -122,31 +122,38 @@ router.put(
 // ------------------------------------------------------------
 // Additional Charges
 // ------------------------------------------------------------
+// Additional Charges are Front Desk operations. Guard reads and writes.
 router.get(
   "/:id/additional-charges",
+  requireFrontDeskAuth,
   getAdditionalCharges,
 );
 
 router.post(
   "/:id/additional-charges",
+  requireFrontDeskAuth,
   addAdditionalCharge,
 );
 
 router.delete(
   "/:id/additional-charges/:chargeId",
+  requireFrontDeskAuth,
   deleteAdditionalCharge,
 );
 
 // ------------------------------------------------------------
 // Collect Unpaid Charges
 // ------------------------------------------------------------
+// Prevent unauthenticated access to unpaid totals or onsite collections.
 router.get(
   "/:id/unpaid-charges",
+  requireFrontDeskAuth,
   getUnpaidChargesSummary,
 );
 
 router.put(
   "/:id/unpaid-charges/collect",
+  requireFrontDeskAuth,
   collectUnpaidCharges,
 );
 

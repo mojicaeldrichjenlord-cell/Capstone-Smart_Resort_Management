@@ -337,6 +337,11 @@
     }
 
     try {
+      const frontDeskToken = sessionStorage.getItem("frontDeskToken");
+      if (!frontDeskToken) {
+        throw new Error("Front Desk session is missing. Please log in again.");
+      }
+
       isLoading = true;
       updateButtons();
 
@@ -346,6 +351,7 @@
           method: "GET",
           headers: {
             Accept: "application/json",
+            Authorization: `Bearer ${frontDeskToken}`,
           },
           cache: "no-store",
         },
@@ -457,6 +463,11 @@
     }
 
     try {
+      const frontDeskToken = sessionStorage.getItem("frontDeskToken");
+      if (!frontDeskToken) {
+        throw new Error("Front Desk session is missing. Please log in again.");
+      }
+
       isSaving = true;
       updateButtons();
 
@@ -467,6 +478,7 @@
           headers: {
             "Content-Type": "application/json",
             Accept: "application/json",
+            Authorization: `Bearer ${frontDeskToken}`,
           },
           body: JSON.stringify(validation.payload),
         },
@@ -523,6 +535,11 @@
     }
 
     try {
+      const frontDeskToken = sessionStorage.getItem("frontDeskToken");
+      if (!frontDeskToken) {
+        throw new Error("Front Desk session is missing. Please log in again.");
+      }
+
       isDeleting = true;
       updateButtons();
 
@@ -532,6 +549,7 @@
           method: "DELETE",
           headers: {
             Accept: "application/json",
+            Authorization: `Bearer ${frontDeskToken}`,
           },
         },
       );

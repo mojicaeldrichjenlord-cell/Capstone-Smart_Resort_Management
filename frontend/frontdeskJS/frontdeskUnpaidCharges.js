@@ -401,6 +401,11 @@
     }
 
     try {
+      const frontDeskToken = sessionStorage.getItem("frontDeskToken");
+      if (!frontDeskToken) {
+        throw new Error("Front Desk session is missing. Please log in again.");
+      }
+
       isLoading = true;
       updateCollectButton();
 
@@ -408,7 +413,10 @@
         `${API_BASE}/admin/bookings/${activeReservationId}/unpaid-charges`,
         {
           method: "GET",
-          headers: { Accept: "application/json" },
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${frontDeskToken}`,
+          },
           cache: "no-store",
         },
       );
@@ -484,6 +492,11 @@
     }
 
     try {
+      const frontDeskToken = sessionStorage.getItem("frontDeskToken");
+      if (!frontDeskToken) {
+        throw new Error("Front Desk session is missing. Please log in again.");
+      }
+
       isCollecting = true;
       updateCollectButton();
 
@@ -491,7 +504,10 @@
         `${API_BASE}/admin/bookings/${activeReservationId}/unpaid-charges/collect`,
         {
           method: "PUT",
-          headers: { Accept: "application/json" },
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${frontDeskToken}`,
+          },
         },
       );
 
