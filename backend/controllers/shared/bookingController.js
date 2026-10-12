@@ -1481,18 +1481,18 @@ async function createReservation({
 exports.createBooking = async (req, res) => {
   try {
     const parsedBody = parseRequestReservationBody(req);
-    const user_id = Number(parsedBody.user_id);
-
-    if (!user_id) {
-      return res.status(400).json({
-        message: "User ID is required.",
+    // Signed Customer session, not a forged browser user_id, owns the booking.
+    const user_id = Number(req.customerUser?.id);
+    if (!Number.isSafeInteger(user_id) || user_id <= 0) {
+      return res.status(401).json({
+        message: "Please log in to your Customer account again.",
       });
     }
 
     const result = await createReservation({
       source: "online",
       user_id,
-      body: parsedBody,
+      body: { ...parsedBody, user_id },
       autoApprove: false,
     });
 
