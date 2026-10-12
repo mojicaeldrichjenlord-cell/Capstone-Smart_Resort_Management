@@ -15,6 +15,7 @@ const bcrypt = require("bcrypt");
 const axios = require("axios");
 const { issueFrontDeskToken } = require("../../middleware/frontDeskAuth");
 const { issueAdminToken } = require("../../middleware/adminAuth");
+const { issueCustomerToken } = require("../../middleware/customerAuth");
 
 // ============================================================
 // SECTION 1: Email normalizer
@@ -639,6 +640,7 @@ exports.login = async (req, res) => {
     const role = String(user.role || "").trim().toLowerCase();
     let frontDeskToken = null;
     let adminToken = null;
+    let customerToken = null;
 
     if (role === "frontdesk" || role === "staff") {
       try {
@@ -666,11 +668,24 @@ exports.login = async (req, res) => {
       }
     }
 
+    if (role === "customer") {
+      try {
+        customerToken = issueCustomerToken(user.id);
+      } catch (tokenError) {
+        console.error("Customer token configuration error:", tokenError.message);
+        return res.status(503).json({
+          success: false,
+          message: "Secure Customer login is not configured. Contact support.",
+        });
+      }
+    }
+
     return res.status(200).json({
       success: true,
       message: "Login successful.",
       ...(frontDeskToken ? { frontDeskToken } : {}),
       ...(adminToken ? { adminToken } : {}),
+      ...(customerToken ? { customerToken } : {}),
       user: {
         id: user.id,
         fullname: user.fullname,
