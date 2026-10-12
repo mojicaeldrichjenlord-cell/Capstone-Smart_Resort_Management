@@ -56,6 +56,11 @@ const fakeDb = {
           async query(statement, params) {
             const sql = normalize(statement);
             stats.sql.push(sql);
+            if (/^SELECT id FROM accommodations WHERE id = \? FOR UPDATE$/i.test(sql)) {
+              const id = Number(params[0]);
+              stats.locks.push(id);
+              return [draft.accommodations.some((a) => a.id === id) ? [{ id }] : []];
+            }
             if (/^SELECT\b/i.test(sql) && /FROM reservations\b/i.test(sql)) {
               return [Number(params[0]) === draft.reservation.id ? [clone(draft.reservation)] : []];
             }
@@ -79,6 +84,7 @@ const fakeDb = {
                 && /WHERE ri\.accommodation_id = \?/i.test(sql)) {
               assert.equal(params.length, 5,
                 "Conflict checks must include items of the same reservation");
+              assert.match(sql, /FOR UPDATE$/i, "Mutation conflict check must use current locking read");
               const match = findConflict(params);
               return [match ? [{ id: 17, accommodation_name: "Test accommodation" }] : []];
             }
@@ -146,7 +152,7 @@ replaceModule("../services/paypalService", {
 const handlers = require("../controllers/shared/bookingController");
 
 beforeEach(() => {
-  stats = { begins: 0, commits: 0, rollbacks: 0, releases: 0, writes: 0, sql: [] };
+  stats = { begins: 0, commits: 0, rollbacks: 0, releases: 0, writes: 0, sql: [], locks: [] };
   draft = null;
   state = {
     failReservationUpdate: false,
@@ -224,6 +230,14 @@ test("Add Accommodation: commits new item and unpaid accommodation balance", asy
   assert.equal(state.reservation.payment_status, "partially_paid");
   assert.deepEqual([stats.commits, stats.rollbacks, stats.releases], [1, 0, 1]);
 });
+test("Add Accommodation: locks its accommodation before the overlap check", async () => {
+  assert.equal((await add()).status, 201);
+  assert.deepEqual(stats.locks, [7]);
+  const lockIndex = stats.sql.findIndex((sql) =>
+    /^SELECT id FROM accommodations WHERE id = \? FOR UPDATE$/i.test(sql));
+  const conflictIndex = stats.sql.findIndex((sql) => /FROM reservation_items ri\b/i.test(sql));
+  assert.ok(lockIndex >= 0 && conflictIndex > lockIndex);
+});
 test("Add Accommodation: duplicate same-room schedule rolls back", async () => {
   assert.equal((await add()).status, 201);
   const before = clone(state);
@@ -284,6 +298,15 @@ test("Extend Stay: commits new checkout, price and unpaid balance", async () => 
   assert.equal(state.reservation.remaining_balance, 800);
   assert.equal(state.reservation.required_downpayment, 500);
   assert.deepEqual([stats.commits, stats.rollbacks, stats.releases], [1, 0, 1]);
+});
+test("Extend Stay: locks its accommodation before the overlap check", async () => {
+  assert.equal((await extend()).status, 200);
+  assert.deepEqual(stats.locks, [8]);
+  const lockIndex = stats.sql.findIndex((sql) =>
+    /^SELECT id FROM accommodations WHERE id = \? FOR UPDATE$/i.test(sql));
+  const conflictIndex = stats.sql.findIndex((sql) => /FROM reservation_items ri\b/i.test(sql)
+    && /WHERE ri\.accommodation_id = \?/i.test(sql));
+  assert.ok(lockIndex >= 0 && conflictIndex > lockIndex);
 });
 test("Extend Stay: overlapping later reservation prevents changes", async () => {
   state.items.push({
