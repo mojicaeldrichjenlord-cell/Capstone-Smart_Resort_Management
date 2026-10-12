@@ -611,7 +611,29 @@ async function checkReservationConflicts(
   connection,
   reservationItems,
   ignoreReservationId = null,
+  lockForWrite = true,
 ) {
+  if (lockForWrite) {
+    // Serialize all writers for the same accommodation BEFORE checking overlap.
+    // Always lock IDs in ascending order to reduce multi-room deadlock risk.
+    const accommodationIds = [...new Set(
+      reservationItems.map((item) => Number(item.accommodation_id)),
+    )].sort((left, right) => left - right);
+
+    for (const accommodationId of accommodationIds) {
+      const [rows] = await connection.query(
+        "SELECT id FROM accommodations WHERE id = ? FOR UPDATE",
+        [accommodationId],
+      );
+      if (!rows.length) {
+        throw {
+          status: 404,
+          message: "Selected accommodation was not found.",
+        };
+      }
+    }
+  }
+
   for (const item of reservationItems) {
     const params = [
       item.accommodation_id,
@@ -649,7 +671,7 @@ async function checkReservationConflicts(
         AND TIMESTAMP(ri.check_in_date, ri.check_in_time) < TIMESTAMP(?, ?)
         AND TIMESTAMP(?, ?) < TIMESTAMP(ri.check_out_date, ri.check_out_time)
         ${ignoreClause}
-      LIMIT 1
+      LIMIT 1 ${lockForWrite ? "FOR UPDATE" : ""}
       `,
       params,
     );
@@ -2819,6 +2841,7 @@ exports.checkItemAvailability = async (req, res) => {
         connection,
         [availabilityItem],
         ignoreReservationId,
+        false, // Preview-only check: don't take transactional writer locks.
       );
     } finally {
       connection.release();
