@@ -102,8 +102,12 @@ async function receipt(token, id = 101) {
 const receiptReads = () => calls.filter((call) =>
   /FROM reservations r\b|FROM reservation_items ri\b|FROM booking_charges\b|FROM booking_discounts\b|FROM entrance_fee_reconciliations\b/.test(call.sql)
 );
+// The initial receipt summary SELECT joins reservation_items inside a
+// subquery. That is still ONE ownership-check SELECT, not a follow-up read.
+// Only count separate detail/financial queries issued after authorization.
 const sensitiveReads = () => calls.filter((call) =>
-  /FROM reservation_items ri\b|FROM booking_charges\b|FROM booking_discounts\b|FROM entrance_fee_reconciliations\b/.test(call.sql)
+  !/\bFROM reservations r\b/i.test(call.sql) &&
+  /\bFROM reservation_items ri\b|\bFROM booking_charges\b|\bFROM booking_discounts\b|\bFROM entrance_fee_reconciliations\b/i.test(call.sql)
 );
 const ensureNoWrite = () => {
   assert.equal(calls.some((call) => /^(UPDATE|DELETE|INSERT|REPLACE|CREATE|DROP)\b/i.test(call.sql)), false);
