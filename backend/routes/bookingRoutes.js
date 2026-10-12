@@ -48,6 +48,7 @@ const {
 } = require("../middleware/frontDeskAuth");
 const { requireAdminAuth } = require("../middleware/adminAuth");
 const { requireCustomerAuth } = require("../middleware/customerAuth");
+const { requireReceiptAuth } = require("../middleware/receiptAuth");
 
 function bindAuthenticatedFrontDeskCreator(req, res, next) {
   const creatorId = Number(req.frontDeskUser?.id);
@@ -297,6 +298,7 @@ router.post(
 
 router.get(
   "/:id/receipt",
+  requireReceiptAuth,
   getBookingReceipt,
 );
 
