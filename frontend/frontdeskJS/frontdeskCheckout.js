@@ -680,7 +680,9 @@
           return;
         }
 
-        window.open(receiptUrl, "_blank", "noopener");
+        // Reuse the Front Desk tab so its sessionStorage bearer token
+        // remains available for the protected receipt API.
+        window.location.href = receiptUrl;
       });
 
     getModal()?.addEventListener("click", (event) => {
