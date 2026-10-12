@@ -218,8 +218,20 @@ router.post(
   checkItemAvailability,
 );
 
+// A customer may list only their OWN reservations.
+function requireOwnCustomerId(req, res, next) {
+  const requestedId = Number(req.params.userId);
+  if (!Number.isSafeInteger(requestedId) || requestedId <= 0 ||
+      requestedId !== Number(req.customerUser?.id)) {
+    return res.status(403).json({ message: "You may only view your own bookings." });
+  }
+  return next();
+}
+
 router.get(
   "/user/:userId",
+  requireCustomerAuth,
+  requireOwnCustomerId,
   getUserBookings,
 );
 
