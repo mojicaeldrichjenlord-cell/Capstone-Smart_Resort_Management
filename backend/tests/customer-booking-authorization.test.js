@@ -54,8 +54,20 @@ const fakeDb = {
         }
         throw new Error("Unexpected SQL in isolated test: " + sql);
       },
-      getConnection() {
-        throw new Error("A transaction is not expected in these authorization probes.");
+      async getConnection() {
+        // The modification handler acquires a transaction before looking up
+        // ownership. The fake connection must still forbid any real writes.
+        return {
+          async beginTransaction() {},
+          async query(statement, params) {
+            return fakeDb.promise().query(statement, params);
+          },
+          async rollback() {},
+          async commit() {
+            throw new Error("Authorization probes must never commit.");
+          },
+          release() {}
+        };
       }
     };
   }
