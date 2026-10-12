@@ -49,6 +49,7 @@ const {
 const { requireAdminAuth } = require("../middleware/adminAuth");
 const { requireCustomerAuth } = require("../middleware/customerAuth");
 const { requireReceiptAuth } = require("../middleware/receiptAuth");
+const { requireOperationalBookingRead } = require("../middleware/operationalBookingReadAuth");
 
 function bindAuthenticatedFrontDeskCreator(req, res, next) {
   const creatorId = Number(req.frontDeskUser?.id);
@@ -212,7 +213,7 @@ router.post(
    GENERAL BOOKING ROUTES
 ====================================================== */
 
-router.get("/", getAllBookings);
+router.get("/", requireOperationalBookingRead, getAllBookings);
 
 router.post(
   "/check-item-availability",
