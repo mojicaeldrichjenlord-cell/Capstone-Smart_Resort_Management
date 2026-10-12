@@ -69,6 +69,7 @@ function setupLogout() {
       e.preventDefault();
 
       localStorage.removeItem("user");
+      sessionStorage.removeItem("adminToken");
       showMessage("Logged out successfully.", "success");
 
       setTimeout(() => {
@@ -85,7 +86,11 @@ function setupLogout() {
 
 async function loadProfile(userId) {
   try {
-    const response = await fetch(`${API_BASE}/auth/profile/${userId}`);
+    const token = sessionStorage.getItem("adminToken");
+    if (!token) throw new Error("Your profile session has expired. Please log in again.");
+    const response = await fetch(`${API_BASE}/auth/profile/${userId}`, {
+      headers: { Authorization: "Bearer " + token },
+    });
     const data = await response.json();
 
     if (!response.ok) {
@@ -161,10 +166,13 @@ function setupPasswordForm(userId) {
         submitBtn.style.cursor = "not-allowed";
       }
 
+      const token = sessionStorage.getItem("adminToken");
+      if (!token) throw new Error("Your profile session has expired. Please log in again.");
       const response = await fetch(`${API_BASE}/auth/change-password/${userId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          Authorization: "Bearer " + token,
         },
         body: JSON.stringify({
           currentPassword,
