@@ -202,11 +202,13 @@ function extend(body = {}) {
     extension_duration: 1, ...body
   });
 }
-function assertNoPersistedChange(before) {
+function assertNoPersistedChange(before, previous = { commits: 0, rollbacks: 0, releases: 0 }) {
   assert.deepEqual(state, before);
-  assert.equal(stats.commits, 0);
-  assert.equal(stats.rollbacks, 1);
-  assert.equal(stats.releases, 1);
+  // Only the rejected attempt must roll back. An earlier successful setup
+  // request in the same test may already have committed.
+  assert.equal(stats.commits, previous.commits);
+  assert.equal(stats.rollbacks, previous.rollbacks + 1);
+  assert.equal(stats.releases, previous.releases + 1);
 }
 
 test("Add Accommodation: commits new item and unpaid accommodation balance", async () => {
@@ -225,9 +227,14 @@ test("Add Accommodation: commits new item and unpaid accommodation balance", asy
 test("Add Accommodation: duplicate same-room schedule rolls back", async () => {
   assert.equal((await add()).status, 201);
   const before = clone(state);
+  const previous = {
+    commits: stats.commits,
+    rollbacks: stats.rollbacks,
+    releases: stats.releases
+  };
   const result = await add();
   assert.equal(result.status, 409);
-  assertNoPersistedChange(before);
+  assertNoPersistedChange(before, previous);
 });
 test("Add Accommodation: overlapping item within same reservation is rejected", async () => {
   state.items.push({
