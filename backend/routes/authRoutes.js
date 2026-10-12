@@ -6,6 +6,7 @@
 
 const express = require("express");
 const router = express.Router();
+const { requireOwnProfileAuth } = require("../middleware/profileAuth");
 
 // ============================================================
 // SECTION 1: Import controller functions
@@ -47,9 +48,9 @@ router.post("/forgot-password/reset", resetPasswordWithOtp);
 // Used after login.
 // ============================================================
 
-router.get("/profile/:id", getProfile);
-router.put("/profile/:id", updateProfile);
-router.put("/change-password/:id", changePassword);
+router.get("/profile/:id", requireOwnProfileAuth, getProfile);
+router.put("/profile/:id", requireOwnProfileAuth, updateProfile);
+router.put("/change-password/:id", requireOwnProfileAuth, changePassword);
 
 // ============================================================
 // SECTION 5: Export router
