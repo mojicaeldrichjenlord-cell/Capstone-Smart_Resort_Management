@@ -1851,6 +1851,21 @@ exports.getBookingReceipt = async (req, res) => {
     }
 
     const booking = rows[0];
+
+    // Customer receipts are private: never retrieve charge, guest or payment
+    // details unless the signed customer session owns this reservation.
+    // Verified Admin and Front Desk sessions may read operational receipts.
+    const receiptViewer = req.receiptViewer;
+    if (!receiptViewer || !["customer", "admin", "frontdesk"].includes(receiptViewer.role)) {
+      return res.status(401).json({ message: "Receipt authorization required." });
+    }
+    if (
+      receiptViewer.role === "customer" &&
+      Number(booking.user_id) !== Number(receiptViewer.id)
+    ) {
+      return res.status(404).json({ message: "Reservation receipt not found." });
+    }
+
     const items = await getReservationItems(id);
 
     /* ======================================================
