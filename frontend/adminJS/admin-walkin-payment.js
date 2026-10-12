@@ -320,6 +320,7 @@ async function getManualReservationBaselineId() {
         method: "GET",
         headers: {
           Accept: "application/json",
+          Authorization: getFrontDeskAuthorizationHeader(),
         },
         cache: "no-store",
       },
@@ -504,6 +505,7 @@ function startManualReservationCreationWatchdog(
             method: "GET",
             headers: {
               Accept: "application/json",
+              Authorization: getFrontDeskAuthorizationHeader(),
             },
             cache: "no-store",
           },
