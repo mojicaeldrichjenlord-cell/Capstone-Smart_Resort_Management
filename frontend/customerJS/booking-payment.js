@@ -45,6 +45,16 @@ let paypalPaymentSession = null;
 let paypalSetupPromise = null;
 let paypalButtonBound = false;
 
+// Reservation creation and initial PayPal calls require the Customer's
+// signed session. Never rely on bookingDraft.user_id for authorization.
+function getSignedCheckoutAuthorization() {
+  const token = sessionStorage.getItem("customerToken");
+  if (!token || !/^cus1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token)) {
+    throw new Error("Your secure Customer session is missing. Please log in again.");
+  }
+  return "Bearer " + token;
+}
+
 // ============================================================
 // SECTION 1: Page startup
 // ============================================================
@@ -88,6 +98,7 @@ function setupLogout() {
     btn.addEventListener("click", (e) => {
       e.preventDefault();
       localStorage.removeItem("user");
+      sessionStorage.removeItem("customerToken");
 
       if (typeof showToast === "function") {
         showToast("Logged out successfully.", "success");
@@ -914,6 +925,7 @@ async function createPayPalReservationIfNeeded() {
     headers: {
       "Content-Type": "application/json",
       Accept: "application/json",
+        Authorization: getSignedCheckoutAuthorization(),
     },
     body: JSON.stringify(payload),
   });
@@ -967,6 +979,7 @@ async function createPayPalOrderForCheckout() {
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
+        Authorization: getSignedCheckoutAuthorization(),
       },
       body: JSON.stringify({}),
     },
@@ -1006,6 +1019,7 @@ async function capturePayPalOrderForCheckout(orderId) {
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
+        Authorization: getSignedCheckoutAuthorization(),
       },
       body: JSON.stringify({
         orderId,
@@ -1372,6 +1386,7 @@ async function submitReservation(e) {
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
+        Authorization: getSignedCheckoutAuthorization(),
       },
       body: JSON.stringify(jsonPayload),
     });
