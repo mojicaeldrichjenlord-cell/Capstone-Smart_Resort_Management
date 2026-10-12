@@ -5,7 +5,6 @@ const VALID_BOOKING_STATUSES = [
   "approved",
   "rejected",
   "cancelled",
-  "completed",
 ];
 
 const EXTRA_BED_RATE = 200;
@@ -139,9 +138,19 @@ exports.getAllAdminBookings = async (req, res) => {
 exports.updateAdminBookingStatus = async (req, res) => {
   try {
     const reservationId = Number(req.params.id);
-    const status = normalizeValue(req.body.status);
+    const status = normalizeValue(req.body?.status);
 
-    if (!reservationId || Number.isNaN(reservationId)) {
+    // Completion must run the Front Desk checkout controller, which checks
+    // accommodation, entrance, extra-bed, and additional-charge balances.
+    if (status === "completed") {
+      return res.status(403).json({
+        success: false,
+        code: "FRONT_DESK_CHECKOUT_REQUIRED",
+        message: "Only Front Desk can complete a reservation through final checkout.",
+      });
+    }
+
+    if (!Number.isSafeInteger(reservationId) || reservationId <= 0) {
       return res.status(400).json({
         success: false,
         message: "Invalid reservation ID.",
@@ -152,12 +161,13 @@ exports.updateAdminBookingStatus = async (req, res) => {
       return res.status(400).json({
         success: false,
         message:
-          "Invalid reservation status. Allowed values: pending, approved, rejected, cancelled, completed.",
+          "Invalid reservation status. Allowed values: pending, approved, rejected, cancelled.",
       });
     }
 
     const [existingRows] = await db.promise().query(
-      `SELECT id, reservation_status FROM reservations WHERE id = ? LIMIT 1`,
+      `SELECT id, reservation_status, COALESCE(is_checked_in, 0) AS is_checked_in
+       FROM reservations WHERE id = ? LIMIT 1`,
       [reservationId],
     );
 
@@ -168,30 +178,47 @@ exports.updateAdminBookingStatus = async (req, res) => {
       });
     }
 
-    if (status === "completed") {
-      await db.promise().query(
-        `
-        UPDATE reservations
-        SET
-          reservation_status = 'completed',
-          is_checked_in = 0
-        WHERE id = ?
-        `,
-        [reservationId],
+    const reservation = existingRows[0];
+    const currentStatus = normalizeValue(reservation.reservation_status);
+
+    // Match the Admin dashboard: cancellation/status management is only
+    // available before check-in. Never reopen terminal reservation history.
+    if (Number(reservation.is_checked_in) !== 0) {
+      return res.status(409).json({
+        success: false,
+        code: "RESERVATION_ALREADY_CHECKED_IN",
+        message: "This guest is already checked in. Use Front Desk operations.",
+      });
+    }
+    if (["completed", "cancelled", "rejected"].includes(currentStatus)) {
+      return res.status(409).json({
+        success: false,
+        code: "RESERVATION_STATUS_LOCKED",
+        message: "A completed, cancelled, or rejected reservation cannot be changed here.",
+      });
+    }
+
+    if (status !== currentStatus) {
+      // Recheck check-in and the original status in the UPDATE itself. This
+      // prevents a concurrent check-in/status change from being overwritten.
+      const [result] = await db.promise().query(
+        `UPDATE reservations SET reservation_status = ?
+         WHERE id = ? AND COALESCE(is_checked_in, 0) = 0
+           AND reservation_status = ?`,
+        [status, reservationId, reservation.reservation_status],
       );
-    } else {
-      await db.promise().query(
-        `UPDATE reservations SET reservation_status = ? WHERE id = ?`,
-        [status, reservationId],
-      );
+      if (result.affectedRows !== 1) {
+        return res.status(409).json({
+          success: false,
+          code: "RESERVATION_CHANGED",
+          message: "Reservation changed while processing. Refresh and try again.",
+        });
+      }
     }
 
     return res.status(200).json({
       success: true,
-      message:
-        status === "completed"
-          ? "Guest checked out successfully."
-          : "Reservation status updated successfully.",
+      message: "Reservation status updated successfully.",
     });
   } catch (error) {
     console.error("updateAdminBookingStatus error:", error);

@@ -4,6 +4,7 @@
 // ============================================================
 
 const db = require("../../config/db");
+const { updateAdminBookingStatus } = require("../admin/adminBookingController");
 const fs = require("fs");
 
 // ============================================================
@@ -2401,54 +2402,9 @@ exports.getAllBookings = async (req, res) => {
 // BACKEND/API HANDLER: Update booking status
 // Purpose: Handles the update booking status part of this file.
 // ============================================================
-exports.updateBookingStatus = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
-
-    const allowedStatuses = [
-      "pending",
-      "approved",
-      "cancelled",
-      "completed",
-      "rejected",
-    ];
-
-    if (!allowedStatuses.includes(String(status).toLowerCase())) {
-      return res.status(400).json({
-        message: "Invalid reservation status.",
-      });
-    }
-
-    const [rows] = await db
-      .promise()
-      .query(`SELECT id FROM reservations WHERE id = ? LIMIT 1`, [id]);
-
-    if (!rows.length) {
-      return res.status(404).json({
-        message: "Reservation not found.",
-      });
-    }
-
-    await db
-      .promise()
-      .query(`UPDATE reservations SET reservation_status = ? WHERE id = ?`, [
-        status,
-        id,
-      ]);
-
-    return res.status(200).json({
-      message: "Reservation status updated successfully.",
-    });
-  } catch (error) {
-    console.error("updateBookingStatus error:", error);
-
-    return res.status(500).json({
-      message: "Failed to update reservation status.",
-      error: error.message,
-    });
-  }
-};
+// Both Admin status URLs share the same rules. In particular, neither URL
+// may complete checkout or overwrite an already checked-in reservation.
+exports.updateBookingStatus = updateAdminBookingStatus;
 
 // ============================================================
 // BACKEND/API HANDLER: Update payment status
