@@ -68,10 +68,10 @@ function addCompletedReceiptAction(card) {
 
   const receiptLink = document.createElement("a");
   receiptLink.className = "view-final-receipt-btn";
+  // Stay in the authenticated tab: sessionStorage tokens are tab-scoped,
+  // and noopener new tabs must not inherit the signed Front Desk session.
   receiptLink.href =
-    `frontdesk-booking-receipt.html?id=${encodeURIComponent(reservationId)}`;
-  receiptLink.target = "_blank";
-  receiptLink.rel = "noopener";
+    `frontdesk-booking-receipt.html?id=${encodeURIComponent(reservationId)}&from=reservations`;
   receiptLink.textContent = "View Final Receipt";
 
   actions.appendChild(receiptLink);
