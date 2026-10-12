@@ -271,8 +271,11 @@ async function loadBookings() {
       </div>
     `);
 
+    const adminToken = sessionStorage.getItem("adminToken");
+    if (!adminToken) throw new Error("Admin session expired. Please log in again.");
     const response = await fetch(
       `${API_BASE}/bookings?scope=all`,
+      { headers: { Authorization: "Bearer " + adminToken } },
     );
 
     const data = await response.json();
