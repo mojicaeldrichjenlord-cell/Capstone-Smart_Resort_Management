@@ -54,6 +54,7 @@ function setupLogout() {
       e.preventDefault();
 
       localStorage.removeItem("user");
+      sessionStorage.removeItem("customerToken");
 
       if (typeof showToast === "function") {
         showToast("Logged out successfully.", "success");
@@ -264,6 +265,15 @@ async function cancelBooking(bookingId) {
     return;
   }
 
+  // Only the real signed Customer session authorizes cancellation.
+  // A user object in localStorage is NOT an authentication credential.
+  const customerToken = sessionStorage.getItem("customerToken");
+  if (!customerToken) {
+    alert("Your Customer session needs to be refreshed. Please log in again.");
+    window.location.href = "../authHTML/login.html";
+    return;
+  }
+
   const confirmed = confirm("Are you sure you want to cancel this reservation?");
   if (!confirmed) return;
 
@@ -272,6 +282,7 @@ async function cancelBooking(bookingId) {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
+        Authorization: "Bearer " + customerToken,
       },
     });
 
