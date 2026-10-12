@@ -23,10 +23,24 @@ const RESORT_INFO = {
 
 document.addEventListener("DOMContentLoaded", () => {
   if (!checkFrontDeskAccess()) return;
+  configureReceiptReturnLink();
   setupLogoutButton();
   setupPrintButton();
   loadFrontDeskReceipt();
 });
+
+// Reservation Records and Guest Management share the same receipt page,
+// but the Back link should return to the actual entry point.
+function configureReceiptReturnLink() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("from") !== "reservations") return;
+
+  const backLink = document.querySelector(".top-actions .back-btn");
+  if (!backLink) return;
+
+  backLink.href = "frontdeskReservations.html";
+  backLink.textContent = "← Back to Reservation Records";
+}
 
 function checkFrontDeskAccess() {
   let user = null;
