@@ -194,6 +194,8 @@ const upload = multer({
 // Customer online reservation flow is unchanged.
 router.post(
   "/",
+  // Authenticate before storing any uploaded payment proof.
+  requireCustomerAuth,
   upload.single("proof_image"),
   createBooking,
 );
