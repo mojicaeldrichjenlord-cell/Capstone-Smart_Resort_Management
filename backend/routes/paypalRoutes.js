@@ -12,6 +12,7 @@
 
 const express = require("express");
 const router = express.Router();
+const { requireInitialPayPalAuthorization } = require("../middleware/initialPayPalAuth");
 
 const {
   getPayPalClientConfig,
@@ -27,6 +28,7 @@ router.get("/config", getPayPalClientConfig);
 // 50% accommodation downpayment.
 router.post(
   "/reservations/:reservationId/order",
+  requireInitialPayPalAuthorization,
   createOrderForReservation,
 );
 
@@ -34,6 +36,7 @@ router.post(
 // The backend verifies the amount/currency before updating MySQL.
 router.post(
   "/reservations/:reservationId/capture",
+  requireInitialPayPalAuthorization,
   captureOrderForReservation,
 );
 
