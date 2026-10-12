@@ -22,7 +22,7 @@ const RESORT_INFO = {
 };
 
 document.addEventListener("DOMContentLoaded", () => {
-  checkFrontDeskAccess();
+  if (!checkFrontDeskAccess()) return;
   setupLogoutButton();
   setupPrintButton();
   loadFrontDeskReceipt();
@@ -40,7 +40,7 @@ function checkFrontDeskAccess() {
   if (!user) {
     alert("Please login first.");
     window.location.href = "../authHTML/login.html";
-    return;
+    return false;
   }
 
   const role = String(user.role || "")
@@ -55,7 +55,9 @@ function checkFrontDeskAccess() {
   if (normalizedRole !== "frontdesk") {
     alert("Access denied. Front Desk only.");
     window.location.href = "../authHTML/login.html";
+    return false;
   }
+  return true;
 }
 
 function setupLogoutButton() {
@@ -66,6 +68,7 @@ function setupLogoutButton() {
   logoutBtn.addEventListener("click", (e) => {
     e.preventDefault();
     localStorage.removeItem("user");
+    sessionStorage.removeItem("frontDeskToken");
 
     if (typeof showToast === "function") {
       showToast("Logged out successfully.", "success");
@@ -100,7 +103,13 @@ async function loadFrontDeskReceipt() {
   }
 
   try {
-    const response = await fetch(`${API_BASE}/bookings/${bookingId}/receipt`);
+    const receiptToken = sessionStorage.getItem("frontDeskToken");
+    if (!receiptToken) {
+      throw new Error("Your receipt session has expired. Please log in again.");
+    }
+    const response = await fetch(`${API_BASE}/bookings/${bookingId}/receipt`, {
+      headers: { Authorization: "Bearer " + receiptToken },
+    });
     const data = await response.json();
 
     if (!response.ok) {
