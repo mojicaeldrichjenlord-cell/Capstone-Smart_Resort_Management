@@ -14,6 +14,16 @@ let selectedMarkerId = null;
 let isAddMode = false;
 let draggedMarkerId = null;
 
+// The signed Admin token stays in tab-scoped sessionStorage.
+function adminMapHeaders(includeJson = true) {
+  const token = sessionStorage.getItem("adminToken");
+  if (!token) throw new Error("Admin session expired. Please log in again.");
+  return {
+    ...(includeJson ? { "Content-Type": "application/json" } : {}),
+    Authorization: "Bearer " + token,
+  };
+}
+
 const DEFAULT_MARKERS = [
   { name: "Family Room-B", type: "room", color: "#0ea5e9", info: "Family room area.", x: 31, y: 7, room_id: null },
   { name: "Single Room (Pool Side)", type: "room", color: "#0ea5e9", info: "Room near the pool side.", x: 32, y: 21, room_id: null },
@@ -92,6 +102,7 @@ function setupLogout() {
     e.preventDefault();
 
     localStorage.removeItem("user");
+    sessionStorage.removeItem("adminToken");
 
     if (typeof showToast === "function") {
       showToast("Logged out successfully.", "success");
@@ -143,7 +154,13 @@ function setupEvents() {
     .addEventListener("click", async () => {
       if (!confirm("Clear all markers from database?")) return;
 
-      await deleteAllMarkers();
+      try {
+        await deleteAllMarkers();
+      } catch (error) {
+        console.error("deleteAllMarkers error:", error);
+        alert(error.message || "Failed to clear map markers.");
+        return;
+      }
 
       markers = [];
       selectedMarkerId = null;
@@ -313,9 +330,7 @@ async function saveMarkersToDB() {
       if (marker.isNew || String(marker.id).startsWith("temp_")) {
         const response = await fetch(`${API_BASE}/map-markers`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: adminMapHeaders(),
           body: JSON.stringify(payload),
         });
 
@@ -327,9 +342,7 @@ async function saveMarkersToDB() {
       } else {
         const response = await fetch(`${API_BASE}/map-markers/${marker.id}`, {
           method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: adminMapHeaders(),
           body: JSON.stringify(payload),
         });
 
@@ -374,9 +387,14 @@ function buildMarkerPayload(marker) {
 async function deleteAllMarkers() {
   for (const marker of markers) {
     if (!marker.isNew && !String(marker.id).startsWith("temp_")) {
-      await fetch(`${API_BASE}/map-markers/${marker.id}`, {
+      const response = await fetch(`${API_BASE}/map-markers/${marker.id}`, {
         method: "DELETE",
+        headers: adminMapHeaders(false),
       });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.message || "Failed to delete saved marker.");
+      }
     }
   }
 }
@@ -615,6 +633,7 @@ async function deleteSelectedMarker() {
     if (!marker.isNew && !String(marker.id).startsWith("temp_")) {
       const response = await fetch(`${API_BASE}/map-markers/${marker.id}`, {
         method: "DELETE",
+        headers: adminMapHeaders(false),
       });
 
       const data = await response.json();
