@@ -1677,79 +1677,75 @@ exports.getUserBookings = async (req, res) => {
 // ============================================================
 exports.cancelBooking = async (req, res) => {
   try {
-    const { id } = req.params;
+    const reservationId = Number(req.params.id);
+    const customerId = Number(req.customerUser?.id);
+    if (!Number.isSafeInteger(reservationId) || reservationId <= 0 ||
+        !Number.isSafeInteger(customerId) || customerId <= 0) {
+      return res.status(400).json({ message: "Invalid reservation or Customer session." });
+    }
 
+    // Ownership must be verified server-side; client-controlled user IDs
+    // must never authorize a cancellation.
     const [rows] = await db.promise().query(
-      `
-      SELECT
-        r.id,
-        r.reservation_status,
-        MIN(ri.check_in_date) AS check_in_date
-      FROM reservations r
-      LEFT JOIN reservation_items ri ON r.id = ri.reservation_id
-      WHERE r.id = ?
-      GROUP BY r.id
-      LIMIT 1
-      `,
-      [id],
+      "SELECT r.id, r.reservation_status, COALESCE(r.is_checked_in, 0) AS is_checked_in, " +
+      "MIN(ri.check_in_date) AS check_in_date " +
+      "FROM reservations r LEFT JOIN reservation_items ri ON r.id = ri.reservation_id " +
+      "WHERE r.id = ? AND r.user_id = ? GROUP BY r.id LIMIT 1",
+      [reservationId, customerId],
     );
-
     if (!rows.length) {
-      return res.status(404).json({
-        message: "Reservation not found.",
-      });
+      return res.status(404).json({ message: "Reservation not found." });
     }
 
     const reservation = rows[0];
-    const status = String(reservation.reservation_status || "").toLowerCase();
-
-    if (["cancelled", "rejected", "completed"].includes(status)) {
+    const status = String(reservation.reservation_status || "").trim().toLowerCase();
+    if (Number(reservation.is_checked_in) !== 0) {
+      return res.status(409).json({
+        message: "Checked-in reservations must be handled by Front Desk.",
+      });
+    }
+    if (!["pending", "approved"].includes(status)) {
       return res.status(400).json({
         message: "This reservation can no longer be cancelled.",
       });
     }
-
     if (!reservation.check_in_date) {
-      return res.status(400).json({
-        message: "This reservation has no valid check-in date.",
-      });
+      return res.status(400).json({ message: "This reservation has no valid check-in date." });
     }
 
     const checkInDate = new Date(reservation.check_in_date);
     const today = new Date();
-
+    if (Number.isNaN(checkInDate.getTime())) {
+      return res.status(400).json({ message: "Invalid reservation check-in date." });
+    }
     checkInDate.setHours(0, 0, 0, 0);
     today.setHours(0, 0, 0, 0);
-
     const daysBeforeCheckIn = Math.floor(
       (checkInDate.getTime() - today.getTime()) / (24 * 60 * 60 * 1000),
     );
-
     if (daysBeforeCheckIn < 1) {
       return res.status(400).json({
         message: "Cancellation is only allowed at least 1 day before check-in.",
       });
     }
 
-    await db.promise().query(
-      `
-      UPDATE reservations
-      SET reservation_status = 'cancelled'
-      WHERE id = ?
-      `,
-      [id],
+    // Atomic guard: concurrent check-in/status changes cannot be overwritten.
+    // Financial fields remain unchanged.
+    const [result] = await db.promise().query(
+      "UPDATE reservations SET reservation_status = 'cancelled' " +
+      "WHERE id = ? AND user_id = ? AND COALESCE(is_checked_in, 0) = 0 " +
+      "AND reservation_status = ?",
+      [reservationId, customerId, reservation.reservation_status],
     );
-
-    return res.status(200).json({
-      message: "Reservation cancelled successfully.",
-    });
+    if (result.affectedRows !== 1) {
+      return res.status(409).json({
+        message: "Reservation changed while cancelling. Refresh and try again.",
+      });
+    }
+    return res.status(200).json({ message: "Reservation cancelled successfully." });
   } catch (error) {
     console.error("cancelBooking error:", error);
-
-    return res.status(500).json({
-      message: "Failed to cancel reservation.",
-      error: error.message,
-    });
+    return res.status(500).json({ message: "Failed to cancel reservation." });
   }
 };
 
@@ -3474,14 +3470,14 @@ exports.requestBookingModification = async (req, res) => {
     const { id } = req.params;
 
     const {
-      user_id,
       requested_check_in_date,
       requested_slot_type,
       requested_guest_count,
       requested_note,
-    } = req.body;
+    } = req.body || {};
 
-    const cleanUserId = Number(user_id);
+    // Never trust user_id from request JSON: authenticate the session.
+    const cleanUserId = Number(req.customerUser?.id);
     const reservationId = Number(id);
     const cleanRequestedDate = requested_check_in_date || null;
     const cleanRequestedSlot = requested_slot_type || null;
