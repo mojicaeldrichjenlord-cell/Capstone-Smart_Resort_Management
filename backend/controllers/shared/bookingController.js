@@ -3279,6 +3279,18 @@ exports.extendReservationItem = async (req, res) => {
     const newCheckOutDate = extensionWindowDetails.check_out_date;
     const newCheckOutTime = extensionWindowDetails.check_out_time;
 
+    // Half-day choices are only valid when they extend the current checkout.
+    // For example, "day_half" must not charge a guest whose checkout is
+    // already 17:00, because that would create a zero-length stay window.
+    const extensionStart = buildLocalDateTime(oldCheckOutDate, oldCheckOutTime);
+    const extensionEnd = buildLocalDateTime(newCheckOutDate, newCheckOutTime);
+    if (!extensionStart || !extensionEnd || extensionEnd <= extensionStart) {
+      throw {
+        status: 400,
+        message: "Extension must end after the current checkout date and time.",
+      };
+    }
+
     const extensionWindow = {
       accommodation_id: extensionWindowDetails.accommodation_id,
       check_in_date: extensionWindowDetails.check_in_date,
