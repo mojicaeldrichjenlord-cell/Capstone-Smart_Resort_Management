@@ -14,6 +14,19 @@
 let categories = [];
 let allRooms = [];
 
+// Admin mutation requests MUST carry the signed session; the backend
+// independently validates current Admin role before modifying inventory.
+function adminInventoryHeaders(includeJson = true) {
+  const token = sessionStorage.getItem("adminToken");
+  if (!token) {
+    throw new Error("Admin session expired. Please log in again.");
+  }
+  return {
+    ...(includeJson ? { "Content-Type": "application/json" } : {}),
+    Authorization: "Bearer " + token,
+  };
+}
+
 // ============================================================
 // SECTION 1: Page startup
 // Checks access, sets events, loads categories and accommodations.
@@ -78,6 +91,7 @@ function setupLogout() {
     e.preventDefault();
 
     localStorage.removeItem("user");
+    sessionStorage.removeItem("adminToken");
     showMessage("Logged out successfully.", "success");
 
     setTimeout(() => {
@@ -237,9 +251,7 @@ async function createCategory() {
   try {
     const response = await fetch(`${API_BASE}/rooms/categories`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: adminInventoryHeaders(),
       body: JSON.stringify({ name, description }),
     });
 
@@ -270,6 +282,7 @@ async function seedDefaults() {
   try {
     const response = await fetch(`${API_BASE}/rooms/seed-defaults`, {
       method: "POST",
+      headers: adminInventoryHeaders(false),
     });
 
     const data = await response.json();
@@ -372,17 +385,13 @@ async function handleRoomSubmit(e) {
     if (roomId) {
       response = await fetch(`${API_BASE}/rooms/${roomId}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: adminInventoryHeaders(),
         body: JSON.stringify(payload),
       });
     } else {
       response = await fetch(`${API_BASE}/rooms`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: adminInventoryHeaders(),
         body: JSON.stringify(payload),
       });
     }
@@ -783,6 +792,7 @@ async function deleteRoom(roomId) {
   try {
     const response = await fetch(`${API_BASE}/rooms/${roomId}`, {
       method: "DELETE",
+      headers: adminInventoryHeaders(false),
     });
 
     const data = await response.json();
