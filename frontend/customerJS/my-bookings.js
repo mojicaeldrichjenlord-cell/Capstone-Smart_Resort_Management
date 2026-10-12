@@ -80,7 +80,16 @@ async function loadMyBookings(userId) {
   try {
     container.innerHTML = getLoadingBox();
 
-    const response = await fetch(`${API_BASE}/bookings/user/${userId}`);
+    const customerToken = sessionStorage.getItem("customerToken");
+    if (!customerToken) {
+      alert("Please log in again to access your bookings securely.");
+      window.location.href = "../authHTML/login.html";
+      return;
+    }
+
+    const response = await fetch(`${API_BASE}/bookings/user/${userId}`, {
+      headers: { Authorization: "Bearer " + customerToken },
+    });
     const data = await response.json();
 
     if (!response.ok) {
