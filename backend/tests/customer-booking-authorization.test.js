@@ -36,6 +36,11 @@ const fakeDb = {
           return [Number(id) === reservation.id && Number(owner) === reservation.user_id
             ? [{ ...reservation }] : []];
         }
+        if (/\bFROM reservations r\b/i.test(sql) &&
+            /WHERE r\.user_id = \?/i.test(sql)) {
+          // My Bookings list uses a customer-owner filter.
+          return [[]];
+        }
         if (/^UPDATE reservations SET reservation_status = 'cancelled'/i.test(sql)) {
           const [id, owner, oldStatus] = params;
           assert.match(sql, /AND user_id = \?/i);
@@ -214,4 +219,23 @@ test("spoofed body user_id cannot target someone else's booking", async () => {
   assert.equal(writes.length, 0);
   const lookup = queries.find((entry) => /FROM reservations r/.test(entry.sql));
   assert.deepEqual(lookup.params, [101, 1]);
+});
+
+test("anonymous caller cannot list Customer bookings", async () => {
+  const out = await request("/api/bookings/user/1", "GET", null);
+  assert.equal(out.status, 401);
+  assert.equal(queries.length, 0);
+});
+test("Customer cannot list another account's bookings", async () => {
+  const out = await request("/api/bookings/user/2", "GET", validCustomer);
+  assert.equal(out.status, 403);
+  assert.equal(writes.length, 0);
+  assert.equal(queries.filter((entry) => /FROM reservations r/.test(entry.sql)).length, 0);
+});
+test("Customer can list their own bookings", async () => {
+  const out = await request("/api/bookings/user/1", "GET", validCustomer);
+  assert.equal(out.status, 200);
+  assert.deepEqual(out.data.bookings, []);
+  const listSql = queries.find((entry) => /WHERE r.user_id = \?/i.test(entry.sql));
+  assert.deepEqual(listSql.params, ["1"]);
 });
