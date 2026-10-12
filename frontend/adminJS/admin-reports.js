@@ -229,7 +229,11 @@ async function fetchReports(url) {
   try {
     hideReportError();
 
-    const response = await fetch(url);
+    const adminToken = sessionStorage.getItem("adminToken");
+    if (!adminToken) throw new Error("Admin session expired. Please log in again.");
+    const response = await fetch(url, {
+      headers: { Authorization: "Bearer " + adminToken },
+    });
     const data = await response.json();
 
     if (!response.ok) {
