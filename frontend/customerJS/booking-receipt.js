@@ -54,6 +54,7 @@ function setupLogout() {
     btn.addEventListener("click", (e) => {
       e.preventDefault();
       localStorage.removeItem("user");
+      sessionStorage.removeItem("customerToken");
 
       if (typeof showToast === "function") {
         showToast("Logged out successfully.", "success");
@@ -87,7 +88,13 @@ async function loadReceipt() {
   try {
     receiptBox.innerHTML = `<div class="receipt-loading-box">Loading your receipt...</div>`;
 
-    const response = await fetch(`${API_BASE}/bookings/${bookingId}/receipt`);
+    const receiptToken = sessionStorage.getItem("customerToken");
+    if (!receiptToken) {
+      throw new Error("Your receipt session has expired. Please log in again.");
+    }
+    const response = await fetch(`${API_BASE}/bookings/${bookingId}/receipt`, {
+      headers: { Authorization: "Bearer " + receiptToken },
+    });
     const data = await response.json();
 
     if (!response.ok) {
