@@ -376,6 +376,7 @@ async function loadGuestBookings() {
         method: "GET",
         headers: {
           Accept: "application/json",
+          Authorization: requireFrontDeskFinancialAuthorization(),
         },
         cache: "no-store",
       },
@@ -1813,6 +1814,7 @@ async function confirmGuestAdjustmentWasSaved(
           headers: {
             Accept:
               "application/json",
+            Authorization: requireFrontDeskFinancialAuthorization(),
           },
           cache: "no-store",
         },
