@@ -111,7 +111,11 @@ async function loadReservations() {
   `);
 
   try {
-    const response = await fetch(`${API_BASE}/bookings?scope=all`);
+    const frontDeskToken = sessionStorage.getItem("frontDeskToken");
+    if (!frontDeskToken) throw new Error("Front Desk session expired. Please log in again.");
+    const response = await fetch(`${API_BASE}/bookings?scope=all`, {
+      headers: { Authorization: "Bearer " + frontDeskToken },
+    });
     const data = await response.json();
 
     if (!response.ok) {
