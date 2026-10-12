@@ -141,6 +141,7 @@ if (loginForm) {
 
         sessionStorage.setItem("frontDeskToken", frontDeskToken);
         sessionStorage.removeItem("adminToken");
+        sessionStorage.removeItem("customerToken");
       } else if (role === "admin") {
         const adminToken = data.adminToken;
         if (
@@ -153,10 +154,23 @@ if (loginForm) {
         }
         sessionStorage.setItem("adminToken", adminToken);
         sessionStorage.removeItem("frontDeskToken");
-      } else {
-        // Prevent stale privileged sessions when switching user roles.
+        sessionStorage.removeItem("customerToken");
+      } else if (role === "customer") {
+        const customerToken = data.customerToken;
+        if (
+          typeof customerToken !== "string" ||
+          !/^cus1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(customerToken)
+        ) {
+          throw new Error("Secure Customer login token was not returned. Please try again.");
+        }
+        sessionStorage.setItem("customerToken", customerToken);
         sessionStorage.removeItem("frontDeskToken");
         sessionStorage.removeItem("adminToken");
+      } else {
+        // Prevent stale signed sessions when switching user roles.
+        sessionStorage.removeItem("frontDeskToken");
+        sessionStorage.removeItem("adminToken");
+        sessionStorage.removeItem("customerToken");
       }
 
       localStorage.setItem(
