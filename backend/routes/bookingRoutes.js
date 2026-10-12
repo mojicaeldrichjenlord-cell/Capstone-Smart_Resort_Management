@@ -47,6 +47,7 @@ const {
   requireFrontDeskAuth,
 } = require("../middleware/frontDeskAuth");
 const { requireAdminAuth } = require("../middleware/adminAuth");
+const { requireCustomerAuth } = require("../middleware/customerAuth");
 
 function bindAuthenticatedFrontDeskCreator(req, res, next) {
   const creatorId = Number(req.frontDeskUser?.id);
@@ -293,6 +294,7 @@ router.get(
 
 router.put(
   "/:id/cancel",
+  requireCustomerAuth,
   cancelBooking,
 );
 
@@ -332,6 +334,7 @@ router.post(
 
 router.post(
   "/:id/modification-request",
+  requireCustomerAuth,
   requestBookingModification,
 );
 
