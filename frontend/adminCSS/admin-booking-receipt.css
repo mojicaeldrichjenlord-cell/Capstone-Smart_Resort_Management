@@ -78,7 +78,12 @@ body {
   line-height: 1.6;
 }
 
-.thermal-receipt-shell {
+/* The shared stylesheet hides #thermalReceipt for legacy print-only views.
+   This Admin receipt has an always-visible 80mm on-screen preview, so the
+   receipt-specific selector must override that older ID-level rule. */
+#thermalReceipt.thermal-receipt-shell {
+  display: block !important;
+  visibility: visible !important;
   width: 80mm;
   max-width: 100%;
   margin: 0 auto;
