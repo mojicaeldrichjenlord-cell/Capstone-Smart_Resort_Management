@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const { requireAdminAuth } = require("../middleware/adminAuth");
 const { requireFrontDeskAuth } = require("../middleware/frontDeskAuth");
+const { requireOperationalBookingRead } = require("../middleware/operationalBookingReadAuth");
 
 // ============================================================
 // EXISTING ADMIN BOOKING OPERATIONS
@@ -80,6 +81,7 @@ const {
 // ============================================================
 router.get(
   "/",
+  requireOperationalBookingRead,
   getAllAdminBookings,
 );
 
