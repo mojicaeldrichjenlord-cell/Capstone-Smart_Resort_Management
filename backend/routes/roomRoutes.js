@@ -8,6 +8,7 @@
 
 const express = require("express");
 const router = express.Router();
+const { requireAdminAuth } = require("../middleware/adminAuth");
 
 const {
   getAccommodationCategories,
@@ -22,14 +23,14 @@ const {
 } = require("../controllers/shared/roomController");
 
 router.get("/categories", getAccommodationCategories);
-router.post("/categories", createAccommodationCategory);
-router.post("/seed-defaults", seedDefaultAccommodations);
+router.post("/categories", requireAdminAuth, createAccommodationCategory);
+router.post("/seed-defaults", requireAdminAuth, seedDefaultAccommodations);
 
 router.get("/", getAllRooms);
 router.get("/available", getAvailableRooms);
 router.get("/:id", getRoomById);
-router.post("/", createRoom);
-router.put("/:id", updateRoom);
-router.delete("/:id", deleteRoom);
+router.post("/", requireAdminAuth, createRoom);
+router.put("/:id", requireAdminAuth, updateRoom);
+router.delete("/:id", requireAdminAuth, deleteRoom);
 
 module.exports = router;
