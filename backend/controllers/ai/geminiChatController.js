@@ -375,6 +375,7 @@ function buildCatalogSummary(catalog, context, message) {
     byCategory[label] = (byCategory[label] || 0) + 1;
   }
   const matches = catalogMatchFilter(catalog, context, message);
+  const newestRequested = /\bnew\b|\blatest\b|recently added|bago|pinakabago|nuevo|nueva|最新|新房/i.test(String(message || ""));
   const recommendable = matches.filter(room =>
     normalizeText(room.status) === "available");
   const unavailable = matches.filter(room =>
@@ -417,8 +418,10 @@ function buildCatalogSummary(catalog, context, message) {
         ["No currently listed candidate matches the requested type/capacity/budget."]),
       "MATCHING UNAVAILABLE OR MAINTENANCE RECORDS:",
       ...(unavailable.length ? unavailable.slice(0, 3).map(formatRoom) : ["None"]),
-      "NEWEST ADDED ACCOMMODATIONS (by latest record ID; not necessarily available):",
-      ...catalog.slice(0, 4).map(formatRoom),
+      ...(newestRequested ? [
+        "NEWEST ADDED ACCOMMODATIONS (by latest record ID; not necessarily available):",
+        ...catalog.slice(0, 4).map(formatRoom),
+      ] : []),
     ].join("\n"),
     recommendations: highlights.map(room => ({
       id: room.id, name: room.room_name, category: room.category_name,
