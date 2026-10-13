@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="../managerCSS/managerDashboard.css" />
 </head>
 <body>
+<a href="#mainContent" class="manager-skip-link">Skip to main content</a>
 <header class="manager-navbar">
 <div><strong>Arvic Seaside</strong><span>Resort Manager</span></div>
 <nav class="manager-nav" aria-label="Manager navigation">
@@ -18,7 +19,7 @@
 <button type="button" id="logoutBtn">Logout</button>
 </nav>
 </header>
-<main class="manager-page">
+<main class="manager-page" id="mainContent" tabindex="-1">
 <section class="manager-hero">
 <p>RESORT MANAGER</p>
 <h1>Reservation Management</h1>
@@ -40,8 +41,8 @@
 </select></label>
 <button type="submit">Search / Refresh</button>
 </form>
-<p id="managerReservationStatus" role="status">Verifying Manager session…</p>
-<div class="activity-scroll">
+<p id="managerReservationStatus" class="manager-status" role="status" aria-live="polite">Verifying Manager session…</p>
+<div class="activity-scroll" role="region" aria-label="Scrollable Manager data table" tabindex="0">
 <table aria-label="Manager reservation records">
 <thead><tr>
 <th>Code</th><th>Guest</th><th>Accommodation</th><th>Dates / Times</th><th>Guests</th>
