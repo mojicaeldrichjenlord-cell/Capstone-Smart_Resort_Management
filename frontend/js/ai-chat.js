@@ -747,7 +747,13 @@ function appendBookingPreviewCard(preview, save = true) {
 
   const confirmBtn = bubble.querySelector(".ai-confirm-booking-btn");
   if (confirmBtn) {
-    confirmBtn.addEventListener("click", () => createBookingFromPreview(preview, confirmBtn));
+    if (preview?.booking_schema !== "accommodations_v2") {
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = "Old suggestion — ask AI again";
+      confirmBtn.title = "Legacy AI room IDs are not compatible with current accommodations.";
+    } else {
+      confirmBtn.addEventListener("click", () => createBookingFromPreview(preview, confirmBtn));
+    }
   }
 
   if (save) {
@@ -769,6 +775,11 @@ function createBookingFromPreview(preview, button) {
   if (!user || String(user.role || "").toLowerCase() !== "customer") {
     appendAiSystemNote("Please log in as a Customer before continuing to booking.");
     window.location.href = frontendPrefix + "/authHTML/login.html";
+    return;
+  }
+
+  if (preview?.booking_schema !== "accommodations_v2") {
+    appendAiSystemNote("This AI suggestion is outdated. Please ask for an updated accommodation recommendation.");
     return;
   }
 
