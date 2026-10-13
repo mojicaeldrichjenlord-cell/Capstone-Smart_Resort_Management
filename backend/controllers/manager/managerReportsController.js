@@ -9,6 +9,7 @@ const MAX_DAYS = 366;
 
 function parseDay(value) {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  if (Number(value.slice(0, 4)) < 2000 || Number(value.slice(0, 4)) > 2099) return null;
   const d = new Date(value + "T00:00:00.000Z");
   if (!Number.isFinite(d.getTime()) || d.toISOString().slice(0, 10) !== value) return null;
   return d;
@@ -75,7 +76,7 @@ exports.getManagerReports = async (req, res) => {
       dates,
     );
     const [trendRows] = await db.promise().query(
-      "SELECT DATE(created_at) AS date, COUNT(*) AS reservations, " +
+      "SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS date, COUNT(*) AS reservations, " +
       "COALESCE(SUM(COALESCE(guest_count,0)),0) AS booked_guests " +
       "FROM reservations WHERE created_at >= ? AND created_at < ? " +
       "GROUP BY DATE(created_at) ORDER BY DATE(created_at) ASC",
