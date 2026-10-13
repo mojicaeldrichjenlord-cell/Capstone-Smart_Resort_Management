@@ -1,6 +1,7 @@
 // Manager-operated housekeeping task assignment and verification.
 // All requests use mgr1 signed token; no Admin, reservation or payment writes.
 document.addEventListener("DOMContentLoaded", () => {
+  // Only an authenticated Manager can assign, reassign, or verify tasks.
   const token = sessionStorage.getItem("managerToken");
   const message = document.getElementById("hkManagerMessage");
   const dayInput = document.getElementById("hkManagerDate");
@@ -12,6 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let staff = [];
   let busy = false;
 
+  // Invalid role/session: stop accessing this Manager-only screen.
   function signOut() {
     sessionStorage.removeItem("managerToken");
     localStorage.removeItem("user");
@@ -21,6 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
   if (!token || !/^mgr1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token)) {
     signOut(); return;
   }
+  // Align date filters with the Aiven server's Asia/Manila calendar day.
   function manilaToday() {
     const p = Object.fromEntries(new Intl.DateTimeFormat("en-CA", {
       timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit",
@@ -36,6 +39,7 @@ document.addEventListener("DOMContentLoaded", () => {
   dayInput.min = from.toISOString().slice(0,10);
   dayInput.max = through.toISOString().slice(0,10);
 
+  // Shared Manager task API helper with signed authorization and error handling.
   async function request(path, options = {}) {
     const response = await fetch(API_BASE + "/manager/housekeeping/" + path, {
       ...options,
@@ -55,17 +59,20 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     return result;
   }
+  // Always use textContent for names and reservation codes to avoid XSS.
   function td(tr, value) {
     const cell = document.createElement("td");
     cell.textContent = String(value ?? "—");
     tr.appendChild(cell);
     return cell;
   }
+  // Dropdown options come from the authenticated API, not browser role flags.
   function option(text, value) {
     const el = document.createElement("option");
     el.textContent = text; el.value = String(value);
     return el;
   }
+  // Reassignment is allowed only while the task is Needs Cleaning.
   function staffDropdown(selected) {
     const dropdown = document.createElement("select");
     dropdown.setAttribute("aria-label", "Assigned Housekeeping staff");
@@ -75,6 +82,7 @@ document.addEventListener("DOMContentLoaded", () => {
     dropdown.value = String(selected);
     return dropdown;
   }
+  // Different statuses show different actions: Reassign, Verify, or read-only.
   function drawTasks(rows) {
     tbody.replaceChildren();
     if (!rows.length) {
@@ -128,6 +136,8 @@ document.addEventListener("DOMContentLoaded", () => {
       tbody.appendChild(tr);
     }
   }
+  // Fetch staff, eligible completed checkouts, and existing tasks together.
+  // Always rebuild dropdowns from fresh DB results after an update.
   async function refresh(feedback = "") {
     if (busy) return;
     busy = true;
@@ -159,6 +169,7 @@ document.addEventListener("DOMContentLoaded", () => {
       busy = false;
     }
   }
+  // Version check stops one Manager action overwriting another's update.
   async function perform(path, body, confirmation) {
     if (busy || !window.confirm(confirmation)) return;
     busy = true;
@@ -177,6 +188,7 @@ document.addEventListener("DOMContentLoaded", () => {
   filter.addEventListener("submit", event => {
     event.preventDefault(); refresh();
   });
+  // Task creation never edits the reservation or accommodation booking status.
   createForm.addEventListener("submit", async event => {
     event.preventDefault();
     if (busy || !createForm.reportValidity()) return;
@@ -200,6 +212,7 @@ document.addEventListener("DOMContentLoaded", () => {
       await refresh(feedback);
     }
   });
+  // Check Manager identity first; the backend also enforces this on every route.
   (async () => {
     try {
       // Shared Manager session validation before task discovery.
