@@ -14,6 +14,11 @@ const fakeDb = {
         const query = String(sql).replace(/\s+/g, " ").trim();
         calls.push({ sql: query, params });
         assert.match(query, /^SELECT\b/i, "No database writes allowed in reports");
+        // This catches the real MySQL syntax failure: MANUAL cannot be used
+        // as an unquoted SELECT alias on the resort's database version.
+        if (/\bAS\s+manual\s*(?:,|FROM\b)/i.test(query)) {
+          throw new Error("ER_PARSE_ERROR: reserved MANUAL SQL alias");
+        }
         if (/FROM users WHERE id = \?/i.test(query)) {
           return [account && Number(params[0]) === account.id
             ? [{ ...account }] : []];
@@ -23,7 +28,7 @@ const fakeDb = {
           return [[{
             total_reservations: 6, pending: 2, approved: 1,
             completed: 1, cancelled: 1, rejected: 1,
-            online: 4, manual: 2, booked_guests: 22,
+            online: 4, manual_reservations: 2, booked_guests: 22,
             active_booked_accommodation_value: "16000.00",
             recorded_accommodation_payments: "6400.00",
             first_name: "PRIVATE_GUEST",
@@ -245,4 +250,22 @@ test("Reports UI references Manager token and renders untrusted accommodation na
   assert.doesNotMatch(script, /innerHTML/);
   assert.match(html, /financial/i);
   assert.match(html, /Do not add them together as revenue/);
+});
+
+
+test("MySQL reports SQL avoids reserved MANUAL alias", async () => {
+  const result = await sample();
+  assert.equal(result.status, 200);
+  const summaryQuery = reads().find(record => /COUNT\(\*\) AS total_reservations/.test(record.sql));
+  assert.ok(summaryQuery, "Reservation summary SELECT must execute");
+  assert.match(summaryQuery.sql, /AS manual_reservations(?:,| FROM)/);
+  assert.doesNotMatch(summaryQuery.sql, /\bAS\s+manual\s*(?:,|FROM\b)/i);
+});
+
+test("Manager reports keep the frontend online/manual contract after SQL alias fix", async () => {
+  const result = await sample();
+  assert.equal(result.status, 200);
+  assert.equal(result.body.summary.online, 4);
+  assert.equal(result.body.summary.manual, 2);
+  assert.equal(result.body.summary.manual_reservations, undefined);
 });
