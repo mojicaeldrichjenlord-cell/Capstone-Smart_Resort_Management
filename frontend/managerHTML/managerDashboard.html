@@ -17,6 +17,7 @@
         <span>Resort Manager</span>
       </div>
 
+      <!-- Role navigation stays within Manager pages. -->
       <nav class="manager-nav" aria-label="Manager navigation">
         <a href="managerDashboard.html" aria-current="page">Dashboard</a>
         <a href="managerReservations.html">Reservations</a>
@@ -28,6 +29,7 @@
     </header>
 
     <main class="manager-page" id="mainContent" tabindex="-1">
+      <!-- Manager identity and manual refresh feedback. -->
       <section class="manager-hero">
         <p>RESORT MANAGER</p>
         <h1>Management Dashboard</h1>
@@ -44,6 +46,7 @@
       </section>
 
       <p class="manager-status" id="managerStatus" role="status" aria-live="polite">Verifying your Manager account…</p>
+      <!-- Server-side metrics; no private guest details on cards. -->
       <section class="manager-grid" id="managerSummary" aria-label="Current resort operations">
         <article><h2>Total Reservations</h2><strong id="totalReservations">—</strong><small>All reservation records</small></article>
         <article><h2>Pending Review</h2><strong id="pendingReservations">—</strong><small>Reservations awaiting action</small></article>
@@ -53,6 +56,7 @@
         <article><h2>Accommodations</h2><strong id="accommodationCount">—</strong><small id="availableListings">Listed as available: —</small></article>
         <article><h2>Recorded Reservation Payments</h2><strong id="recordedPayments">—</strong><small>Excludes separately recorded front-desk charges</small></article>
       </section>
+      <!-- Read-only reservation activity without private payment proofs. -->
       <section class="manager-activity">
         <h2>Recent Reservation Activity</h2>
         <p>No guest names, contact numbers, or payment proofs are exposed in this overview.</p>
