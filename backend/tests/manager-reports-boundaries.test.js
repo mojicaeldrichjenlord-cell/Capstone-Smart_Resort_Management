@@ -19,6 +19,13 @@ const fakeDb = {
         if (/\bAS\s+manual\s*(?:,|FROM\b)/i.test(query)) {
           throw new Error("ER_PARSE_ERROR: reserved MANUAL SQL alias");
         }
+        // MySQL ONLY_FULL_GROUP_BY requires SELECT grouping expressions to match.
+        // SELECT DATE_FORMAT(...) with GROUP BY DATE(created_at) fails on Aiven.
+        if (/SELECT DATE_FORMAT\(created_at/i.test(query) &&
+            (/GROUP BY DATE\(created_at\)/i.test(query) ||
+             !/GROUP BY DATE_FORMAT\(created_at, '%Y-%m-%d'\)/i.test(query))) {
+          throw new Error("ER_WRONG_FIELD_WITH_GROUP: ONLY_FULL_GROUP_BY trend mismatch");
+        }
         if (/FROM users WHERE id = \?/i.test(query)) {
           return [account && Number(params[0]) === account.id
             ? [{ ...account }] : []];
@@ -35,7 +42,7 @@ const fakeDb = {
             contact_no: "PRIVATE_PHONE",
           }]];
         }
-        if (/GROUP BY DATE\(created_at\)/i.test(query)) {
+        if (/GROUP BY DATE_FORMAT\(created_at, '%Y-%m-%d'\)/i.test(query)) {
           return [[
             { date: "2026-10-01", reservations: 2, booked_guests: 8 },
             { date: "2026-10-02", reservations: 4, booked_guests: 14 },
@@ -268,4 +275,18 @@ test("Manager reports keep the frontend online/manual contract after SQL alias f
   assert.equal(result.body.summary.online, 4);
   assert.equal(result.body.summary.manual, 2);
   assert.equal(result.body.summary.manual_reservations, undefined);
+});
+
+
+test("Manager daily trend query is compatible with MySQL ONLY_FULL_GROUP_BY", async () => {
+  const result = await sample();
+  assert.equal(result.status, 200);
+  const trend = reads().find(record =>
+    /SELECT DATE_FORMAT\(created_at, '%Y-%m-%d'\) AS date/.test(record.sql));
+  assert.ok(trend, "Daily trend report SQL must be executed");
+  assert.match(trend.sql, /GROUP BY DATE_FORMAT\(created_at, '%Y-%m-%d'\)/);
+  assert.match(trend.sql, /ORDER BY DATE_FORMAT\(created_at, '%Y-%m-%d'\) ASC/);
+  assert.doesNotMatch(trend.sql, /GROUP BY DATE\(created_at\)/);
+  assert.deepEqual(trend.params, ["2026-10-01", "2026-11-01"]);
+  assert.equal(result.body.trends[0].date, "2026-10-01");
 });
