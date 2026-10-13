@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Manager Accommodations | SmartResort</title>
+<link rel="stylesheet" href="../sharedCSS/global.css" />
+<link rel="stylesheet" href="../managerCSS/managerDashboard.css" />
+</head>
+<body>
+<header class="manager-navbar">
+<div><strong>Arvic Seaside</strong><span>Resort Manager</span></div>
+<nav class="manager-nav" aria-label="Manager navigation">
+<a href="managerDashboard.html">Dashboard</a>
+<a href="managerReservations.html">Reservations</a>
+<a href="managerAccommodations.html" aria-current="page">Accommodations</a>
+<button type="button" id="logoutBtn">Logout</button>
+</nav>
+</header>
+<main class="manager-page">
+<section class="manager-hero">
+<p>RESORT MANAGER</p>
+<h1>Accommodation Inventory</h1>
+<span>Review accommodation capacity, prices, and listing status. Update rates and status with confirmation; Admin manages new categories, maps, photos, and accommodation deletion.</span>
+</section>
+<section class="manager-activity">
+<h2>Current Accommodations</h2>
+<form id="inventoryFilters" class="manager-filters">
+<label for="inventorySearch">Search accommodation or category
+<input type="search" id="inventorySearch" placeholder="e.g., Family Room, Cottage" maxlength="90" /></label>
+<label for="inventoryCategory">Category
+<select id="inventoryCategory"><option value="all">All categories</option></select></label>
+<label for="inventoryStatusFilter">Status
+<select id="inventoryStatusFilter">
+<option value="all">All statuses</option>
+<option value="available">Available</option>
+<option value="unavailable">Unavailable</option>
+</select></label>
+<button type="submit">Refresh Inventory</button>
+</form>
+<p role="status" id="inventoryMessage" class="manager-status">Verifying Manager session…</p>
+<div class="activity-scroll">
+<table aria-label="Accommodation inventory" class="manager-inventory-table">
+<thead><tr><th>Accommodation</th><th>Category</th><th>Capacity</th><th>Day tour</th><th>Overnight</th><th>Extended</th><th>Status</th><th>Actions</th></tr></thead>
+<tbody id="inventoryBody"><tr><td colspan="8">Loading…</td></tr></tbody>
+</table>
+</div>
+<p class="manager-list-note">Rates shown are current listing prices. Existing reservation totals and booking schedules are not changed by inventory edits.</p>
+</section>
+</main>
+<dialog id="inventoryDialog" class="manager-inventory-dialog" aria-labelledby="inventoryDialogHeading">
+<form method="dialog" id="inventoryEditForm">
+<h2 id="inventoryDialogHeading">Edit Accommodation Rates</h2>
+<p id="inventoryDialogName">—</p>
+<label>Status<select id="editInventoryStatus" required><option value="available">Available</option><option value="unavailable">Unavailable</option></select></label>
+<label>Day Tour (PHP)<input id="editDayPrice" type="number" min="0" max="1000000" step="0.01" required /></label>
+<label>Overnight (PHP)<input id="editOvernightPrice" type="number" min="0" max="1000000" step="0.01" required /></label>
+<label>Extended (PHP)<input id="editExtendedPrice" type="number" min="0" max="1000000" step="0.01" required /></label>
+<p class="manager-list-note">Changing listing status does not cancel or alter existing reservations. A conflict requires refreshing before another edit.</p>
+<div class="manager-dialog-actions">
+<button type="button" id="cancelInventoryEdit" class="manager-reject">Cancel</button>
+<button type="submit" id="saveInventoryEdit" class="manager-approve">Save Changes</button>
+</div>
+</form>
+</dialog>
+<script src="../sharedJS/api-config.js"></script>
+<script src="../managerJS/managerAccommodations.js"></script>
+</body>
+</html>
