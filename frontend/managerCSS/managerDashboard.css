@@ -260,3 +260,33 @@ body {
 .manager-dialog-actions { display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; }
 .manager-dialog-actions button { padding:11px 15px; border-radius:10px; font-weight:800; cursor:pointer; }
 .manager-dialog-actions button:disabled { opacity:.6; cursor:wait; }
+
+
+/* Read-only Manager Reports & Analytics */
+.manager-report-section { margin-top:22px; }
+.manager-report-section h2 { margin:0 0 14px; color:#0f172a; }
+.manager-report-cards article h3 {
+  font-size:1rem; margin:0; line-height:1.3; color:#0f172a;
+}
+.manager-report-cards article strong {
+  overflow-wrap:anywhere; font-size:clamp(1.35rem,2vw,2rem);
+}
+.manager-financial-note {
+  border-left:3px solid #0f766e; padding:10px 13px;
+  background:#f0fdfa; border-radius:8px;
+  color:#334155; line-height:1.6; margin-bottom:18px;
+}
+.manager-trend { display:flex; flex-direction:column; gap:9px; padding-top:8px; }
+.manager-trend-row {
+  display:grid; grid-template-columns:minmax(112px,210px) minmax(80px,1fr) 46px;
+  align-items:center; gap:12px; font-size:.82rem; color:#334155;
+}
+.manager-trend-label { overflow-wrap:anywhere; }
+.manager-trend-track {
+  height:15px; border-radius:7px; background:#e2e8f0; overflow:hidden;
+}
+.manager-trend-fill { display:block; height:100%; background:#0d9488; border-radius:7px; }
+.manager-trend-row strong { text-align:right; color:#0f766e; }
+@media(max-width:720px) {
+  .manager-trend-row { grid-template-columns:100px minmax(60px,1fr) 40px; gap:7px; }
+}
