@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const { test } = require("node:test");
 const {
   generateGemini, geminiErrorStatus, geminiPublicError,
+  getGeminiUsageSnapshot,
 } = require("../controllers/ai/geminiResilience");
 
 function pretendAI(responder) {
@@ -89,4 +90,67 @@ test("Unknown Gemini faults hide internal SDK and API details", () => {
   assert.equal(result.status, 500);
   assert.equal(result.body.code, "AI_UNAVAILABLE");
   assert.doesNotMatch(JSON.stringify(result), /private-secret/);
+});
+
+
+test("Gemini usage tracking collects SDK token counts without exposing user data", async () => {
+  const before = getGeminiUsageSnapshot();
+  const ai = pretendAI(() => ({
+    text: "Private reply",
+    usageMetadata: {
+      promptTokenCount: 120,
+      candidatesTokenCount: 36,
+      thoughtsTokenCount: 18,
+      totalTokenCount: 174,
+    },
+  }));
+  await generateGemini(ai, "Confidential guest conversation");
+  const after = getGeminiUsageSnapshot();
+  assert.equal(after.attempts - before.attempts, 1);
+  assert.equal(after.successfulCalls - before.successfulCalls, 1);
+  assert.equal(after.meteredResponses - before.meteredResponses, 1);
+  assert.equal(after.inputTokens - before.inputTokens, 120);
+  assert.equal(after.outputTokens - before.outputTokens, 36);
+  assert.equal(after.thinkingTokens - before.thinkingTokens, 18);
+  assert.equal(after.totalTokens - before.totalTokens, 174);
+  assert.doesNotMatch(JSON.stringify(after), /Confidential|Private|API key/i);
+});
+
+test("Gemini SDK responses without usage metadata do not fabricate tokens", async () => {
+  const before = getGeminiUsageSnapshot();
+  const ai = pretendAI(() => ({ text: "No metadata here" }));
+  await generateGemini(ai, "Small chat");
+  const after = getGeminiUsageSnapshot();
+  assert.equal(after.successfulCalls - before.successfulCalls, 1);
+  assert.equal(after.meteredResponses - before.meteredResponses, 0);
+  assert.equal(after.totalTokens - before.totalTokens, 0);
+});
+
+test("Gemini 429 increments rate-limit counter but never creates fake token usage", async () => {
+  const before = getGeminiUsageSnapshot();
+  const ai = pretendAI(() => {
+    throw Object.assign(new Error("quota details may be sensitive"), { status: 429 });
+  });
+  await assert.rejects(() => generateGemini(ai, "Private prompt"));
+  const after = getGeminiUsageSnapshot();
+  assert.equal(after.attempts - before.attempts, 1);
+  assert.equal(after.rateLimitedCalls - before.rateLimitedCalls, 1);
+  assert.equal(after.failedCalls - before.failedCalls, 1);
+  assert.equal(after.totalTokens - before.totalTokens, 0);
+});
+
+test("A retryable Gemini 503 records two attempts but only one successful response", async () => {
+  const before = getGeminiUsageSnapshot();
+  const ai = pretendAI(n => n === 1
+    ? Promise.reject(Object.assign(new Error("busy"), { status: 503 }))
+    : { text: "ok", usageMetadata: { promptTokenCount: 5, totalTokenCount: 8 } });
+  const response = await generateGemini(ai, "prompt", async () => {});
+  const after = getGeminiUsageSnapshot();
+  assert.equal(response.text, "ok");
+  assert.equal(after.attempts - before.attempts, 2);
+  assert.equal(after.retries - before.retries, 1);
+  assert.equal(after.busyCalls - before.busyCalls, 1);
+  assert.equal(after.successfulCalls - before.successfulCalls, 1);
+  assert.equal(after.meteredResponses - before.meteredResponses, 1);
+  assert.equal(after.totalTokens - before.totalTokens, 8);
 });
