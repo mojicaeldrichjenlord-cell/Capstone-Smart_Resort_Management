@@ -34,8 +34,8 @@ function positiveId(value) {
 function versionFrom(body) {
   if (!body || typeof body !== "object" || Array.isArray(body) ||
     Object.keys(body).length !== 1 || !Object.hasOwn(body, "version")) return null;
-  const n = Number(body.version);
-  return Number.isSafeInteger(n) && n >= 0 ? n : null;
+  if (typeof body.version !== "number") return null;
+  return Number.isSafeInteger(body.version) && body.version >= 0 ? body.version : null;
 }
 function sendError(res, error, label) {
   if (error?.code === "ER_NO_SUCH_TABLE" || error?.errno === 1146) {
@@ -175,9 +175,10 @@ exports.createHousekeepingTask = async (req, res) => {
 
 exports.reassignHousekeepingTask = async (req, res) => {
   const id = positiveId(req.params.id), staff = positiveId(req.body?.assigned_to);
-  const version = Number(req.body?.version);
+  const version = req.body?.version;
   if (!id || !staff || !req.body || typeof req.body !== "object" || Array.isArray(req.body) ||
-      Object.keys(req.body).length !== 2 || !Number.isSafeInteger(version) || version < 0) {
+      Object.keys(req.body).length !== 2 || typeof version !== "number" ||
+      !Number.isSafeInteger(version) || version < 0) {
     return res.status(400).json({ success: false, message: "Invalid task, assignee or version." });
   }
   try {
