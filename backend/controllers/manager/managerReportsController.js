@@ -67,7 +67,7 @@ exports.getManagerReports = async (req, res) => {
       "COALESCE(SUM(CASE WHEN reservation_status = 'cancelled' THEN 1 ELSE 0 END),0) AS cancelled, " +
       "COALESCE(SUM(CASE WHEN reservation_status = 'rejected' THEN 1 ELSE 0 END),0) AS rejected, " +
       "COALESCE(SUM(CASE WHEN LOWER(booking_source) = 'online' THEN 1 ELSE 0 END),0) AS online, " +
-      "COALESCE(SUM(CASE WHEN LOWER(booking_source) = 'manual' THEN 1 ELSE 0 END),0) AS manual, " +
+      "COALESCE(SUM(CASE WHEN LOWER(booking_source) = 'manual' THEN 1 ELSE 0 END),0) AS manual_reservations, " +
       "COALESCE(SUM(COALESCE(guest_count,0)),0) AS booked_guests, " +
       "COALESCE(SUM(CASE WHEN reservation_status NOT IN ('cancelled','rejected') " +
       "THEN COALESCE(accommodation_total,0) ELSE 0 END),0) AS active_booked_accommodation_value, " +
@@ -112,7 +112,7 @@ exports.getManagerReports = async (req, res) => {
         pending: count(s.pending), approved: count(s.approved),
         completed: count(s.completed), cancelled: count(s.cancelled),
         rejected: count(s.rejected), online: count(s.online),
-        manual: count(s.manual), booked_guests: count(s.booked_guests),
+        manual: count(s.manual_reservations), booked_guests: count(s.booked_guests),
         active_booked_accommodation_value:
           finiteMoney(s.active_booked_accommodation_value),
         recorded_accommodation_payments:
