@@ -320,8 +320,14 @@ test("Manager verifies cleaned task without altering booking availability", asyn
   assert.equal(task.status,"verified_ready");
   assert.equal(task.verified_by,1);
   assert.equal((await verify(2)).code,409);
-  assert.equal(queries.some(x =>
-    /^(UPDATE|DELETE|INSERT).*?\b(reservations|accommodations|payment_transactions)\b/i.test(x.sql)),false);
+  // A task INSERT ... SELECT may READ reservations/accommodations as sources.
+  // The mutation target is only the table after INSERT INTO / UPDATE / DELETE FROM.
+  // Never classify a joined or selected source table as a write target.
+  const writes = queries.filter(x =>
+    /^(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+/i.test(x.sql));
+  assert.ok(writes.length >= 4, "Lifecycle must exercise real task write paths");
+  assert.equal(writes.every(x =>
+    /^(?:INSERT\s+INTO|UPDATE)\s+housekeeping_tasks\b/i.test(x.sql)), true);
 });
 test("Housekeeping token cannot perform Manager verification", async () => {
   await createAndCheck(); await start(); await cleaned();
