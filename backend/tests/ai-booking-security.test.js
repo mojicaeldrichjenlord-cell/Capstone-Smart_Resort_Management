@@ -15,6 +15,7 @@ let injectedFailures = 0;
 let injectedStatus = 503;
 let modelPrompts = [];
 let returnedRooms = [];
+let catalogRows = [];
 let roomLookup = null;
 let extraction = {};
 
@@ -68,6 +69,8 @@ substitute("../config/db", {
         if (/FROM accommodations a\b/i.test(sql) &&
             /NOT EXISTS\b/i.test(sql)) return [returnedRooms];
         if (/FROM accommodations a\b/i.test(sql) &&
+            /LIMIT 150\b/i.test(sql)) return [catalogRows];
+        if (/FROM accommodations a\b/i.test(sql) &&
             /LOWER\(a\.name\) LIKE \?/i.test(sql)) {
           return [roomLookup ? [roomLookup] : []];
         }
@@ -113,6 +116,7 @@ beforeEach(() => {
   injectedStatus = 503;
   modelPrompts = [];
   returnedRooms = [{ ...exampleRoom }];
+  catalogRows = [{ ...exampleRoom }];
   roomLookup = { ...exampleRoom };
   extraction = {};
 });
@@ -160,11 +164,17 @@ test("AI chat with missing message is rejected without DB access", async () => {
   assert.equal(queries.length, 0);
   assert.equal(modelCalls, 0);
 });
-test("Incomplete booking details make no availability claim or query", async () => {
+test("Incomplete booking details use fresh catalog but never claim date availability", async () => {
   const result = await post("/api/ai/chat", { message: "What rooms are available?" });
   assert.equal(result.status, 200);
   assert.equal(result.body.booking_preview, null);
-  assert.equal(queries.length, 0);
+  assert.equal(queries.length, 1);
+  assert.match(queries[0].sql, /FROM accommodations a/);
+  assert.match(queries[0].sql, /LIMIT 150/);
+  assert.doesNotMatch(queries[0].sql, /reservation_items/);
+  assert.equal(result.body.catalog_recommendations[0].availability_verified, false);
+  assert.match(modelPrompts[1], /Fresh general accommodation catalog/);
+  assert.match(modelPrompts[1], /NOT a verified booking slot/);
   assert.equal(modelCalls, 2);
 });
 test("Invalid same-day reversed times never query availability", async () => {
@@ -363,4 +373,92 @@ test("AI reply actions offer English and Tagalog, not Taglish translation", () =
   assert.doesNotMatch(ui, /Translate to Taglish/);
   assert.doesNotMatch(ui, /\/ai\/translate-taglish/);
   assert.match(ui, /\/ai\/translate-english/);
+});
+
+
+test("Newly created Admin accommodation appears in the next catalog query", async () => {
+  let result = await post("/api/ai/chat", { message: "What cottages do you have?" });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.catalog_recommendations.length, 0);
+  assert.equal(queries.length, 1);
+
+  catalogRows = [{
+    ...exampleRoom, id: 102, room_name: "New Family Cottage",
+    category_name: "Cottage", capacity: 12,
+    day_price: 2500, overnight_price: 3800,
+  }];
+  queries = [];
+  result = await post("/api/ai/chat", {
+    message: "Any cottages for 10 guests?",
+    guests: 10,
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.booking_preview, null);
+  assert.equal(result.body.catalog_recommendations[0].id, 102);
+  assert.equal(result.body.catalog_recommendations[0].name, "New Family Cottage");
+  assert.equal(result.body.catalog_recommendations[0].availability_verified, false);
+  assert.match(modelPrompts.at(-1), /New Family Cottage/);
+  assert.equal(queries.length, 1);
+});
+
+test("Admin price update is reflected immediately without stale AI cache", async () => {
+  catalogRows = [{ ...exampleRoom, day_price: 1500, overnight_price: 2200 }];
+  let response = await post("/api/ai/chat", { message: "How much is a room?" });
+  assert.equal(response.status, 200);
+  assert.equal(response.body.catalog_recommendations[0].day_price, 1500);
+  catalogRows = [{ ...exampleRoom, day_price: 4000, overnight_price: 4700 }];
+  response = await post("/api/ai/chat", { message: "How much is a room?" });
+  assert.equal(response.status, 200);
+  assert.equal(response.body.catalog_recommendations[0].day_price, 4000);
+  assert.match(modelPrompts.at(-1), /Day Tour: PHP 4,000/);
+  assert.equal(queries.length, 2);
+});
+
+test("Unavailable accommodation is described but not recommended", async () => {
+  catalogRows = [{
+    ...exampleRoom, id: 102, category_name: "Cottage",
+    room_name: "Maintenance Cottage", status: "maintenance",
+  }];
+  const result = await post("/api/ai/chat", {
+    message: "Do you have Maintenance Cottage?",
+    room_name: "Maintenance Cottage",
+  });
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.body.catalog_recommendations, []);
+  assert.match(modelPrompts[1], /Maintenance Cottage/);
+  assert.match(modelPrompts[1], /Admin status: maintenance/);
+  assert.equal(result.body.booking_preview, null);
+});
+
+test("Budget and capacity filter read current rates and exclude mismatches", async () => {
+  catalogRows = [
+    { ...exampleRoom, id: 110, room_name: "Large Cottage", category_name: "Cottage", capacity: 12, day_price: 3000, overnight_price: 4500 },
+    { ...exampleRoom, id: 111, room_name: "Small Cottage", category_name: "Cottage", capacity: 4, day_price: 1200, overnight_price: 2200 },
+    { ...exampleRoom, id: 112, room_name: "Expensive Cottage", category_name: "Cottage", capacity: 15, day_price: 5900, overnight_price: 6900 },
+  ];
+  const result = await post("/api/ai/chat", {
+    message: "Need a day tour cottage for 10 guests under 3500",
+    guests: 10, max_price: 3500,
+  });
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.body.catalog_recommendations.map(v => v.id), [110]);
+  assert.match(modelPrompts[1], /Large Cottage/);
+  assert.doesNotMatch(modelPrompts[1], /Small Cottage/);
+});
+
+test("Unrelated conversation is not forced to read the accommodation catalog", async () => {
+  const response = await post("/api/ai/chat", { message: "Hello" });
+  assert.equal(response.status, 200);
+  assert.equal(queries.length, 0);
+  assert.deepEqual(response.body.catalog_recommendations, []);
+});
+
+test("Verified date availability uses reservation schedules, not catalog guesses", async () => {
+  catalogRows = [{ ...exampleRoom, id: 999, room_name: "No Slot Checked" }];
+  const result = await post("/api/ai/chat", futureContext);
+  assert.equal(result.status, 200);
+  assert.equal(queries.length, 1);
+  assert.match(queries[0].sql, /reservation_items/);
+  assert.deepEqual(result.body.catalog_recommendations, []);
+  assert.equal(result.body.booking_preview.room_id, 61);
 });
