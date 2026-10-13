@@ -187,8 +187,8 @@ document.addEventListener("DOMContentLoaded", () => {
       dialog.close();
       message.textContent = "Changes saved. Loading latest inventory…";
     } catch (error) {
-      message.textContent = error.message + " Please refresh before editing again if data changed.";
-      if (!dialog.open) dialog.showModal();
+      message.textContent = error.message + " Please review the refreshed inventory before editing again.";
+      dialog.close();
     } finally {
       saving = false;
       saveButton.disabled = false;
