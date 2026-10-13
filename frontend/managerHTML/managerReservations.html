@@ -11,6 +11,7 @@
 <a href="#mainContent" class="manager-skip-link">Skip to main content</a>
 <header class="manager-navbar">
 <div><strong>Arvic Seaside</strong><span>Resort Manager</span></div>
+<!-- Manager-only review of pending reservations. -->
 <nav class="manager-nav" aria-label="Manager navigation">
 <a href="managerDashboard.html">Dashboard</a>
 <a href="managerReservations.html" aria-current="page">Reservations</a>
@@ -21,6 +22,7 @@
 </nav>
 </header>
 <main class="manager-page" id="mainContent" tabindex="-1">
+<!-- Explains allowed Manager booking operations. -->
 <section class="manager-hero">
 <p>RESORT MANAGER</p>
 <h1>Reservation Management</h1>
@@ -28,6 +30,7 @@
 </section>
 <section class="manager-activity">
 <h2>Reservations</h2>
+<!-- Read-only search filters; changes require an explicit confirmation. -->
 <form id="reservationFilters" class="manager-filters">
 <label for="managerSearch">Search by code, guest, or accommodation
 <input id="managerSearch" type="search" maxlength="80" placeholder="Reservation code, name, room" /></label>
@@ -44,6 +47,7 @@
 </form>
 <p id="managerReservationStatus" class="manager-status" role="status" aria-live="polite">Verifying Manager session…</p>
 <div class="activity-scroll" role="region" aria-label="Scrollable Manager data table" tabindex="0">
+<!-- JavaScript safely inserts server booking rows and status buttons. -->
 <table aria-label="Manager reservation records">
 <thead><tr>
 <th>Code</th><th>Guest</th><th>Accommodation</th><th>Dates / Times</th><th>Guests</th>
