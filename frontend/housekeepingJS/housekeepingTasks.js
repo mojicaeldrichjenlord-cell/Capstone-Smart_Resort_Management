@@ -1,5 +1,6 @@
 // Assigned turnover tasks. Distinct from schedule and never changes booking status.
 document.addEventListener("DOMContentLoaded", () => {
+  // Task access uses the same signed hk1 token as the daily schedule.
   const token = sessionStorage.getItem("housekeepingToken");
   if (!token || !/^hk1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token)) return;
   const tbody = document.getElementById("hkTaskRows");
@@ -7,11 +8,13 @@ document.addEventListener("DOMContentLoaded", () => {
   const date = document.getElementById("hkDate");
   const refreshButton = document.getElementById("hkRefreshTasks");
   let busy = false;
+  // Revoked or expired session: clear local auth and return to the login page.
   function signOut() {
     sessionStorage.removeItem("housekeepingToken");
     localStorage.removeItem("user");
     window.location.replace("../authHTML/login.html");
   }
+  // Every GET/PUT request is authorized server-side, not by this UI alone.
   async function request(path, options = {}) {
     const response = await fetch(API_BASE + "/housekeeping/" + path, {
       ...options, cache: "no-store",
@@ -30,12 +33,14 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     return data;
   }
+  // Display all database values as plain text, never as executable HTML.
   function cell(tr, text) {
     const el = document.createElement("td");
     el.textContent = String(text ?? "—");
     tr.appendChild(el);
     return el;
   }
+  // Color is a visual hint; text status remains available for accessibility.
   function statusBadge(tr, value) {
     const td = document.createElement("td");
     const badge = document.createElement("span");
@@ -45,6 +50,8 @@ document.addEventListener("DOMContentLoaded", () => {
     td.appendChild(badge);
     tr.appendChild(td);
   }
+  // The available button depends on task status: Start, then Mark Cleaned.
+  // Only the Manager may perform the later Verify Ready action.
   function draw(tasks) {
     tbody.replaceChildren();
     if (!tasks.length) {
@@ -71,6 +78,7 @@ document.addEventListener("DOMContentLoaded", () => {
         button.className = "hk-action";
         button.textContent = label;
         button.setAttribute("aria-label", label + " " + task.accommodation);
+        // Confirm, submit current version, and refresh to show conflicts or success.
         button.addEventListener("click", async () => {
           if (busy || !window.confirm(label + " for " + task.accommodation + "?")) return;
           busy = true;
@@ -96,6 +104,7 @@ document.addEventListener("DOMContentLoaded", () => {
       tbody.appendChild(tr);
     }
   }
+  // Refresh includes this staff member's outstanding older tasks as well.
   async function refresh(feedback = "") {
     if (busy) return;
     busy = true;
