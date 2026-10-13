@@ -10,6 +10,7 @@ const { before, beforeEach, after, test } = require("node:test");
 
 let queries = [];
 let modelCalls = 0;
+let modelPrompts = [];
 let returnedRooms = [];
 let roomLookup = null;
 let extraction = {};
@@ -27,7 +28,8 @@ substitute("@google/genai", {
   GoogleGenAI: class FakeGoogleGenAI {
     constructor() {
       this.models = {
-        async generateContent() {
+        async generateContent({ contents }) {
+          modelPrompts.push(contents);
           modelCalls++;
           // Calls alternate between structured intent extraction and response.
           return {
@@ -93,6 +95,7 @@ const exampleRoom = {
 beforeEach(() => {
   queries = [];
   modelCalls = 0;
+  modelPrompts = [];
   returnedRooms = [{ ...exampleRoom }];
   roomLookup = { ...exampleRoom };
   extraction = {};
@@ -210,4 +213,60 @@ test("Legacy SQL writer removed; frontend navigates through secure Customer form
   assert.match(frontend, /\/customerHTML\/booking\.html\?room_id=/);
   assert.match(frontend, /Continue to Booking/);
   assert.match(frontend, /preview\?\.booking_schema !== "accommodations_v2"/);
+});
+
+
+test("Spanish text chat overrides an older English chat-language preference", async () => {
+  const result = await post("/api/ai/chat", {
+    message: "Hola, quiero una habitación disponible.",
+    context: { language_style: "english" },
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.extracted_context.language_style, "spanish");
+  assert.match(modelPrompts[1], /Reply entirely in natural Spanish/);
+});
+test("Mandarin text chat overrides an older Spanish chat-language preference", async () => {
+  const result = await post("/api/ai/chat", {
+    message: "你好，我想预订一个房间。",
+    context: { language_style: "spanish" },
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.extracted_context.language_style, "mandarin");
+  assert.match(modelPrompts[1], /Simplified Chinese characters/);
+});
+test("English voice session replies in English even if guest changes spoken language", async () => {
+  const result = await post("/api/ai/chat", {
+    message: "你好，我想预订一个房间。",
+    voice_language: "english",
+    context: { language_style: "mandarin" },
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.extracted_context.language_style, "english");
+  assert.match(modelPrompts[1], /Reply in clear English/);
+});
+test("Mandarin voice session replies in Mandarin even if transcript is English", async () => {
+  const result = await post("/api/ai/chat", {
+    message: "Do you have a family room?",
+    voice_language: "mandarin",
+    context: { language_style: "english" },
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.extracted_context.language_style, "mandarin");
+  assert.match(modelPrompts[1], /Reply entirely in Mandarin Chinese/);
+});
+test("Taglish and Spanish voice preferences use the selected fixed reply language", async () => {
+  const taglish = await post("/api/ai/chat", {
+    message: "Hello", voice_language: "taglish",
+  });
+  assert.equal(taglish.status, 200);
+  assert.equal(taglish.body.extracted_context.language_style, "taglish");
+  assert.match(modelPrompts[1], /Reply in natural Taglish/);
+  modelCalls = 0;
+  modelPrompts = [];
+  const spanish = await post("/api/ai/chat", {
+    message: "Hello", voice_language: "spanish",
+  });
+  assert.equal(spanish.status, 200);
+  assert.equal(spanish.body.extracted_context.language_style, "spanish");
+  assert.match(modelPrompts[1], /Reply entirely in natural Spanish/);
 });
