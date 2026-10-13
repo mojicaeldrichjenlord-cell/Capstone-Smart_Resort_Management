@@ -152,3 +152,44 @@ body {
     min-width: 0;
   }
 }
+
+
+/* Phase 1 — accessible Housekeeping schedule */
+.hk-page { width: min(1230px, calc(100% - 30px)); }
+.hk-navbar { position: sticky; top: 0; z-index: 10; box-shadow: 0 6px 22px rgba(15,23,42,.12); }
+.hk-skip { position: fixed; top: -100px; left: 12px; z-index: 100; padding: 10px; background: white; color: #0f766e; }
+.hk-skip:focus { top: 12px; }
+.hk-panel { margin-top: 22px; background: #fff; border: 1px solid #e2e8f0; padding: 25px; border-radius: 23px; }
+.hk-panel-header { display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 15px; }
+.hk-panel h2 { margin: 0; font-size: 1.4rem; }
+.hk-panel-header p { color: #64748b; margin: 8px 0; }
+.hk-filters { display: flex; gap: 9px; align-items: flex-end; flex-wrap: wrap; }
+.hk-filters label { font-weight: 800; color: #334155; font-size: .86rem; width: 100%; }
+.hk-filters input { border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 12px; min-height: 42px; color: #0f172a; background: white; }
+.hk-filters button { background: #0f766e; color: #fff; border: 0; border-radius: 10px; padding: 10px 13px; font-weight: 800; min-height: 42px; cursor: pointer; }
+.hk-filters button:disabled { opacity: .6; cursor: wait; }
+.hk-status { color: #475569; line-height: 1.6; font-size: .93rem; }
+.hk-summary { display: grid; grid-template-columns: repeat(auto-fit,minmax(155px,1fr)); gap: 11px; margin: 20px 0; }
+.hk-summary article { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; min-height: 103px; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+.hk-summary article span { color: #475569; font-size: .86rem; font-weight: 700; }
+.hk-summary article strong { color: #0f766e; font-size: 1.9rem; }
+.hk-table-region { width: 100%; overflow-x: auto; }
+.hk-table-region:focus-visible { outline: 3px solid #0d9488; outline-offset: 3px; }
+.hk-table-region table { width: 100%; min-width: 940px; border-collapse: collapse; text-align: left; }
+.hk-table-region th, .hk-table-region td { padding: 14px 10px; border-bottom: 1px solid #e2e8f0; font-size: .88rem; vertical-align: middle; }
+.hk-table-region th { background: #f1f5f9; white-space: nowrap; color: #334155; }
+.hk-table-region tbody tr:hover { background: #f8fafc; }
+.hk-pill { display: inline-flex; border-radius: 999px; font-size: .78rem; font-weight: 800; padding: 5px 10px; color: #155e75; background: #cffafe; white-space: nowrap; text-transform: capitalize; }
+.hk-pill.hk-occupied { color: #1d4ed8; background: #dbeafe; }
+.hk-pill.hk-departure { color: #9a3412; background: #ffedd5; }
+.hk-pill.hk-arrival { color: #166534; background: #dcfce7; }
+.hk-pill.hk-booking { color: #334155; background: #e2e8f0; }
+.hk-panel .permission-note { max-width: none; margin-top: 18px; font-size: .86rem; }
+.hk-navbar button:focus-visible, .hk-filters input:focus-visible, .hk-filters button:focus-visible { outline: 3px solid #38bdf8; outline-offset: 3px; }
+@media (max-width: 700px) {
+  .hk-page { margin-top: 18px; }
+  .hk-panel { padding: 18px 12px; }
+  .hk-filters { width: 100%; }
+  .hk-filters input { flex: 1 1 130px; }
+  .hk-hero { padding: 20px; }
+}
