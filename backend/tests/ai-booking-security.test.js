@@ -45,9 +45,10 @@ substitute("@google/genai", {
           if (String(contents).includes("fluent, natural English")) {
             return { text: "Mock English translation" };
           }
-          // Successes alternate independently from failed attempts.
+          // Identify prompt type rather than relying on alternating calls.
+          // A simple catalog question now skips structured extraction.
           return {
-            text: successfulModelCalls % 2 === 1
+            text: String(contents).includes("You are extracting booking details")
               ? JSON.stringify(extraction)
               : "Mock AI response; no external service called.",
           };
@@ -614,4 +615,72 @@ test("English accommodation question remains English during Gemini quota fallbac
   assert.match(result.body.reply, /^Our AI service is temporarily limited/);
   assert.match(result.body.reply, /Family Room A/);
   assert.equal(queries.length, 1);
+});
+
+
+test("Simple accommodation catalog inquiry uses ONE Gemini call, still fresh from MySQL", async () => {
+  const result = await post("/api/ai/chat", {
+    message: "Hello AI! What accommodations do you currently offer at Arvic Seaside? Please tell me their names, capacities, and day tour rates.",
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.reply, "Mock AI response; no external service called.");
+  assert.equal(modelCalls, 1);
+  assert.equal(modelPrompts.length, 1);
+  assert.match(modelPrompts[0], /Fresh general accommodation catalog/);
+  assert.match(modelPrompts[0], /Family Room A/);
+  assert.equal(queries.length, 1);
+  assert.match(queries[0].sql, /FROM accommodations a/);
+  assert.doesNotMatch(queries[0].sql, /reservation_items/);
+  assert.equal(result.body.booking_preview, null);
+  assert.equal(result.body.catalog_recommendations[0].availability_verified, false);
+});
+
+test("Plain cottage catalog without dates uses one Gemini reply request", async () => {
+  const result = await post("/api/ai/chat", {
+    message: "What cottages do you have?",
+  });
+  assert.equal(result.status, 200);
+  assert.equal(modelCalls, 1);
+  assert.equal(queries.length, 1);
+  assert.equal(result.body.booking_preview, null);
+});
+
+test("Explicit booking windows still take the safe extraction and slot-check flow", async () => {
+  const result = await post("/api/ai/chat", futureContext);
+  assert.equal(result.status, 200);
+  assert.equal(modelCalls, 2);
+  assert.equal(queries.length, 1);
+  assert.match(queries[0].sql, /reservation_items/);
+  assert.equal(result.body.booking_preview.room_id, 61);
+});
+
+test("Saved guests disable the catalog fast path so user follow-ups are interpreted", async () => {
+  const result = await post("/api/ai/chat", {
+    message: "What cottages do you have?",
+    context: { guests: 10 },
+  });
+  assert.equal(result.status, 200);
+  assert.equal(modelCalls, 2);
+  assert.equal(queries.length, 1);
+  assert.deepEqual(result.body.catalog_recommendations, []);
+});
+
+test("Voice catalog reply remains fixed-language without intent extraction", async () => {
+  const result = await post("/api/ai/chat", {
+    message: "What accommodations do you offer?",
+    voice_language: "english",
+  });
+  assert.equal(result.status, 200);
+  assert.equal(modelCalls, 1);
+  assert.equal(result.body.extracted_context.language_style, "english");
+  assert.match(modelPrompts[0], /LIVE SPOKEN CONVERSATION/);
+  assert.match(modelPrompts[0], /Reply in clear English/);
+});
+
+test("Optimized prompt does not duplicate full booking context and live details", async () => {
+  const result = await post("/api/ai/chat", futureContext);
+  assert.equal(result.status, 200);
+  assert.match(modelPrompts.at(-1), /Saved booking details/);
+  assert.doesNotMatch(modelPrompts.at(-1), /Live booking details:/);
+  assert.equal((modelPrompts.at(-1).match(/Saved booking details/g)||[]).length, 1);
 });
