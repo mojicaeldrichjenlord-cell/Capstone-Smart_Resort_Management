@@ -7,6 +7,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const accountEmail = document.getElementById("accountEmail");
   const refresh = document.getElementById("refreshBtn");
 
+  // Clear mgr1 token on logout; the UI must never authorize by stored role alone.
   const signOut = () => {
     sessionStorage.removeItem("managerToken");
     localStorage.removeItem("user");
@@ -44,6 +45,7 @@ document.addEventListener("DOMContentLoaded", () => {
     accommodationCount: "total_accommodations",
   };
 
+  // Fetch fresh backend aggregates rather than deriving financial counts in browser.
   async function loadOverview() {
     if (refresh) refresh.disabled = true;
     if (status) status.textContent = "Loading current resort overview…";
@@ -110,6 +112,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // Verify live Manager role before rendering the dashboard.
   async function initManager() {
     try {
       const data = await request("me");
