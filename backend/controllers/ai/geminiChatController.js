@@ -522,6 +522,34 @@ function buildAlternativeSummary(alternatives) {
     .join("\n");
 }
 
+// One-call optimization for simple *general catalog* questions.
+// Advanced booking, time, price constraints and cross-turn details still use
+// Gemini structured extraction + independent reservation verification.
+function canSkipCatalogIntentExtraction(message, context = {}) {
+  const text = normalizeText(message);
+  if (!text || text.length > 500) return false;
+  if (!/\b(?:accommodations?|cottages?|rooms?|pavilions?)\b/i.test(text)) return false;
+  if (!/\b(?:what|which|list|show|tell|offer|have|types|kinds|catalog|rates|prices|cost|how\s+much)\b/i.test(text)) {
+    return false;
+  }
+  // A saved booking preference changes the meaning of a follow-up. Avoid
+  // bypassing extraction when there is meaningful context to interpret.
+  if ([
+    "check_in", "check_out", "check_in_time", "check_out_time",
+    "guests", "max_price", "room_name", "room_id", "view_type",
+    "aircon_type", "bed_type", "bed_count", "wants_booking",
+    "payment_method", "intent",
+  ].some(key => context[key] !== undefined && context[key] !== null &&
+    context[key] !== false && context[key] !== "")) return false;
+
+  // No guessing structured booking intent from dates, times or numerical
+  // requirements. Let Gemini handle those turns the existing safe way.
+  if (/\d|₱|\bphp\b|\b(?:available|availability|book|booking|reserve|reservation|tomorrow|today|tonight|next|week|month|date|time|check.in|check.out|guest|pax|person|budget|under|below|overnight|weekend|saturday|sunday|monday|tuesday|wednesday|thursday|friday)\b/i.test(text)) {
+    return false;
+  }
+  return true;
+}
+
 async function extractStructuredIntent(message, existingContext = {}) {
   const today = new Date();
   const todayText = formatDateOnly(today);
@@ -796,7 +824,10 @@ exports.chatWithGemini = async (req, res) => {
       ...(req.body.context || {}),
     };
 
-    const extractedContext = await extractStructuredIntent(message, requestContext);
+    const useCatalogFastPath = canSkipCatalogIntentExtraction(message, requestContext);
+    const extractedContext = useCatalogFastPath
+      ? {}
+      : await extractStructuredIntent(message, requestContext);
     const mergedContext = mergeContext(requestContext, extractedContext);
 
     const detectedLanguage = detectLanguageFromMessage(message);
@@ -988,18 +1019,10 @@ Important rules:
 - If the date/time range is invalid, ask the user to correct both dates and times. Same-day day tours may be valid if checkout is later than check-in.
 - Prefer concise answers over long answers.
 
-Saved booking context:
-${JSON.stringify(mergedContext, null, 2)}
-
-Live booking details:
-- Check-in date: ${mergedContext.check_in || "Not provided"}
-- Check-in time: ${mergedContext.check_in_time || "Not provided"}
-- Check-out date: ${mergedContext.check_out || "Not provided"}
-- Check-out time: ${mergedContext.check_out_time || "Not provided"}
-- Guests: ${mergedContext.guests || "Not provided"}
-- Requested stay day count (same-day tour = 1): ${nights || "Not yet verified"}
+Saved booking details (do not infer missing values):
+${JSON.stringify(mergedContext)}
+- Stay day count (same-day tour = 1): ${nights || "Not yet verified"}
 - Payment method: ${paymentMethodText}
-- Preferred language style: ${mergedContext.language_style || "english"}
 
 Missing core details:
 ${missingDetailsText}
