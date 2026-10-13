@@ -6,7 +6,7 @@ const { randomBytes } = require("node:crypto");
 const Module = require("node:module");
 const express = require("express");
 
-let user, reservation, queries, forcedConcurrentFailure;
+let user, reservation, queries, forcedConcurrentFailure, simulatedInvalidEnum;
 const sqlDb = {
   promise() {
     return {
@@ -42,6 +42,12 @@ const sqlDb = {
         }
         if (/^UPDATE reservations SET reservation_status = \?/i.test(normalized)) {
           assert.deepEqual(params.slice(1), [reservation.id]);
+          if (simulatedInvalidEnum && params[0] === "rejected") {
+            const error = new Error("Data truncated for column 'reservation_status' at row 1");
+            error.code = "WARN_DATA_TRUNCATED";
+            error.errno = 1265;
+            throw error;
+          }
           if (forcedConcurrentFailure) {
             return [{ affectedRows: 0 }];
           }
@@ -114,6 +120,7 @@ beforeEach(() => {
   };
   queries = [];
   forcedConcurrentFailure = false;
+  simulatedInvalidEnum = false;
 });
 
 async function call(path, { token = valid, method = "GET", body } = {}) {
@@ -268,4 +275,36 @@ test("Frontend requires signed Manager token and does not render guest inputs as
   assert.match(js, /textContent =/);
   assert.match(js, /window\.confirm\(/);
   assert.doesNotMatch(js, /innerHTML/);
+});
+
+
+test("Legacy schema without rejected ENUM returns actionable 409 and no status change", async () => {
+  simulatedInvalidEnum = true;
+  const response = await change("rejected");
+  assert.equal(response.code, 409);
+  assert.equal(response.data.code, "RESERVATION_STATUS_SCHEMA_MISMATCH");
+  assert.match(response.data.message, /database.*status|database does not support/i);
+  assert.equal(reservation.status, "pending");
+  assert.equal(writes().length, 1);
+});
+
+test("Legacy schema still permits Manager approval, independent of rejection migration", async () => {
+  simulatedInvalidEnum = true;
+  const response = await change("approved");
+  assert.equal(response.code, 200);
+  assert.equal(reservation.status, "approved");
+  assert.equal(writes().length, 1);
+});
+
+test("Rejection schema migration appends enum value without changing existing ordinal order", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const sourceSchema = fs.readFileSync(path.resolve(
+    __dirname, "../../database/smart_resort.sql"), "utf8");
+  const migration = fs.readFileSync(path.resolve(
+    __dirname, "../../database/migrations/2026-10-13_allow_rejected_reservation_status.sql"), "utf8");
+  assert.match(sourceSchema, /reservation_status\` enum\('pending','approved','cancelled','completed'\)/);
+  assert.match(migration, /ENUM\('pending','approved','cancelled','completed','rejected'\)/);
+  assert.match(migration, /NOT NULL DEFAULT 'pending'/);
+  assert.doesNotMatch(migration, /UPDATE\s+reservations|DELETE\s+FROM\s+reservations/i);
 });
