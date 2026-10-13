@@ -45,6 +45,10 @@ function mount({ recognizerAvailable = true, savedLanguage = null } = {}) {
   element("aiChatInput");
   element("aiChatClose");
   element("aiNewChatBtn");
+  // Fake DOM has no HTML parser: create nodes that the injected toolbar
+  // would normally produce from panel.innerHTML in a real browser.
+  for (const id of ["aiVoiceLanguage", "aiVoiceLive",
+    "aiVoiceInterrupt", "aiVoiceStatus"]) element(id);
 
   class FakeRecognizer {
     constructor() {
