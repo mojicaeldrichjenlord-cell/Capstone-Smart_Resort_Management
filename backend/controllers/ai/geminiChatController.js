@@ -622,6 +622,113 @@ function buildBookingPreview(room, context, stayDays) {
   };
 }
 
+// When Gemini's free tier is temporarily exhausted, serve only verified
+// read-only database facts for accommodation inquiries. Never generate a
+// reservation, alter payment state, or pretend dates are booked.
+async function buildQuotaLimitedAccommodationReply(payload) {
+  const message = String(payload?.message || "");
+  const context = mergeContext({
+    ...(payload?.context && typeof payload.context === "object" &&
+      !Array.isArray(payload.context) ? payload.context : {}),
+    ...payload,
+  }, {});
+  if (!isAccommodationInquiry(message, context)) return null;
+
+  const language = normalizeLanguageStyle(payload?.voice_language) ||
+    detectLanguageFromMessage(message) ||
+    normalizeLanguageStyle(context.language_style) || "english";
+  context.language_style = language;
+
+  const intro = {
+    english: "Our AI service is temporarily limited, but these accommodation details come directly from the resort database.",
+    tagalog: "Pansamantalang limitado ang AI, pero galing mismo sa resort database ang impormasyong ito.",
+    taglish: "Temporarily limited ang AI, pero galing mismo sa resort database ang accommodation details na ito.",
+    spanish: "La IA está temporalmente limitada, pero estos datos provienen directamente de la base de datos del resort.",
+    mandarin: "AI 服务暂时受限，但以下住宿信息直接来自度假村数据库。",
+  }[language];
+
+  const labels = {
+    english: { cap: "Maximum guests", day: "Day tour", night: "Overnight",
+      none: "No matching listed accommodation is currently available.",
+      dates: "Please provide check-in/out dates and times to check actual reservation slots.",
+      preview: "These are preliminary matches for your requested time window; confirm availability and prices in the secure booking form.",
+      invalid: "Please correct the check-in and check-out dates and times before checking availability." },
+    tagalog: { cap: "Pinakamaraming bisita", day: "Day tour", night: "Overnight",
+      none: "Walang tugmang accommodation na kasalukuyang nakalista bilang available.",
+      dates: "Ibigay ang petsa at oras ng check-in at check-out para masuri ang booking schedule.",
+      preview: "Paunang resulta lamang ito. I-confirm ang availability at presyo sa secure booking form.",
+      invalid: "Pakisuri ang petsa at oras ng check-in at check-out." },
+    taglish: { cap: "Maximum guests", day: "Day tour", night: "Overnight",
+      none: "Walang currently listed na available accommodation na tugma.",
+      dates: "Pakibigay ang check-in at check-out dates at times para ma-check ang booking slots.",
+      preview: "Preliminary matches lang ito. I-confirm ang slot at final price sa booking page.",
+      invalid: "Pakicorrect ang check-in at check-out dates at times." },
+    spanish: { cap: "Capacidad máxima", day: "Visita de día", night: "Pernoctación",
+      none: "No hay alojamientos disponibles que coincidan con los criterios.",
+      dates: "Indique las fechas y horas de entrada y salida para comprobar la disponibilidad.",
+      preview: "Estos son resultados preliminares; confirme la disponibilidad y el precio en la página de reservas.",
+      invalid: "Corrija las fechas y horas de entrada y salida." },
+    mandarin: { cap: "最多入住人数", day: "日间游览", night: "过夜",
+      none: "目前没有符合条件且标记为可用的住宿。",
+      dates: "请提供入住和退房日期及时间，以核查预订时段。",
+      preview: "这些只是初步匹配结果，请在安全预订页面确认时段和最终价格。",
+      invalid: "请先更正入住和退房日期及时间。" },
+  };
+  const words = labels[language] || labels.english;
+  const fullWindow = hasEnoughForAvailability(context);
+  const validWindow = fullWindow && isValidAiStayWindow(context);
+  if (fullWindow && !validWindow) {
+    return { success: true, mode: "database_fallback",
+      reply: intro + "\n\n" + words.invalid,
+      matched_rooms: [], catalog_recommendations: [], booking_preview: null,
+      alternative_dates: [], extracted_context: context };
+  }
+
+  let candidates = [];
+  let matches = [];
+  if (validWindow) {
+    const rooms = await getAvailableRooms(
+      context.check_in, context.check_in_time,
+      context.check_out, context.check_out_time,
+      Number(context.guests),
+    );
+    matches = filterRooms(rooms, context, message);
+    candidates = matches;
+  } else {
+    const catalog = await getAccommodationCatalog();
+    candidates = catalogMatchFilter(catalog, context, message)
+      .filter(room => normalizeText(room.status) === "available")
+      .sort((a, b) =>
+        Number(a.day_price || Infinity) - Number(b.day_price || Infinity));
+  }
+
+  const voiceMode = Boolean(normalizeLanguageStyle(payload?.voice_language));
+  const shown = candidates.slice(0, voiceMode ? 2 : 5);
+  const money = value => Number(value) > 0 && Number.isFinite(Number(value))
+    ? "PHP " + formatCurrency(value) : "Ask Front Desk";
+  const roomLines = shown.map((room, i) =>
+    (i + 1) + ". " + room.room_name +
+    " — " + words.cap + ": " + Number(room.capacity || 0) +
+    "; " + words.day + ": " + money(room.day_price) +
+    "; " + words.night + ": " + money(room.overnight_price)
+  );
+  const caution = validWindow ? words.preview : words.dates;
+  const reply = [intro, roomLines.length ? roomLines.join("\n") : words.none, caution]
+    .join("\n\n");
+  return {
+    success: true, mode: "database_fallback",
+    reply, extracted_context: context,
+    matched_rooms: validWindow ? matches.slice(0, 5) : [],
+    catalog_recommendations: validWindow ? [] : shown.map(room => ({
+      id: room.id, name: room.room_name, capacity: room.capacity,
+      category: room.category_name, day_price: room.day_price,
+      overnight_price: room.overnight_price, status: room.status,
+      availability_verified: false,
+    })),
+    alternative_dates: [], booking_preview: null,
+  };
+}
+
 exports.chatWithGemini = async (req, res) => {
   try {
     const { message } = req.body;
@@ -899,8 +1006,17 @@ ${message}
       booking_preview: bookingPreview,
     });
   } catch (error) {
+    const status = geminiErrorStatus(error);
+    if (status === 429 || status === 503) {
+      try {
+        const backup = await buildQuotaLimitedAccommodationReply(req.body);
+        if (backup) return res.status(200).json(backup);
+      } catch (fallbackError) {
+        console.warn("AI database fallback unavailable:", fallbackError.message);
+      }
+    }
     const failure = geminiPublicError(error);
-    console.warn("Gemini request failed (HTTP " + geminiErrorStatus(error) + ").");
+    console.warn("Gemini request failed (HTTP " + status + ").");
     return res.status(failure.status).json(failure.body);
   }
 };
