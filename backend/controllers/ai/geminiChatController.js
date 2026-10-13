@@ -1,5 +1,6 @@
 ﻿const { GoogleGenAI } = require("@google/genai");
 const db = require("../../config/db");
+const { generateGemini, geminiPublicError, geminiErrorStatus } = require("./geminiResilience");
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -480,10 +481,7 @@ Customer message:
 ${message}
 `;
 
-  const extractionResponse = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
-    contents: extractionPrompt,
-  });
+  const extractionResponse = await generateGemini(ai, extractionPrompt);
 
   const parsed = extractJsonObject(extractionResponse.text || "");
   return parsed || {};
@@ -751,10 +749,7 @@ Customer message:
 ${message}
 `;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: finalPrompt,
-    });
+    const response = await generateGemini(ai, finalPrompt);
 
     return res.status(200).json({
       success: true,
@@ -765,12 +760,44 @@ ${message}
       booking_preview: bookingPreview,
     });
   } catch (error) {
-    console.error("chatWithGemini error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to chat with Gemini.",
-      error: error.message,
+    const failure = geminiPublicError(error);
+    console.warn("Gemini request failed (HTTP " + geminiErrorStatus(error) + ").");
+    return res.status(failure.status).json(failure.body);
+  }
+};
+
+exports.translateReplyToEnglish = async (req, res) => {
+  try {
+    const inputText = String(req.body?.text || "").trim();
+    if (!process.env.GEMINI_API_KEY) {
+      return res.status(503).json({
+        success: false, message: "The AI translation service is not configured.",
+      });
+    }
+    if (!inputText) {
+      return res.status(400).json({
+        success: false, message: "Text is required for translation.",
+      });
+    }
+    const prompt = [
+      "Translate the following SmartResort AI assistant reply into fluent, natural English.",
+      "Preserve accommodation names, dates, times, prices, rates, numbers,",
+      "and all important booking or payment details exactly. Do not invent facts.",
+      "Use a friendly and clear resort receptionist tone.",
+      "Do not include markdown, explanations, or notes; return only the translation.",
+      "",
+      "Text:",
+      inputText,
+    ].join("\n");
+    const response = await generateGemini(ai, prompt);
+    return res.status(200).json({
+      success: true, translated_text: response.text || "",
     });
+  } catch (error) {
+    const failure = geminiPublicError(error);
+    console.warn("Gemini English translation failed (HTTP " +
+      geminiErrorStatus(error) + ").");
+    return res.status(failure.status).json(failure.body);
   }
 };
 
@@ -809,22 +836,16 @@ Text:
 ${text}
 `;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-    });
+    const response = await generateGemini(ai, prompt);
 
     return res.status(200).json({
       success: true,
       translated_text: response.text || "",
     });
   } catch (error) {
-    console.error("translateReplyToTagalog error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to translate reply.",
-      error: error.message,
-    });
+    const failure = geminiPublicError(error);
+    console.warn("Gemini request failed (HTTP " + geminiErrorStatus(error) + ").");
+    return res.status(failure.status).json(failure.body);
   }
 };
 
@@ -864,22 +885,16 @@ Text:
 ${text}
 `;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-    });
+    const response = await generateGemini(ai, prompt);
 
     return res.status(200).json({
       success: true,
       translated_text: response.text || "",
     });
   } catch (error) {
-    console.error("translateReplyToTaglish error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to translate reply to Taglish.",
-      error: error.message,
-    });
+    const failure = geminiPublicError(error);
+    console.warn("Gemini request failed (HTTP " + geminiErrorStatus(error) + ").");
+    return res.status(failure.status).json(failure.body);
   }
 };
 
