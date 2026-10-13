@@ -7,6 +7,7 @@ const db = require("../../config/db");
 
 const MAX_DAYS = 366;
 
+// Accept only a valid YYYY-MM-DD report date, independent of DB timezone.
 function parseDay(value) {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
   if (Number(value.slice(0, 4)) < 2000 || Number(value.slice(0, 4)) > 2099) return null;
@@ -20,6 +21,7 @@ function dayText(d) {
 function addDay(d, amount) {
   return new Date(d.getTime() + amount * 86400000);
 }
+// Date defaults align with the resort's Asia/Manila operating calendar.
 function phpToday() {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit",
@@ -27,6 +29,7 @@ function phpToday() {
   const values = Object.fromEntries(parts.map(x => [x.type, x.value]));
   return values.year + "-" + values.month + "-" + values.day;
 }
+// Snapshot amounts are not net revenue; preserve separate accounting meanings.
 function finiteMoney(value) {
   const n = Number(value);
   return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : 0;
@@ -36,6 +39,8 @@ function count(value) {
   return Number.isSafeInteger(n) && n >= 0 ? n : 0;
 }
 
+// Aggregates only: one inclusive creation-date range and separate paid-charge dates.
+// Read-only MySQL expressions must match their GROUP BY under ONLY_FULL_GROUP_BY.
 exports.getManagerReports = async (req, res) => {
   const today = parseDay(phpToday());
   const requestedTo = req.query.to === undefined ? dayText(today) : req.query.to;
