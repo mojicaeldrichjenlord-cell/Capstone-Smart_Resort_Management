@@ -3,12 +3,7 @@ const AI_CONTEXT_KEY = "smartresort_ai_context_v1";
 const AI_WINDOW_STATE_KEY = "smartresort_ai_window_state_v1";
 const AI_CHAT_HISTORY_KEY = "smartresort_ai_chat_history_v1";
 
-let aiRecognition = null;
-let aiIsListening = false;
-let aiShouldKeepListening = false;
-let aiFinalTranscript = "";
-let aiStoppedManually = false;  
-let aiSendAfterStop = false;
+let aiMessageInFlight = false;
 
 document.addEventListener("DOMContentLoaded", () => {
   setupAiChat();
@@ -29,7 +24,7 @@ function setupAiChat() {
 
   restoreWindowState();
   restoreChatHistory();
-  setupSpeechRecognition();
+  // Voice input and live conversation are initialized by ai-voice.js.
 
   toggleBtn.addEventListener("click", () => {
     chatWindow.classList.toggle("show");
@@ -57,12 +52,6 @@ function setupAiChat() {
     });
   }
 
-  if (micBtn) {
-    micBtn.addEventListener("click", () => {
-      toggleVoiceInput();
-    });
-  }
-
   sendBtn.addEventListener("click", sendAiMessage);
 
   input.addEventListener("keydown", (e) => {
@@ -77,150 +66,22 @@ function setupAiChat() {
   }
 }
 
-function setupSpeechRecognition() {
-  const SpeechRecognition =
-    window.SpeechRecognition || window.webkitSpeechRecognition;
-
-  if (!SpeechRecognition) {
-    const micBtn = document.getElementById("aiMicBtn");
-    if (micBtn) {
-      micBtn.disabled = true;
-      micBtn.textContent = "🚫";
-      micBtn.title = "Mic not supported";
-    }
-    return;
-  }
-
-  aiRecognition = new SpeechRecognition();
-  aiRecognition.lang = "en-PH";
-  aiRecognition.continuous = true;
-  aiRecognition.interimResults = true;
-
-  aiRecognition.onstart = () => {
-    aiIsListening = true;
-    updateMicButton();
-  };
-
-  aiRecognition.onend = () => {
-    aiIsListening = false;
-    updateMicButton();
-
-    if (aiShouldKeepListening) {
-      setTimeout(() => {
-        try {
-          aiRecognition.start();
-        } catch (error) {
-          console.error("Speech recognition restart error:", error);
-        }
-      }, 150);
-      return;
-    }
-
-    aiStoppedManually = false;
-    aiSendAfterStop = false;
-  };
-
-  aiRecognition.onerror = (event) => {
-    console.error("Speech recognition error:", event.error);
-
-    if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-      aiShouldKeepListening = false;
-      aiIsListening = false;
-      aiStoppedManually = false;
-      aiSendAfterStop = false;
-      updateMicButton();
-      appendAiSystemNote("Microphone permission was denied.");
-    }
-  };
-
-  aiRecognition.onresult = (event) => {
-    let interimTranscript = "";
-    let finalChunk = "";
-
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      const transcript = event.results[i][0].transcript;
-
-      if (event.results[i].isFinal) {
-        finalChunk += transcript + " ";
-      } else {
-        interimTranscript += transcript;
-      }
-    }
-
-    if (finalChunk) {
-      aiFinalTranscript += finalChunk;
-    }
-
-    const input = document.getElementById("aiChatInput");
-    if (input) {
-      input.value = `${aiFinalTranscript}${interimTranscript}`.trim();
-    }
-  };
-}
-
-function toggleVoiceInput() {
-  if (!aiRecognition) {
-    appendAiSystemNote("Voice input is not supported in this browser.");
-    return;
-  }
-
-  if (aiShouldKeepListening) {
-    stopVoiceInput(false);
-  } else {
-    startVoiceInput();
-  }
-}
-
-function startVoiceInput() {
-  aiFinalTranscript = "";
-  aiShouldKeepListening = true;
-  aiStoppedManually = false;
-  aiSendAfterStop = false;
-
-  try {
-    aiRecognition.start();
-  } catch (error) {
-    console.error("startVoiceInput error:", error);
-  }
-}
-
-function stopVoiceInput(autoSend = false) {
-  aiShouldKeepListening = false;
-  aiStoppedManually = true;
-  aiSendAfterStop = autoSend;
-
-  try {
-    aiRecognition.stop();
-  } catch (error) {
-    console.error("stopVoiceInput error:", error);
-  }
-
-  aiIsListening = false;
-  updateMicButton();
-}
-
-function updateMicButton() {
-  const micBtn = document.getElementById("aiMicBtn");
-  if (!micBtn) return;
-
-  const active = aiShouldKeepListening || aiIsListening;
-  micBtn.textContent = active ? "⏹" : "🎤";
-  micBtn.classList.toggle("active-voice-btn", active);
-  micBtn.title = active ? "Stop voice input" : "Voice input";
-}
-
-async function sendAiMessage() {
+async function sendAiMessage(options = {}) {
   const input = document.getElementById("aiChatInput");
   const sendBtn = document.getElementById("aiSendBtn");
 
-  if (!input || !sendBtn) return;
-
+  if (!input || !sendBtn || aiMessageInFlight) return null;
   const message = input.value.trim();
-  if (!message) return;
+  if (!message) return null;
 
+  // Manual messages must not race with an active voice conversation.
+  if (options.source !== "voice" && window.ArvicVoice?.isLiveActive?.()) {
+    window.ArvicVoice.stopConversation();
+  }
+
+  aiMessageInFlight = true;
   appendAiMessage("user", message);
   input.value = "";
-  aiFinalTranscript = "";
 
   const storedContext = getStoredAiContext();
   const pageContext = getAiPageContext();
@@ -262,7 +123,8 @@ async function sendAiMessage() {
       }
     }
 
-    appendAiMessage("assistant", data.reply || "No reply generated.");
+    const aiReply = data.reply || "No reply generated.";
+    appendAiMessage("assistant", aiReply);
 
     if (Array.isArray(data.alternative_dates) && data.alternative_dates.length > 0) {
       const altText = data.alternative_dates
@@ -274,6 +136,7 @@ async function sendAiMessage() {
     if (data.booking_preview) {
       appendBookingPreviewCard(data.booking_preview);
     }
+    return aiReply;
   } catch (error) {
     console.error("AI chat error:", error);
     removeTypingIndicator();
@@ -290,7 +153,9 @@ async function sendAiMessage() {
     }
 
     appendAiMessage("assistant", fallback.reply);
+    return fallback.reply;
   } finally {
+    aiMessageInFlight = false;
     sendBtn.disabled = false;
     sendBtn.textContent = "Send";
   }
@@ -1103,6 +968,10 @@ function restoreWindowState() {
 }
 
 function speakText(text) {
+  if (window.ArvicVoice?.readAloud) {
+    window.ArvicVoice.readAloud(text);
+    return;
+  }
   if (!("speechSynthesis" in window)) {
     appendAiSystemNote("Text-to-speech is not supported in this browser.");
     return;
