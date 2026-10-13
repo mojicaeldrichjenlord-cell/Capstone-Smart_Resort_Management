@@ -6,15 +6,19 @@ const db = require("../config/db");
 const PREFIX = "hk1";
 const AUDIENCE = "smartresort-housekeeping-schedule";
 const MAX_AGE = 8 * 60 * 60;
+// All signed role tokens share the configured secret but use distinct prefixes
+// and audiences; an Admin/Manager token is NOT valid for Housekeeping routes.
 function secret() {
   const value = String(process.env.FRONTDESK_TOKEN_SECRET || "");
   if (value.length < 32) throw new Error("FRONTDESK_TOKEN_SECRET requires 32+ characters.");
   return value;
 }
+// HMAC protects the token payload from client-side changes.
 function signature(encoded) {
   return crypto.createHmac("sha256", secret())
     .update(PREFIX + "." + encoded, "utf8").digest();
 }
+// A login returns an eight-hour signed session, never a plain role flag.
 function issueHousekeepingToken(userId) {
   const id = Number(userId);
   if (!Number.isSafeInteger(id) || id <= 0) throw new Error("Invalid Housekeeping ID.");
@@ -24,6 +28,7 @@ function issueHousekeepingToken(userId) {
   }), "utf8").toString("base64url");
   return PREFIX + "." + encoded + "." + signature(encoded).toString("base64url");
 }
+// Validate format, HMAC (timing-safe), expiry and audience before DB access.
 function verifyHousekeepingToken(token) {
   if (typeof token !== "string" || token.length > 2048) return null;
   const parts = token.split(".");
@@ -48,6 +53,8 @@ function verifyHousekeepingToken(token) {
     return null;
   }
 }
+// Run on EVERY protected API call. Recheck the user's current DB role,
+// verification and disabled status so old tokens cannot bypass demotion.
 async function requireHousekeepingAuth(req, res, next) {
   const match = /^Bearer\s+(\S+)$/i.exec(String(req.get("authorization") || ""));
   if (!match) return res.status(401).json({
