@@ -428,8 +428,10 @@ test("Unavailable accommodation is described but not recommended", async () => {
   });
   assert.equal(result.status, 200);
   assert.deepEqual(result.body.catalog_recommendations, []);
-  // General catalog question now uses one Gemini prompt.
-  assert.equal(modelCalls, 1);
+  // A named accommodation is explicitly supplied, so the safe flow
+  // still extracts intent first instead of taking the general-catalog shortcut.
+  assert.equal(modelCalls, 2);
+  assert.match(modelPrompts[0], /You are extracting booking details/);
   assert.match(modelPrompts.at(-1), /Maintenance Cottage/);
   assert.match(modelPrompts.at(-1), /Admin status: maintenance/);
   assert.equal(result.body.booking_preview, null);
