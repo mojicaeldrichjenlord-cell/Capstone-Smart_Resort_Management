@@ -15,6 +15,8 @@ const currentDay = (() => {
   const p = Object.fromEntries(parts.map(x => [x.type,x.value]));
   return p.year + "-" + p.month + "-" + p.day;
 })();
+// In-memory fake DB recognizes the exact query patterns used by controllers.
+// It simulates successful writes, conflicts and missing schema without Aiven.
 const fakeDb = {
   promise() {
     return {
@@ -119,6 +121,7 @@ const fakeDb = {
     };
   }
 };
+// Replace Node modules in this test process before Express routes load them.
 function mock(path, value) {
   const filename = require.resolve(path);
   const m = new Module(filename); m.filename = filename;
@@ -161,6 +164,7 @@ after(async () => {
     await new Promise(resolve => server.close(resolve));
   }
 });
+// Reset test users and task status before every test (no shared DB state).
 beforeEach(() => {
   accounts = new Map([
     [1, { id:1, fullname:"Manager", role:"manager", account_status:"active", is_verified:1 }],
@@ -170,6 +174,7 @@ beforeEach(() => {
   task = null; queries = []; missingTable = false; occupied = false;
   completed = true; reservationItem = 41;
 });
+// Exercise routes via HTTP on a disposable local Express listener.
 async function call(route, { token = managerToken, method = "GET", body } = {}) {
   const response = await fetch(base + route, {
     method,
@@ -198,6 +203,7 @@ const verify = (version = 2, token = managerToken) =>
   call(mgr + "/tasks/45/verify", { token, method: "PUT", body: { version } });
 const taskWrites = () => queries.filter(x => /^(INSERT INTO|UPDATE) housekeeping_tasks/i.test(x.sql));
 
+// Privacy boundary: Manager receives only the staff fields needed for assignment.
 test("Manager sees verified housekeeping staff without exposing contact details", async () => {
   const r = await call(mgr + "/staff");
   assert.equal(r.code,200);
@@ -260,6 +266,7 @@ test("Housekeeping sees only their own assigned tasks", async () => {
   assert.equal(own.data.tasks[0].reservation_code,"TEST-HK-001");
   assert.equal(own.data.tasks[0].guest_phone,undefined);
 });
+// Status transitions require the assigned staff's signed role token.
 test("Only assigned Housekeeping can start and mark cleaned", async () => {
   await createAndCheck();
   assert.equal((await start(0,otherToken)).code,409);
@@ -275,6 +282,7 @@ test("Cannot mark task cleaned without starting", async () => {
   assert.equal((await cleaned(0)).code,409);
   assert.equal(task.status,"needs_cleaning");
 });
+// Concurrency: two users must not apply conflicting actions to one task version.
 test("Stale version blocks simultaneous task update", async () => {
   await createAndCheck();
   assert.equal((await start(0)).code,200);
@@ -306,6 +314,7 @@ test("Manager verification is blocked before cleaning", async () => {
   assert.equal((await verify(0)).code,409);
   assert.equal(task.status,"needs_cleaning");
 });
+// Physical readiness cannot be certified while a checked-in booking exists.
 test("Manager cannot verify as ready while the accommodation has checked-in guest", async () => {
   await createAndCheck(); await start(); await cleaned();
   occupied = true;
@@ -370,6 +379,7 @@ test("Missing migration responds with clear 503 activation guidance", async () =
   assert.equal(r.code,503);
   assert.equal(r.data.code,"HOUSEKEEPING_MIGRATION_REQUIRED");
 });
+// Regression: inspect write TARGETS only, not unrelated source tables in JOINs.
 test("Housekeeping task endpoints never mutate existing booking/payment tables", async () => {
   await createAndCheck(); await start(); await cleaned(); await verify();
   for(const record of queries) {
