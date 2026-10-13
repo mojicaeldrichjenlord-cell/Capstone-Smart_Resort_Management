@@ -90,6 +90,10 @@ async function sendAiMessage(options = {}) {
     message,
     ...pageContext,
     context: storedContext,
+    // Voice sessions use a fixed selected language; typed chat stays adaptive.
+    ...(options.source === "voice"
+      ? { voice_language: window.ArvicVoice?.getLanguage?.() || "english" }
+      : {}),
   };
 
   try {
