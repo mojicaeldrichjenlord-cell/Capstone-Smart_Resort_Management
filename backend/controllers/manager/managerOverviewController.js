@@ -2,15 +2,18 @@
 // account lists, raw receipts, payment credentials, or write operations.
 const db = require("../../config/db");
 
+// Defensive integer conversion for summary counts; avoid NaN in the API.
 function safeInt(value) {
   const num = Number(value);
   return Number.isSafeInteger(num) && num >= 0 ? num : 0;
 }
+// Financial summaries are snapshots; they are not reconciled net revenue.
 function safeMoney(value) {
   const num = Number(value);
   return Number.isFinite(num) && num >= 0 ? num : 0;
 }
 
+// Send only the authenticated Manager identity confirmed by role middleware.
 exports.getManagerMe = (req, res) => res.status(200).json({
   success: true,
   user: {
@@ -19,6 +22,7 @@ exports.getManagerMe = (req, res) => res.status(200).json({
   },
 });
 
+// Use read-only aggregate queries; never return guest contacts or payment proof.
 exports.getManagerOverview = async (_req, res) => {
   try {
     const [reservationRows] = await db.promise().query(
