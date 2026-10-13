@@ -15,6 +15,7 @@ const bcrypt = require("bcrypt");
 const axios = require("axios");
 const { issueFrontDeskToken } = require("../../middleware/frontDeskAuth");
 const { issueAdminToken } = require("../../middleware/adminAuth");
+const { issueManagerToken } = require("../../middleware/managerAuth");
 const { issueCustomerToken } = require("../../middleware/customerAuth");
 
 // ============================================================
@@ -640,6 +641,7 @@ exports.login = async (req, res) => {
     const role = String(user.role || "").trim().toLowerCase();
     let frontDeskToken = null;
     let adminToken = null;
+    let managerToken = null;
     let customerToken = null;
 
     if (role === "frontdesk" || role === "staff") {
@@ -668,6 +670,17 @@ exports.login = async (req, res) => {
       }
     }
 
+    if (role === "manager") {
+      try {
+        managerToken = issueManagerToken(user.id);
+      } catch (tokenError) {
+        console.error("Manager token configuration error:", tokenError.message);
+        return res.status(503).json({
+          success: false, message: "Secure Manager login is not configured. Contact support.",
+        });
+      }
+    }
+
     if (role === "customer") {
       try {
         customerToken = issueCustomerToken(user.id);
@@ -685,6 +698,7 @@ exports.login = async (req, res) => {
       message: "Login successful.",
       ...(frontDeskToken ? { frontDeskToken } : {}),
       ...(adminToken ? { adminToken } : {}),
+      ...(managerToken ? { managerToken } : {}),
       ...(customerToken ? { customerToken } : {}),
       user: {
         id: user.id,
