@@ -156,8 +156,20 @@ async function sendAiMessage(options = {}) {
       appendAiSystemNote(`Saved details: ${summary}`);
     }
 
-    appendAiMessage("assistant", fallback.reply);
-    return fallback.reply;
+    // In Live Voice mode, preserve the selected spoken language even when
+    // Gemini is offline. Never make unverified availability promises.
+    const voiceFallbacks = {
+      english: "Sorry, the AI service is temporarily unavailable. Please try again or continue using the booking page.",
+      taglish: "Pasensya na po, temporarily unavailable ang AI service. Puwede po kayong mag-try ulit o magpatuloy sa booking page.",
+      spanish: "Lo siento, el servicio de inteligencia artificial no está disponible temporalmente. Puede intentarlo de nuevo o continuar en la página de reservas.",
+      mandarin: "抱歉，人工智能服务暂时无法使用。您可以稍后再试，或前往预订页面继续操作。",
+    };
+    const voiceLanguage = options.source === "voice"
+      ? window.ArvicVoice?.getLanguage?.()
+      : null;
+    const safeReply = voiceFallbacks[voiceLanguage] || fallback.reply;
+    appendAiMessage("assistant", safeReply);
+    return safeReply;
   } finally {
     aiMessageInFlight = false;
     sendBtn.disabled = false;
