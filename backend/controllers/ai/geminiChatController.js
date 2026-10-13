@@ -429,23 +429,11 @@ function buildCatalogSummary(catalog, context, message) {
   };
 }
 
-function filterRooms(rooms, filters) {
-  // The current accommodations table does not contain structured bed, view
-  // or aircon fields. Do not claim those preferences were verified.
-  return rooms.filter((room) => {
-    if (filters.max_price) {
-      const maxPrice = Number(filters.max_price);
-      if (Number.isFinite(maxPrice) && maxPrice > 0 &&
-          Number(room.day_price || 0) > maxPrice &&
-          Number(room.overnight_price || 0) > maxPrice) return false;
-    }
-    if (filters.room_id && Number(room.id) !== Number(filters.room_id)) {
-      return false;
-    }
-    if (filters.room_name && !normalizeText(room.room_name)
-        .includes(normalizeText(filters.room_name))) return false;
-    return true;
-  });
+function filterRooms(rooms, filters, message = "") {
+  // Restrict preliminary slot suggestions to the actual requested type,
+  // guest capacity and applicable day/overnight budget. Unstructured bed,
+  // view and aircon preferences are not verified by this schema.
+  return catalogMatchFilter(rooms, filters, message);
 }
 
 function buildRoomsSummary(rooms) {
@@ -736,7 +724,7 @@ exports.chatWithGemini = async (req, res) => {
           max_price: mergedContext.max_price,
           room_id: mergedContext.room_id,
           room_name: mergedContext.room_name,
-        });
+        }, message);
 
         roomSummary = buildRoomsSummary(matchedRooms);
         topRecommendationSummary = buildTopRecommendationSummary(matchedRooms);
