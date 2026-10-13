@@ -79,7 +79,8 @@ exports.getManagerReports = async (req, res) => {
       "SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS date, COUNT(*) AS reservations, " +
       "COALESCE(SUM(COALESCE(guest_count,0)),0) AS booked_guests " +
       "FROM reservations WHERE created_at >= ? AND created_at < ? " +
-      "GROUP BY DATE(created_at) ORDER BY DATE(created_at) ASC",
+      "GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d') " +
+      "ORDER BY DATE_FORMAT(created_at, '%Y-%m-%d') ASC",
       dates,
     );
     const [accommodationRows] = await db.promise().query(
