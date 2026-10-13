@@ -3,6 +3,7 @@
 // A booking marked "completed" is NOT proof that a room was cleaned.
 const db = require("../../config/db");
 
+// Normalize the server's current date to Asia/Manila regardless of hosting timezone.
 function manilaToday() {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit",
@@ -10,6 +11,7 @@ function manilaToday() {
   const values = Object.fromEntries(parts.map(item => [item.type, item.value]));
   return values.year + "-" + values.month + "-" + values.day;
 }
+// Validate YYYY-MM-DD exactly (e.g. reject impossible dates like February 30).
 function parseISODate(value) {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
   if (Number(value.slice(0, 4)) < 2000 || Number(value.slice(0, 4)) > 2099) return null;
@@ -21,6 +23,7 @@ function safeCount(value) {
   const n = Number(value);
   return Number.isSafeInteger(n) && n >= 0 ? n : 0;
 }
+// Convert MySQL date values to stable ISO dates for the frontend.
 function dayText(value) {
   if (value instanceof Date) return value.toISOString().slice(0, 10);
   return String(value || "").slice(0, 10);
@@ -29,6 +32,7 @@ function timeText(value) {
   return String(value || "").slice(0, 5);
 }
 
+// Use the already authenticated account, never an ID supplied by the browser.
 exports.getHousekeepingMe = (req, res) => res.status(200).json({
   success: true,
   user: {
@@ -38,6 +42,8 @@ exports.getHousekeepingMe = (req, res) => res.status(200).json({
   },
 });
 
+// Read-only booking schedule; it is NOT evidence of completed cleaning.
+// Query only approved/completed reservation items for the selected date.
 exports.getDailyHousekeepingSchedule = async (req, res) => {
   const day = req.query.date === undefined ? manilaToday() : req.query.date;
   const chosenDate = parseISODate(day);
@@ -68,10 +74,12 @@ exports.getDailyHousekeepingSchedule = async (req, res) => {
       "ORDER BY ri.check_in_date, ri.check_in_time, a.name, ri.id LIMIT 300",
       [day, day],
     );
+    // Summary metrics count reservation ITEMS, not distinct rooms or guests.
     const summary = {
       scheduled_items: 0, arriving_today: 0, departing_today: 0,
       checked_in_items: 0, completed_items: 0,
     };
+    // Whitelist returned fields: no guest names, payment proofs, or contacts.
     const items = rows.map(row => {
       const checkIn = dayText(row.check_in_date);
       const checkOut = dayText(row.check_out_date);
@@ -104,7 +112,7 @@ exports.getDailyHousekeepingSchedule = async (req, res) => {
     return res.status(200).json({
       success: true, date: day, summary, items, limit: 300,
       notes: {
-        status: "Schedule is based on approved/completed reservation items. No physical cleaning or room-ready status is stored yet.",
+        status: "Schedule is based on approved/completed reservation items. Physical cleaning and room-ready tasks are managed in a separate module.",
         occupancy: "Checked-in indicates reservation check-in flag, not verified physical presence for every accommodation.",
         privacy: "Guest identity, phone, payment and internal guest notes are never returned.",
       },
