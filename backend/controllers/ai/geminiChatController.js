@@ -634,6 +634,23 @@ async function buildQuotaLimitedAccommodationReply(payload) {
   }, {});
   if (!isAccommodationInquiry(message, context)) return null;
 
+  // During an AI quota outage, extract only simple, explicit numbers.
+  // Do not guess dates or times from arbitrary natural-language sentences.
+  const guestsFromText = message.match(/\b(?:good\s*for\s*|for\s*|para\s*sa\s*)?(\d{1,3})\s*(?:guests?|persons?|pax|people|tao)\b/i);
+  if (guestsFromText) {
+    const count = Number(guestsFromText[1]);
+    if (Number.isSafeInteger(count) && count > 0 && count <= 200) context.guests = count;
+  }
+  const budgetFromText = message.match(
+    /\b(?:budget(?:\s+(?:of|is|na|ng))?|under|below|less\s+than|up\s+to|max(?:imum)?)\s*(?:₱|php\s*)?([\d,]+(?:\.\d{1,2})?)\b/i
+  );
+  if (budgetFromText) {
+    const budget = Number(budgetFromText[1].replace(/,/g, ""));
+    if (Number.isFinite(budget) && budget > 0 && budget <= 1000000) {
+      context.max_price = budget;
+    }
+  }
+
   const language = normalizeLanguageStyle(payload?.voice_language) ||
     detectLanguageFromMessage(message) ||
     normalizeLanguageStyle(context.language_style) || "english";
@@ -713,7 +730,17 @@ async function buildQuotaLimitedAccommodationReply(payload) {
     "; " + words.night + ": " + money(room.overnight_price)
   );
   const caution = validWindow ? words.preview : words.dates;
-  const reply = [intro, roomLines.length ? roomLines.join("\n") : words.none, caution]
+  const limitedResults = candidates.length > shown.length
+    ? (language === "tagalog" || language === "taglish"
+      ? "Ipinapakita ang " + shown.length + " sa " + candidates.length + " tugmang listings."
+      : language === "spanish"
+      ? "Se muestran " + shown.length + " de " + candidates.length + " alojamientos coincidentes."
+      : language === "mandarin"
+      ? "以下显示 " + shown.length + " 个，共 " + candidates.length + " 个匹配住宿。"
+      : "Showing " + shown.length + " of " + candidates.length + " matching listings.")
+    : "";
+  const reply = [intro, limitedResults, roomLines.length ? roomLines.join("\n") : words.none, caution]
+    .filter(Boolean)
     .join("\n\n");
   return {
     success: true, mode: "database_fallback",
