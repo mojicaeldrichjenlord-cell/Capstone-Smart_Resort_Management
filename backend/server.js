@@ -18,6 +18,7 @@ const bookingRoutes = require("./routes/bookingRoutes");
 const adminBookingRoutes = require("./routes/adminBookingRoutes");
 const adminPaymentRoutes = require("./routes/adminPaymentRoutes");
 const aiRoutes = require("./routes/aiRoutes");
+const managerRoutes = require("./routes/managerRoutes");
 const mapMarkerRoutes = require("./routes/mapMarkerRoutes");
 const paypalRoutes = require("./routes/paypalRoutes");
 
@@ -44,6 +45,7 @@ app.use("/api/bookings", bookingRoutes);
 app.use("/api/admin/bookings", adminBookingRoutes);
 app.use("/api/admin/payments", adminPaymentRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/manager", managerRoutes);
 app.use("/api/map-markers", mapMarkerRoutes);
 app.use("/api/paypal", paypalRoutes);
 
