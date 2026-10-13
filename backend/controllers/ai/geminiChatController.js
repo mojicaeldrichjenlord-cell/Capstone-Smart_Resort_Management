@@ -304,6 +304,131 @@ async function getAvailableRooms(checkIn, checkInTime, checkOut, checkOutTime, g
   return rooms;
 }
 
+// Fresh read-only catalog for general accommodation questions. Admin
+// create/edit/status changes are reflected on the NEXT relevant AI request.
+// Never cache this response as a reservation-availability result.
+async function getAccommodationCatalog() {
+  const [rows] = await db.promise().query(
+    `
+    SELECT
+      a.id, a.name AS room_name, a.description, a.amenities, a.status,
+      a.max_capacity AS capacity, a.day_price, a.overnight_price,
+      a.extended_price, c.name AS category_name
+    FROM accommodations a
+    JOIN accommodation_categories c ON c.id = a.category_id
+    ORDER BY a.id DESC
+    LIMIT 150
+    `,
+  );
+  return rows;
+}
+
+function isAccommodationInquiry(message, context) {
+  const intent = normalizeText(context.intent);
+  if (["ask_recommendation", "ask_availability", "ask_price"].includes(intent)) {
+    return true;
+  }
+  if (context.room_name || context.room_id || context.max_price ||
+      context.guests || context.wants_booking === true) return true;
+  return /room|cottage|accommodat|pavilion|function area|villa|poolside|pool side|capacity|rates?|prices?|amenit|budget|overnight|day tour|kuwarto|kwarto|kubo|kottage|magkano|matutuluyan|房间|客房|住宿|价格|房价|酒店房|habitaci[oó]n|alojamiento|caba[nñ]a/i
+    .test(String(message || ""));
+}
+
+function preferredAccommodationType(message, context) {
+  const text = normalizeText(String(message || "") + " " + String(context.room_name || ""));
+  if (/\bcottages?\b|\bkubo\b|\bkottage\b/.test(text)) return "cottage";
+  if (/\bpavilions?\b/.test(text)) return "pavilion";
+  if (/\bfunction\s*(area|hall|room)\b/.test(text)) return "function";
+  if (/\brooms?\b|\bkwarto\b|\bkuwarto\b|\bhabitaci[oó]n\b|房间|客房/.test(text)) return "room";
+  return null;
+}
+
+function catalogMatchFilter(rooms, context, message) {
+  const selectedType = preferredAccommodationType(message, context);
+  const name = normalizeText(context.room_name || "");
+  const guestCount = Number(context.guests || 0);
+  const budget = Number(context.max_price || 0);
+  const isOvernight = /\bovernight\b|\bnight\b|\bgabi\b|\bnoche\b/.test(normalizeText(message));
+  const isDayTour = /\bday\s*tour\b|\bdaytime\b|\baraw\b/.test(normalizeText(message));
+  return rooms.filter(room => {
+    if (name && !normalizeText(room.room_name).includes(name)) return false;
+    if (context.room_id && Number(room.id) !== Number(context.room_id)) return false;
+    if (selectedType &&
+        !normalizeText(room.category_name).includes(selectedType) &&
+        !normalizeText(room.room_name).includes(selectedType)) return false;
+    if (guestCount > 0 && Number(room.capacity) < guestCount) return false;
+    if (budget > 0 && Number.isFinite(budget)) {
+      const day = Number(room.day_price || 0);
+      const overnight = Number(room.overnight_price || 0);
+      if (isOvernight ? (!overnight || overnight > budget)
+        : isDayTour ? (!day || day > budget)
+        : (!day || day > budget) && (!overnight || overnight > budget)) return false;
+    }
+    return true;
+  });
+}
+
+function buildCatalogSummary(catalog, context, message) {
+  const byCategory = {};
+  for (const room of catalog) {
+    const label = String(room.category_name || "Other");
+    byCategory[label] = (byCategory[label] || 0) + 1;
+  }
+  const matches = catalogMatchFilter(catalog, context, message);
+  const recommendable = matches.filter(room =>
+    normalizeText(room.status) === "available");
+  const unavailable = matches.filter(room =>
+    normalizeText(room.status) !== "available");
+
+  const sorted = recommendable.slice().sort((a, b) => {
+    const priceA = Math.min(...[a.day_price, a.overnight_price]
+      .map(Number).filter(x => Number.isFinite(x) && x > 0).concat([Infinity]));
+    const priceB = Math.min(...[b.day_price, b.overnight_price]
+      .map(Number).filter(x => Number.isFinite(x) && x > 0).concat([Infinity]));
+    return priceA - priceB || Number(a.id) - Number(b.id);
+  });
+
+  const formatRoom = room => [
+    "ID " + room.id + ": " + room.room_name + " (" +
+      (room.category_name || "Uncategorized") + ")",
+    "Admin status: " + (room.status || "unknown"),
+    "Maximum guests: " + room.capacity,
+    "Day Tour: PHP " + formatCurrency(room.day_price),
+    "Overnight: PHP " + formatCurrency(room.overnight_price),
+    "Extended: PHP " + formatCurrency(room.extended_price),
+    "Amenities: " + (room.amenities || "Not specified"),
+    "Description: " + (room.description || "Not provided"),
+  ].join(" | ");
+
+  const categories = Object.entries(byCategory)
+    .map(([name, count]) => name + " (" + count + ")").join(", ");
+  const highlights = sorted.slice(0, 5);
+  return {
+    summary: [
+      "CURRENT ADMIN-MANAGED ACCOMMODATION CATALOG (fresh database read):",
+      "Records retrieved: " + catalog.length + " (maximum 150 per request).",
+      "Categories: " + (categories || "None"),
+      "Filter matches: " + matches.length +
+        "; status-available candidates: " + recommendable.length + ".",
+      "NOTE: Admin status available means listed for use, NOT a verified booking slot.",
+      "Final dates, time slots, conflicts and price are verified by booking flow.",
+      "SUGGESTED CANDIDATES (not availability-confirmed):",
+      ...(highlights.length ? highlights.map(formatRoom) :
+        ["No currently listed candidate matches the requested type/capacity/budget."]),
+      "MATCHING UNAVAILABLE OR MAINTENANCE RECORDS:",
+      ...(unavailable.length ? unavailable.slice(0, 3).map(formatRoom) : ["None"]),
+      "NEWEST ADDED ACCOMMODATIONS (by latest record ID; not necessarily available):",
+      ...catalog.slice(0, 4).map(formatRoom),
+    ].join("\n"),
+    recommendations: highlights.map(room => ({
+      id: room.id, name: room.room_name, category: room.category_name,
+      capacity: room.capacity, day_price: room.day_price,
+      overnight_price: room.overnight_price, status: room.status,
+      availability_verified: false,
+    })),
+  };
+}
+
 function filterRooms(rooms, filters) {
   // The current accommodations table does not contain structured bed, view
   // or aircon fields. Do not claim those preferences were verified.
