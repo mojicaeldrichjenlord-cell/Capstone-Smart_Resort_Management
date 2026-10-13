@@ -244,180 +244,141 @@ function hasEnoughForBookingPreview(context = {}, chosenRoom = null, nights = 0)
   );
 }
 
-async function getAvailableRooms(checkIn, checkOut, guests) {
+// Preliminary AI availability must reflect the active reservation system,
+// never the retired rooms/bookings tables. Final validation always happens
+// again in the secure Customer reservation workflow.
+function isValidAiStayWindow(context) {
+  const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+  const ci = String(context.check_in || "");
+  const co = String(context.check_out || "");
+  const it = normalizeTimeValue(context.check_in_time);
+  const ot = normalizeTimeValue(context.check_out_time);
+  if (!dateRe.test(ci) || !dateRe.test(co) || !it || !ot) return false;
+  const start = new Date(ci + "T" + it);
+  const finish = new Date(co + "T" + ot);
+  return Number.isFinite(start.getTime()) &&
+    Number.isFinite(finish.getTime()) &&
+    finish.getTime() > start.getTime();
+}
+
+async function getAvailableRooms(checkIn, checkInTime, checkOut, checkOutTime, guests) {
   const [rooms] = await db.promise().query(
     `
     SELECT
-      r.id,
-      r.room_name,
-      r.description,
-      r.price,
-      r.capacity,
-      r.bed_count,
-      r.bed_type,
-      r.view_type,
-      r.aircon_type,
-      r.amenities,
-      r.image,
-      r.status
-    FROM rooms r
-    WHERE r.status = 'available'
-      AND r.capacity >= ?
-      AND r.id NOT IN (
-        SELECT b.room_id
-        FROM bookings b
-        WHERE b.status NOT IN ('cancelled', 'rejected')
-          AND (? < b.check_out AND ? > b.check_in)
+      a.id, a.name AS room_name, a.description, a.image, a.amenities,
+      a.status, a.max_capacity AS capacity, a.day_price, a.overnight_price,
+      a.extended_price, c.name AS category_name
+    FROM accommodations a
+    JOIN accommodation_categories c ON c.id = a.category_id
+    WHERE LOWER(COALESCE(a.status, '')) = 'available'
+      AND a.max_capacity >= ?
+      AND NOT EXISTS (
+        SELECT 1 FROM reservation_items ri
+        JOIN reservations r ON r.id = ri.reservation_id
+        WHERE ri.accommodation_id = a.id
+          AND LOWER(COALESCE(r.reservation_status, 'pending'))
+            NOT IN ('cancelled', 'rejected', 'completed')
+          AND LOWER(COALESCE(r.payment_status, 'pending'))
+            NOT IN ('rejected', 'refunded')
+          AND TIMESTAMP(ri.check_in_date, ri.check_in_time) < TIMESTAMP(?, ?)
+          AND TIMESTAMP(?, ?) < TIMESTAMP(ri.check_out_date, ri.check_out_time)
       )
-    ORDER BY r.price ASC, r.capacity ASC
+    ORDER BY a.day_price ASC, a.max_capacity ASC
     `,
-    [guests, checkIn, checkOut]
+    [guests, checkOut, checkOutTime, checkIn, checkInTime],
   );
-
   return rooms;
 }
 
 function filterRooms(rooms, filters) {
-  let results = [...rooms];
-
-  if (filters.bed_count) {
-    const neededBeds = Number(filters.bed_count);
-    if (!Number.isNaN(neededBeds)) {
-      results = results.filter((room) => Number(room.bed_count || 0) >= neededBeds);
+  // The current accommodations table does not contain structured bed, view
+  // or aircon fields. Do not claim those preferences were verified.
+  return rooms.filter((room) => {
+    if (filters.max_price) {
+      const maxPrice = Number(filters.max_price);
+      if (Number.isFinite(maxPrice) && maxPrice > 0 &&
+          Number(room.day_price || 0) > maxPrice &&
+          Number(room.overnight_price || 0) > maxPrice) return false;
     }
-  }
-
-  if (filters.view_type) {
-    const wantedView = normalizeText(filters.view_type);
-    results = results.filter((room) => normalizeText(room.view_type) === wantedView);
-  }
-
-  if (filters.aircon_type) {
-    const wantedAircon = normalizeText(filters.aircon_type);
-    results = results.filter((room) => normalizeText(room.aircon_type) === wantedAircon);
-  }
-
-  if (filters.bed_type) {
-    const wantedBedType = normalizeText(filters.bed_type);
-    results = results.filter((room) => normalizeText(room.bed_type).includes(wantedBedType));
-  }
-
-  if (filters.max_price) {
-    const maxPrice = Number(filters.max_price);
-    if (!Number.isNaN(maxPrice)) {
-      results = results.filter((room) => Number(room.price || 0) <= maxPrice);
+    if (filters.room_id && Number(room.id) !== Number(filters.room_id)) {
+      return false;
     }
-  }
-
-  if (filters.room_id) {
-    const wantedRoomId = Number(filters.room_id);
-    if (!Number.isNaN(wantedRoomId)) {
-      results = results.filter((room) => Number(room.id) === wantedRoomId);
-    }
-  }
-
-  if (filters.room_name) {
-    const wantedRoomName = normalizeText(filters.room_name);
-    results = results.filter((room) => normalizeText(room.room_name).includes(wantedRoomName));
-  }
-
-  return results;
+    if (filters.room_name && !normalizeText(room.room_name)
+        .includes(normalizeText(filters.room_name))) return false;
+    return true;
+  });
 }
 
-function buildRoomsSummary(rooms, nights) {
-  if (!rooms.length) return "No matching rooms found.";
-
-  return rooms
-    .slice(0, 5)
-    .map((room, index) => {
-      const total = Number(room.price || 0) * Number(nights || 1);
-      return [
-        `${index + 1}. ${room.room_name}`,
-        `   - Room ID: ${room.id}`,
-        `   - Price per night: â‚±${formatCurrency(room.price)}`,
-        `   - Estimated total: â‚±${formatCurrency(total)}`,
-        `   - Capacity: ${room.capacity}`,
-        `   - Bed count: ${room.bed_count || "N/A"}`,
-        `   - Bed type: ${room.bed_type || "N/A"}`,
-        `   - View type: ${room.view_type || "N/A"}`,
-        `   - Aircon type: ${room.aircon_type || "N/A"}`,
-        `   - Amenities: ${room.amenities || "N/A"}`,
-        `   - Description: ${room.description || "N/A"}`,
-      ].join("\n");
-    })
-    .join("\n\n");
+function buildRoomsSummary(rooms) {
+  if (!rooms.length) return "No matching accommodations found for the requested window.";
+  return rooms.slice(0, 5).map((room, index) => [
+    String(index + 1) + ". " + room.room_name,
+    "   - Accommodation ID: " + room.id,
+    "   - Category: " + (room.category_name || "N/A"),
+    "   - Day Tour: PHP " + formatCurrency(room.day_price),
+    "   - Overnight: PHP " + formatCurrency(room.overnight_price),
+    "   - Extended: PHP " + formatCurrency(room.extended_price),
+    "   - Maximum capacity: " + room.capacity,
+    "   - Listed amenities: " + (room.amenities || "Not specified"),
+    "   - Description: " + (room.description || "Not provided"),
+  ].join("\n")).join("\n\n");
 }
 
-function buildTopRecommendationSummary(rooms, nights) {
-  if (!rooms.length) return "No strong recommendation available.";
-
-  return rooms
-    .slice(0, 3)
-    .map((room, index) => {
-      const total = Number(room.price || 0) * Number(nights || 1);
-      return `${index + 1}. ${room.room_name} | â‚±${formatCurrency(room.price)}/night | est. total â‚±${formatCurrency(total)} | capacity ${room.capacity} | ${room.view_type || "no view info"} | ${room.aircon_type || "no aircon info"}`;
-    })
-    .join("\n");
+function buildTopRecommendationSummary(rooms) {
+  if (!rooms.length) return "No matching recommendation is available.";
+  return rooms.slice(0, 3).map((room, index) =>
+    String(index + 1) + ". " + room.room_name +
+    " | Day PHP " + formatCurrency(room.day_price) +
+    " | Overnight PHP " + formatCurrency(room.overnight_price) +
+    " | Capacity " + room.capacity
+  ).join("\n");
 }
 
 async function findRoomByName(roomName) {
   const [rows] = await db.promise().query(
-    `
-    SELECT
-      id,
-      room_name,
-      description,
-      price,
-      capacity,
-      bed_count,
-      bed_type,
-      view_type,
-      aircon_type,
-      amenities,
-      image,
-      status
-    FROM rooms
-    WHERE LOWER(room_name) LIKE ?
-    ORDER BY id DESC
-    LIMIT 1
-    `,
-    [`%${normalizeText(roomName)}%`]
+    "SELECT a.id, a.name AS room_name, a.description, a.image, " +
+    "a.amenities, a.status, a.max_capacity AS capacity, a.day_price, " +
+    "a.overnight_price, a.extended_price, c.name AS category_name " +
+    "FROM accommodations a JOIN accommodation_categories c ON c.id = a.category_id " +
+    "WHERE LOWER(a.name) LIKE ? ORDER BY a.id DESC LIMIT 1",
+    ["%" + normalizeText(roomName) + "%"],
   );
-
   return rows[0] || null;
 }
 
-async function getAlternativeDatesForRoom(roomId, checkIn, nights) {
+async function getAlternativeDatesForRoom(
+  accommodationId, checkIn, checkOut, checkInTime, checkOutTime
+) {
   const suggestions = [];
-  let daysToCheck = 0;
-
-  while (suggestions.length < 4 && daysToCheck < 21) {
+  const daySpan = getNightDifference(checkIn, checkOut);
+  if (!Number.isInteger(daySpan) || daySpan < 0) return suggestions;
+  let daysToCheck = 1;
+  while (suggestions.length < 4 && daysToCheck <= 21) {
     const candidateCheckIn = addDays(checkIn, daysToCheck);
-    const candidateCheckOut = addDays(candidateCheckIn, nights);
-
+    const candidateCheckOut = addDays(candidateCheckIn, daySpan);
     const [conflicts] = await db.promise().query(
-      `
-      SELECT id
-      FROM bookings
-      WHERE room_id = ?
-        AND status NOT IN ('cancelled', 'rejected')
-        AND (? < check_out AND ? > check_in)
-      LIMIT 1
-      `,
-      [roomId, candidateCheckIn, candidateCheckOut]
+      "SELECT ri.id FROM reservation_items ri " +
+      "JOIN reservations r ON r.id = ri.reservation_id " +
+      "WHERE ri.accommodation_id = ? " +
+      "AND LOWER(COALESCE(r.reservation_status, 'pending')) " +
+      "NOT IN ('cancelled','rejected','completed') " +
+      "AND LOWER(COALESCE(r.payment_status, 'pending')) " +
+      "NOT IN ('rejected','refunded') " +
+      "AND TIMESTAMP(ri.check_in_date, ri.check_in_time) < TIMESTAMP(?, ?) " +
+      "AND TIMESTAMP(?, ?) < TIMESTAMP(ri.check_out_date, ri.check_out_time) LIMIT 1",
+      [accommodationId, candidateCheckOut, checkOutTime,
+        candidateCheckIn, checkInTime],
     );
-
     if (conflicts.length === 0) {
       suggestions.push({
         check_in: candidateCheckIn,
         check_out: candidateCheckOut,
-        nights,
+        check_in_time: checkInTime,
+        check_out_time: checkOutTime,
       });
     }
-
     daysToCheck++;
   }
-
   return suggestions;
 }
 
@@ -512,12 +473,8 @@ ${message}
   return parsed || {};
 }
 
-function buildBookingPreview(room, context, nights) {
-  const pricePerNight = Number(room.price || 0);
-  const totalPrice = pricePerNight * Number(nights || 1);
-  const paymentMethod = normalizePaymentMethod(context.payment_method) || "cash";
-  const paymentStatus = paymentMethod === "paypal" ? "pending" : "unpaid";
-
+function buildBookingPreview(room, context, stayDays) {
+  // Suggestion only. The secure booking form determines slot-specific price.
   return {
     room_id: room.id,
     room_name: room.room_name,
@@ -527,11 +484,10 @@ function buildBookingPreview(room, context, nights) {
     check_out: context.check_out,
     check_out_time: context.check_out_time,
     guests: Number(context.guests),
-    nights,
-    payment_method: paymentMethod,
-    payment_status: paymentStatus,
-    price_per_night: pricePerNight,
-    estimated_total: totalPrice,
+    nights: stayDays,
+    day_price: Number(room.day_price || 0),
+    overnight_price: Number(room.overnight_price || 0),
+    extended_price: Number(room.extended_price || 0),
   };
 }
 
@@ -592,7 +548,7 @@ exports.chatWithGemini = async (req, res) => {
     let nights = 0;
     let matchedRooms = [];
     let availableRooms = [];
-    let roomSummary = "No live room availability was checked.";
+    let roomSummary = "No availability has been verified. Please provide valid check-in/out dates and times.";
     let topRecommendationSummary = "No strong recommendation available.";
     let alternativeDates = [];
     let alternativeSummary = "No alternative dates were checked.";
@@ -600,15 +556,18 @@ exports.chatWithGemini = async (req, res) => {
     let bookingPreview = null;
 
     const missingCoreDetails = getMissingCoreDetails(mergedContext);
-    const hasAvailabilityDetails = hasEnoughForAvailability(mergedContext);
+    const hasAvailabilityDetails = hasEnoughForAvailability(mergedContext) &&
+      isValidAiStayWindow(mergedContext);
 
     if (hasAvailabilityDetails) {
-      nights = getNightDifference(mergedContext.check_in, mergedContext.check_out);
+      nights = Math.max(1, getNightDifference(mergedContext.check_in, mergedContext.check_out));
 
       if (nights > 0) {
         availableRooms = await getAvailableRooms(
           mergedContext.check_in,
+          mergedContext.check_in_time,
           mergedContext.check_out,
+          mergedContext.check_out_time,
           Number(mergedContext.guests)
         );
 
@@ -622,8 +581,8 @@ exports.chatWithGemini = async (req, res) => {
           room_name: mergedContext.room_name,
         });
 
-        roomSummary = buildRoomsSummary(matchedRooms, nights);
-        topRecommendationSummary = buildTopRecommendationSummary(matchedRooms, nights);
+        roomSummary = buildRoomsSummary(matchedRooms);
+        topRecommendationSummary = buildTopRecommendationSummary(matchedRooms);
 
         if (matchedRooms.length > 0) {
           chosenRoom = matchedRooms[0];
@@ -663,7 +622,9 @@ exports.chatWithGemini = async (req, res) => {
             alternativeDates = await getAlternativeDatesForRoom(
               chosenRoom.id,
               mergedContext.check_in,
-              nights
+              mergedContext.check_out,
+              mergedContext.check_in_time,
+              mergedContext.check_out_time
             );
             alternativeSummary = buildAlternativeSummary(alternativeDates);
           }
@@ -706,14 +667,17 @@ Important rules:
 - Do not ask again for information that is already saved.
 - If details are incomplete, ask ONLY for the missing important detail(s).
 - Missing core details right now: ${missingDetailsText}
+- These are preliminary availability results for the exact requested window; final slot availability is rechecked on the booking page.
+- Day, overnight and extended rates are different. Never call a day rate a nightly price or invent a total.
+- Structured bed count, view and aircon details are not verified; do not promise them.
 - If rooms are available, recommend only the best 1 to 3 options.
 - Briefly explain why each recommended room matches.
 - If there are no exact matches, say that clearly and mention alternative dates if provided.
-- If booking preview is ready, clearly tell the user they can press the confirm booking button.
+- A booking suggestion is NOT a reservation. Tell the user to press Continue to Booking, then confirm dates, slot price, and payment on the secure reservation page.
 - If the user wants to book but payment method is still missing, ask whether they prefer cash on arrival or PayPal.
 - If the user wants to book but check-in time or check-out time is missing, ask for the missing time.
-- If the user says online payment, explain that booking will be saved as pending online payment.
-- If dates are invalid or nights is 0 or negative, ask the user to correct the dates.
+- Online payments are finalized only on the secure Customer booking/payment page. Never imply an AI chat creates a reservation.
+- If the date/time range is invalid, ask the user to correct both dates and times. Same-day day tours may be valid if checkout is later than check-in.
 - Prefer concise answers over long answers.
 
 Saved booking context:
@@ -880,155 +844,4 @@ ${text}
   }
 };
 
-exports.createBookingFromChat = async (req, res) => {
-  try {
-    const {
-      user_id,
-      room_id,
-      check_in,
-      check_in_time,
-      check_out,
-      check_out_time,
-      guests,
-      payment_method,
-    } = req.body;
-
-    if (
-      !user_id ||
-      !room_id ||
-      !check_in ||
-      !check_in_time ||
-      !check_out ||
-      !check_out_time ||
-      !guests
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: "Missing booking details from chat.",
-      });
-    }
-
-    const startDate = new Date(check_in);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    if (startDate < today) {
-      return res.status(400).json({
-        success: false,
-        message: "Check-in date cannot be in the past.",
-      });
-    }
-
-    const nights = getNightDifference(check_in, check_out);
-    if (nights < 1) {
-      return res.status(400).json({
-        success: false,
-        message: "Check-out must be at least one day after check-in.",
-      });
-    }
-
-    const normalizedCheckInTime = normalizeTimeValue(check_in_time);
-    const normalizedCheckOutTime = normalizeTimeValue(check_out_time);
-
-    if (!normalizedCheckInTime || !normalizedCheckOutTime) {
-      return res.status(400).json({
-        success: false,
-        message: "Check-in time and check-out time are required.",
-      });
-    }
-
-    const [roomRows] = await db.promise().query(
-      `SELECT * FROM rooms WHERE id = ? LIMIT 1`,
-      [room_id]
-    );
-
-    if (roomRows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Selected room not found.",
-      });
-    }
-
-    const room = roomRows[0];
-
-    if (String(room.status).toLowerCase() !== "available") {
-      return res.status(400).json({
-        success: false,
-        message: "This room is currently unavailable.",
-      });
-    }
-
-    if (Number(guests) > Number(room.capacity)) {
-      return res.status(400).json({
-        success: false,
-        message: `This room can only accommodate up to ${room.capacity} guests.`,
-      });
-    }
-
-    const [conflicts] = await db.promise().query(
-      `
-      SELECT id
-      FROM bookings
-      WHERE room_id = ?
-        AND status NOT IN ('cancelled', 'rejected')
-        AND (? < check_out AND ? > check_in)
-      `,
-      [room_id, check_in, check_out]
-    );
-
-    if (conflicts.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: "This room is no longer available for the selected dates.",
-      });
-    }
-
-    const finalPaymentMethod = normalizePaymentMethod(payment_method) || "cash";
-    const finalPaymentStatus =
-      finalPaymentMethod === "paypal" ? "pending" : "unpaid";
-
-    const [result] = await db.promise().query(
-      `
-      INSERT INTO bookings
-      (
-        user_id,
-        room_id,
-        check_in,
-        check_out,
-        check_in_time,
-        check_out_time,
-        guests,
-        status,
-        payment_method,
-        payment_status
-      )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `,
-      [
-        user_id,
-        room_id,
-        check_in,
-        check_out,
-        normalizedCheckInTime,
-        normalizedCheckOutTime,
-        guests,
-        "pending",
-        finalPaymentMethod,
-        finalPaymentStatus,
-      ]
-    );
-
-    return res.status(201).json({
-      success: true,
-      message: "Booking created successfully from AI chat.",
-      bookingId: result.insertId,
-    });
-  } catch (error) {
-    console.error("createBookingFromChat error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Failed to create booking from chat.",
-      error: error.message,
-    });
-  }
-};
+// Retired the legacy AI direct booking writer. All reservations use /api/bookings.
