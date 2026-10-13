@@ -16,6 +16,7 @@ const axios = require("axios");
 const { issueFrontDeskToken } = require("../../middleware/frontDeskAuth");
 const { issueAdminToken } = require("../../middleware/adminAuth");
 const { issueManagerToken } = require("../../middleware/managerAuth");
+const { issueHousekeepingToken } = require("../../middleware/housekeepingAuth");
 const { issueCustomerToken } = require("../../middleware/customerAuth");
 
 // ============================================================
@@ -642,6 +643,7 @@ exports.login = async (req, res) => {
     let frontDeskToken = null;
     let adminToken = null;
     let managerToken = null;
+    let housekeepingToken = null;
     let customerToken = null;
 
     if (role === "frontdesk" || role === "staff") {
@@ -681,6 +683,18 @@ exports.login = async (req, res) => {
       }
     }
 
+    if (role === "housekeeping") {
+      try {
+        housekeepingToken = issueHousekeepingToken(user.id);
+      } catch (tokenError) {
+        console.error("Housekeeping token configuration error:", tokenError.message);
+        return res.status(503).json({
+          success: false,
+          message: "Secure Housekeeping login is not configured. Contact support.",
+        });
+      }
+    }
+
     if (role === "customer") {
       try {
         customerToken = issueCustomerToken(user.id);
@@ -699,6 +713,7 @@ exports.login = async (req, res) => {
       ...(frontDeskToken ? { frontDeskToken } : {}),
       ...(adminToken ? { adminToken } : {}),
       ...(managerToken ? { managerToken } : {}),
+      ...(housekeepingToken ? { housekeepingToken } : {}),
       ...(customerToken ? { customerToken } : {}),
       user: {
         id: user.id,
