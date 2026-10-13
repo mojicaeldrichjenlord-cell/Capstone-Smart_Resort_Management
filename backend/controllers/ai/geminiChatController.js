@@ -177,12 +177,14 @@ function detectLanguageFromMessage(message) {
   let tagalogScore = 0;
   let englishScore = 0;
 
+  // Whole-word matching prevents false Taglish detection from English
+  // words containing short syllables like "pa", "po", "lang" or "sa".
   tagalogWords.forEach((word) => {
-    if (text.includes(word)) tagalogScore++;
+    if (new RegExp("\\b" + word + "\\b", "i").test(text)) tagalogScore++;
   });
 
   englishWords.forEach((word) => {
-    if (text.includes(word)) englishScore++;
+    if (new RegExp("\\b" + word + "\\b", "i").test(text)) englishScore++;
   });
 
   if (tagalogScore >= 2 && englishScore >= 2) return "taglish";
