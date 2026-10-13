@@ -10,6 +10,7 @@
   </head>
 
   <body>
+    <a class="hk-skip" href="#mainContent">Skip to main content</a>
     <header class="hk-navbar">
       <div>
         <strong>Arvic Seaside</strong>
@@ -19,7 +20,7 @@
       <button type="button" id="logoutBtn">Logout</button>
     </header>
 
-    <main class="hk-page">
+    <main class="hk-page" id="mainContent" tabindex="-1">
       <section class="hk-hero">
         <div>
           <p>HOUSEKEEPING STAFF</p>
@@ -31,30 +32,52 @@
         </div>
 
         <div class="hk-user-card">
-          <strong id="accountName">Housekeeping Staff</strong>
+          <strong id="accountName">Verifying session…</strong>
           <small id="accountEmail">-</small>
           <span>View-only access</span>
         </div>
       </section>
 
-      <section class="schedule-placeholder">
-        <div class="placeholder-icon">✓</div>
-
-        <h2>Housekeeping schedule module is ready for connection</h2>
-
-        <p>
-          In the next step, this dashboard will read reservation schedules and
-          display booked/occupied accommodation, arrival, departure, and guest count.
-        </p>
-
-        <div class="permission-note">
-          Housekeeping will not create reservations, process payments, change
-          reservation status, or edit accommodation records.
+      <section class="hk-panel" aria-labelledby="scheduleHeading">
+        <div class="hk-panel-header">
+          <div>
+            <h2 id="scheduleHeading">Daily Accommodation Schedule</h2>
+            <p>Select a date to review approved bookings and completed stays.</p>
+          </div>
+          <form id="hkScheduleFilters" class="hk-filters">
+            <label for="hkDate">Schedule date</label>
+            <input id="hkDate" name="date" type="date" required />
+            <button type="submit">Refresh Schedule</button>
+          </form>
         </div>
+        <p class="hk-status" id="hkStatus" role="status" aria-live="polite">Verifying Housekeeping account…</p>
+        <div class="hk-summary" aria-label="Accommodation schedule totals">
+          <article><span>Scheduled Items</span><strong id="hkScheduled">—</strong></article>
+          <article><span>Arrivals</span><strong id="hkArrivals">—</strong></article>
+          <article><span>Departures</span><strong id="hkDepartures">—</strong></article>
+          <article><span>Checked-In Items</span><strong id="hkCheckedIn">—</strong></article>
+          <article><span>Completed Stays</span><strong id="hkCompleted">—</strong></article>
+        </div>
+        <div class="hk-table-region" role="region" aria-label="Scrollable Housekeeping schedule" tabindex="0">
+          <table aria-label="Housekeeping booking schedule">
+            <thead>
+              <tr><th>Accommodation</th><th>Category</th><th>Reservation</th><th>Stay Type</th><th>Check-In</th><th>Check-Out</th><th>Schedule</th><th>Booking Status</th></tr>
+            </thead>
+            <tbody id="hkScheduleBody">
+              <tr><td colspan="8">Loading schedule…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="permission-note">
+          This is a <strong>read-only booking schedule</strong>, not a cleaning or room-ready tracker.
+          Cleaning tasks and assignments will be added separately. Housekeeping cannot modify
+          reservations, collect payments, or change accommodation availability.
+        </p>
       </section>
     </main>
 
     <script src="../sharedJS/toast.js"></script>
+    <script src="../sharedJS/api-config.js"></script>
     <script src="../housekeepingJS/housekeepingDashboard.js"></script>
   </body>
 </html>
