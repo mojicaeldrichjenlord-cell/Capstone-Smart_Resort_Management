@@ -395,3 +395,40 @@ test("Schema creates isolated task table with unique reservation item and guarde
   assert.match(sql,/needs_cleaning','in_progress','cleaned','verified_ready/);
   assert.doesNotMatch(sql,/\bALTER TABLE\s+(?:reservations|accommodations)/i);
 });
+
+
+test("Manager may review tasks without receiving private guest or payment records", async () => {
+  await createAndCheck();
+  const result = await call(mgr + "/tasks?date=" + currentDay);
+  assert.equal(result.code, 200);
+  assert.equal(result.data.tasks.length, 1);
+  assert.equal(result.data.tasks[0].assigned_to, 2);
+  assert.equal(result.data.tasks[0].accommodation, "Test Room A");
+  assert.equal(result.data.tasks[0].email, undefined);
+  assert.equal(result.data.tasks[0].paid_amount, undefined);
+});
+test("Forged Manager token cannot read Housekeeping task roster", async () => {
+  const result = await call(mgr + "/tasks", { token: "mgr1.invalid.fake" });
+  assert.equal(result.code, 401);
+  assert.equal(queries.length, 0);
+});
+test("Manager cannot bypass staff transitions using task verify endpoint", async () => {
+  await createAndCheck();
+  const response = await verify(0);
+  assert.equal(response.code, 409);
+  assert.equal(task.status, "needs_cleaning");
+  assert.equal(task.version, 0);
+});
+test("Invalid or missing optimistic versions cannot mutate cleaning task state", async () => {
+  await createAndCheck();
+  const missing = await call(hk + "/tasks/45/start", {
+    token: staffToken, method: "PUT", body: { unexpected: 0 },
+  });
+  const nullVersion = await call(hk + "/tasks/45/start", {
+    token: staffToken, method: "PUT", body: { version: null },
+  });
+  assert.equal(missing.code, 400);
+  assert.equal(nullVersion.code, 400);
+  assert.equal(task.status, "needs_cleaning");
+  assert.equal(task.version, 0);
+});
