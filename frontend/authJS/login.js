@@ -143,6 +143,7 @@ if (loginForm) {
         sessionStorage.removeItem("adminToken");
         sessionStorage.removeItem("customerToken");
         sessionStorage.removeItem("managerToken");
+        sessionStorage.removeItem("housekeepingToken");
       } else if (role === "admin") {
         const adminToken = data.adminToken;
         if (
@@ -157,6 +158,7 @@ if (loginForm) {
         sessionStorage.removeItem("frontDeskToken");
         sessionStorage.removeItem("customerToken");
         sessionStorage.removeItem("managerToken");
+        sessionStorage.removeItem("housekeepingToken");
       } else if (role === "manager") {
         const managerToken = data.managerToken;
         if (typeof managerToken !== "string" ||
@@ -167,6 +169,17 @@ if (loginForm) {
         sessionStorage.removeItem("adminToken");
         sessionStorage.removeItem("frontDeskToken");
         sessionStorage.removeItem("customerToken");
+      } else if (role === "housekeeping") {
+        const housekeepingToken = data.housekeepingToken;
+        if (typeof housekeepingToken !== "string" ||
+            !/^hk1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(housekeepingToken)) {
+          throw new Error("Secure Housekeeping token was not returned. Contact support.");
+        }
+        sessionStorage.setItem("housekeepingToken", housekeepingToken);
+        sessionStorage.removeItem("adminToken");
+        sessionStorage.removeItem("frontDeskToken");
+        sessionStorage.removeItem("customerToken");
+        sessionStorage.removeItem("managerToken");
       } else if (role === "customer") {
         const customerToken = data.customerToken;
         if (
@@ -179,12 +192,14 @@ if (loginForm) {
         sessionStorage.removeItem("frontDeskToken");
         sessionStorage.removeItem("adminToken");
         sessionStorage.removeItem("managerToken");
+        sessionStorage.removeItem("housekeepingToken");
       } else {
         // Prevent stale signed sessions when switching user roles.
         sessionStorage.removeItem("frontDeskToken");
         sessionStorage.removeItem("adminToken");
         sessionStorage.removeItem("customerToken");
         sessionStorage.removeItem("managerToken");
+        sessionStorage.removeItem("housekeepingToken");
       }
 
       localStorage.setItem(
