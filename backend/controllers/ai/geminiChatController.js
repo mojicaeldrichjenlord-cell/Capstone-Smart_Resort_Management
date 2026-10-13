@@ -655,7 +655,7 @@ function buildBookingPreview(room, context, stayDays) {
 // When Gemini's free tier is temporarily exhausted, serve only verified
 // read-only database facts for accommodation inquiries. Never generate a
 // reservation, alter payment state, or pretend dates are booked.
-async function buildQuotaLimitedAccommodationReply(payload) {
+async function buildQuotaLimitedAccommodationReply(payload, requestCatalog = null) {
   const message = String(payload?.message || "");
   const context = mergeContext({
     ...(payload?.context && typeof payload.context === "object" &&
@@ -742,7 +742,9 @@ async function buildQuotaLimitedAccommodationReply(payload) {
     matches = filterRooms(rooms, context, message);
     candidates = matches;
   } else {
-    const catalog = await getAccommodationCatalog();
+    // Reuse the catalog already read in THIS request if the final Gemini
+    // generation hits its quota. Never persist it across requests.
+    const catalog = Array.isArray(requestCatalog) ? requestCatalog : await getAccommodationCatalog();
     candidates = catalogMatchFilter(catalog, context, message)
       .filter(room => normalizeText(room.status) === "available")
       .sort((a, b) =>
@@ -787,6 +789,7 @@ async function buildQuotaLimitedAccommodationReply(payload) {
 }
 
 exports.chatWithGemini = async (req, res) => {
+  let requestCatalog = null;
   try {
     const { message } = req.body;
 
@@ -869,6 +872,7 @@ exports.chatWithGemini = async (req, res) => {
     // silently downgrading the response to a booking recommendation.
     if (!hasBasicStayDetails && isAccommodationInquiry(message, mergedContext)) {
       const catalog = await getAccommodationCatalog();
+      requestCatalog = catalog;
       const snapshot = buildCatalogSummary(catalog, mergedContext, message);
       catalogSummary = snapshot.summary;
       catalogRecommendations = snapshot.recommendations;
@@ -1061,7 +1065,7 @@ ${message}
     const status = geminiErrorStatus(error);
     if (status === 429 || status === 503) {
       try {
-        const backup = await buildQuotaLimitedAccommodationReply(req.body);
+        const backup = await buildQuotaLimitedAccommodationReply(req.body, requestCatalog);
         if (backup) return res.status(200).json(backup);
       } catch (fallbackError) {
         console.warn("AI database fallback unavailable:", fallbackError.message);
