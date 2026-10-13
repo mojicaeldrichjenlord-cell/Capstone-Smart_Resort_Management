@@ -114,7 +114,10 @@ async function sendAiMessage(options = {}) {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.message || "Failed to get AI response.");
+      const requestError = new Error(data.message || "Failed to get AI response.");
+      requestError.status = response.status;
+      requestError.code = data.code || null;
+      throw requestError;
     }
 
     if (data.extracted_context) {
@@ -142,8 +145,26 @@ async function sendAiMessage(options = {}) {
     }
     return aiReply;
   } catch (error) {
-    console.error("AI chat error:", error);
+    console.warn("AI chat request failed:", error.code || error.message);
     removeTypingIndicator();
+
+    if (error.code === "GEMINI_BUSY" || error.code === "GEMINI_RATE_LIMIT") {
+      // Upstream demand/quota issues do not mean a room is unavailable.
+      // Keep booking context unchanged, and do not invent rates.
+      const voiceLanguage = options.source === "voice"
+        ? window.ArvicVoice?.getLanguage?.()
+        : null;
+      const messages = {
+        english: "Sorry, our AI assistant is busy right now. Please try again in a moment.",
+        taglish: "Pasensya na po, busy muna ang AI assistant. Pakisubukan ulit maya-maya.",
+        spanish: "Lo siento, el asistente está ocupado en este momento. Inténtelo de nuevo en unos instantes.",
+        mandarin: "抱歉，智能助手现在比较忙。请稍后再试。",
+      };
+      const busyReply = messages[voiceLanguage] || error.message ||
+        "The AI assistant is temporarily busy. Please try again shortly.";
+      appendAiMessage("assistant", busyReply);
+      return busyReply;
+    }
 
     const fallback = getOfflineFallbackReply(message, storedContext, pageContext);
     const mergedFallbackContext = mergeContext(storedContext, fallback.context || {});
