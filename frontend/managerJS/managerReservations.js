@@ -46,11 +46,24 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   function datePart(value) {
     if (!value) return "—";
-    if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) {
-      return value.slice(0, 10);
-    }
-    const parsed = new Date(value);
-    return Number.isNaN(parsed.getTime()) ? "—" : parsed.toLocaleDateString("en-PH");
+    const text = String(value);
+    const iso = /^\d{4}-\d{2}-\d{2}/.exec(text);
+    const parsed = iso ? new Date(iso[0] + "T12:00:00Z") : new Date(value);
+    return Number.isNaN(parsed.getTime()) ? "—" :
+      new Intl.DateTimeFormat("en-US", {
+        month: "short", day: "numeric", year: "numeric", timeZone: "UTC",
+      }).format(parsed);
+  }
+  function statusCell(tr, value) {
+    const td = document.createElement("td");
+    const badge = document.createElement("span");
+    const state = String(value || "unknown").trim().toLowerCase();
+    badge.className = "manager-status-pill";
+    badge.dataset.status = state;
+    badge.textContent = state.replace(/_/g, " ");
+    td.appendChild(badge);
+    tr.appendChild(td);
+    return td;
   }
   function timePart(value) {
     return value ? String(value).slice(0, 5) : "";
@@ -86,10 +99,13 @@ document.addEventListener("DOMContentLoaded", () => {
           timePart(reservation.check_out_time));
         cell(tr, reservation.guests);
         cell(tr, reservation.booking_source || "—");
-        cell(tr, reservation.payment_status || "—");
-        cell(tr, reservation.status || "—");
+        statusCell(tr, reservation.payment_status);
+        statusCell(tr, reservation.status);
 
         const action = document.createElement("td");
+        const buttons = document.createElement("div");
+        buttons.className = "manager-row-actions";
+        action.appendChild(buttons);
         const pending = String(reservation.status).toLowerCase() === "pending" &&
           reservation.is_checked_in === false;
         if (pending) {
@@ -101,12 +117,14 @@ document.addEventListener("DOMContentLoaded", () => {
             button.className = nextStatus === "approved"
               ? "manager-approve" : "manager-reject";
             button.textContent = label;
+            button.setAttribute("aria-label", label + " reservation " +
+              (reservation.reservation_code || reservation.id));
             button.addEventListener("click", () =>
               reviewReservation(reservation, nextStatus));
-            action.appendChild(button);
+            buttons.appendChild(button);
           }
         } else {
-          action.textContent = "View only";
+          buttons.textContent = "View only";
         }
         tr.appendChild(action);
         tbody.appendChild(tr);
@@ -127,18 +145,24 @@ document.addEventListener("DOMContentLoaded", () => {
       " reservation " + reservation.reservation_code + "?";
     if (!window.confirm(confirmation)) return;
     busy = true;
+    let reviewFeedback = "";
     if (status) status.textContent = "Submitting " + nextStatus + " status…";
     try {
       await request("reservations/" + Number(reservation.id) + "/status", {
         method: "PUT",
         body: JSON.stringify({ status: nextStatus }),
       });
-      if (status) status.textContent = "Reservation " + nextStatus + ". Refreshing…";
+      reviewFeedback = "Reservation " + (reservation.reservation_code || reservation.id) +
+        " " + nextStatus + " successfully.";
     } catch (error) {
-      if (status) status.textContent = error.message || "Unable to update reservation.";
+      reviewFeedback = error.message || "Unable to update reservation.";
     } finally {
       busy = false;
       await loadReservations();
+      // Keep the review outcome visible even after the list refresh.
+      if (status && reviewFeedback) {
+        status.textContent = reviewFeedback + " " + status.textContent;
+      }
     }
   }
 
