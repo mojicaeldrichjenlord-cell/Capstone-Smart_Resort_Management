@@ -723,3 +723,47 @@ test("Mandarin voice with one-call catalog stays fixed-language on quota fallbac
   assert.equal(queries.length, 1);
   assert.equal(response.body.booking_preview, null);
 });
+
+
+test("Oversized AI message is rejected before Gemini and database access", async () => {
+  const result = await post("/api/ai/chat", {
+    message: "Can I book?" + "x".repeat(2200),
+  });
+  assert.equal(result.status, 413);
+  assert.equal(result.body.code, "AI_INPUT_TOO_LONG");
+  assert.equal(modelCalls, 0);
+  assert.equal(queries.length, 0);
+});
+
+test("Oversized stored AI context cannot inflate token usage", async () => {
+  const result = await post("/api/ai/chat", {
+    message: "Hello",
+    context: { room_name: "x".repeat(13000) },
+  });
+  assert.equal(result.status, 413);
+  assert.equal(result.body.code, "AI_INPUT_TOO_LONG");
+  assert.equal(modelCalls, 0);
+  assert.equal(queries.length, 0);
+});
+
+test("Oversized translation is rejected before paid Gemini calls", async () => {
+  const result = await post("/api/ai/translate-english", {
+    text: "x".repeat(6100),
+  });
+  assert.equal(result.status, 413);
+  assert.equal(result.body.code, "AI_INPUT_TOO_LONG");
+  assert.equal(modelCalls, 0);
+  assert.equal(queries.length, 0);
+});
+
+test("Normal short chat and translation remain usable after size limits", async () => {
+  const question = await post("/api/ai/chat", { message: "Hello" });
+  assert.equal(question.status, 200);
+  assert.equal(modelCalls, 2);
+  const translated = await post("/api/ai/translate-english", {
+    text: "Hola",
+  });
+  assert.equal(translated.status, 200);
+  assert.equal(translated.body.translated_text, "Mock English translation");
+  assert.equal(modelCalls, 3);
+});
