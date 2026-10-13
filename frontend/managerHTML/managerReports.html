@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="../managerCSS/managerDashboard.css" />
 </head>
 <body>
+<a href="#mainContent" class="manager-skip-link">Skip to main content</a>
 <header class="manager-navbar">
 <div><strong>Arvic Seaside</strong><span>Resort Manager</span></div>
 <nav class="manager-nav" aria-label="Manager navigation">
@@ -18,7 +19,7 @@
 <button type="button" id="logoutBtn">Logout</button>
 </nav>
 </header>
-<main class="manager-page">
+<main class="manager-page" id="mainContent" tabindex="-1">
 <section class="manager-hero">
 <p>RESORT MANAGER</p>
 <h1>Reports & Analytics</h1>
@@ -33,7 +34,7 @@
 <input type="date" id="reportTo" required /></label>
 <button type="submit">Generate Report</button>
 </form>
-<p class="manager-status" id="managerReportStatus" role="status">Verifying Manager session…</p>
+<p class="manager-status" id="managerReportStatus" role="status" aria-live="polite">Verifying Manager session…</p>
 <p class="manager-list-note">Reservation counts use booking creation dates. Paid additional charges use actual charge-paid dates. Maximum range: 366 days.</p>
 </section>
 <section class="manager-report-section" aria-labelledby="managerSummaryHeading">
@@ -64,7 +65,7 @@
 <section class="manager-activity" aria-labelledby="managerPerformanceHeading">
 <h2 id="managerPerformanceHeading">Top Accommodations</h2>
 <p>Counts reservation items for bookings created during the period. These are not nights stayed or actual occupancy.</p>
-<div class="activity-scroll">
+<div class="activity-scroll" role="region" aria-label="Scrollable Manager data table" tabindex="0">
 <table aria-label="Top accommodations by reservation items">
 <thead><tr><th>Accommodation</th><th>Category</th><th>Booked Items</th><th>Reservations</th></tr></thead>
 <tbody id="managerAccommodationReport"><tr><td colspan="4">No data yet.</td></tr></tbody>
