@@ -47,6 +47,7 @@ app.use("/api/admin/bookings", adminBookingRoutes);
 app.use("/api/admin/payments", adminPaymentRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/manager", managerRoutes);
+// Housekeeping API has independent signed-role checks and never inherits Admin rights.
 app.use("/api/housekeeping", housekeepingRoutes);
 app.use("/api/map-markers", mapMarkerRoutes);
 app.use("/api/paypal", paypalRoutes);
