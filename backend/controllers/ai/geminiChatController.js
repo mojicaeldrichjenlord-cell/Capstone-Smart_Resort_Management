@@ -476,6 +476,7 @@ ${message}
 function buildBookingPreview(room, context, stayDays) {
   // Suggestion only. The secure booking form determines slot-specific price.
   return {
+    booking_schema: "accommodations_v2",
     room_id: room.id,
     room_name: room.room_name,
     image: room.image,
