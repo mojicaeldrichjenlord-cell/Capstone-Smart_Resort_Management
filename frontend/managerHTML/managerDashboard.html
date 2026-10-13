@@ -29,39 +29,36 @@
         </span>
 
         <div class="account-line">
-          <strong id="accountName">Resort Manager</strong>
+          <strong id="accountName">Verifying Manager session…</strong>
           <small id="accountEmail">-</small>
+          <button type="button" id="refreshBtn" class="manager-refresh">Refresh Overview</button>
         </div>
       </section>
 
-      <section class="manager-grid">
-        <article>
-          <h2>Reports & Analytics</h2>
-          <p>Revenue, reservations, occupancy, and accommodation utilization.</p>
-          <span>Next implementation</span>
-        </article>
-
-        <article>
-          <h2>Reservation Monitoring</h2>
-          <p>High-level reservation and payment status monitoring.</p>
-          <span>Next implementation</span>
-        </article>
-
-        <article>
-          <h2>Operational Summary</h2>
-          <p>Review current resort activity without changing front-desk transactions.</p>
-          <span>Next implementation</span>
-        </article>
-
-        <article>
-          <h2>Staff Activity Monitoring</h2>
-          <p>Review staff-created manual reservation activity and system records.</p>
-          <span>Next implementation</span>
-        </article>
+      <p class="manager-status" id="managerStatus" role="status">Verifying your Manager account…</p>
+      <section class="manager-grid" id="managerSummary" aria-label="Current resort operations">
+        <article><h2>Total Reservations</h2><strong id="totalReservations">—</strong><small>All reservation records</small></article>
+        <article><h2>Pending Review</h2><strong id="pendingReservations">—</strong><small>Reservations awaiting action</small></article>
+        <article><h2>Approved</h2><strong id="approvedReservations">—</strong><small>Approved reservations</small></article>
+        <article><h2>Guests Inside</h2><strong id="guestsInside">—</strong><small>Active checked-in reservations</small></article>
+        <article><h2>Completed</h2><strong id="completedReservations">—</strong><small>Completed reservations</small></article>
+        <article><h2>Accommodations</h2><strong id="accommodationCount">—</strong><small id="availableListings">Listed as available: —</small></article>
+        <article><h2>Recorded Reservation Payments</h2><strong id="recordedPayments">—</strong><small>Excludes separately recorded front-desk charges</small></article>
+      </section>
+      <section class="manager-activity">
+        <h2>Recent Reservation Activity</h2>
+        <p>No guest names, contact numbers, or payment proofs are exposed in this overview.</p>
+        <div class="activity-scroll">
+          <table aria-label="Recent reservation statuses">
+            <thead><tr><th>Reservation Code</th><th>Status</th><th>Source</th><th>Created</th></tr></thead>
+            <tbody id="recentActivity"><tr><td colspan="4">Loading…</td></tr></tbody>
+          </table>
+        </div>
       </section>
     </main>
 
     <script src="../sharedJS/toast.js"></script>
+    <script src="../sharedJS/api-config.js"></script>
     <script src="../managerJS/managerDashboard.js"></script>
   </body>
 </html>
