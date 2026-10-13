@@ -142,6 +142,7 @@ if (loginForm) {
         sessionStorage.setItem("frontDeskToken", frontDeskToken);
         sessionStorage.removeItem("adminToken");
         sessionStorage.removeItem("customerToken");
+        sessionStorage.removeItem("managerToken");
       } else if (role === "admin") {
         const adminToken = data.adminToken;
         if (
@@ -153,6 +154,17 @@ if (loginForm) {
           );
         }
         sessionStorage.setItem("adminToken", adminToken);
+        sessionStorage.removeItem("frontDeskToken");
+        sessionStorage.removeItem("customerToken");
+        sessionStorage.removeItem("managerToken");
+      } else if (role === "manager") {
+        const managerToken = data.managerToken;
+        if (typeof managerToken !== "string" ||
+            !/^mgr1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(managerToken)) {
+          throw new Error("Secure Manager token not returned. Contact support.");
+        }
+        sessionStorage.setItem("managerToken", managerToken);
+        sessionStorage.removeItem("adminToken");
         sessionStorage.removeItem("frontDeskToken");
         sessionStorage.removeItem("customerToken");
       } else if (role === "customer") {
@@ -171,6 +183,7 @@ if (loginForm) {
         sessionStorage.removeItem("frontDeskToken");
         sessionStorage.removeItem("adminToken");
         sessionStorage.removeItem("customerToken");
+        sessionStorage.removeItem("managerToken");
       }
 
       localStorage.setItem(
