@@ -15,6 +15,7 @@ const today = (() => {
   return p.year + "-" + p.month + "-" + p.day;
 })();
 let user, sqlCalls, scheduleRows;
+// Mock SQL with harmless in-memory rows; never connect to the real Aiven DB.
 const fakeDb = {
   promise() {
     return {
@@ -36,6 +37,7 @@ const fakeDb = {
     };
   },
 };
+// Install fake modules before importing the backend routes under test.
 function mock(path, exported) {
   const filename = require.resolve(path);
   const item = new Module(filename);
@@ -78,6 +80,7 @@ after(async () => {
     await new Promise(resolve => server.close(resolve));
   }
 });
+// Reset account role/status and example bookings before each isolated test.
 beforeEach(() => {
   user = {
     id: 1, email: "housekeeping@resort.invalid",
@@ -105,6 +108,7 @@ beforeEach(() => {
   }];
   sqlCalls = [];
 });
+// Send real HTTP requests to the temporary Express test server only.
 async function call(path, { token = valid, method = "GET", body } = {}) {
   const result = await fetch(baseURL + path, {
     method,
@@ -119,6 +123,7 @@ async function call(path, { token = valid, method = "GET", body } = {}) {
 }
 const nonUserReads = () => sqlCalls.filter(q => !/FROM users WHERE/i.test(q.sql));
 
+// Login returns hk1 only; other role-specific signed sessions remain separate.
 test("Housekeeping login receives signed hk1 token and no Admin token", async () => {
   const result = await call("/api/auth/login", {
     method: "POST", token: null,
@@ -178,6 +183,7 @@ test("Verified Housekeeping account can read sanitized identity", async () => {
   assert.equal(result.data.user.phone, undefined);
   assert.equal(result.data.user.password, undefined);
 });
+// Privacy check: synthetic secret guest/payment values must not leave the API.
 test("Daily schedule lists checked-in and completed items without guest or payment data", async () => {
   const result = await call("/api/housekeeping/daily-schedule?date=" + today);
   assert.equal(result.status, 200);
@@ -196,6 +202,7 @@ test("Daily schedule lists checked-in and completed items without guest or payme
   assert.equal(nonUserReads().length, 1);
   assert.ok(sqlCalls.every(x => /^SELECT\b/i.test(x.sql)));
 });
+// Read-only schedule uses bound parameters and excludes unapproved bookings.
 test("Schedule SQL uses parameterized dates and excludes pending and rejected bookings", async () => {
   await call("/api/housekeeping/daily-schedule?date=" + today);
   const query = nonUserReads()[0];
@@ -243,6 +250,7 @@ test("Demoted Housekeeping account cannot read schedule", async () => {
   assert.equal(result.status, 403);
   assert.equal(nonUserReads().length, 0);
 });
+// Housekeeping token must not unlock Admin privileges (cross-role RBAC).
 test("Housekeeping token cannot authorize Admin operations", async () => {
   const result = await call("/api/only-admin");
   assert.equal(result.status, 401);
