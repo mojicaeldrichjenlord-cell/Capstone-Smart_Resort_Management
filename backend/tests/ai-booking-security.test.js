@@ -270,3 +270,23 @@ test("Taglish and Spanish voice preferences use the selected fixed reply languag
   assert.equal(spanish.body.extracted_context.language_style, "spanish");
   assert.match(modelPrompts[1], /Reply entirely in natural Spanish/);
 });
+
+
+test("Live voice Gemini prompt is concise and conversational while retaining booking rules", async () => {
+  const result = await post("/api/ai/chat", {
+    message: "Help me find a family cottage.",
+    voice_language: "english",
+  });
+  assert.equal(result.status, 200);
+  assert.match(modelPrompts[1], /LIVE SPOKEN CONVERSATION/);
+  assert.match(modelPrompts[1], /one or two short sentences/);
+  assert.match(modelPrompts[1], /Ask at most ONE useful follow-up question/);
+  assert.match(modelPrompts[1], /Never invent or promise a booking/);
+});
+test("Normal text chat is not forced into live spoken-conversation style", async () => {
+  const result = await post("/api/ai/chat", {
+    message: "How can I book?",
+  });
+  assert.equal(result.status, 200);
+  assert.doesNotMatch(modelPrompts[1], /LIVE SPOKEN CONVERSATION/);
+});
