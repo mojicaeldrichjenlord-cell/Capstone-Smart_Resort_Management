@@ -107,7 +107,9 @@
     const lang = String(voice.lang || "").toLowerCase();
     const target = getLocale().tts.toLowerCase();
     let score = lang === target ? 18 : 0;
-    if (state.language === "taglish" && /^(fil|tl)(-|$)/.test(lang)) score += 24;
+    // Filipino voices should outrank English voices when Taglish is chosen,
+    // even if a polished English voice is also installed.
+    if (state.language === "taglish" && /^(fil|tl)(-|$)/.test(lang)) score += 105;
     if (/natural|neural/.test(name)) score += 85;
     else if (/enhanced|premium/.test(name)) score += 35;
     if (/google|microsoft/.test(name)) score += 8;
