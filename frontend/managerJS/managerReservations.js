@@ -8,6 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const search = document.getElementById("managerSearch");
   const filter = document.getElementById("managerStatusFilter");
 
+  // Signed Manager session is distinct from Admin and Housekeeping sessions.
   function signOut() {
     sessionStorage.removeItem("managerToken");
     localStorage.removeItem("user");
@@ -18,6 +19,7 @@ document.addEventListener("DOMContentLoaded", () => {
     signOut();
     return;
   }
+  // Attach mgr1 bearer token and show useful errors from the API.
   async function request(path, options = {}) {
     const response = await fetch(API_BASE + "/manager/" + path, {
       ...options,
@@ -38,12 +40,14 @@ document.addEventListener("DOMContentLoaded", () => {
     return data;
   }
 
+  // Render all names and codes as plain text to avoid HTML injection.
   function cell(tr, text) {
     const td = document.createElement("td");
     td.textContent = String(text ?? "—");
     tr.appendChild(td);
     return td;
   }
+  // Display stable Philippine booking dates in a human-readable format.
   function datePart(value) {
     if (!value) return "—";
     const text = String(value);
@@ -54,6 +58,7 @@ document.addEventListener("DOMContentLoaded", () => {
         month: "short", day: "numeric", year: "numeric", timeZone: "UTC",
       }).format(parsed);
   }
+  // Color-coded pills retain a readable status label for accessibility.
   function statusCell(tr, value) {
     const td = document.createElement("td");
     const badge = document.createElement("span");
@@ -70,6 +75,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   let busy = false;
+  // Re-fetch up to the server-defined limit using selected search/status filters.
   async function loadReservations() {
     if (busy) return;
     busy = true;
@@ -138,6 +144,8 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
+  // Confirm irreversible review action; backend enforces pending-only state.
+  // Keep success/conflict feedback visible after the list refresh.
   async function reviewReservation(reservation, nextStatus) {
     if (busy) return;
     const actionName = nextStatus === "approved" ? "APPROVE" : "REJECT";
