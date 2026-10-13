@@ -290,3 +290,97 @@ body {
 @media(max-width:720px) {
   .manager-trend-row { grid-template-columns:100px minmax(60px,1fr) 40px; gap:7px; }
 }
+
+
+/* Manager cross-page UX refinement. Shared across all four views. */
+.manager-navbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  gap: 18px;
+  box-shadow: 0 6px 24px rgba(15,23,42,.11);
+}
+.manager-nav { flex-wrap: nowrap; max-width: 100%; }
+.manager-nav a { white-space: nowrap; transition: background-color .15s ease; }
+.manager-nav [aria-current="page"] { background: rgba(255,255,255,.19); }
+.manager-skip-link {
+  position: fixed; left: 12px; top: -100px; z-index: 100;
+  padding: 10px 15px; background: #fff; color: #0f766e;
+  border: 2px solid #0f766e; border-radius: 10px; font-weight: 800;
+}
+.manager-skip-link:focus { top: 12px; }
+.manager-page { scroll-margin-top: 96px; }
+.manager-activity table { border-spacing: 0; }
+.manager-activity th {
+  position: sticky; top: 0; z-index: 1;
+  white-space: nowrap; font-weight: 800;
+}
+.manager-activity tbody tr:hover { background: #f8fafc; }
+.manager-activity tbody td { vertical-align: middle; }
+.manager-activity table[aria-label="Manager reservation records"] {
+  min-width: 1050px;
+}
+.manager-activity .activity-scroll:focus-visible {
+  outline: 3px solid #0d9488; outline-offset: 4px;
+  border-radius: 8px;
+}
+.manager-grid article h2 { font-size: 1.08rem; line-height: 1.4; }
+.manager-row-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.manager-status-pill {
+  display: inline-block; padding: 5px 10px; border-radius: 999px;
+  background: #e2e8f0; color: #334155;
+  white-space: nowrap; text-transform: capitalize;
+  font-weight: 800; font-size: .78rem; line-height: 1.3;
+}
+.manager-status-pill[data-status="approved"],
+.manager-status-pill[data-status="paid"],
+.manager-status-pill[data-status="completed"] {
+  background: #dcfce7; color: #166534;
+}
+.manager-status-pill[data-status="pending"],
+.manager-status-pill[data-status="partial"],
+.manager-status-pill[data-status="partially_paid"] {
+  background: #fef3c7; color: #92400e;
+}
+.manager-status-pill[data-status="rejected"],
+.manager-status-pill[data-status="cancelled"],
+.manager-status-pill[data-status="unpaid"] {
+  background: #ffe4e6; color: #9f1239;
+}
+.manager-status-pill[data-status="checked_in"],
+.manager-status-pill[data-status="checked-in"] {
+  background: #dbeafe; color: #1d4ed8;
+}
+.manager-status { line-height: 1.5; }
+.manager-approve:focus-visible, .manager-reject:focus-visible,
+.manager-inventory-edit:focus-visible, .manager-filters button:focus-visible,
+.manager-nav a:focus-visible, .manager-navbar button:focus-visible,
+.manager-inventory-dialog input:focus-visible,
+.manager-inventory-dialog select:focus-visible,
+.manager-filters input:focus-visible, .manager-filters select:focus-visible {
+  outline: 3px solid #38bdf8; outline-offset: 3px;
+}
+.manager-approve, .manager-reject, .manager-inventory-edit {
+  transition: filter .15s ease, transform .15s ease;
+}
+.manager-approve:hover, .manager-reject:hover, .manager-inventory-edit:hover {
+  filter: brightness(.96);
+}
+.manager-inventory-dialog form p { line-height: 1.5; }
+@media (max-width: 760px) {
+  .manager-navbar { padding: 12px 5%; }
+  .manager-nav { overflow-x: auto; padding-bottom: 6px; scrollbar-width: thin; }
+  .manager-nav a { flex: 0 0 auto; }
+  .manager-nav button { flex-shrink: 0; }
+  .manager-page { width: min(100% - 24px, 1120px); margin: 20px auto 42px; }
+  .manager-hero { padding: 24px 20px; border-radius: 21px; }
+  .manager-hero h1 { font-size: clamp(1.65rem, 8vw, 2.5rem); }
+  .manager-grid { gap: 12px; }
+  .manager-grid article { min-height: 128px; padding: 17px; border-radius: 16px; }
+  .manager-activity { border-radius: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .manager-nav a, .manager-approve, .manager-reject, .manager-inventory-edit {
+    transition: none;
+  }
+}
