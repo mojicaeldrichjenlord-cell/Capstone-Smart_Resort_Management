@@ -386,7 +386,7 @@ function buildAlternativeSummary(alternatives) {
   if (!alternatives.length) return "No alternative dates found.";
 
   return alternatives
-    .map((item, index) => `${index + 1}. Check-in: ${item.check_in}, Check-out: ${item.check_out}, Nights: ${item.nights}`)
+    .map((item, index) => `${index + 1}. Check-in: ${item.check_in} ${item.check_in_time}, Check-out: ${item.check_out} ${item.check_out_time} (preliminary)`)
     .join("\n");
 }
 
@@ -674,7 +674,7 @@ Important rules:
 - Briefly explain why each recommended room matches.
 - If there are no exact matches, say that clearly and mention alternative dates if provided.
 - A booking suggestion is NOT a reservation. Tell the user to press Continue to Booking, then confirm dates, slot price, and payment on the secure reservation page.
-- If the user wants to book but payment method is still missing, ask whether they prefer cash on arrival or PayPal.
+- Explain that payment options are confirmed on the secure Customer booking/payment page; do not promise cash on arrival for online reservations.
 - If the user wants to book but check-in time or check-out time is missing, ask for the missing time.
 - Online payments are finalized only on the secure Customer booking/payment page. Never imply an AI chat creates a reservation.
 - If the date/time range is invalid, ask the user to correct both dates and times. Same-day day tours may be valid if checkout is later than check-in.
@@ -689,7 +689,7 @@ Live booking details:
 - Check-out date: ${mergedContext.check_out || "Not provided"}
 - Check-out time: ${mergedContext.check_out_time || "Not provided"}
 - Guests: ${mergedContext.guests || "Not provided"}
-- Nights: ${nights || "Not provided"}
+- Requested stay day count (same-day tour = 1): ${nights || "Not yet verified"}
 - Payment method: ${paymentMethodText}
 - Preferred language style: ${mergedContext.language_style || "english"}
 
