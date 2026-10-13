@@ -428,8 +428,10 @@ test("Unavailable accommodation is described but not recommended", async () => {
   });
   assert.equal(result.status, 200);
   assert.deepEqual(result.body.catalog_recommendations, []);
-  assert.match(modelPrompts[1], /Maintenance Cottage/);
-  assert.match(modelPrompts[1], /Admin status: maintenance/);
+  // General catalog question now uses one Gemini prompt.
+  assert.equal(modelCalls, 1);
+  assert.match(modelPrompts.at(-1), /Maintenance Cottage/);
+  assert.match(modelPrompts.at(-1), /Admin status: maintenance/);
   assert.equal(result.body.booking_preview, null);
 });
 
