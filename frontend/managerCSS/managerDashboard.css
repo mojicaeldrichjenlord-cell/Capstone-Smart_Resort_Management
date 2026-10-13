@@ -384,3 +384,15 @@ body {
     transition: none;
   }
 }
+
+
+/* Manager Housekeeping task management */
+.manager-task-table { min-width: 840px; }
+.manager-task-table select {
+  width: 100%; min-width: 150px; border: 1px solid #cbd5e1;
+  border-radius: 8px; padding: 8px; background: #fff; color: #0f172a;
+}
+.manager-status-pill[data-status="needs_cleaning"] { color: #991b1b; background: #fee2e2; }
+.manager-status-pill[data-status="in_progress"] { color: #1d4ed8; background: #dbeafe; }
+.manager-status-pill[data-status="cleaned"] { color: #92400e; background: #fef3c7; }
+.manager-status-pill[data-status="verified_ready"] { color: #166534; background: #dcfce7; }
