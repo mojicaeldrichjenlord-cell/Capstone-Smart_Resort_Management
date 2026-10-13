@@ -161,6 +161,7 @@ test("Valid same-day day tour checks current reservation_items and offers a sugg
   assert.equal(result.status, 200);
   assert.equal(result.body.matched_rooms.length, 1);
   assert.equal(result.body.booking_preview.room_id, 61);
+  assert.equal(result.body.booking_preview.booking_schema, "accommodations_v2");
   assert.equal(result.body.booking_preview.day_price, 3500);
   assert.equal(result.body.booking_preview.overnight_price, 4300);
   assert.equal(result.body.booking_preview.estimated_total, undefined);
@@ -208,4 +209,5 @@ test("Legacy SQL writer removed; frontend navigates through secure Customer form
   assert.doesNotMatch(frontend, /\/ai\/create-booking/);
   assert.match(frontend, /\/customerHTML\/booking\.html\?room_id=/);
   assert.match(frontend, /Continue to Booking/);
+  assert.match(frontend, /preview\?\.booking_schema !== "accommodations_v2"/);
 });
