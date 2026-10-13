@@ -6,6 +6,7 @@ const ALLOWED_STATUS = new Set(["available", "unavailable"]);
 const PRICE_KEYS = ["day_price", "overnight_price", "extended_price"];
 const RATE_LIMIT = 1000000;
 
+// Reject unsafe, negative or malformed accommodation rate inputs.
 function validMoney(input) {
   const raw = String(input ?? "").trim();
   if (!/^(?:0|[1-9]\d{0,6})(?:\.\d{1,2})?$/.test(raw)) return null;
@@ -13,6 +14,7 @@ function validMoney(input) {
   if (!Number.isFinite(amount) || amount < 0 || amount > RATE_LIMIT) return null;
   return amount.toFixed(2);
 }
+// Whitelist fields a Manager is allowed to update; Admin owns other fields.
 function normalizeInventoryState(input, allowExtraFields = false) {
   if (!input || typeof input !== "object" || Array.isArray(input)) return null;
   const keys = Object.keys(input);
@@ -30,6 +32,7 @@ function normalizeInventoryState(input, allowExtraFields = false) {
   return parsed;
 }
 
+// Listing is read-only and intentionally has no gallery/map editor powers.
 exports.listManagerAccommodations = async (_req, res) => {
   try {
     const [rows] = await db.promise().query(
@@ -63,6 +66,7 @@ exports.listManagerAccommodations = async (_req, res) => {
   }
 };
 
+// Update rates/status with a snapshot check to detect concurrent edits.
 exports.updateManagerAccommodationOperations = async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isSafeInteger(id) || id <= 0) {
