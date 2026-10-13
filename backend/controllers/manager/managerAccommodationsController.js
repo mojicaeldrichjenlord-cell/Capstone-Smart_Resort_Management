@@ -13,10 +13,10 @@ function validMoney(input) {
   if (!Number.isFinite(amount) || amount < 0 || amount > RATE_LIMIT) return null;
   return amount.toFixed(2);
 }
-function normalizeInventoryState(input) {
+function normalizeInventoryState(input, allowExtraFields = false) {
   if (!input || typeof input !== "object" || Array.isArray(input)) return null;
   const keys = Object.keys(input);
-  if (keys.length !== 4 ||
+  if ((!allowExtraFields && keys.length !== 4) ||
       !["status", ...PRICE_KEYS].every(key => Object.prototype.hasOwnProperty.call(input, key))) {
     return null;
   }
@@ -76,7 +76,7 @@ exports.updateManagerAccommodationOperations = async (req, res) => {
       success: false, message: "Manager may only update accommodation rates and listing status.",
     });
   }
-  const desired = normalizeInventoryState(req.body);
+  const desired = normalizeInventoryState(req.body, true);
   const expected = normalizeInventoryState(req.body.expected);
   if (!desired || !expected) {
     return res.status(400).json({
@@ -95,7 +95,7 @@ exports.updateManagerAccommodationOperations = async (req, res) => {
         success: false, message: "Accommodation not found.",
       });
     }
-    const current = normalizeInventoryState(rows[0]);
+    const current = normalizeInventoryState(rows[0], true);
     if (!current) {
       return res.status(409).json({
         success: false, code: "INVENTORY_STATUS_UNSUPPORTED",
