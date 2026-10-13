@@ -169,12 +169,14 @@ if (loginForm) {
         sessionStorage.removeItem("adminToken");
         sessionStorage.removeItem("frontDeskToken");
         sessionStorage.removeItem("customerToken");
+      // Housekeeping receives its own signed token; never reuse Manager/Admin auth.
       } else if (role === "housekeeping") {
         const housekeepingToken = data.housekeepingToken;
         if (typeof housekeepingToken !== "string" ||
             !/^hk1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(housekeepingToken)) {
           throw new Error("Secure Housekeeping token was not returned. Contact support.");
         }
+        // Persist only this role's signed session for the next dashboard page.
         sessionStorage.setItem("housekeepingToken", housekeepingToken);
         sessionStorage.removeItem("adminToken");
         sessionStorage.removeItem("frontDeskToken");
