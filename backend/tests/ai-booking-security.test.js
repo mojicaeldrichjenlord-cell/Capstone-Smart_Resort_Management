@@ -279,7 +279,9 @@ test("Mandarin voice session replies in Mandarin even if transcript is English",
   });
   assert.equal(result.status, 200);
   assert.equal(result.body.extracted_context.language_style, "mandarin");
-  assert.match(modelPrompts[1], /Reply entirely in Mandarin Chinese/);
+  // Simple catalog requests now skip the extraction call.
+  assert.equal(modelCalls, 1);
+  assert.match(modelPrompts.at(-1), /Reply entirely in Mandarin Chinese/);
 });
 test("Taglish and Spanish voice preferences use the selected fixed reply language", async () => {
   const taglish = await post("/api/ai/chat", {
@@ -485,6 +487,8 @@ test("HTTP 429 on accommodation inquiry returns actual live catalog without Gemi
   assert.equal(modelCalls, 1); // Never retry free-tier rate limits.
 });
 
+// A 429 on the final reply must reuse the already-read catalog within
+// this request, while the NEXT request fetches fresh admin edits.
 test("Database backup rereads newly updated Admin prices during HTTP 429", async () => {
   injectedStatus = 429;
   injectedFailures = 1;
@@ -683,4 +687,35 @@ test("Optimized prompt does not duplicate full booking context and live details"
   assert.match(modelPrompts.at(-1), /Saved booking details/);
   assert.doesNotMatch(modelPrompts.at(-1), /Live booking details:/);
   assert.equal((modelPrompts.at(-1).match(/Saved booking details/g)||[]).length, 1);
+});
+
+
+test("Quota fallback does not issue a second catalog SQL read after optimized Gemini call", async () => {
+  injectedFailures = 1;
+  injectedStatus = 429;
+  const response = await post("/api/ai/chat", {
+    message: "What rooms do you offer?",
+  });
+  assert.equal(response.status, 200);
+  assert.equal(response.body.mode, "database_fallback");
+  assert.equal(response.body.catalog_recommendations[0].availability_verified, false);
+  assert.equal(queries.length, 1);
+  assert.match(queries[0].sql, /FROM accommodations a/);
+  assert.equal(modelCalls, 1);
+  assert.equal(response.body.booking_preview, null);
+});
+
+test("Mandarin voice with one-call catalog stays fixed-language on quota fallback", async () => {
+  injectedFailures = 1;
+  injectedStatus = 429;
+  const response = await post("/api/ai/chat", {
+    message: "Do you have a family room?",
+    voice_language: "mandarin",
+  });
+  assert.equal(response.status, 200);
+  assert.equal(response.body.extracted_context.language_style, "mandarin");
+  assert.match(response.body.reply, /^AI 服务暂时受限/);
+  assert.equal(modelCalls, 1);
+  assert.equal(queries.length, 1);
+  assert.equal(response.body.booking_preview, null);
 });
