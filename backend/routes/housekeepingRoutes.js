@@ -9,5 +9,11 @@ const {
 router.use(requireHousekeepingAuth);
 router.get("/me", getHousekeepingMe);
 router.get("/daily-schedule", getDailyHousekeepingSchedule);
+const {
+  listMyHousekeepingTasks, startHousekeepingTask, markHousekeepingCleaned,
+} = require("../controllers/housekeeping/housekeepingTasksController");
+router.get("/tasks", listMyHousekeepingTasks);
+router.put("/tasks/:id/start", startHousekeepingTask);
+router.put("/tasks/:id/cleaned", markHousekeepingCleaned);
 
 module.exports = router;
