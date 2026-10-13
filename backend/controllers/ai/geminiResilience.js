@@ -4,6 +4,43 @@ const GEMINI_MODEL = "gemini-2.5-flash";
 const RETRY_DELAY_MS = 700;
 const MAX_BUSY_RETRIES = 1;
 
+// Process-local aggregate counters. No user messages, replies, IP addresses,
+// API keys, room records, or identifiers are collected here. The counters are
+// reset on backend restart and are NOT a substitute for Google billing reports.
+const geminiUsage = {
+  attempts: 0, successfulCalls: 0, failedCalls: 0,
+  rateLimitedCalls: 0, busyCalls: 0, retries: 0,
+  meteredResponses: 0, inputTokens: 0, outputTokens: 0,
+  thinkingTokens: 0, totalTokens: 0,
+};
+
+function usableTokenCount(value) {
+  const n = Number(value);
+  return Number.isSafeInteger(n) && n >= 0 ? n : 0;
+}
+
+function getGeminiUsageSnapshot() {
+  return { ...geminiUsage };
+}
+
+function recordGeminiResponseUsage(response) {
+  const metadata = response?.usageMetadata;
+  if (!metadata || typeof metadata !== "object") return;
+  geminiUsage.meteredResponses++;
+  geminiUsage.inputTokens += usableTokenCount(metadata.promptTokenCount);
+  geminiUsage.outputTokens += usableTokenCount(metadata.candidatesTokenCount);
+  geminiUsage.thinkingTokens += usableTokenCount(metadata.thoughtsTokenCount);
+  geminiUsage.totalTokens += usableTokenCount(metadata.totalTokenCount);
+  if (process.env.AI_USAGE_LOG === "1") {
+    console.info("[Gemini usage] " + JSON.stringify({
+      prompt_tokens: usableTokenCount(metadata.promptTokenCount),
+      response_tokens: usableTokenCount(metadata.candidatesTokenCount),
+      thinking_tokens: usableTokenCount(metadata.thoughtsTokenCount),
+      total_tokens: usableTokenCount(metadata.totalTokenCount),
+    }));
+  }
+}
+
 function geminiErrorStatus(error) {
   const direct = Number(error?.status ?? error?.code);
   if (Number.isInteger(direct) && direct >= 400 && direct <= 599) return direct;
@@ -23,12 +60,21 @@ async function generateGemini(ai, contents, sleep = ms => new Promise(
   resolve => setTimeout(resolve, ms),
 )) {
   for (let attempt = 0; attempt <= MAX_BUSY_RETRIES; attempt++) {
+    geminiUsage.attempts++;
     try {
-      return await ai.models.generateContent({ model: GEMINI_MODEL, contents });
+      const response = await ai.models.generateContent({
+        model: GEMINI_MODEL, contents,
+      });
+      geminiUsage.successfulCalls++;
+      recordGeminiResponseUsage(response);
+      return response;
     } catch (error) {
-      if (geminiErrorStatus(error) !== 503 || attempt === MAX_BUSY_RETRIES) {
-        throw error;
-      }
+      geminiUsage.failedCalls++;
+      const status = geminiErrorStatus(error);
+      if (status === 429) geminiUsage.rateLimitedCalls++;
+      if (status === 503) geminiUsage.busyCalls++;
+      if (status !== 503 || attempt === MAX_BUSY_RETRIES) throw error;
+      geminiUsage.retries++;
       // Only one short retry; avoids amplifying traffic during demand spikes.
       await sleep(RETRY_DELAY_MS);
     }
@@ -67,4 +113,4 @@ function geminiPublicError(error) {
   };
 }
 
-module.exports = { generateGemini, geminiPublicError, geminiErrorStatus };
+module.exports = { generateGemini, geminiPublicError, geminiErrorStatus, getGeminiUsageSnapshot };
