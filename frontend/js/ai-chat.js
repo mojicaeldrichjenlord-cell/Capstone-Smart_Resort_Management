@@ -426,120 +426,84 @@ function appendReplyActions(wrapper, originalText) {
   speakBtn.textContent = "Read Aloud";
   speakBtn.style.cssText =
     "border:none;background:#e2e8f0;color:#0f172a;padding:6px 10px;border-radius:8px;font-size:0.82rem;font-weight:700;cursor:pointer;";
-  speakBtn.addEventListener("click", () => speakText(getCurrentBubbleText(wrapper, originalText)));
+  speakBtn.addEventListener("click", () =>
+    speakText(getCurrentBubbleText(wrapper, originalText)));
+
+  const translateEnglishBtn = document.createElement("button");
+  translateEnglishBtn.type = "button";
+  translateEnglishBtn.textContent = "Translate to English";
+  translateEnglishBtn.style.cssText = speakBtn.style.cssText;
 
   const translateTagalogBtn = document.createElement("button");
   translateTagalogBtn.type = "button";
   translateTagalogBtn.textContent = "Translate to Tagalog";
-  translateTagalogBtn.style.cssText =
-    "border:none;background:#e2e8f0;color:#0f172a;padding:6px 10px;border-radius:8px;font-size:0.82rem;font-weight:700;cursor:pointer;";
+  translateTagalogBtn.style.cssText = speakBtn.style.cssText;
 
-  const translateTaglishBtn = document.createElement("button");
-  translateTaglishBtn.type = "button";
-  translateTaglishBtn.textContent = "Translate to Taglish";
-  translateTaglishBtn.style.cssText =
-    "border:none;background:#e2e8f0;color:#0f172a;padding:6px 10px;border-radius:8px;font-size:0.82rem;font-weight:700;cursor:pointer;";
-
-  let currentMode = "original";
   const bubble = wrapper.querySelector(".ai-bubble");
+  let currentMode = "original";
+  let translating = false;
+  const translations = {};
+  const options = [
+    { mode: "english", button: translateEnglishBtn, url: "/ai/translate-english", label: "Translate to English" },
+    { mode: "tagalog", button: translateTagalogBtn, url: "/ai/translate", label: "Translate to Tagalog" },
+  ];
 
-  translateTagalogBtn.addEventListener("click", async () => {
-    if (!bubble) return;
+  function updateButtons() {
+    for (const option of options) {
+      option.button.textContent = currentMode === option.mode
+        ? "Show Original" : option.label;
+      option.button.disabled = translating;
+    }
+  }
 
-    if (currentMode === "tagalog") {
+  async function changeTranslation(option) {
+    if (!bubble || translating) return;
+    if (currentMode === option.mode) {
       bubble.innerHTML = formatAiReply(originalText);
       bubble.dataset.currentText = originalText;
       currentMode = "original";
-      translateTagalogBtn.textContent = "Translate to Tagalog";
-      translateTaglishBtn.textContent = "Translate to Taglish";
+      updateButtons();
       return;
     }
-
-    translateTagalogBtn.disabled = true;
-    translateTaglishBtn.disabled = true;
-    translateTagalogBtn.textContent = "Translating...";
-
-    try {
-      const response = await fetch(`${AI_API_BASE}/ai/translate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ text: originalText }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Translation failed.");
+    if (!Object.prototype.hasOwnProperty.call(translations, option.mode)) {
+      translating = true;
+      updateButtons();
+      option.button.textContent = "Translating...";
+      try {
+        const response = await fetch(AI_API_BASE + option.url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: originalText }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.message || "Translation temporarily unavailable.");
+        }
+        if (!String(data.translated_text || "").trim()) {
+          throw new Error("No translation was returned.");
+        }
+        translations[option.mode] = data.translated_text;
+      } catch (error) {
+        console.error("AI translation error:", error);
+        appendAiSystemNote(error.message || "Translation temporarily unavailable.");
+        return;
+      } finally {
+        translating = false;
+        updateButtons();
       }
-
-      const translatedText = data.translated_text || originalText;
-      bubble.innerHTML = formatAiReply(translatedText);
-      bubble.dataset.currentText = translatedText;
-      currentMode = "tagalog";
-      translateTagalogBtn.textContent = "Show Original";
-      translateTaglishBtn.textContent = "Translate to Taglish";
-    } catch (error) {
-      console.error("Tagalog translate error:", error);
-      appendAiSystemNote("Tagalog translation is unavailable right now.");
-      translateTagalogBtn.textContent = "Translate to Tagalog";
-    } finally {
-      translateTagalogBtn.disabled = false;
-      translateTaglishBtn.disabled = false;
     }
-  });
+    currentMode = option.mode;
+    bubble.innerHTML = formatAiReply(translations[option.mode]);
+    bubble.dataset.currentText = translations[option.mode];
+    updateButtons();
+  }
 
-  translateTaglishBtn.addEventListener("click", async () => {
-    if (!bubble) return;
-
-    if (currentMode === "taglish") {
-      bubble.innerHTML = formatAiReply(originalText);
-      bubble.dataset.currentText = originalText;
-      currentMode = "original";
-      translateTaglishBtn.textContent = "Translate to Taglish";
-      translateTagalogBtn.textContent = "Translate to Tagalog";
-      return;
-    }
-
-    translateTagalogBtn.disabled = true;
-    translateTaglishBtn.disabled = true;
-    translateTaglishBtn.textContent = "Translating...";
-
-    try {
-      const response = await fetch(`${AI_API_BASE}/ai/translate-taglish`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ text: originalText }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Translation failed.");
-      }
-
-      const translatedText = data.translated_text || originalText;
-      bubble.innerHTML = formatAiReply(translatedText);
-      bubble.dataset.currentText = translatedText;
-      currentMode = "taglish";
-      translateTaglishBtn.textContent = "Show Original";
-      translateTagalogBtn.textContent = "Translate to Tagalog";
-    } catch (error) {
-      console.error("Taglish translate error:", error);
-      appendAiSystemNote("Taglish translation is unavailable right now.");
-      translateTaglishBtn.textContent = "Translate to Taglish";
-    } finally {
-      translateTagalogBtn.disabled = false;
-      translateTaglishBtn.disabled = false;
-    }
-  });
-
+  for (const option of options) {
+    option.button.addEventListener("click", () => changeTranslation(option));
+  }
   actions.appendChild(speakBtn);
+  actions.appendChild(translateEnglishBtn);
   actions.appendChild(translateTagalogBtn);
-  actions.appendChild(translateTaglishBtn);
   wrapper.appendChild(actions);
 }
 
