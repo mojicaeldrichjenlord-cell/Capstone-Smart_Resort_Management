@@ -721,15 +721,15 @@ function appendBookingPreviewCard(preview, save = true) {
       />
     </div>
     <div style="font-size:0.94rem;line-height:1.7;">
-      <div><strong>Room:</strong> ${escapeHtml(preview.room_name)}</div>
+      <div><strong>Accommodation:</strong> ${escapeHtml(preview.room_name)}</div>
       <div><strong>Check-in Date:</strong> ${escapeHtml(preview.check_in)}</div>
       <div><strong>Check-in Time:</strong> ${escapeHtml(formatTime(preview.check_in_time))}</div>
       <div><strong>Check-out Date:</strong> ${escapeHtml(preview.check_out)}</div>
       <div><strong>Check-out Time:</strong> ${escapeHtml(formatTime(preview.check_out_time))}</div>
       <div><strong>Guests:</strong> ${preview.guests}</div>
-      <div><strong>Day Tour:</strong> ₱${formatMoney(preview.day_price || 0)}</div>
-      <div><strong>Overnight:</strong> ₱${formatMoney(preview.overnight_price || 0)}</div>
-      <div><strong>Extended:</strong> ₱${formatMoney(preview.extended_price || 0)}</div>
+      <div><strong>Day Tour:</strong> ${Number(preview.day_price || 0) > 0 ? "₱" + formatMoney(preview.day_price) : "Ask Front Desk"}</div>
+      <div><strong>Overnight:</strong> ${Number(preview.overnight_price || 0) > 0 ? "₱" + formatMoney(preview.overnight_price) : "Ask Front Desk"}</div>
+      <div><strong>Extended:</strong> ${Number(preview.extended_price || 0) > 0 ? "₱" + formatMoney(preview.extended_price) : "Ask Front Desk"}</div>
       <div style="font-size:0.85rem;margin-top:8px;">Not reserved yet. Final slot availability and official amount are verified on the secure booking page.</div>
     </div>
     <button
