@@ -82,9 +82,17 @@ document.addEventListener("DOMContentLoaded", () => {
               item.booking_source || "—",
               item.created_at ? new Date(item.created_at).toLocaleDateString("en-PH") : "—",
             ];
-            for (const value of cells) {
+            for (const [index, value] of cells.entries()) {
               const td = document.createElement("td");
-              td.textContent = String(value);
+              if (index === 1) {
+                const badge = document.createElement("span");
+                badge.className = "manager-status-pill";
+                badge.dataset.status = String(value).toLowerCase();
+                badge.textContent = String(value).replace(/_/g, " ");
+                td.appendChild(badge);
+              } else {
+                td.textContent = String(value);
+              }
               tr.appendChild(td);
             }
             tbody.appendChild(tr);
@@ -92,7 +100,9 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       }
       if (status) status.textContent =
-        "Latest resort overview loaded. Refresh for up-to-date information.";
+        "Latest resort overview loaded at " + new Date().toLocaleTimeString("en-PH", {
+          hour: "numeric", minute: "2-digit",
+        }) + ". Refresh for current information.";
     } catch (error) {
       if (status) status.textContent = error.message || "Unable to load overview.";
     } finally {
