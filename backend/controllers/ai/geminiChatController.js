@@ -699,10 +699,22 @@ exports.chatWithGemini = async (req, res) => {
     let alternativeSummary = "No alternative dates were checked.";
     let chosenRoom = null;
     let bookingPreview = null;
+    let catalogSummary = "Catalog not requested in this conversation.";
+    let catalogRecommendations = [];
 
     const missingCoreDetails = getMissingCoreDetails(mergedContext);
-    const hasAvailabilityDetails = hasEnoughForAvailability(mergedContext) &&
+    const hasBasicStayDetails = hasEnoughForAvailability(mergedContext);
+    const hasAvailabilityDetails = hasBasicStayDetails &&
       isValidAiStayWindow(mergedContext);
+
+    // A complete but invalid time window must be corrected instead of
+    // silently downgrading the response to a booking recommendation.
+    if (!hasBasicStayDetails && isAccommodationInquiry(message, mergedContext)) {
+      const catalog = await getAccommodationCatalog();
+      const snapshot = buildCatalogSummary(catalog, mergedContext, message);
+      catalogSummary = snapshot.summary;
+      catalogRecommendations = snapshot.recommendations;
+    }
 
     if (hasAvailabilityDetails) {
       nights = Math.max(1, getNightDifference(mergedContext.check_in, mergedContext.check_out));
@@ -821,6 +833,12 @@ LIVE SPOKEN CONVERSATION (important):
 Important rules:
 - Only use the room/system data provided below.
 - Do not invent rooms, prices, amenities, availability, or times.
+- The fresh accommodation catalog contains current Admin-created or edited records.
+- When discussing accommodation categories, prices, capacities, or new arrivals without full stay dates, use the fresh catalog and clearly state that specific dates and slots are NOT checked.
+- Recommend only records whose Admin status is available, and never confuse that status with reservation availability.
+- Use the customer's requested category, guest count, and budget when recommending; if nothing matches, say so.
+- If the guest asks about new accommodations, use the newest catalog entries, but disclose unavailable statuses.
+- The catalog does not prove exact room availability until the guest supplies check-in/out dates and times.
 - Do not use markdown symbols like **, *, #, or messy formatting.
 - Use clean short paragraphs or simple numbered points only when needed.
 - Keep replies easy to read in a chat window.
@@ -861,8 +879,11 @@ ${missingDetailsText}
 Top recommendations:
 ${topRecommendationSummary}
 
-Matching room results:
+Matching room results (ONLY verified preliminary slot inquiry):
 ${roomSummary}
+
+Fresh general accommodation catalog:
+${catalogSummary}
 
 Alternative date suggestions:
 ${alternativeSummary}
@@ -880,6 +901,7 @@ ${message}
       success: true,
       reply: response.text || "No response generated.",
       matched_rooms: matchedRooms.slice(0, 5),
+      catalog_recommendations: catalogRecommendations,
       extracted_context: mergedContext,
       alternative_dates: alternativeDates,
       booking_preview: bookingPreview,
