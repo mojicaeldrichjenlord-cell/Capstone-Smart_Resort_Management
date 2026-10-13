@@ -10,6 +10,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const table = document.getElementById("managerAccommodationReport");
   let loading = false;
 
+  // Manager reports require the dedicated signed mgr1 session.
   function signOut() {
     sessionStorage.removeItem("managerToken");
     localStorage.removeItem("user");
@@ -20,6 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
     signOut();
     return;
   }
+  // Default report dates use Philippine local calendar days.
   function manilaDate() {
     const parts = new Intl.DateTimeFormat("en-CA", {
       timeZone: "Asia/Manila", day: "2-digit", month: "2-digit", year: "numeric",
@@ -33,6 +35,7 @@ document.addEventListener("DOMContentLoaded", () => {
   toInput.value = currentDate;
   fromInput.value = start.toISOString().slice(0, 10);
 
+  // Only request read-only Manager reports, never payment updates.
   async function request(path) {
     const response = await fetch(API_BASE + "/manager/" + path, {
       headers: { Authorization: "Bearer " + token }, cache: "no-store",
@@ -51,6 +54,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const currency = n => "₱" + Number(n || 0).toLocaleString("en-PH", {
     minimumFractionDigits: 2, maximumFractionDigits: 2,
   });
+  // Safe UI update: text values are never interpreted as HTML.
   function set(id, content) {
     const el = document.getElementById(id);
     if (el) el.textContent = content;
@@ -61,6 +65,7 @@ document.addEventListener("DOMContentLoaded", () => {
     row.appendChild(td);
     return td;
   }
+  // Present current booking statuses from backend aggregates.
   function renderSummary(data) {
     const s = data.summary || {};
     set("reportTotal", count(s.total_reservations));
@@ -73,6 +78,7 @@ document.addEventListener("DOMContentLoaded", () => {
     set("reportPayments", currency(s.recorded_accommodation_payments));
     set("reportCharges", currency(s.recorded_paid_charges));
   }
+  // Show daily booking CREATION trend, not nightly hotel occupancy.
   function renderTrend(data) {
     trend.replaceChildren();
     const rows = Array.isArray(data.trends) ? data.trends : [];
@@ -120,6 +126,7 @@ document.addEventListener("DOMContentLoaded", () => {
       trend.appendChild(line);
     }
   }
+  // Rank by booked reservation items, not payment revenue.
   function renderAccommodations(data) {
     table.replaceChildren();
     const rooms = Array.isArray(data.accommodations) ? data.accommodations : [];
@@ -137,6 +144,7 @@ document.addEventListener("DOMContentLoaded", () => {
       table.appendChild(row);
     }
   }
+  // Validate date range before asking the backend for aggregates.
   async function loadReports() {
     if (loading) return;
     const from = fromInput.value, to = toInput.value;
