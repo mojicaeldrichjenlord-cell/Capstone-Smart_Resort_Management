@@ -600,3 +600,18 @@ test("Quota fallback never guesses check-in dates from free-text", async () => {
   assert.equal(queries.length, 1);
   assert.doesNotMatch(queries[0].sql, /reservation_items/);
 });
+
+
+test("English accommodation question remains English during Gemini quota fallback", async () => {
+  injectedFailures = 1;
+  injectedStatus = 429;
+  const result = await post("/api/ai/chat", {
+    message: "Hello AI! What accommodations do you currently offer at Arvic Seaside? Please tell me their names, capacities, and day tour rates.",
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.mode, "database_fallback");
+  assert.equal(result.body.extracted_context.language_style, "english");
+  assert.match(result.body.reply, /^Our AI service is temporarily limited/);
+  assert.match(result.body.reply, /Family Room A/);
+  assert.equal(queries.length, 1);
+});
