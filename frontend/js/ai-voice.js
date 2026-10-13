@@ -287,9 +287,11 @@
   function toggleDictation() {
     if (!SpeechRecognitionAPI || state.live) return;
     if (state.mode === "dictation") {
-      // Let final recognition results arrive before showing transcript.
-      try { state.recognizer?.stop(); } catch (_) { /* ending already */ }
+      // Set the pending state BEFORE stop(). Some speech recognizers
+      // synchronously fire onend during stop(), while others do so later.
+      // The onend handler owns the final "Review/edit" status in both cases.
       status("Finishing transcription…");
+      try { state.recognizer?.stop(); } catch (_) { /* ending already */ }
       return;
     }
     beginRecognition("dictation");
