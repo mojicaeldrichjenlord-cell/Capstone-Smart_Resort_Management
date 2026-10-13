@@ -22,11 +22,18 @@ const {
   listEligibleHousekeepingItems, createHousekeepingTask,
   reassignHousekeepingTask, verifyHousekeepingTask,
 } = require("../controllers/housekeeping/housekeepingTasksController");
+// Manager-only housekeeping endpoints are under the same signed Manager guard.
+// They never expose guest contact or payment details.
 router.get("/housekeeping/tasks", listManagerHousekeepingTasks);
+// Assignment dropdown (active, verified Housekeeping users only).
 router.get("/housekeeping/staff", listHousekeepingStaff);
+// Candidate completed checkouts; do not auto-create tasks on checkout.
 router.get("/housekeeping/eligible-items", listEligibleHousekeepingItems);
+// Create task manually; UNIQUE reservation_item_id blocks duplicates.
 router.post("/housekeeping/tasks", createHousekeepingTask);
+// Assign/reassign before cleaning starts, using a version check.
 router.put("/housekeeping/tasks/:id/assign", reassignHousekeepingTask);
+// Manager alone signs off a cleaned task, not room listing availability.
 router.put("/housekeeping/tasks/:id/verify", verifyHousekeepingTask);
 
 module.exports = router;
