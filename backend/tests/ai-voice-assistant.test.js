@@ -10,7 +10,7 @@ const script = fs.readFileSync(
   path.resolve(__dirname, "../../frontend/js/ai-voice.js"), "utf8",
 );
 
-function mount({ recognizerAvailable = true, savedLanguage = null } = {}) {
+function mount({ recognizerAvailable = true, savedLanguage = null, voices = [] } = {}) {
   const nodes = {};
   const recognitionInstances = [];
   const speechUtterances = [];
@@ -19,6 +19,8 @@ function mount({ recognizerAvailable = true, savedLanguage = null } = {}) {
   const stored = new Map();
   const documentHandlers = {};
   const windowHandlers = {};
+  const synthesisHandlers = {};
+  let availableVoices = voices;
   let nextTimer = 0;
   let speechCancelCount = 0;
   if (savedLanguage) stored.set("smartresort_ai_voice_language_v1", savedLanguage);
@@ -26,6 +28,7 @@ function mount({ recognizerAvailable = true, savedLanguage = null } = {}) {
   function element(id) {
     return nodes[id] ||= {
       id, value: "", textContent: "", disabled: false, hidden: false,
+      children: [], appendChild(child) { this.children.push(child); },
       title: "", innerHTML: "", listeners: {}, attrs: {},
       classList: { toggle() {} },
       setAttribute(name, value) { this.attrs[name] = value; },
@@ -48,7 +51,8 @@ function mount({ recognizerAvailable = true, savedLanguage = null } = {}) {
   // Fake DOM has no HTML parser: create nodes that the injected toolbar
   // would normally produce from panel.innerHTML in a real browser.
   for (const id of ["aiVoiceLanguage", "aiVoiceLive",
-    "aiVoiceInterrupt", "aiVoiceStatus"]) element(id);
+    "aiVoiceInterrupt", "aiVoiceStatus", "aiVoiceChoice",
+    "aiVoicePreview", "aiVoiceInfo"]) element(id);
 
   class FakeRecognizer {
     constructor() {
@@ -81,7 +85,8 @@ function mount({ recognizerAvailable = true, savedLanguage = null } = {}) {
   const fakeWindow = {
     addEventListener(name, handler) { windowHandlers[name] = handler; },
     speechSynthesis: {
-      getVoices() { return []; },
+      getVoices() { return availableVoices; },
+      addEventListener(name, handler) { synthesisHandlers[name] = handler; },
       cancel() { speechCancelCount++; },
       speak(utterance) { speechUtterances.push(utterance); },
     },
@@ -93,7 +98,10 @@ function mount({ recognizerAvailable = true, savedLanguage = null } = {}) {
     SpeechSynthesisUtterance: FakeUtterance,
     document: {
       getElementById(name) { return nodes[name] || null; },
-      createElement() { return element("aiVoicePanel"); },
+      createElement(tag) {
+        if (tag === "option") return { value: "", textContent: "" };
+        return element("aiVoicePanel");
+      },
       addEventListener(name, handler) { documentHandlers[name] = handler; },
     },
     localStorage: {
@@ -130,6 +138,10 @@ function mount({ recognizerAvailable = true, savedLanguage = null } = {}) {
     requests, fakeWindow, stored, windowHandlers,
     get voice() { return fakeWindow.ArvicVoice; },
     get speechCancelCount() { return speechCancelCount; },
+    changeVoices(newVoices) {
+      availableVoices = newVoices;
+      synthesisHandlers.voiceschanged?.();
+    },
   };
 }
 
@@ -269,4 +281,62 @@ test("Voice language is passed only by voice-origin requests, not ordinary text 
   assert.match(source, /aiMessageInFlight/);
   assert.match(source, /async function sendAiMessage/);
   assert.match(source, /return aiReply;/);
+});
+
+
+test("Available neural-sounding voices are preferred over a basic browser voice", () => {
+  const h = mount({ voices: [
+    { name: "Standard English", lang: "en-PH", voiceURI: "voice-standard" },
+    { name: "Microsoft Jenny Online (Natural)", lang: "en-US", voiceURI: "voice-natural" },
+    { name: "Spanish Voice", lang: "es-ES", voiceURI: "voice-spanish" },
+  ] });
+  assert.equal(h.nodes.aiVoiceChoice.value, "auto");
+  assert.equal(h.nodes.aiVoiceChoice.children.length, 2);
+  assert.match(h.nodes.aiVoiceInfo.textContent, /2 available voice/);
+  h.fire("aiVoicePreview");
+  assert.equal(h.speechUtterances.length, 1);
+  assert.equal(h.speechUtterances[0].voice.name, "Microsoft Jenny Online (Natural)");
+  assert.equal(h.speechUtterances[0].rate, 0.98);
+  assert.equal(h.requests.length, 0);
+});
+
+test("Selected speech voice is persisted and used for voice preview", () => {
+  const h = mount({ voices: [
+    { name: "Standard English", lang: "en-PH", voiceURI: "voice-standard" },
+    { name: "Microsoft Jenny Online (Natural)", lang: "en-US", voiceURI: "voice-natural" },
+  ] });
+  h.nodes.aiVoiceChoice.value = "voice-standard";
+  h.fire("aiVoiceChoice", "change");
+  assert.equal(h.stored.get("smartresort_ai_voice_choice_v1_english"), "voice-standard");
+  h.fire("aiVoicePreview");
+  assert.equal(h.speechUtterances[0].voice.name, "Standard English");
+  assert.equal(h.requests.length, 0);
+});
+
+test("Voice list can load asynchronously and is filtered by selected language", () => {
+  const h = mount();
+  assert.match(h.nodes.aiVoiceInfo.textContent, /No matching voice/);
+  h.changeVoices([
+    { name: "Google US English", lang: "en-US", voiceURI: "english-google" },
+    { name: "Spanish Natural", lang: "es-ES", voiceURI: "spanish-natural" },
+  ]);
+  assert.equal(h.nodes.aiVoiceChoice.children.length, 1);
+  h.nodes.aiVoiceLanguage.value = "spanish";
+  h.fire("aiVoiceLanguage", "change");
+  assert.match(h.nodes.aiVoiceInfo.textContent, /1 available voice/);
+  h.fire("aiVoicePreview");
+  assert.equal(h.speechUtterances.at(-1).voice.name, "Spanish Natural");
+  assert.equal(h.speechUtterances.at(-1).lang, "es-ES");
+});
+
+test("Changing voice during live mode requires ending the conversation first", async () => {
+  const h = mount({ voices: [
+    { name: "English Natural", lang: "en-US", voiceURI: "voice-en" },
+  ] });
+  h.fire("aiVoiceLive");
+  assert.equal(h.nodes.aiVoiceChoice.disabled, true);
+  assert.equal(h.nodes.aiVoicePreview.disabled, true);
+  h.voice.changeVoice("voice-en");
+  assert.equal(h.voice.isLiveActive(), false);
+  assert.equal(h.nodes.aiVoiceChoice.disabled, false);
 });
