@@ -560,3 +560,43 @@ test("Persistent Gemini 503 can still answer read-only accommodation questions",
   assert.equal(queries.length, 1);
   assert.equal(modelCalls, 2); // One bounded retry, then database fallback.
 });
+
+
+test("Quota fallback parses explicit guest count and peso budget without Gemini", async () => {
+  injectedFailures = 1;
+  injectedStatus = 429;
+  catalogRows = [
+    { ...exampleRoom, id: 104, room_name: "Suitable Cottage", category_name: "Cottage", capacity: 12, day_price: 3000 },
+    { ...exampleRoom, id: 105, room_name: "Small Cottage", category_name: "Cottage", capacity: 4, day_price: 1200 },
+    { ...exampleRoom, id: 106, room_name: "Expensive Cottage", category_name: "Cottage", capacity: 14, day_price: 7000, overnight_price: 7500 },
+  ];
+  const result = await post("/api/ai/chat", {
+    message: "Recommend a day tour cottage for 10 guests under ₱3,500.",
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.mode, "database_fallback");
+  assert.deepEqual(result.body.catalog_recommendations.map(r => r.id), [104]);
+  assert.equal(result.body.extracted_context.guests, 10);
+  assert.equal(result.body.extracted_context.max_price, 3500);
+  assert.match(result.body.reply, /Suitable Cottage/);
+  assert.doesNotMatch(result.body.reply, /Small Cottage|Expensive Cottage/);
+  assert.equal(queries.length, 1);
+  assert.equal(result.body.booking_preview, null);
+});
+
+test("Quota fallback never guesses check-in dates from free-text", async () => {
+  injectedFailures = 1;
+  injectedStatus = 429;
+  const result = await post("/api/ai/chat", {
+    message: "Is a room free on Saturday for 5 guests?",
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.mode, "database_fallback");
+  assert.equal(result.body.extracted_context.guests, 5);
+  assert.equal(result.body.extracted_context.check_in, null);
+  assert.equal(result.body.extracted_context.check_out, null);
+  assert.equal(result.body.catalog_recommendations[0].availability_verified, false);
+  assert.match(result.body.reply, /Please provide check-in\/out dates/i);
+  assert.equal(queries.length, 1);
+  assert.doesNotMatch(queries[0].sql, /reservation_items/);
+});
