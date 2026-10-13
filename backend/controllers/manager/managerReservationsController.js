@@ -149,6 +149,21 @@ exports.reviewManagerReservation = async (req, res) => {
       id, status: target,
     });
   } catch (error) {
+    // An older Aiven schema has reservation_status ENUM without 'rejected'.
+    // Preserve the reservation and return a clear configuration error instead
+    // of retrying or silently relabeling rejection as cancellation.
+    const isInvalidEnumStatus =
+      Number(error?.errno) === 1265 ||
+      error?.code === "WARN_DATA_TRUNCATED" ||
+      error?.code === "ER_TRUNCATED_WRONG_VALUE_FOR_FIELD";
+    if (isInvalidEnumStatus) {
+      console.error("Manager reservation status not supported by DB schema:", error.message);
+      return res.status(409).json({
+        success: false,
+        code: "RESERVATION_STATUS_SCHEMA_MISMATCH",
+        message: "The database does not support that reservation status yet. Ask Admin to review the reservation-status migration.",
+      });
+    }
     console.error("Manager reservation review failed:", error.message);
     return res.status(500).json({
       success: false, message: "Unable to update reservation status.",
