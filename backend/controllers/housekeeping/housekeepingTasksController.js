@@ -3,6 +3,7 @@
 // Task statuses are operational checks, NOT real-time room availability.
 const db = require("../../config/db");
 
+// All dates are interpreted as Philippine calendar days, never browser-local dates.
 const dayPattern = /^\d{4}-\d{2}-\d{2}$/;
 function manilaToday() {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -18,6 +19,7 @@ function dayValid(value) {
   return Number.isFinite(date.getTime()) && date.toISOString().slice(0,10) === value &&
     Math.abs(date - now) <= 366 * 86400000;
 }
+// Reject invalid date filters before running any database query.
 function getDay(req, res) {
   const day = req.query.date === undefined ? manilaToday() : req.query.date;
   if (!dayValid(day)) {
@@ -27,16 +29,21 @@ function getDay(req, res) {
   }
   return day;
 }
+// Reservation, user and task IDs must be positive safe integers.
 function positiveId(value) {
   const number = Number(value);
   return Number.isSafeInteger(number) && number > 0 ? number : null;
 }
+// Optimistic locking: every status change must carry the version just displayed.
+// A stale version makes the UPDATE affect zero rows instead of overwriting another action.
 function versionFrom(body) {
   if (!body || typeof body !== "object" || Array.isArray(body) ||
     Object.keys(body).length !== 1 || !Object.hasOwn(body, "version")) return null;
   if (typeof body.version !== "number") return null;
   return Number.isSafeInteger(body.version) && body.version >= 0 ? body.version : null;
 }
+// Missing housekeeping_tasks means the approved migration has not been applied.
+// Return a useful 503 rather than leaking MySQL diagnostics into the UI.
 function sendError(res, error, label) {
   if (error?.code === "ER_NO_SUCH_TABLE" || error?.errno === 1146) {
     return res.status(503).json({ success: false, code: "HOUSEKEEPING_MIGRATION_REQUIRED",
@@ -45,6 +52,7 @@ function sendError(res, error, label) {
   console.error("Housekeeping " + label + " failed:", error.message);
   return res.status(500).json({ success: false, message: "Housekeeping operation failed." });
 }
+// API whitelist: never send guest identity, contact details, payments or private notes.
 function slim(row) {
   return {
     id: Number(row.id),
@@ -63,6 +71,7 @@ function slim(row) {
     verified_at: row.verified_at || null,
   };
 }
+// Shared read-only list query for both roles. Authorization is applied by each endpoint.
 const taskListSql =
   "SELECT ht.id, ht.reservation_item_id, ht.accommodation_id, " +
   "a.name AS accommodation_name, r.reservation_code, " +
@@ -75,6 +84,7 @@ const taskListSql =
   "JOIN reservations r ON r.id = ri.reservation_id " +
   "JOIN users u ON u.id = ht.assigned_to ";
 
+// MANAGER: view task progress for one checkout date; no database changes.
 exports.listManagerHousekeepingTasks = async (req, res) => {
   const day = getDay(req, res);
   if (!day) return;
@@ -87,6 +97,7 @@ exports.listManagerHousekeepingTasks = async (req, res) => {
   } catch (error) { return sendError(res, error, "manager task list"); }
 };
 
+// HOUSEKEEPING: only own assignments, plus unfinished tasks from prior dates.
 exports.listMyHousekeepingTasks = async (req, res) => {
   const day = getDay(req, res);
   if (!day) return;
@@ -101,6 +112,7 @@ exports.listMyHousekeepingTasks = async (req, res) => {
   } catch (error) { return sendError(res, error, "staff task list"); }
 };
 
+// MANAGER: offer active, verified Housekeeping accounts for the assignment dropdown.
 exports.listHousekeepingStaff = async (_req, res) => {
   try {
     const [rows] = await db.promise().query(
@@ -112,6 +124,8 @@ exports.listHousekeepingStaff = async (_req, res) => {
   } catch (error) { return sendError(res, error, "staff lookup"); }
 };
 
+// MANAGER: offer completed reservation items not yet assigned a cleaning task.
+// Pending/approved/rejected reservations must not appear in this list.
 exports.listEligibleHousekeepingItems = async (req, res) => {
   const day = getDay(req, res);
   if (!day) return;
@@ -135,6 +149,8 @@ exports.listEligibleHousekeepingItems = async (req, res) => {
   } catch (error) { return sendError(res, error, "eligible items"); }
 };
 
+// MANAGER: create one task per completed reservation item. The UNIQUE constraint
+// prevents duplicates even when two managers click Create simultaneously.
 exports.createHousekeepingTask = async (req, res) => {
   const body = req.body;
   const item = positiveId(body?.reservation_item_id);
@@ -173,6 +189,7 @@ exports.createHousekeepingTask = async (req, res) => {
   }
 };
 
+// MANAGER: reassign only BEFORE staff begins cleaning. Version prevents races.
 exports.reassignHousekeepingTask = async (req, res) => {
   const id = positiveId(req.params.id), staff = positiveId(req.body?.assigned_to);
   const version = req.body?.version;
@@ -196,6 +213,7 @@ exports.reassignHousekeepingTask = async (req, res) => {
   } catch (error) { return sendError(res, error, "reassign task"); }
 };
 
+// ASSIGNED STAFF: Needs Cleaning -> In Progress; cannot start another staff's task.
 exports.startHousekeepingTask = async (req, res) => {
   const id = positiveId(req.params.id), version = versionFrom(req.body);
   if (!id || version === null) {
@@ -215,6 +233,7 @@ exports.startHousekeepingTask = async (req, res) => {
   } catch (error) { return sendError(res, error, "start task"); }
 };
 
+// ASSIGNED STAFF: In Progress -> Cleaned, leaving verification to the Manager.
 exports.markHousekeepingCleaned = async (req, res) => {
   const id = positiveId(req.params.id), version = versionFrom(req.body);
   if (!id || version === null) {
@@ -234,6 +253,8 @@ exports.markHousekeepingCleaned = async (req, res) => {
   } catch (error) { return sendError(res, error, "mark cleaned"); }
 };
 
+// MANAGER: Cleaned -> Verified Ready only when no checked-in booking occupies
+// this accommodation. This DOES NOT make the accommodation bookable automatically.
 exports.verifyHousekeepingTask = async (req, res) => {
   const id = positiveId(req.params.id), version = versionFrom(req.body);
   if (!id || version === null) {
