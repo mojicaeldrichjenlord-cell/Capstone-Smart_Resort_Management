@@ -462,3 +462,101 @@ test("Verified date availability uses reservation schedules, not catalog guesses
   assert.deepEqual(result.body.catalog_recommendations, []);
   assert.equal(result.body.booking_preview.room_id, 61);
 });
+
+
+test("HTTP 429 on accommodation inquiry returns actual live catalog without Gemini", async () => {
+  injectedFailures = 1;
+  injectedStatus = 429;
+  const result = await post("/api/ai/chat", {
+    message: "What accommodations do you offer? Names, capacities and day tour rates please.",
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.success, true);
+  assert.equal(result.body.mode, "database_fallback");
+  assert.match(result.body.reply, /Family Room A/);
+  assert.match(result.body.reply, /3,500/);
+  assert.match(result.body.reply, /Please provide check-in\/out dates/i);
+  assert.equal(result.body.catalog_recommendations[0].availability_verified, false);
+  assert.equal(result.body.booking_preview, null);
+  assert.equal(queries.length, 1);
+  assert.match(queries[0].sql, /FROM accommodations a/);
+  assert.doesNotMatch(queries[0].sql, /reservation_items/);
+  assert.equal(modelCalls, 1); // Never retry free-tier rate limits.
+});
+
+test("Database backup rereads newly updated Admin prices during HTTP 429", async () => {
+  injectedStatus = 429;
+  injectedFailures = 1;
+  catalogRows = [{ ...exampleRoom, day_price: 1200 }];
+  const first = await post("/api/ai/chat", { message: "What room rates do you offer?" });
+  assert.equal(first.status, 200);
+  assert.match(first.body.reply, /1,200/);
+  catalogRows = [{ ...exampleRoom, day_price: 2700 }];
+  injectedFailures = 1;
+  const second = await post("/api/ai/chat", { message: "What room rates do you offer?" });
+  assert.equal(second.status, 200);
+  assert.match(second.body.reply, /2,700/);
+  assert.doesNotMatch(second.body.reply, /1,200/);
+  assert.equal(queries.length, 2);
+});
+
+test("Maintenance rooms are excluded from 429 offline recommendations", async () => {
+  injectedFailures = 1;
+  injectedStatus = 429;
+  catalogRows = [{ ...exampleRoom, status: "maintenance" }];
+  const result = await post("/api/ai/chat", { message: "Do you have Family Room A?" });
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.body.catalog_recommendations, []);
+  assert.match(result.body.reply, /No matching listed accommodation/i);
+  assert.equal(result.body.booking_preview, null);
+});
+
+test("Voice session maintains the selected Taglish language during 429 backup", async () => {
+  injectedFailures = 1;
+  injectedStatus = 429;
+  const result = await post("/api/ai/chat", {
+    message: "Do you have a room?",
+    voice_language: "taglish",
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.mode, "database_fallback");
+  assert.match(result.body.reply, /Temporarily limited ang AI/i);
+  assert.equal(result.body.extracted_context.language_style, "taglish");
+  assert.equal(result.body.booking_preview, null);
+});
+
+test("HTTP 429 with valid stay details checks reservation_items and creates no booking", async () => {
+  injectedFailures = 1;
+  injectedStatus = 429;
+  const result = await post("/api/ai/chat", futureContext);
+  assert.equal(result.status, 200);
+  assert.equal(result.body.mode, "database_fallback");
+  assert.equal(result.body.matched_rooms.length, 1);
+  assert.equal(result.body.booking_preview, null);
+  assert.match(result.body.reply, /preliminary matches/i);
+  assert.equal(queries.length, 1);
+  assert.match(queries[0].sql, /reservation_items/);
+  assert.equal(modelCalls, 1);
+});
+
+test("Non-resort questions still show accurate Gemini 429 with no database lookup", async () => {
+  injectedFailures = 1;
+  injectedStatus = 429;
+  const result = await post("/api/ai/chat", { message: "Hello" });
+  assert.equal(result.status, 429);
+  assert.equal(result.body.code, "GEMINI_RATE_LIMIT");
+  assert.equal(queries.length, 0);
+});
+
+test("Persistent Gemini 503 can still answer read-only accommodation questions", async () => {
+  injectedFailures = 2;
+  injectedStatus = 503;
+  const result = await post("/api/ai/chat", {
+    message: "What room rates are available at the resort?",
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.mode, "database_fallback");
+  assert.match(result.body.reply, /Family Room A/);
+  assert.equal(queries.length, 1);
+  assert.equal(modelCalls, 2); // One bounded retry, then database fallback.
+});
