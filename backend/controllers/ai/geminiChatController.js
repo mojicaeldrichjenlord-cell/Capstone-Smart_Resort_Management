@@ -107,8 +107,11 @@ function normalizeLanguageStyle(value) {
   const text = normalizeText(value);
 
   if (!text) return null;
-  if (text.includes("taglish")) return "taglish";
+  if (text.includes("taglish") || text.includes("filipino")) return "taglish";
   if (text.includes("tagalog")) return "tagalog";
+  if (text.includes("spanish") || text.includes("español")) return "spanish";
+  if (text.includes("mandarin") || text.includes("chinese") ||
+      text.includes("中文") || text.includes("普通话")) return "mandarin";
   if (text.includes("english")) return "english";
 
   return null;
@@ -145,6 +148,16 @@ function normalizeTimeValue(value) {
 function detectLanguageFromMessage(message) {
   const text = normalizeText(message);
   if (!text) return null;
+
+  // Mandarin characters are a reliable signal even after an English turn.
+  if (/[\u3400-\u9FFF]/u.test(text)) return "mandarin";
+
+  // Detect common Spanish resort questions without relying on prior
+  // conversation settings. Single "para" is ambiguous with Tagalog.
+  const spanishTokens = text.match(/\b(?:hola|habitaciones?|cu[aá]nto|cuesta|precios?|reservar|reservaci[oó]n|disponibles?|personas|noches|gracias|necesito|tenemos|quiero|busco|tienen|buenas|alojamiento)\b/giu) || [];
+  if (spanishTokens.length >= 2 ||
+      (/\b(?:hola|gracias|habitaciones?|cu[aá]nto|reservaci[oó]n)\b/iu.test(text)
+        && spanishTokens.length > 0)) return "spanish";
 
   const tagalogWords = [
     "ako", "ikaw", "siya", "kami", "tayo", "kayo", "po", "opo", "naman",
@@ -443,7 +456,10 @@ Payment method rules:
 language_style rules:
 - Return "tagalog" if the message is mostly Tagalog.
 - Return "taglish" if the message is mixed Tagalog and English.
+- Return "spanish" if the message is mostly Spanish.
+- Return "mandarin" if the message is Mandarin Chinese (including Simplified Chinese characters).
 - Return "english" if the message is mostly English.
+- Do not infer a different language merely because stored conversation context uses one.
 
 Allowed intent values:
 - ask_recommendation
@@ -534,7 +550,12 @@ exports.chatWithGemini = async (req, res) => {
     const mergedContext = mergeContext(requestContext, extractedContext);
 
     const detectedLanguage = detectLanguageFromMessage(message);
-    if (!mergedContext.language_style && detectedLanguage) {
+    // Only the live voice mode locks response language. Normal text chat
+    // adapts to each new message while retaining previous booking details.
+    const fixedVoiceLanguage = normalizeLanguageStyle(req.body.voice_language);
+    if (fixedVoiceLanguage) {
+      mergedContext.language_style = fixedVoiceLanguage;
+    } else if (detectedLanguage) {
       mergedContext.language_style = detectedLanguage;
     }
 
@@ -644,7 +665,11 @@ exports.chatWithGemini = async (req, res) => {
       mergedContext.language_style === "tagalog"
         ? "Reply in natural Tagalog."
         : mergedContext.language_style === "taglish"
-        ? "Reply in natural Taglish."
+        ? "Reply in natural Taglish (Filipino and English)."
+        : mergedContext.language_style === "spanish"
+        ? "Reply entirely in natural Spanish."
+        : mergedContext.language_style === "mandarin"
+        ? "Reply entirely in Mandarin Chinese, using Simplified Chinese characters."
         : "Reply in clear English.";
 
     const missingDetailsText = missingCoreDetails.length
