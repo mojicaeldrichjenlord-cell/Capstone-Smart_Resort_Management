@@ -1,3 +1,5 @@
+/* Housekeeping styles: page shell, booking schedule, then cleaning tasks.
+   Color always supplements a readable text status. */
 * {
   box-sizing: border-box;
 }
@@ -154,7 +156,8 @@ body {
 }
 
 
-/* Phase 1 — accessible Housekeeping schedule */
+/* Phase 1 — accessible Housekeeping schedule.
+   Horizontal scrolling makes wide tables usable with keyboard or touch. *//* Phase 1 — accessible Housekeeping schedule */
 .hk-page { width: min(1230px, calc(100% - 30px)); }
 .hk-navbar { position: sticky; top: 0; z-index: 10; box-shadow: 0 6px 22px rgba(15,23,42,.12); }
 .hk-skip { position: fixed; top: -100px; left: 12px; z-index: 100; padding: 10px; background: white; color: #0f766e; }
@@ -195,7 +198,8 @@ body {
 }
 
 
-/* Phase 2 cleaning task actions */
+/* Phase 2 cleaning task actions.
+   Verified Ready indicates Manager inspection only, NOT booking availability. *//* Phase 2 cleaning task actions */
 .hk-action {
   color: #fff; background: #0f766e; padding: 10px 14px;
   border: 0; border-radius: 10px; font-weight: 800; cursor: pointer;
