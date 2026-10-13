@@ -1,6 +1,7 @@
 // Housekeeping Phase 1: no localStorage role authorization.
 // All schedule data requires signed hk1 token and live DB role verification.
 document.addEventListener("DOMContentLoaded", () => {
+  // A visible browser page is not authorization: every backend request checks hk1.
   const token = sessionStorage.getItem("housekeepingToken");
   const status = document.getElementById("hkStatus");
   const date = document.getElementById("hkDate");
@@ -10,6 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const accountEmail = document.getElementById("accountEmail");
   let loading = false;
 
+  // Remove the signed token so the next page load must authenticate again.
   function signOut() {
     sessionStorage.removeItem("housekeepingToken");
     localStorage.removeItem("user");
@@ -21,6 +23,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
+  // Resort dates use the Philippine timezone even if the PC timezone differs.
   function todayManila() {
     const parts = new Intl.DateTimeFormat("en-CA", {
       timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit",
@@ -37,6 +40,7 @@ document.addEventListener("DOMContentLoaded", () => {
   date.min = min.toISOString().slice(0, 10);
   date.max = max.toISOString().slice(0, 10);
 
+  // Central GET helper: attach signed auth and redirect if the session expires.
   async function request(path) {
     const response = await fetch(API_BASE + "/housekeeping/" + path, {
       headers: { Authorization: "Bearer " + token },
@@ -53,6 +57,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return data;
   }
 
+  // Small DOM helpers use textContent to prevent HTML/script injection.
   const field = (id, value) => {
     const element = document.getElementById(id);
     if (element) element.textContent = String(value ?? "—");
@@ -74,6 +79,7 @@ document.addEventListener("DOMContentLoaded", () => {
     element.appendChild(badge);
     row.appendChild(element);
   }
+  // Checked-in/arrival/departure labels describe booking activity, NOT cleaning.
   function scheduleLabel(item) {
     if (item.checked_in) return "Checked in";
     if (item.departing_today && item.arriving_today) return "Arrival / Departure";
@@ -81,6 +87,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (item.arriving_today) return "Arriving";
     return "Scheduled stay";
   }
+  // Rebuild the schedule rows from fresh backend data, never from localStorage.
   function draw(data) {
     const summary = data.summary || {};
     field("hkScheduled", summary.scheduled_items ?? 0);
@@ -113,6 +120,7 @@ document.addEventListener("DOMContentLoaded", () => {
       data.date + ". Last refreshed at " +
       new Date().toLocaleTimeString("en-PH", { hour: "numeric", minute: "2-digit" }) + ".";
   }
+  // Prevent overlapping requests when Refresh is pressed repeatedly.
   async function loadSchedule() {
     if (loading) return;
     loading = true;
@@ -134,6 +142,7 @@ document.addEventListener("DOMContentLoaded", () => {
     event.preventDefault();
     loadSchedule();
   });
+  // Verify current staff profile before displaying their accommodation schedule.
   (async () => {
     try {
       const me = await request("me");
