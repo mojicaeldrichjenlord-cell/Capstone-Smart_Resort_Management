@@ -34,7 +34,7 @@
         <div class="hk-user-card">
           <strong id="accountName">Verifying session…</strong>
           <small id="accountEmail">-</small>
-          <span>View-only access</span>
+          <span>Booking schedule & assigned cleaning tasks</span>
         </div>
       </section>
 
@@ -69,9 +69,30 @@
           </table>
         </div>
         <p class="permission-note">
-          This is a <strong>read-only booking schedule</strong>, not a cleaning or room-ready tracker.
-          Cleaning tasks and assignments will be added separately. Housekeeping cannot modify
+          This is a <strong>read-only booking schedule</strong>, not proof of room readiness.
+          Assigned cleaning tasks are tracked independently. Housekeeping cannot modify
           reservations, collect payments, or change accommodation availability.
+        </p>
+      </section>
+      <section class="hk-panel" aria-labelledby="hkTaskHeading">
+        <div class="hk-panel-header">
+          <div>
+            <h2 id="hkTaskHeading">My Cleaning Tasks</h2>
+            <p>Manager-assigned turnover cleaning tasks, including older unfinished assignments.</p>
+          </div>
+          <button type="button" id="hkRefreshTasks" class="hk-action">Refresh My Tasks</button>
+        </div>
+        <p id="hkTaskStatus" role="status" aria-live="polite" class="hk-status">Checking cleaning-task availability…</p>
+        <div class="hk-table-region" role="region" aria-label="Scrollable assigned cleaning tasks" tabindex="0">
+          <table aria-label="Assigned housekeeping cleaning tasks">
+            <thead><tr><th>Accommodation</th><th>Reservation</th><th>Checkout Date</th><th>Cleaning Status</th><th>Next Action</th></tr></thead>
+            <tbody id="hkTaskRows"><tr><td colspan="5">Loading…</td></tr></tbody>
+          </table>
+        </div>
+        <p class="permission-note">
+          Workflow: Needs Cleaning → In Progress → Cleaned → Manager Verified Ready.
+          Only your assigned tasks can be started or marked cleaned.
+          <strong>Verified Ready is not the same as accommodation booking availability.</strong>
         </p>
       </section>
     </main>
@@ -79,5 +100,6 @@
     <script src="../sharedJS/toast.js"></script>
     <script src="../sharedJS/api-config.js"></script>
     <script src="../housekeepingJS/housekeepingDashboard.js"></script>
+    <script src="../housekeepingJS/housekeepingTasks.js"></script>
   </body>
 </html>
