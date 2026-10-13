@@ -11,6 +11,7 @@
 <a href="#mainContent" class="manager-skip-link">Skip to main content</a>
 <header class="manager-navbar">
 <div><strong>Arvic Seaside</strong><span>Resort Manager</span></div>
+<!-- Signed Manager-only financial and reservation reporting. -->
 <nav class="manager-nav" aria-label="Manager navigation">
 <a href="managerDashboard.html">Dashboard</a>
 <a href="managerReservations.html">Reservations</a>
@@ -28,6 +29,7 @@
 </section>
 <section class="manager-activity">
 <h2>Reporting Period</h2>
+<!-- Inclusive date range is validated again on the backend. -->
 <form id="managerReportFilters" class="manager-filters">
 <label for="reportFrom">From (booking creation date)
 <input type="date" id="reportFrom" required /></label>
@@ -38,6 +40,7 @@
 <p class="manager-status" id="managerReportStatus" role="status" aria-live="polite">Verifying Manager session…</p>
 <p class="manager-list-note">Reservation counts use booking creation dates. Paid additional charges use actual charge-paid dates. Maximum range: 366 days.</p>
 </section>
+<!-- Booking counts grouped by reservation status and creation date. -->
 <section class="manager-report-section" aria-labelledby="managerSummaryHeading">
 <h2 id="managerSummaryHeading">Reservation Summary</h2>
 <div class="manager-grid manager-report-cards">
@@ -49,6 +52,7 @@
 <article><h3>Online / Manual</h3><strong id="reportSources">—</strong><small>Reservation source breakdown</small></article>
 </div>
 </section>
+<!-- Snapshots use different accounting definitions; not net revenue. -->
 <section class="manager-report-section" aria-labelledby="managerFinancialHeading">
 <h2 id="managerFinancialHeading">Financial Snapshots</h2>
 <p class="manager-financial-note">These financial values have different accounting dates and definitions. <strong>Do not add them together as revenue.</strong> Refund-adjusted net collections are not calculated here.</p>
@@ -58,11 +62,13 @@
 <article><h3>Paid Booking Charges</h3><strong id="reportCharges">—</strong><small>Additional-charge records marked paid during the period; excludes separate entrance reconciliation</small></article>
 </div>
 </section>
+<!-- Daily reservation creation events, not occupied nights. -->
 <section class="manager-activity" aria-labelledby="managerTrendHeading">
 <h2 id="managerTrendHeading">Reservation Trend</h2>
 <p>Reservations created on dates with activity during the selected period. Days with no bookings are omitted from this chart.</p>
 <div id="managerTrend" class="manager-trend" aria-label="Reservation trend by date">No data yet.</div>
 </section>
+<!-- Booked reservation items, not nights stayed. -->
 <section class="manager-activity" aria-labelledby="managerPerformanceHeading">
 <h2 id="managerPerformanceHeading">Top Accommodations</h2>
 <p>Counts reservation items for bookings created during the period. These are not nights stayed or actual occupancy.</p>
