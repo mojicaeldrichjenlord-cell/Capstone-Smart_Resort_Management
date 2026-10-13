@@ -246,3 +246,23 @@ test("Source keeps all audio local and does not use a paid voice service", () =>
   assert.match(script, /SpeechSynthesisUtterance/);
   assert.match(script, /session !== state\.session/);
 });
+
+test("Customer pages load AI chat before interactive voice and include voice styles", () => {
+  for (const page of ["index.html", "rooms.html"]) {
+    const html = fs.readFileSync(path.resolve(
+      __dirname, "../../frontend/customerHTML", page), "utf8");
+    const chatIndex = html.indexOf('src="../js/ai-chat.js"');
+    const voiceIndex = html.indexOf('src="../js/ai-voice.js"');
+    assert.ok(chatIndex > 0 && voiceIndex > chatIndex);
+    assert.match(html, /sharedCSS\/ai-voice\.css/);
+  }
+});
+test("Voice language is passed only by voice-origin requests, not ordinary text chat", () => {
+  const source = fs.readFileSync(path.resolve(
+    __dirname, "../../frontend/js/ai-chat.js"), "utf8");
+  assert.match(source, /options\.source === "voice"/);
+  assert.match(source, /voice_language: window\.ArvicVoice\?\.getLanguage/);
+  assert.match(source, /aiMessageInFlight/);
+  assert.match(source, /async function sendAiMessage/);
+  assert.match(source, /return aiReply;/);
+});
