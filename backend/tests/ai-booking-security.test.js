@@ -10,6 +10,9 @@ const { before, beforeEach, after, test } = require("node:test");
 
 let queries = [];
 let modelCalls = 0;
+let successfulModelCalls = 0;
+let injectedFailures = 0;
+let injectedStatus = 503;
 let modelPrompts = [];
 let returnedRooms = [];
 let roomLookup = null;
@@ -31,9 +34,19 @@ substitute("@google/genai", {
         async generateContent({ contents }) {
           modelPrompts.push(contents);
           modelCalls++;
-          // Calls alternate between structured intent extraction and response.
+          if (injectedFailures > 0) {
+            injectedFailures--;
+            throw Object.assign(new Error("Mock Gemini upstream capacity failure"), {
+              status: injectedStatus,
+            });
+          }
+          successfulModelCalls++;
+          if (String(contents).includes("fluent, natural English")) {
+            return { text: "Mock English translation" };
+          }
+          // Successes alternate independently from failed attempts.
           return {
-            text: modelCalls % 2 === 1
+            text: successfulModelCalls % 2 === 1
               ? JSON.stringify(extraction)
               : "Mock AI response; no external service called.",
           };
@@ -95,6 +108,9 @@ const exampleRoom = {
 beforeEach(() => {
   queries = [];
   modelCalls = 0;
+  successfulModelCalls = 0;
+  injectedFailures = 0;
+  injectedStatus = 503;
   modelPrompts = [];
   returnedRooms = [{ ...exampleRoom }];
   roomLookup = { ...exampleRoom };
@@ -262,6 +278,9 @@ test("Taglish and Spanish voice preferences use the selected fixed reply languag
   assert.equal(taglish.body.extracted_context.language_style, "taglish");
   assert.match(modelPrompts[1], /Reply in natural Taglish/);
   modelCalls = 0;
+  successfulModelCalls = 0;
+  injectedFailures = 0;
+  injectedStatus = 503;
   modelPrompts = [];
   const spanish = await post("/api/ai/chat", {
     message: "Hello", voice_language: "spanish",
@@ -289,4 +308,59 @@ test("Normal text chat is not forced into live spoken-conversation style", async
   });
   assert.equal(result.status, 200);
   assert.doesNotMatch(modelPrompts[1], /LIVE SPOKEN CONVERSATION/);
+});
+
+
+test("English translation route responds with the English text", async () => {
+  const result = await post("/api/ai/translate-english", {
+    text: "你好，欢迎来到 Arvic Seaside。",
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.success, true);
+  assert.equal(result.body.translated_text, "Mock English translation");
+  assert.equal(modelCalls, 1);
+  assert.match(modelPrompts[0], /fluent, natural English/);
+  assert.equal(queries.length, 0);
+});
+
+test("Temporary Gemini 503 during extraction recovers after one retry", async () => {
+  injectedFailures = 1;
+  const result = await post("/api/ai/chat", {
+    message: "How can you help me book?",
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.success, true);
+  assert.equal(modelCalls, 3);
+  assert.equal(queries.length, 0);
+});
+
+test("Persistent Gemini 503 returns safe HTTP 503 without exposing SDK errors", async () => {
+  injectedFailures = 2;
+  const result = await post("/api/ai/chat", { message: "Hello" });
+  assert.equal(result.status, 503);
+  assert.equal(result.body.success, false);
+  assert.equal(result.body.code, "GEMINI_BUSY");
+  assert.equal(modelCalls, 2);
+  assert.doesNotMatch(JSON.stringify(result.body), /Mock Gemini upstream capacity failure/);
+  assert.equal(queries.length, 0);
+});
+
+test("Gemini free-tier 429 is not retried on translation", async () => {
+  injectedStatus = 429;
+  injectedFailures = 1;
+  const result = await post("/api/ai/translate-english", { text: "你好" });
+  assert.equal(result.status, 429);
+  assert.equal(result.body.code, "GEMINI_RATE_LIMIT");
+  assert.equal(modelCalls, 1);
+  assert.equal(queries.length, 0);
+});
+
+test("AI reply actions offer English and Tagalog, not Taglish translation", () => {
+  const ui = fs.readFileSync(path.join(
+    __dirname, "../../frontend/js/ai-chat.js"), "utf8");
+  assert.match(ui, /Translate to English/);
+  assert.match(ui, /Translate to Tagalog/);
+  assert.doesNotMatch(ui, /Translate to Taglish/);
+  assert.doesNotMatch(ui, /\/ai\/translate-taglish/);
+  assert.match(ui, /\/ai\/translate-english/);
 });
