@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Housekeeping Tasks | Resort Manager</title>
+<link rel="stylesheet" href="../sharedCSS/global.css" />
+<link rel="stylesheet" href="../managerCSS/managerDashboard.css" />
+</head>
+<body>
+<a href="#mainContent" class="manager-skip-link">Skip to main content</a>
+<header class="manager-navbar">
+<div><strong>Arvic Seaside</strong><span>Resort Manager</span></div>
+<nav class="manager-nav" aria-label="Manager navigation">
+<a href="managerDashboard.html">Dashboard</a>
+<a href="managerReservations.html">Reservations</a>
+<a href="managerAccommodations.html">Accommodations</a>
+<a href="managerReports.html">Reports</a>
+<a href="managerHousekeeping.html" aria-current="page">Housekeeping</a>
+<button type="button" id="logoutBtn">Logout</button>
+</nav>
+</header>
+<main class="manager-page" id="mainContent" tabindex="-1">
+<section class="manager-hero">
+<p>RESORT MANAGER</p>
+<h1>Housekeeping Task Management</h1>
+<span>Assign turnover cleaning after completed stays, coordinate staff, and verify cleaned accommodations. This workflow never changes reservation or accommodation availability status.</span>
+</section>
+<section class="manager-activity">
+<h2>Task Date</h2>
+<form id="hkManagerFilter" class="manager-filters">
+<label for="hkManagerDate">Completed stay checkout date
+<input type="date" id="hkManagerDate" required /></label>
+<button type="submit">Refresh Tasks</button>
+</form>
+<p id="hkManagerMessage" role="status" aria-live="polite" class="manager-status">Verifying Manager account…</p>
+<p class="manager-list-note">Only completed reservation items can produce a turnover task. A Manager must assign an active, verified Housekeeping staff account. One task per reservation item, even if multiple stays share a room on the same day.</p>
+</section>
+<section class="manager-activity">
+<h2>Create & Assign Turnover Task</h2>
+<form id="hkCreateForm" class="manager-filters">
+<label for="hkEligibleItem">Completed reservation item
+<select id="hkEligibleItem" required><option value="">Select a completed checkout</option></select></label>
+<label for="hkAssignee">Housekeeping staff
+<select id="hkAssignee" required><option value="">Select an active staff member</option></select></label>
+<button type="submit">Create Cleaning Task</button>
+</form>
+</section>
+<section class="manager-activity">
+<h2>Cleaning Task Status</h2>
+<div class="activity-scroll" role="region" aria-label="Scrollable Housekeeping task list" tabindex="0">
+<table aria-label="Housekeeping tasks" class="manager-task-table">
+<thead><tr><th>Accommodation</th><th>Reservation</th><th>Checkout Date</th><th>Assigned Staff</th><th>Cleaning Status</th><th>Actions</th></tr></thead>
+<tbody id="hkManagerRows"><tr><td colspan="6">Loading tasks…</td></tr></tbody>
+</table>
+</div>
+<p class="manager-list-note">Workflow: Needs Cleaning → In Progress → Cleaned → Verified Ready. Verified Ready is a housekeeping inspection result, not a booking availability guarantee.</p>
+</section>
+</main>
+<script src="../sharedJS/api-config.js"></script>
+<script src="../managerJS/managerHousekeeping.js"></script>
+</body></html>
