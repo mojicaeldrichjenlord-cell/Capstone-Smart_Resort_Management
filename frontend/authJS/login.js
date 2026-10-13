@@ -178,6 +178,7 @@ if (loginForm) {
         sessionStorage.setItem("customerToken", customerToken);
         sessionStorage.removeItem("frontDeskToken");
         sessionStorage.removeItem("adminToken");
+        sessionStorage.removeItem("managerToken");
       } else {
         // Prevent stale signed sessions when switching user roles.
         sessionStorage.removeItem("frontDeskToken");
