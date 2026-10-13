@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Manager Reports | SmartResort</title>
+<link rel="stylesheet" href="../sharedCSS/global.css" />
+<link rel="stylesheet" href="../managerCSS/managerDashboard.css" />
+</head>
+<body>
+<header class="manager-navbar">
+<div><strong>Arvic Seaside</strong><span>Resort Manager</span></div>
+<nav class="manager-nav" aria-label="Manager navigation">
+<a href="managerDashboard.html">Dashboard</a>
+<a href="managerReservations.html">Reservations</a>
+<a href="managerAccommodations.html">Accommodations</a>
+<a href="managerReports.html" aria-current="page">Reports</a>
+<button type="button" id="logoutBtn">Logout</button>
+</nav>
+</header>
+<main class="manager-page">
+<section class="manager-hero">
+<p>RESORT MANAGER</p>
+<h1>Reports & Analytics</h1>
+<span>Understand reservation trends, booking value snapshots and accommodation demand. Figures are read-only and respect operational accounting boundaries.</span>
+</section>
+<section class="manager-activity">
+<h2>Reporting Period</h2>
+<form id="managerReportFilters" class="manager-filters">
+<label for="reportFrom">From (booking creation date)
+<input type="date" id="reportFrom" required /></label>
+<label for="reportTo">To (inclusive)
+<input type="date" id="reportTo" required /></label>
+<button type="submit">Generate Report</button>
+</form>
+<p class="manager-status" id="managerReportStatus" role="status">Verifying Manager session…</p>
+<p class="manager-list-note">Reservation counts use booking creation dates. Paid additional charges use actual charge-paid dates. Maximum range: 366 days.</p>
+</section>
+<section class="manager-report-section" aria-labelledby="managerSummaryHeading">
+<h2 id="managerSummaryHeading">Reservation Summary</h2>
+<div class="manager-grid manager-report-cards">
+<article><h3>Total Reservations</h3><strong id="reportTotal">—</strong><small>Bookings created in selected period</small></article>
+<article><h3>Pending / Approved</h3><strong id="reportPendingApproved">—</strong><small>Current statuses of those bookings</small></article>
+<article><h3>Completed</h3><strong id="reportCompleted">—</strong><small>Completed bookings created in period</small></article>
+<article><h3>Cancelled / Rejected</h3><strong id="reportClosed">—</strong><small>Current cancelled and rejected statuses</small></article>
+<article><h3>Booked Guests</h3><strong id="reportGuests">—</strong><small>Original booked guests, not actual footfall</small></article>
+<article><h3>Online / Manual</h3><strong id="reportSources">—</strong><small>Reservation source breakdown</small></article>
+</div>
+</section>
+<section class="manager-report-section" aria-labelledby="managerFinancialHeading">
+<h2 id="managerFinancialHeading">Financial Snapshots</h2>
+<p class="manager-financial-note">These financial values have different accounting dates and definitions. <strong>Do not add them together as revenue.</strong> Refund-adjusted net collections are not calculated here.</p>
+<div class="manager-grid manager-report-cards">
+<article><h3>Booked Accommodation Value</h3><strong id="reportBookedValue">—</strong><small>Accommodation totals from non-cancelled/non-rejected reservations created during the period; not cash collected</small></article>
+<article><h3>Recorded Accommodation Payments</h3><strong id="reportPayments">—</strong><small>Cumulative paid amount recorded against reservations created in the period; not payment-date cashflow</small></article>
+<article><h3>Paid Booking Charges</h3><strong id="reportCharges">—</strong><small>Additional-charge records marked paid during the period; excludes separate entrance reconciliation</small></article>
+</div>
+</section>
+<section class="manager-activity" aria-labelledby="managerTrendHeading">
+<h2 id="managerTrendHeading">Reservation Trend</h2>
+<p>Number of reservations created each day in the selected period.</p>
+<div id="managerTrend" class="manager-trend" aria-label="Reservation trend by date">No data yet.</div>
+</section>
+<section class="manager-activity" aria-labelledby="managerPerformanceHeading">
+<h2 id="managerPerformanceHeading">Top Accommodations</h2>
+<p>Counts reservation items for bookings created during the period. These are not nights stayed or actual occupancy.</p>
+<div class="activity-scroll">
+<table aria-label="Top accommodations by reservation items">
+<thead><tr><th>Accommodation</th><th>Category</th><th>Booked Items</th><th>Reservations</th></tr></thead>
+<tbody id="managerAccommodationReport"><tr><td colspan="4">No data yet.</td></tr></tbody>
+</table>
+</div>
+</section>
+<p class="manager-list-note">Financial and occupancy reports are informational. For refunds, entrance-fee reconciliation, transaction-level collections, or accounting exports, use audited back-office records.</p>
+</main>
+<script src="../sharedJS/api-config.js"></script>
+<script src="../managerJS/managerReports.js"></script>
+</body>
+</html>
