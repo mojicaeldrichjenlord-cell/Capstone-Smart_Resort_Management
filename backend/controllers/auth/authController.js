@@ -683,6 +683,7 @@ exports.login = async (req, res) => {
       }
     }
 
+    // Issue hk1 ONLY after the password, account state and role are verified.
     if (role === "housekeeping") {
       try {
         housekeepingToken = issueHousekeepingToken(user.id);
@@ -713,6 +714,7 @@ exports.login = async (req, res) => {
       ...(frontDeskToken ? { frontDeskToken } : {}),
       ...(adminToken ? { adminToken } : {}),
       ...(managerToken ? { managerToken } : {}),
+      // Return the signed Housekeeping session only for the matching role.
       ...(housekeepingToken ? { housekeepingToken } : {}),
       ...(customerToken ? { customerToken } : {}),
       user: {
