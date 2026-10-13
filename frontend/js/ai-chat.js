@@ -709,11 +709,9 @@ function appendBookingPreviewCard(preview, save = true) {
   bubble.style.color = "#0f172a";
 
   const imagePath = preview.image ? escapeHtml(preview.image) : "images/no-image.jpg";
-  const paymentLabel = preview.payment_method === "paypal" ? "PayPal / Online Payment" : "Cash on Arrival";
-  const paymentStatusLabel = preview.payment_status === "pending" ? "Pending online payment" : "Unpaid";
 
   bubble.innerHTML = `
-    <div style="font-weight:800;margin-bottom:10px;font-size:1.05rem;">Booking Preview</div>
+    <div style="font-weight:800;margin-bottom:10px;font-size:1.05rem;">Accommodation Suggestion</div>
     <div style="margin-bottom:12px;">
       <img
         src="${imagePath}"
@@ -729,18 +727,17 @@ function appendBookingPreviewCard(preview, save = true) {
       <div><strong>Check-out Date:</strong> ${escapeHtml(preview.check_out)}</div>
       <div><strong>Check-out Time:</strong> ${escapeHtml(formatTime(preview.check_out_time))}</div>
       <div><strong>Guests:</strong> ${preview.guests}</div>
-      <div><strong>Nights:</strong> ${preview.nights}</div>
-      <div><strong>Payment:</strong> ${escapeHtml(paymentLabel)}</div>
-      <div><strong>Status:</strong> ${escapeHtml(paymentStatusLabel)}</div>
-      <div><strong>Price/Night:</strong> ₱${formatMoney(preview.price_per_night)}</div>
-      <div><strong>Estimated Total:</strong> ₱${formatMoney(preview.estimated_total)}</div>
+      <div><strong>Day Tour:</strong> ₱${formatMoney(preview.day_price || 0)}</div>
+      <div><strong>Overnight:</strong> ₱${formatMoney(preview.overnight_price || 0)}</div>
+      <div><strong>Extended:</strong> ₱${formatMoney(preview.extended_price || 0)}</div>
+      <div style="font-size:0.85rem;margin-top:8px;">Not reserved yet. Final slot availability and official amount are verified on the secure booking page.</div>
     </div>
     <button
       type="button"
       class="ai-confirm-booking-btn"
       style="margin-top:12px;width:100%;border:none;background:#14b8a6;color:white;padding:11px 12px;border-radius:10px;font-weight:700;cursor:pointer;"
     >
-      Confirm Booking
+      Continue to Booking
     </button>
   `;
 
@@ -761,53 +758,32 @@ function appendBookingPreviewCard(preview, save = true) {
   }
 }
 
-async function createBookingFromPreview(preview, button) {
-  const user = JSON.parse(localStorage.getItem("user"));
+function createBookingFromPreview(preview, button) {
+  // AI suggestions never create reservations directly. The Customer
+  // booking form owns final dates, slot pricing, payment and conflict checks.
+  const user = JSON.parse(localStorage.getItem("user") || "null");
+  const frontendPrefix = window.location.pathname.includes("/frontend/")
+    ? "/frontend"
+    : "";
 
-  if (!user) {
-    alert("Please login first.");
-    window.location.href = "login.html";
+  if (!user || String(user.role || "").toLowerCase() !== "customer") {
+    appendAiSystemNote("Please log in as a Customer before continuing to booking.");
+    window.location.href = frontendPrefix + "/authHTML/login.html";
     return;
   }
 
-  try {
-    button.disabled = true;
-    button.textContent = "Creating booking...";
-
-    const response = await fetch(`${AI_API_BASE}/ai/create-booking`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        user_id: user.id,
-        room_id: preview.room_id,
-        check_in: preview.check_in,
-        check_in_time: preview.check_in_time,
-        check_out: preview.check_out,
-        check_out_time: preview.check_out_time,
-        guests: preview.guests,
-        payment_method: preview.payment_method || "cash",
-      }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to create booking.");
-    }
-
-    appendAiSystemNote("Booking created successfully. Redirecting to your receipt...");
-    localStorage.removeItem(AI_CONTEXT_KEY);
-    localStorage.removeItem(AI_CHAT_HISTORY_KEY);
-
-    setTimeout(() => {
-      window.location.href = `booking-receipt.html?id=${data.bookingId}`;
-    }, 1000);
-  } catch (error) {
-    console.error("createBookingFromPreview error:", error);
-    appendAiMessage("assistant", `Sorry, booking failed: ${error.message}`);
-    button.disabled = false;
-    button.textContent = "Confirm Booking";
+  const accommodationId = Number(preview?.room_id);
+  if (!Number.isSafeInteger(accommodationId) || accommodationId <= 0) {
+    appendAiSystemNote("Please select an accommodation on the booking page.");
+    return;
   }
+
+  button.disabled = true;
+  button.textContent = "Opening booking form...";
+  appendAiSystemNote("No reservation has been created yet. Confirm dates, slot, official price and payment on the secure booking form.");
+  window.location.href =
+    frontendPrefix + "/customerHTML/booking.html?room_id=" +
+    encodeURIComponent(String(accommodationId));
 }
 
 function getOfflineFallbackReply(message, storedContext = {}, pageContext = {}) {
