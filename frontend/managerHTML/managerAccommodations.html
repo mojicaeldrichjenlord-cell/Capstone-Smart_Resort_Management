@@ -11,6 +11,7 @@
 <a href="#mainContent" class="manager-skip-link">Skip to main content</a>
 <header class="manager-navbar">
 <div><strong>Arvic Seaside</strong><span>Resort Manager</span></div>
+<!-- Manager inventory, separate from Admin category/photo management. -->
 <nav class="manager-nav" aria-label="Manager navigation">
 <a href="managerDashboard.html">Dashboard</a>
 <a href="managerReservations.html">Reservations</a>
@@ -28,6 +29,7 @@
 </section>
 <section class="manager-activity">
 <h2>Current Accommodations</h2>
+<!-- Read-only accommodation inventory search filters. -->
 <form id="inventoryFilters" class="manager-filters">
 <label for="inventorySearch">Search accommodation or category
 <input type="search" id="inventorySearch" placeholder="e.g., Family Room, Cottage" maxlength="90" /></label>
@@ -43,6 +45,7 @@
 </form>
 <p role="status" id="inventoryMessage" class="manager-status" aria-live="polite">Verifying Manager session…</p>
 <div class="activity-scroll" role="region" aria-label="Scrollable Manager data table" tabindex="0">
+<!-- Capacity, rate and listing status come from the authenticated API. -->
 <table aria-label="Accommodation inventory" class="manager-inventory-table">
 <thead><tr><th>Accommodation</th><th>Category</th><th>Capacity</th><th>Day tour</th><th>Overnight</th><th>Extended</th><th>Status</th><th>Actions</th></tr></thead>
 <tbody id="inventoryBody"><tr><td colspan="8">Loading…</td></tr></tbody>
@@ -52,6 +55,7 @@
 </section>
 </main>
 <dialog id="inventoryDialog" class="manager-inventory-dialog" aria-labelledby="inventoryDialogHeading">
+<!-- Confirmed rate/status edits are revalidated server-side. -->
 <form method="dialog" id="inventoryEditForm">
 <h2 id="inventoryDialogHeading">Edit Accommodation Rates</h2>
 <p id="inventoryDialogName">—</p>
