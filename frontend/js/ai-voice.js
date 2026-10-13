@@ -12,15 +12,6 @@
     mandarin: { stt: "zh-CN", tts: "zh-CN", label: "中文 (Mandarin)" },
   });
   const KEY = "smartresort_ai_voice_language_v1";
-  const VOICE_KEY_PREFIX = "smartresort_ai_voice_choice_v1_";
-  // Speech synthesis voices vary by browser, operating system and device.
-  // Named "natural"/"neural" voices are preferred only when exposed to Web Speech.
-  const PREVIEW_TEXT = Object.freeze({
-    english: "Hello! Welcome to Arvic Seaside. How can I help you today?",
-    taglish: "Hello po! Welcome sa Arvic Seaside. Paano ko po kayo matutulungan?",
-    spanish: "¡Hola! Bienvenido a Arvic Seaside. ¿En qué puedo ayudarte?",
-    mandarin: "您好！欢迎来到 Arvic Seaside。请问有什么可以帮您？",
-  });
   const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
   const state = {
     language: "english",
@@ -35,7 +26,6 @@
     speechSequence: 0,
     restartTimer: null,
     transcriptLimit: 1800,
-    voiceChoice: "auto",
   };
   let controls = null;
 
@@ -86,8 +76,6 @@
     controls.live.classList.toggle("active", state.live);
     controls.interrupt.hidden = !(state.live && state.mode === "live-speaking");
     controls.lang.disabled = state.mode === "dictation";
-    if (controls.voice) controls.voice.disabled = state.live || state.mode === "dictation";
-    if (controls.preview) controls.preview.disabled = state.live || state.mode === "dictation";
     controls.panel.classList.toggle("listening", listening);
   }
 
@@ -125,64 +113,27 @@
     );
   }
 
-  function populateVoiceChoices() {
-    if (!controls?.voice) return;
-    const voiceSelect = controls.voice;
-    const savedChoice = (() => {
-      try { return localStorage.getItem(VOICE_KEY_PREFIX + state.language); }
-      catch (_) { return null; }
-    })();
-    state.voiceChoice = savedChoice || "auto";
-    // Voice names are inserted using textContent, never HTML interpolation.
-    voiceSelect.innerHTML = '<option value="auto">Auto (best available)</option>';
-    const voices = orderedVoices();
-    for (const voice of voices) {
-      const option = document.createElement("option");
-      option.value = String(voice.voiceURI || voice.name);
-      option.textContent = voice.name + " (" + voice.lang + ")" +
-        (qualityScore(voice) >= 85 ? " · Natural/Neural" : "");
-      voiceSelect.appendChild(option);
-    }
-    const match = voices.some(voice =>
-      String(voice.voiceURI || voice.name) === state.voiceChoice);
-    if (!match) state.voiceChoice = "auto";
-    voiceSelect.value = state.voiceChoice;
-    if (controls.voiceInfo) {
-      controls.voiceInfo.textContent = voices.length
-        ? voices.length + " available voice(s). Quality depends on your browser and device."
-        : "No matching voice installed yet. Browser default will be used.";
-    }
-  }
-
   function selectSpeechVoice(utterance) {
     const voices = orderedVoices();
-    const chosen = state.voiceChoice === "auto"
-      ? voices[0]
-      : voices.find(voice =>
-          String(voice.voiceURI || voice.name) === state.voiceChoice);
+    let chosen = null;
+
+    if (state.language === "english") {
+      // User-approved English choice. Uses the named browser voice if available.
+      chosen = voices.find(v =>
+        /^google us english(?:\b|$)/i.test(String(v.name || "")));
+    } else if (state.language === "taglish") {
+      // User-approved Filipino/Taglish voice, available in Edge on some devices.
+      chosen = voices.find(v =>
+        /microsoft\s+blessica/i.test(String(v.name || "")) &&
+        /natural|online/i.test(String(v.name || "")));
+    }
+
+    // Spanish and Mandarin retain the previous default auto-selection.
+    // If a preferred voice is absent, use the best available same-language
+    // voice; never claim a specific voice is installed on every device.
+    chosen ||= voices[0];
     if (chosen) utterance.voice = chosen;
     utterance.lang = chosen?.lang || getLocale().tts;
-  }
-
-  function changeVoice(choice) {
-    const voices = orderedVoices();
-    if (choice !== "auto" &&
-        !voices.some(voice => String(voice.voiceURI || voice.name) === choice)) {
-      return;
-    }
-    if (state.live) stopConversation("Voice changed. Start Conversation again.");
-    state.voiceChoice = choice;
-    try { localStorage.setItem(VOICE_KEY_PREFIX + state.language, choice); }
-    catch (_) { /* storage may be blocked */ }
-    if (controls?.voice) controls.voice.value = choice;
-    status("Voice selected. Press Preview Voice to listen.");
-  }
-
-  function previewVoice() {
-    if (state.live || state.mode === "dictation") return;
-    status("Playing voice preview…");
-    speakReply(PREVIEW_TEXT[state.language] || PREVIEW_TEXT.english,
-      () => status("Preview finished. You can try another voice."));
   }
 
   function speakReply(text, onDone = null) {
@@ -238,7 +189,6 @@
     state.language = language;
     try { localStorage.setItem(KEY, language); } catch (_) { /* private mode */ }
     if (controls?.lang) controls.lang.value = language;
-    populateVoiceChoices();
     updateControls();
     status("Voice language: " + getLocale().label + ". Text chat can use other languages.");
   }
@@ -442,14 +392,6 @@
       '</select>',
       '<button id="aiVoiceLive" type="button" aria-pressed="false">Start Conversation</button>',
       '</div>',
-      '<div class="ai-voice-selection">',
-      '<label for="aiVoiceChoice">AI voice</label>',
-      '<select id="aiVoiceChoice" aria-label="Choose a voice style">',
-      '<option value="auto">Auto (best available)</option>',
-      '</select>',
-      '<button id="aiVoicePreview" type="button">Preview Voice</button>',
-      '</div>',
-      '<p id="aiVoiceInfo" class="ai-voice-info">Checking installed voices…</p>',
       '<div class="ai-voice-actions">',
       '<button id="aiVoiceInterrupt" type="button" hidden>Interrupt AI</button>',
       '</div>',
@@ -462,9 +404,6 @@
       panel,
       mic: microphone,
       lang: panel.querySelector("#aiVoiceLanguage"),
-      voice: panel.querySelector("#aiVoiceChoice"),
-      preview: panel.querySelector("#aiVoicePreview"),
-      voiceInfo: panel.querySelector("#aiVoiceInfo"),
       live: panel.querySelector("#aiVoiceLive"),
       interrupt: panel.querySelector("#aiVoiceInterrupt"),
       status: panel.querySelector("#aiVoiceStatus"),
@@ -474,13 +413,6 @@
     })();
     state.language = Object.hasOwn(LOCALES, saved) ? saved : "english";
     controls.lang.value = state.language;
-    populateVoiceChoices();
-    // Chrome and Edge may populate system voices after DOMContentLoaded.
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.addEventListener?.("voiceschanged", populateVoiceChoices);
-    }
-    controls.voice.addEventListener("change", () => changeVoice(controls.voice.value));
-    controls.preview.addEventListener("click", previewVoice);
     microphone.addEventListener("click", toggleDictation);
     controls.live.addEventListener("click", () => {
       if (state.live) stopConversation();
@@ -510,9 +442,7 @@
   window.ArvicVoice = Object.freeze({
     init, readAloud, stopConversation, isLiveActive: () => state.live,
     getLanguage: () => state.language,
-    setLanguage, changeVoice,
-    getVoiceChoices: () => orderedVoices().map(v => ({ name: v.name, lang: v.lang, uri: v.voiceURI })),
-
+    setLanguage,
     getState: () => ({ mode: state.mode, live: state.live, language: state.language }),
   });
   document.addEventListener("DOMContentLoaded", init);
