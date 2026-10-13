@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Manager Reservations | SmartResort</title>
+<link rel="stylesheet" href="../sharedCSS/global.css" />
+<link rel="stylesheet" href="../managerCSS/managerDashboard.css" />
+</head>
+<body>
+<header class="manager-navbar">
+<div><strong>Arvic Seaside</strong><span>Resort Manager</span></div>
+<nav class="manager-nav" aria-label="Manager navigation">
+<a href="managerDashboard.html">Dashboard</a>
+<a href="managerReservations.html" aria-current="page">Reservations</a>
+<button type="button" id="logoutBtn">Logout</button>
+</nav>
+</header>
+<main class="manager-page">
+<section class="manager-hero">
+<p>RESORT MANAGER</p>
+<h1>Reservation Management</h1>
+<span>Review reservations and approve or reject pending requests. Final check-in, checkout, payment corrections, and system settings remain restricted.</span>
+</section>
+<section class="manager-activity">
+<h2>Reservations</h2>
+<form id="reservationFilters" class="manager-filters">
+<label for="managerSearch">Search by code, guest, or accommodation
+<input id="managerSearch" type="search" maxlength="80" placeholder="Reservation code, name, room" /></label>
+<label for="managerStatusFilter">Status
+<select id="managerStatusFilter">
+<option value="all">All statuses</option>
+<option value="pending">Pending</option>
+<option value="approved">Approved</option>
+<option value="rejected">Rejected</option>
+<option value="cancelled">Cancelled</option>
+<option value="completed">Completed</option>
+</select></label>
+<button type="submit">Search / Refresh</button>
+</form>
+<p id="managerReservationStatus" role="status">Verifying Manager session…</p>
+<div class="activity-scroll">
+<table aria-label="Manager reservation records">
+<thead><tr>
+<th>Code</th><th>Guest</th><th>Accommodation</th><th>Dates / Times</th><th>Guests</th>
+<th>Source</th><th>Payment</th><th>Status</th><th>Action</th>
+</tr></thead>
+<tbody id="managerReservationsBody"><tr><td colspan="9">Loading…</td></tr></tbody>
+</table>
+</div>
+<p class="manager-list-note">Shows up to 200 recent matching reservations. Confirm before changing a pending reservation status.</p>
+</section>
+</main>
+<script src="../sharedJS/api-config.js"></script>
+<script src="../managerJS/managerReservations.js"></script>
+</body>
+</html>
