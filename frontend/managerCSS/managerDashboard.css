@@ -1,3 +1,5 @@
+/* Shared Manager CSS: dashboard, reservation review, inventory, reports,
+   and housekeeping operations. Backend middleware enforces permissions. */
 * {
   box-sizing: border-box;
 }
@@ -292,7 +294,8 @@ body {
 }
 
 
-/* Manager cross-page UX refinement. Shared across all four views. */
+/* Manager cross-page UX refinement: accessible focus, badges, mobile nav.
+   Shared by the Housekeeping task management view as well. *//* Manager cross-page UX refinement. Shared across all four views. */
 .manager-navbar {
   position: sticky;
   top: 0;
@@ -386,7 +389,7 @@ body {
 }
 
 
-/* Manager Housekeeping task management */
+/* Manager Housekeeping task states; no UI status changes online bookability. *//* Manager Housekeeping task management */
 .manager-task-table { min-width: 840px; }
 .manager-task-table select {
   width: 100%; min-width: 150px; border: 1px solid #cbd5e1;
