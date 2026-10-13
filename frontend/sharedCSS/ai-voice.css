@@ -1,0 +1,84 @@
+/* Voice modes shared by Customer Home and Accommodations chat widgets. */
+.ai-voice-panel {
+  padding: 10px 12px 8px;
+  background: #f8fbfc;
+  border-bottom: 1px solid #dbe7ea;
+  color: #134e4a;
+}
+.ai-voice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.ai-voice-actions label {
+  font-size: 0.79rem;
+  font-weight: 700;
+  color: #475569;
+}
+.ai-voice-actions select {
+  max-width: 135px;
+  flex: 1 1 125px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #0f172a;
+  padding: 7px 6px;
+  font-size: 0.82rem;
+  min-height: 35px;
+}
+.ai-voice-actions button {
+  flex: 1 1 auto;
+  border: 1px solid #0f766e;
+  background: #0f766e;
+  color: #fff;
+  padding: 7px 10px;
+  border-radius: 8px;
+  min-height: 35px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.ai-voice-actions button.active {
+  background: #b91c1c;
+  border-color: #b91c1c;
+}
+.ai-voice-actions #aiVoiceInterrupt {
+  background: #fef3c7;
+  border-color: #d97706;
+  color: #92400e;
+}
+.ai-voice-actions #aiVoiceInterrupt[hidden] {
+  display: none !important;
+}
+.ai-voice-actions button:disabled,
+.ai-voice-actions select:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+#aiVoiceStatus {
+  margin: 7px 0 0;
+  font-size: .78rem;
+  line-height: 1.4;
+  color: #475569;
+}
+.ai-voice-panel.listening #aiVoiceStatus {
+  color: #0f766e;
+  font-weight: 700;
+}
+.ai-chat-mic-btn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+@media (max-width: 480px) {
+  .ai-voice-actions {
+    gap: 6px;
+  }
+  .ai-voice-actions select {
+    max-width: unset;
+    flex-basis: 55%;
+  }
+  .ai-voice-actions #aiVoiceLive {
+    flex-basis: 100%;
+  }
+}
