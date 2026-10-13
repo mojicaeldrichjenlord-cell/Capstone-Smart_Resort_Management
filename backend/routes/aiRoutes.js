@@ -4,6 +4,7 @@ const router = express.Router();
 const {
   chatWithGemini,
   translateReplyToTagalog,
+  translateReplyToEnglish,
   translateReplyToTaglish,
 } = require("../controllers/ai/geminiChatController");
 
@@ -18,6 +19,7 @@ router.post("/create-booking", (_req, res) =>
   }),
 );
 router.post("/translate", translateReplyToTagalog);
+router.post("/translate-english", translateReplyToEnglish);
 router.post("/translate-taglish", translateReplyToTaglish);
 
 module.exports = router;
