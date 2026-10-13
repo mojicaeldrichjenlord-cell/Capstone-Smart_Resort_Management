@@ -17,5 +17,16 @@ router.get("/reservations", listManagerReservations);
 router.put("/reservations/:id/status", reviewManagerReservation);
 router.get("/accommodations", listManagerAccommodations);
 router.patch("/accommodations/:id/operations", updateManagerAccommodationOperations);
+const {
+  listManagerHousekeepingTasks, listHousekeepingStaff,
+  listEligibleHousekeepingItems, createHousekeepingTask,
+  reassignHousekeepingTask, verifyHousekeepingTask,
+} = require("../controllers/housekeeping/housekeepingTasksController");
+router.get("/housekeeping/tasks", listManagerHousekeepingTasks);
+router.get("/housekeeping/staff", listHousekeepingStaff);
+router.get("/housekeeping/eligible-items", listEligibleHousekeepingItems);
+router.post("/housekeeping/tasks", createHousekeepingTask);
+router.put("/housekeeping/tasks/:id/assign", reassignHousekeepingTask);
+router.put("/housekeeping/tasks/:id/verify", verifyHousekeepingTask);
 
 module.exports = router;
