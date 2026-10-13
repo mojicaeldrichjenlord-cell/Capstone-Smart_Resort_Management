@@ -179,21 +179,24 @@ document.addEventListener("DOMContentLoaded", () => {
     saving = true;
     saveButton.disabled = true;
     const target = editing;
+    let completionMessage = "";
     try {
       await request("accommodations/" + target.id + "/operations", {
         method: "PATCH",
         body: JSON.stringify({ ...desired, expected: target.expected }),
       });
       dialog.close();
-      message.textContent = "Changes saved. Loading latest inventory…";
+      completionMessage = "Changes saved.";
     } catch (error) {
-      message.textContent = error.message + " Please review the refreshed inventory before editing again.";
+      completionMessage = error.message +
+        " Please review the refreshed inventory before editing again.";
       dialog.close();
     } finally {
       saving = false;
       saveButton.disabled = false;
       editing = null;
       await refreshInventory();
+      if (completionMessage) message.textContent = completionMessage + " " + message.textContent;
     }
   });
   (async () => {
