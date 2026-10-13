@@ -20,6 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let editing = null;
   let loading = false;
   let saving = false;
+  // Remove manager token and return to the shared login screen.
   function signOut() {
     sessionStorage.removeItem("managerToken");
     localStorage.removeItem("user");
@@ -31,6 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
+  // Authenticated Manager API helper, separate from Admin inventory routes.
   async function request(path, options = {}) {
     const response = await fetch(API_BASE + "/manager/" + path, {
       ...options, cache: "no-store",
@@ -58,6 +60,7 @@ document.addEventListener("DOMContentLoaded", () => {
     tr.appendChild(item);
     return item;
   }
+  // Populate filters from API categories, never accept injected HTML.
   function renderCategories() {
     const previous = category.value;
     category.replaceChildren();
@@ -75,6 +78,7 @@ document.addEventListener("DOMContentLoaded", () => {
     category.value = Array.from(category.options).some(o => o.value === previous)
       ? previous : "all";
   }
+  // Capture current server values for safe optimistic concurrency checks.
   function snapshot(room) {
     return {
       status: room.status,
@@ -83,6 +87,7 @@ document.addEventListener("DOMContentLoaded", () => {
       extended_price: Number(room.extended_price).toFixed(2),
     };
   }
+  // Fill the confirmation dialog with permitted editable fields only.
   function edit(room) {
     if (saving || loading || !dialog?.showModal) return;
     editing = { id: room.id, name: room.name, expected: snapshot(room) };
@@ -93,6 +98,7 @@ document.addEventListener("DOMContentLoaded", () => {
     editExtended.value = room.extended_price;
     if (!dialog.open) dialog.showModal();
   }
+  // Display inventory as safe DOM nodes with current rate/status data.
   function render() {
     const query = search.value.trim().toLowerCase();
     const wantedCategory = category.value;
@@ -136,6 +142,7 @@ document.addEventListener("DOMContentLoaded", () => {
     message.textContent = "Showing " + matches.length + " of " +
       allRooms.length + " accommodations (latest database snapshot).";
   }
+  // A fresh snapshot avoids overwriting another user's recent rate change.
   async function refreshInventory() {
     if (loading || saving) return;
     loading = true;
