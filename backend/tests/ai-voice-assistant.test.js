@@ -284,59 +284,57 @@ test("Voice language is passed only by voice-origin requests, not ordinary text 
 });
 
 
-test("Available neural-sounding voices are preferred over a basic browser voice", () => {
+test("English automatically uses user-approved Google US English voice", () => {
   const h = mount({ voices: [
-    { name: "Standard English", lang: "en-PH", voiceURI: "voice-standard" },
-    { name: "Microsoft Jenny Online (Natural)", lang: "en-US", voiceURI: "voice-natural" },
-    { name: "Spanish Voice", lang: "es-ES", voiceURI: "voice-spanish" },
+    { name: "Microsoft Jenny Online (Natural)", lang: "en-US", voiceURI: "jenny" },
+    { name: "Google US English", lang: "en-US", voiceURI: "google-us" },
+    { name: "Standard English", lang: "en-PH", voiceURI: "base" },
   ] });
-  assert.equal(h.nodes.aiVoiceChoice.value, "auto");
-  assert.equal(h.nodes.aiVoiceChoice.children.length, 2);
-  assert.match(h.nodes.aiVoiceInfo.textContent, /2 available voice/);
-  h.fire("aiVoicePreview");
-  assert.equal(h.speechUtterances.length, 1);
-  assert.equal(h.speechUtterances[0].voice.name, "Microsoft Jenny Online (Natural)");
+  h.voice.readAloud("Welcome to Arvic Seaside!");
+  assert.equal(h.speechUtterances[0].voice.name, "Google US English");
   assert.equal(h.speechUtterances[0].rate, 0.98);
   assert.equal(h.requests.length, 0);
 });
 
-test("Selected speech voice is persisted and used for voice preview", () => {
-  const h = mount({ voices: [
-    { name: "Standard English", lang: "en-PH", voiceURI: "voice-standard" },
-    { name: "Microsoft Jenny Online (Natural)", lang: "en-US", voiceURI: "voice-natural" },
+test("Taglish automatically uses selected Microsoft Blessica Natural voice", () => {
+  const h = mount({ savedLanguage: "taglish", voices: [
+    { name: "Microsoft Jenny Online (Natural)", lang: "en-US", voiceURI: "jenny" },
+    { name: "Microsoft Blessica Online (Natural)", lang: "fil-PH", voiceURI: "blessica" },
+    { name: "Other Filipino", lang: "fil-PH", voiceURI: "other" },
   ] });
-  h.nodes.aiVoiceChoice.value = "voice-standard";
-  h.fire("aiVoiceChoice", "change");
-  assert.equal(h.stored.get("smartresort_ai_voice_choice_v1_english"), "voice-standard");
-  h.fire("aiVoicePreview");
-  assert.equal(h.speechUtterances[0].voice.name, "Standard English");
+  h.voice.readAloud("Hello po, welcome sa Arvic Seaside!");
+  assert.equal(h.speechUtterances[0].voice.name, "Microsoft Blessica Online (Natural)");
+  assert.equal(h.speechUtterances[0].lang, "fil-PH");
+});
+
+test("Spanish and Mandarin keep appropriate browser default-language voices", () => {
+  const h = mount({ savedLanguage: "spanish", voices: [
+    { name: "Spanish Browser Voice", lang: "es-ES", voiceURI: "es" },
+    { name: "Mandarin Browser Voice", lang: "zh-CN", voiceURI: "zh" },
+    { name: "Google US English", lang: "en-US", voiceURI: "en" },
+  ] });
+  h.voice.readAloud("Hola");
+  assert.equal(h.speechUtterances[0].voice.lang, "es-ES");
+  h.voice.setLanguage("mandarin");
+  h.voice.readAloud("你好");
+  assert.equal(h.speechUtterances[1].voice.lang, "zh-CN");
+});
+
+test("Missing preferred voices fall back cleanly without paid speech APIs", () => {
+  const h = mount({ savedLanguage: "taglish", voices: [
+    { name: "Built-in Filipino", lang: "fil-PH", voiceURI: "fil" },
+  ] });
+  h.voice.readAloud("Magandang araw po");
+  assert.equal(h.speechUtterances[0].voice.name, "Built-in Filipino");
   assert.equal(h.requests.length, 0);
 });
 
-test("Voice list can load asynchronously and is filtered by selected language", () => {
+test("Voice picker is removed while language and live controls remain", () => {
   const h = mount();
-  assert.match(h.nodes.aiVoiceInfo.textContent, /No matching voice/);
-  h.changeVoices([
-    { name: "Google US English", lang: "en-US", voiceURI: "english-google" },
-    { name: "Spanish Natural", lang: "es-ES", voiceURI: "spanish-natural" },
-  ]);
-  assert.equal(h.nodes.aiVoiceChoice.children.length, 1);
-  h.nodes.aiVoiceLanguage.value = "spanish";
-  h.fire("aiVoiceLanguage", "change");
-  assert.match(h.nodes.aiVoiceInfo.textContent, /1 available voice/);
-  h.fire("aiVoicePreview");
-  assert.equal(h.speechUtterances.at(-1).voice.name, "Spanish Natural");
-  assert.equal(h.speechUtterances.at(-1).lang, "es-ES");
-});
-
-test("Changing voice during live mode requires ending the conversation first", async () => {
-  const h = mount({ voices: [
-    { name: "English Natural", lang: "en-US", voiceURI: "voice-en" },
-  ] });
-  h.fire("aiVoiceLive");
-  assert.equal(h.nodes.aiVoiceChoice.disabled, true);
-  assert.equal(h.nodes.aiVoicePreview.disabled, true);
-  h.voice.changeVoice("voice-en");
-  assert.equal(h.voice.isLiveActive(), false);
-  assert.equal(h.nodes.aiVoiceChoice.disabled, false);
+  assert.equal(h.voice.getLanguage(), "english");
+  assert.match(h.nodes.aiVoiceStatus.textContent, /dictate and review/i);
+  assert.doesNotMatch(script, /aiVoiceChoice|aiVoicePreview|voiceChoice/);
+  assert.match(script, /aiVoiceLanguage/);
+  assert.match(script, /aiVoiceLive/);
+  assert.equal(h.recognitionInstances.length, 0);
 });
