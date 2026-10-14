@@ -1,3 +1,5 @@
+// Browser behavior for toast. Handles clicks, reads API results and updates the page.
+// Note: Keep existing behavior unchanged when adding new features.
 function showToast(message, type = "success") {
   let toast = document.getElementById("toast");
 
