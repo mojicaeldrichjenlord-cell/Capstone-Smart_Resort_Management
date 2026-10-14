@@ -1,3 +1,5 @@
+// Server controller for room Controller. Contains handlers for incoming requests and responses.
+// Note: Keep existing behavior unchanged when adding new features.
 ﻿const db = require("../../config/db");
 
 function normalizeText(value) {
