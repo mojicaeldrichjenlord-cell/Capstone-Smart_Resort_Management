@@ -213,3 +213,20 @@ test("Manager reservation conflict remains visible after list refresh", async ()
   assert.match(ui.nodes.get("managerReservationStatus").textContent,
     /reservation\(s\) shown/);
 });
+
+test("Manager and Housekeeping task screens disable actions during pending API requests", () => {
+  // Static safeguards: no live browser, database, or network needed.
+  const manager = js("managerHousekeeping.js");
+  const housekeeping = read("housekeepingJS/housekeepingTasks.js");
+  const styles = read("managerCSS/managerDashboard.css");
+
+  assert.match(manager, /function setBusy\(next\)/);
+  assert.match(manager, /control\.disabled = next/);
+  assert.match(manager, /message\.setAttribute\("aria-busy", String\(next\)\)/);
+  assert.match(housekeeping, /function setBusy\(next\)/);
+  assert.match(housekeeping, /button\.disabled = next/);
+  assert.match(housekeeping, /status\.setAttribute\("aria-busy", String\(next\)\)/);
+  assert.match(styles, /\.manager-row-actions button:disabled/);
+  assert.doesNotMatch(manager, /\.innerHTML\s*=/);
+  assert.doesNotMatch(housekeeping, /\.innerHTML\s*=/);
+});
