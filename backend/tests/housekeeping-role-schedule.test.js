@@ -251,14 +251,14 @@ test("NULL account status cannot authorize Housekeeping access", async () => {
   const result = await call("/api/housekeeping/daily-schedule");
   assert.equal(result.status, 403);
   assert.equal(nonUserReads().length, 0);
-  assert.doesNotMatch(sqlCalls[0].sql, /COALESCE\\s*\\(\\s*account_status/i);
+  assert.doesNotMatch(sqlCalls[0].sql, /COALESCE\s*\(\s*account_status/i);
 });
 test("NULL verification status cannot authorize Housekeeping access", async () => {
   user.is_verified = null;
   const result = await call("/api/housekeeping/daily-schedule");
   assert.equal(result.status, 403);
   assert.equal(nonUserReads().length, 0);
-  assert.doesNotMatch(sqlCalls[0].sql, /COALESCE\\s*\\(\\s*is_verified/i);
+  assert.doesNotMatch(sqlCalls[0].sql, /COALESCE\s*\(\s*is_verified/i);
 });
 test("Demoted Housekeeping account cannot read schedule", async () => {
   user.role = "customer";
