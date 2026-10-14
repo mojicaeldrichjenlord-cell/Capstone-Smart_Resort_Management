@@ -399,3 +399,11 @@ body {
 .manager-status-pill[data-status="in_progress"] { color: #1d4ed8; background: #dbeafe; }
 .manager-status-pill[data-status="cleaned"] { color: #92400e; background: #fef3c7; }
 .manager-status-pill[data-status="verified_ready"] { color: #166534; background: #dcfce7; }
+
+/* Housekeeping requests temporarily disable controls; status text explains why. */
+.manager-filters button:disabled,
+.manager-row-actions button:disabled,
+.manager-task-table select:disabled {
+  opacity: .55;
+  cursor: wait;
+}
