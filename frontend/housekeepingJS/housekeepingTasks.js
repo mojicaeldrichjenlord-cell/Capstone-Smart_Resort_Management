@@ -8,6 +8,14 @@ document.addEventListener("DOMContentLoaded", () => {
   const date = document.getElementById("hkDate");
   const refreshButton = document.getElementById("hkRefreshTasks");
   let busy = false;
+  // Disable visible actions while a request is running, avoiding repeated clicks.
+  // The server still validates assignment, status and optimistic version.
+  function setBusy(next) {
+    busy = next;
+    refreshButton.disabled = next;
+    for (const button of tbody.querySelectorAll("button")) button.disabled = next;
+    status.setAttribute("aria-busy", String(next));
+  }
   // Revoked or expired session: clear local auth and return to the login page.
   function signOut() {
     sessionStorage.removeItem("housekeepingToken");
@@ -81,7 +89,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Confirm, submit current version, and refresh to show conflicts or success.
         button.addEventListener("click", async () => {
           if (busy || !window.confirm(label + " for " + task.accommodation + "?")) return;
-          busy = true;
+          setBusy(true);
           status.textContent = "Updating assigned task…";
           let feedback = "";
           try {
@@ -92,7 +100,7 @@ document.addEventListener("DOMContentLoaded", () => {
           } catch (error) {
             feedback = error.message;
           } finally {
-            busy = false;
+            setBusy(false);
             await refresh(feedback);
           }
         });
@@ -107,9 +115,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // Refresh includes this staff member's outstanding older tasks as well.
   async function refresh(feedback = "") {
     if (busy) return;
-    busy = true;
+    setBusy(true);
     status.textContent = "Loading assigned cleaning tasks…";
-    refreshButton.disabled = true;
     try {
       const tasks = await request("tasks?date=" + encodeURIComponent(date.value));
       draw(tasks.tasks || []);
@@ -118,8 +125,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (error) {
       status.textContent = (feedback ? feedback + " " : "") + error.message;
     } finally {
-      busy = false;
-      refreshButton.disabled = false;
+      setBusy(false);
     }
   }
   refreshButton.addEventListener("click", () => refresh());
