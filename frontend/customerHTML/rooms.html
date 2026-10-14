@@ -118,12 +118,12 @@
     ======================================================= -->
     <div id="imageViewerModal" class="image-viewer-modal">
       <div class="image-viewer-box">
-        <button id="imageViewerClose" class="image-viewer-close">&times;</button>
+        <button id="imageViewerClose" class="image-viewer-close" type="button" aria-label="Close image viewer">&times;</button>
 
         <button
           id="imageViewerPrev"
           class="image-viewer-arrow image-viewer-prev"
-        >
+         type="button" aria-label="Previous photo">
           &#10094;
         </button>
 
@@ -132,7 +132,7 @@
         <button
           id="imageViewerNext"
           class="image-viewer-arrow image-viewer-next"
-        >
+         type="button" aria-label="Next photo">
           &#10095;
         </button>
 
@@ -144,14 +144,14 @@
     <!-- ======================================================
        AI CHAT WIDGET
     ======================================================= -->
-    <button id="aiChatToggle" class="ai-chat-toggle">Ask AI Assistant</button>
+    <button id="aiChatToggle" class="ai-chat-toggle" type="button">Ask AI Assistant</button>
 
     <div id="aiChatWindow" class="ai-chat-window">
       <div class="ai-chat-header">
         <h3>Arvic Seaside AI Assistant</h3>
 
         <div class="ai-chat-header-actions">
-          <button id="aiNewChatBtn" class="ai-chat-header-btn" title="New Chat">
+          <button id="aiNewChatBtn" class="ai-chat-header-btn" title="New Chat" type="button">
             New
           </button>
 
@@ -159,11 +159,11 @@
             id="aiChatMaximize"
             class="ai-chat-header-btn"
             title="Maximize"
-          >
+           type="button">
             ▢
           </button>
 
-          <button id="aiChatClose" class="ai-chat-header-btn" title="Close">
+          <button id="aiChatClose" class="ai-chat-header-btn" title="Close" type="button">
             &times;
           </button>
         </div>
@@ -183,11 +183,11 @@
           class="ai-chat-mic-btn"
           title="Voice input"
           aria-label="Voice input"
-        >
+         type="button">
           🎤
         </button>
 
-        <button id="aiSendBtn" class="ai-chat-send">Send</button>
+        <button id="aiSendBtn" class="ai-chat-send" type="button">Send</button>
       </div>
     </div>
 
