@@ -407,3 +407,25 @@ body {
   opacity: .55;
   cursor: wait;
 }
+
+/* Mobile Housekeeping hints explain horizontally scrollable navigation/tables.
+   Hints are display-only and never affect authorization or task actions. */
+.manager-mobile-nav-hint,
+.manager-mobile-table-hint { display: none; }
+@media (max-width: 760px) {
+  .manager-mobile-nav-hint {
+    display: block;
+    width: 100%;
+    margin: 0;
+    color: #e2e8f0;
+    font-size: .76rem;
+    line-height: 1.4;
+  }
+  .manager-mobile-table-hint {
+    display: block;
+    color: #475569;
+    font-size: .82rem;
+    margin: 8px 0 10px;
+  }
+  .manager-task-table { min-width: 840px; }
+}
