@@ -64,6 +64,8 @@
           <article><span>Completed Stays</span><strong id="hkCompleted">—</strong></article>
         </div>
         <!-- JS inserts sanitized rows into this table with textContent. -->
+        <!-- On mobile the detailed schedule scrolls horizontally, not the whole page. -->
+        <p class="hk-mobile-table-hint">Swipe sideways in the table to see all schedule columns &harr;</p>
         <div class="hk-table-region" role="region" aria-label="Scrollable Housekeeping schedule" tabindex="0">
           <table aria-label="Housekeeping booking schedule">
             <thead>
@@ -91,6 +93,8 @@
         </div>
         <p id="hkTaskStatus" role="status" aria-live="polite" class="hk-status">Checking cleaning-task availability…</p>
         <!-- Only the assigned Housekeeping user can start or mark a task cleaned. -->
+        <!-- Keep the cleaning status and action discoverable on narrow screens. -->
+        <p class="hk-mobile-table-hint">Swipe sideways in the table to see task status and actions &harr;</p>
         <div class="hk-table-region" role="region" aria-label="Scrollable assigned cleaning tasks" tabindex="0">
           <table aria-label="Assigned housekeeping cleaning tasks">
             <thead><tr><th>Accommodation</th><th>Reservation</th><th>Checkout Date</th><th>Cleaning Status</th><th>Next Action</th></tr></thead>
