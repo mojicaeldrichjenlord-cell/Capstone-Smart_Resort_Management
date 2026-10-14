@@ -1,6 +1,7 @@
 ﻿const db = require("../../config/db");
 
 // GET ALL MARKERS
+// Return stored resort-map pins, including their display labels and positions.
 exports.getMarkers = (req, res) => {
   db.query("SELECT * FROM map_markers", (err, results) => {
     if (err) {
@@ -12,6 +13,8 @@ exports.getMarkers = (req, res) => {
 };
 
 // CREATE MARKER
+// Save one map pin with label, type, color and x/y coordinates.
+// Optional room_id associates the marker with an accommodation record.
 exports.createMarker = (req, res) => {
   const { name, type, color, info, x, y, room_id } = req.body;
 
@@ -31,6 +34,7 @@ exports.createMarker = (req, res) => {
 };
 
 // UPDATE MARKER
+// Update an existing marker's visible details and map coordinates by marker ID.
 exports.updateMarker = (req, res) => {
   const { id } = req.params;
   const { name, type, color, info, x, y, room_id } = req.body;
@@ -56,6 +60,7 @@ exports.updateMarker = (req, res) => {
 };
 
 // DELETE MARKER
+// Delete the selected map marker only; removing a pin does not delete an accommodation.
 exports.deleteMarker = (req, res) => {
   const { id } = req.params;
 

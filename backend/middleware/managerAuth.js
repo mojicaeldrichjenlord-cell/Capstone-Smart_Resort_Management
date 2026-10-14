@@ -9,10 +9,13 @@ function secret() {
   if (value.length < 32) throw new Error("FRONTDESK_TOKEN_SECRET requires 32+ characters.");
   return value;
 }
+// Compute the HMAC signature that detects a modified Manager token payload.
 function signature(payload) {
   return crypto.createHmac("sha256", secret())
     .update(PREFIX + "." + payload, "utf8").digest();
 }
+// Issue a signed Manager session with an expiry and a Manager-specific audience.
+// A token identifies the session but does not replace the live database role check.
 function issueManagerToken(userId) {
   const id = Number(userId);
   if (!Number.isSafeInteger(id) || id <= 0) throw new Error("Invalid Manager ID.");
@@ -22,6 +25,8 @@ function issueManagerToken(userId) {
   }), "utf8").toString("base64url");
   return PREFIX + "." + payload + "." + signature(payload).toString("base64url");
 }
+// Validate token shape, HMAC signature, audience and expiry before reading any account data.
+// Compare signatures with a timing-safe method to avoid revealing signature differences.
 function verifyManagerToken(token) {
   if (typeof token !== "string" || token.length > 2048) return null;
   const parts = token.split(".");
@@ -43,6 +48,8 @@ function verifyManagerToken(token) {
     return id;
   } catch (_) { return null; }
 }
+// Protect Manager endpoints with both signed-token verification and current database permissions.
+// A disabled, unverified or reassigned account must lose access even if an old token still exists.
 async function requireManagerAuth(req, res, next) {
   const match = /^Bearer\s+(\S+)$/i.exec(String(req.get("authorization") || ""));
   if (!match) return res.status(401).json({ success: false, message: "Manager login required." });

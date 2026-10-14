@@ -16,6 +16,7 @@ function toNumber(value, fallback = 0) {
   return Number.isFinite(num) ? num : fallback;
 }
 
+// Convert image input into a clean list of gallery URLs, whether submitted as an array or text.
 function normalizeGalleryImages(value) {
   if (!value) return [];
 
@@ -29,6 +30,8 @@ function normalizeGalleryImages(value) {
     .filter(Boolean);
 }
 
+// Fetch related gallery images in one query and attach them to each accommodation response.
+// This avoids sending a separate database query for every room card.
 async function attachGalleryImages(rooms) {
   if (!Array.isArray(rooms) || rooms.length === 0) return rooms;
 
@@ -61,6 +64,8 @@ async function attachGalleryImages(rooms) {
   }));
 }
 
+// Replace the saved gallery list for this accommodation with the currently submitted images.
+// A missing/empty list removes all saved gallery images for that accommodation.
 async function replaceGalleryImages(roomId, galleryImages) {
   await db.promise().query(`DELETE FROM room_gallery WHERE room_id = ?`, [
     roomId,
@@ -88,6 +93,7 @@ async function getCategoryIdByName(categoryName) {
   return rows.length ? rows[0].id : null;
 }
 
+// Return available accommodation category names and descriptions for forms and filters.
 exports.getAccommodationCategories = async (req, res) => {
   try {
     const [rows] = await db.promise().query(`
@@ -110,6 +116,7 @@ exports.getAccommodationCategories = async (req, res) => {
   }
 };
 
+// Validate the submitted category name and reject duplicates before inserting a category.
 exports.createAccommodationCategory = async (req, res) => {
   try {
     const name = normalizeText(req.body.name);
@@ -157,6 +164,8 @@ exports.createAccommodationCategory = async (req, res) => {
   }
 };
 
+// Load the accommodation catalog with category details, prices, time slots and gallery images.
+// This is the full listing; booking-date conflicts are checked elsewhere during reservations.
 exports.getAllRooms = async (req, res) => {
   try {
     const [rows] = await db.promise().query(`
@@ -204,6 +213,8 @@ exports.getAllRooms = async (req, res) => {
   }
 };
 
+// List accommodations whose saved inventory status is available.
+// This status alone is not a guarantee that a particular date/time is unbooked.
 exports.getAvailableRooms = async (req, res) => {
   try {
     const [rows] = await db.promise().query(`
@@ -252,6 +263,7 @@ exports.getAvailableRooms = async (req, res) => {
   }
 };
 
+// Read the selected accommodation and its gallery for a details or edit view.
 exports.getRoomById = async (req, res) => {
   try {
     const accommodationId = req.params.id;
@@ -312,6 +324,8 @@ exports.getRoomById = async (req, res) => {
   }
 };
 
+// Create an accommodation after reading category, capacity, status, pricing and optional gallery.
+// Validation belongs on this server endpoint; frontend form limits are only a convenience.
 exports.createRoom = async (req, res) => {
   try {
     const category_id = toNumber(req.body.category_id, 0);
@@ -424,6 +438,8 @@ exports.createRoom = async (req, res) => {
   }
 };
 
+// Update the saved accommodation details and related gallery items.
+// Keep reservation records separate from inventory editing to preserve booking history.
 exports.updateRoom = async (req, res) => {
   try {
     const accommodationId = req.params.id;
@@ -550,6 +566,8 @@ exports.updateRoom = async (req, res) => {
   }
 };
 
+// Check for existing reservation items before deleting an accommodation.
+// A referenced accommodation is marked unavailable instead of losing historic booking links.
 exports.deleteRoom = async (req, res) => {
   try {
     const accommodationId = req.params.id;
@@ -606,6 +624,8 @@ exports.deleteRoom = async (req, res) => {
   }
 };
 
+// Insert default example accommodations after confirming the required categories exist.
+// This is a setup helper, not a routine booking or inventory update.
 exports.seedDefaultAccommodations = async (req, res) => {
   try {
     const cottageId = await getCategoryIdByName("Cottage");

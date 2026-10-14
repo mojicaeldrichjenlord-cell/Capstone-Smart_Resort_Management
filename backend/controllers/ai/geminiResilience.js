@@ -23,6 +23,8 @@ function getGeminiUsageSnapshot() {
   return { ...geminiUsage };
 }
 
+// Accumulate optional token metadata returned by Gemini after successful responses.
+// These are process-local counters, not guest conversation logs or official billing totals.
 function recordGeminiResponseUsage(response) {
   const metadata = response?.usageMetadata;
   if (!metadata || typeof metadata !== "object") return;
@@ -41,6 +43,7 @@ function recordGeminiResponseUsage(response) {
   }
 }
 
+// Extract an HTTP-style status from the SDK error so busy and rate-limited cases can be handled distinctly.
 function geminiErrorStatus(error) {
   const direct = Number(error?.status ?? error?.code);
   if (Number.isInteger(direct) && direct >= 400 && direct <= 599) return direct;
@@ -56,6 +59,8 @@ function geminiErrorStatus(error) {
   return match ? Number(match[1]) : 500;
 }
 
+// Call Gemini and record success/failure and token usage counters.
+// Retry only a temporary 503 busy response once; do not retry every kind of failed request.
 async function generateGemini(ai, contents, sleep = ms => new Promise(
   resolve => setTimeout(resolve, ms),
 )) {
@@ -81,6 +86,8 @@ async function generateGemini(ai, contents, sleep = ms => new Promise(
   }
 }
 
+// Convert internal Gemini failures into safe, understandable messages for the guest.
+// Keep SDK error details and credentials out of the public API response.
 function geminiPublicError(error) {
   const status = geminiErrorStatus(error);
   if (status === 503) {

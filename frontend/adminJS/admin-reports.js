@@ -204,6 +204,7 @@ function setupReportEvents() {
 // Default reads current date only. Filters read selected date range.
 // ============================================================
 
+// Display report data for the currently selected today-only view.
 async function loadTodayReports() {
   activeReportMode = "today";
   activeStartDate = getTodayDateString();
@@ -212,6 +213,7 @@ async function loadTodayReports() {
   await fetchReports(`${API_BASE}/bookings?scope=today`);
 }
 
+// Build a custom date-range query and request matching reservation data.
 async function loadFilteredReports(startDate, endDate) {
   activeReportMode = "custom";
   activeStartDate = startDate;
@@ -225,6 +227,8 @@ async function loadFilteredReports(startDate, endDate) {
   await fetchReports(`${API_BASE}/bookings?${query.toString()}`);
 }
 
+// Fetch reporting inputs using the signed Admin token, then refresh all report components.
+// A failed request displays an error rather than outdated report figures.
 async function fetchReports(url) {
   try {
     hideReportError();
@@ -258,6 +262,7 @@ async function fetchReports(url) {
 // Uses backend date filtering instead of loading all records.
 // ============================================================
 
+// Normalize the start/end dates and stop requests with an invalid backwards date range.
 function applyReportFilters() {
   let startDate = document.getElementById("reportStartDate")?.value || "";
   let endDate = document.getElementById("reportEndDate")?.value || "";
@@ -293,6 +298,7 @@ function applyReportFilters() {
 // Updates cards and charts.
 // ============================================================
 
+// Refresh the summary cards and each report chart using the same filtered booking list.
 function renderReports(bookings) {
   updateStats(bookings);
   renderBookingStatusChart(bookings);
@@ -520,6 +526,8 @@ function renderPopularRoomsChart(bookings) {
 // Replaces the old Payment Method Summary.
 // ============================================================
 
+// Group the report's calculated collection estimates by accommodation category.
+// This chart is not a substitute for a transaction-ledger reconciliation.
 function renderSalesByCategoryChart(bookings) {
   const categorySales = {
     Rooms: 0,
@@ -1230,6 +1238,8 @@ function isExtraBedPaid(booking) {
   );
 }
 
+// Estimate revenue contribution for the active report range using stored booking snapshots and payment dates.
+// Treat this UI-derived estimate separately from audited net payment reports.
 function calculateCollectedRevenueForReport(booking) {
   const createdInRange = isDateWithinActiveRange(booking.created_at);
   const checkedInInRange = isDateWithinActiveRange(booking.checked_in_at);
