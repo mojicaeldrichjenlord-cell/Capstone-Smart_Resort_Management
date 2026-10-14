@@ -1,3 +1,5 @@
+// Browser behavior for admin walkin. Handles clicks, reads API results and updates the page.
+// Note: Keep existing behavior unchanged when adding new features.
 const ADMIN_WALKIN_DRAFT_KEY = "smartresort_admin_walkin_draft_v2";
 const ADMIN_WALKIN_SUCCESS_RESET_KEY = "smartresort_admin_walkin_success_reset";
 
