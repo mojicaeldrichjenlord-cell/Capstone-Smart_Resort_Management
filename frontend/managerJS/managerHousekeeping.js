@@ -13,6 +13,23 @@ document.addEventListener("DOMContentLoaded", () => {
   let staff = [];
   let busy = false;
 
+  // Disable task actions while the browser waits for a response.
+  // The backend remains the source of truth for task permissions.
+  function setBusy(next) {
+    busy = next;
+    dayInput.disabled = next;
+    eligible.disabled = next;
+    staffSelect.disabled = next;
+    for (const control of [
+      filter.querySelector('button[type="submit"]'),
+      createForm.querySelector('button[type="submit"]'),
+      ...tbody.querySelectorAll("button, select"),
+    ]) {
+      if (control) control.disabled = next;
+    }
+    message.setAttribute("aria-busy", String(next));
+  }
+
   // Invalid role/session: stop accessing this Manager-only screen.
   function signOut() {
     sessionStorage.removeItem("managerToken");
@@ -140,7 +157,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Always rebuild dropdowns from fresh DB results after an update.
   async function refresh(feedback = "") {
     if (busy) return;
-    busy = true;
+    setBusy(true);
     message.textContent = "Loading Housekeeping tasks…";
     try {
       const date = dayInput.value;
@@ -166,13 +183,13 @@ document.addEventListener("DOMContentLoaded", () => {
       message.textContent = (feedback ? feedback + " " : "") +
         error.message + " If migration is pending, the cleaning task module is not active yet.";
     } finally {
-      busy = false;
+      setBusy(false);
     }
   }
   // Version check stops one Manager action overwriting another's update.
   async function perform(path, body, confirmation) {
     if (busy || !window.confirm(confirmation)) return;
-    busy = true;
+    setBusy(true);
     message.textContent = "Saving Housekeeping task…";
     let feedback = "";
     try {
@@ -181,7 +198,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (error) {
       feedback = error.message;
     } finally {
-      busy = false;
+      setBusy(false);
       await refresh(feedback);
     }
   }
@@ -193,7 +210,7 @@ document.addEventListener("DOMContentLoaded", () => {
     event.preventDefault();
     if (busy || !createForm.reportValidity()) return;
     if (!window.confirm("Assign cleaning for this completed checkout? Booking availability will not change.")) return;
-    busy = true;
+    setBusy(true);
     message.textContent = "Creating turnover task…";
     let feedback = "";
     try {
@@ -208,7 +225,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } catch (error) {
       feedback = error.message;
     } finally {
-      busy = false;
+      setBusy(false);
       await refresh(feedback);
     }
   });
