@@ -135,6 +135,8 @@ function getEntranceRates(entranceType, hasOvernight) {
   };
 }
 
+// Calculate the amount removed from regular adult entrance fees for qualified guests.
+// The discount is the difference between adult and special rates times qualified pax.
 function calculateSpecialRateAdjustment(
   adultRate,
   specialRate,
@@ -148,6 +150,8 @@ function calculateSpecialRateAdjustment(
   return differencePerPax * pax;
 }
 
+// Load the actual guest count, existing adjustments and fee history needed for entrance calculations.
+// When requested, lock the reservation row so an in-progress collection uses consistent data.
 async function getEntranceAdjustmentContext(
   bookingId,
   queryable = db.promise(),
@@ -583,6 +587,8 @@ const getBookingDiscount = async (req, res) => {
 // the full remaining balance confirmed by Front Desk.
 // ============================================================
 
+// Collect the entrance amount using verified guest figures and saved adjustments.
+// Run database checks in a transaction; the browser's estimate is never the official payable amount.
 async function collectEntranceFee(req, res) {
   const connection = await db.promise().getConnection();
 
@@ -845,6 +851,8 @@ async function collectEntranceFee(req, res) {
 // - action=collect_entrance_fee = Step 3F-B3 collection
 // ============================================================
 
+// Save Senior, PWD and free-child entrance adjustments after checking eligibility and pax limits.
+// Entrance fee collection takes a separate action so changing discounts does not silently collect money.
 const upsertBookingDiscount = async (req, res) => {
   const action = normalizeText(req.body?.action).toLowerCase();
 
@@ -1227,6 +1235,8 @@ const deleteBookingDiscount = async (req, res) => {
 // overpayment, and records exactly that amount for audit history.
 // ============================================================
 
+// Record how an entrance overpayment was resolved using refund or correction evidence.
+// Keep this reconciliation separate from the original fee collection history.
 const reconcileEntranceOverpayment = async (req, res) => {
   const connection = await db.promise().getConnection();
 

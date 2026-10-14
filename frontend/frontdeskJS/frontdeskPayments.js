@@ -118,6 +118,8 @@ function setupEvents() {
 // GET /api/bookings?scope=all
 // ============================================================
 
+// Fetch operational payment records using the active signed Front Desk token.
+// Display loading or error feedback instead of treating a failed response as an empty payment list.
 async function loadPayments() {
   setRecordsContent(`
     <div class="payment-state-box">
@@ -203,6 +205,8 @@ function setText(id, value) {
 // SECTION 6: Payment attention logic
 // ============================================================
 
+// Identify online GCash/Maya reservations whose submitted payment proof still needs staff review.
+// Manual and PayPal payments use different verification/collection workflows.
 function needsPaymentVerification(booking) {
   const source = getBookingSource(booking);
   const paymentStatus = getPaymentStatus(booking);
@@ -232,6 +236,8 @@ function needsPaymentVerification(booking) {
 // SECTION 7: Filters
 // ============================================================
 
+// Apply text, source, payment-status and payment-method filters to the loaded records.
+// Filtering happens in the browser and does not modify any reservation or payment status.
 function applyFilters() {
   const search = String(document.getElementById("searchInput")?.value || "")
     .trim()
@@ -538,6 +544,8 @@ function getPaymentRecordNote(booking) {
 // - reservation_status = approved
 // ============================================================
 
+// Request authorized staff verification of a pending payment proof.
+// The backend decides whether the evidence and reservation are eligible for confirmation.
 async function verifyPayment(bookingId, button) {
   if (!bookingId) {
     showMessage("Invalid reservation ID.", "error");

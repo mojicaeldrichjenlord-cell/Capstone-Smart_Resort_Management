@@ -103,6 +103,8 @@ function setupEvents() {
 // No backend changes are required for this read-only step.
 // ============================================================
 
+// Load the Front Desk reservation list through the signed staff API session.
+// Display a clear loading/error state and do not infer reservation status from cached browser data.
 async function loadReservations() {
   setRecordsContent(`
     <div class="reservation-state-box">
@@ -182,6 +184,8 @@ function setText(id, value) {
 // SECTION 6: Filters
 // ============================================================
 
+// Filter reservations by search terms and selected status/source options.
+// This read-only filtering never approves, cancels or collects payments.
 function applyFilters() {
   const search = String(document.getElementById("searchInput")?.value || "")
     .trim()
@@ -292,6 +296,8 @@ function renderReservations(bookings) {
   `);
 }
 
+// Build the on-screen summary for one reservation, including its payment and stay status.
+// A displayed remaining balance is informational; collection happens through dedicated workflows.
 function renderReservationCard(booking) {
   const reservationStatus = getReservationStatus(booking);
   const paymentStatus = getPaymentStatus(booking);

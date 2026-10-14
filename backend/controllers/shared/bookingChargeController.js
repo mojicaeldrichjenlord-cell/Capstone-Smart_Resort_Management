@@ -3,6 +3,8 @@
 /* ======================================================
    GET BOOKING / RESERVATION CHARGES
 ====================================================== */
+// Load additional charge rows associated with a booking for operational review.
+// The charge name, amount, note and paid status are stored separately from base accommodation pricing.
 const getBookingCharges = (req, res) => {
   const bookingId = Number(req.params.id);
 
@@ -54,6 +56,8 @@ const getBookingCharges = (req, res) => {
 /* ======================================================
    ADD BOOKING / RESERVATION CHARGE
 ====================================================== */
+// Legacy helper to insert a named extra charge with a positive amount.
+// For current Front Desk operations, prefer the dedicated validated charge workflows.
 const addBookingCharge = (req, res) => {
   const bookingId = Number(req.params.id);
   const chargeName = String(req.body.charge_name || "").trim();
@@ -126,6 +130,8 @@ const addBookingCharge = (req, res) => {
 /* ======================================================
    MARK ALL BOOKING CHARGES AS PAID
 ====================================================== */
+// Legacy helper that flags all currently unpaid charges on a booking as paid.
+// Review route access before reuse; it does not independently verify individual payment collections.
 const markBookingChargesPaid = (req, res) => {
   const bookingId = Number(req.params.id);
 
@@ -163,6 +169,8 @@ const markBookingChargesPaid = (req, res) => {
 /* ======================================================
    DELETE BOOKING CHARGE
 ====================================================== */
+// Legacy delete helper for a charge record.
+// Do not expose this for paid financial records without the newer settlement safeguards.
 const deleteBookingCharge = (req, res) => {
   const chargeId = Number(req.params.chargeId);
 

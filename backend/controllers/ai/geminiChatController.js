@@ -195,6 +195,8 @@ function detectLanguageFromMessage(message) {
   return null;
 }
 
+// Combine details from the current question with useful context from earlier chat turns.
+// An explicit new detail takes priority; otherwise a prior date, guest count or preference is retained.
 function mergeContext(existing = {}, extracted = {}) {
   return {
     check_in: cleanContextValue(extracted.check_in) ?? cleanContextValue(existing.check_in),
@@ -277,6 +279,8 @@ function isValidAiStayWindow(context) {
     finish.getTime() > start.getTime();
 }
 
+// Find available accommodations by capacity and overlapping reservation date/time ranges.
+// These database results inform suggestions only; actual booking creation rechecks conflicts.
 async function getAvailableRooms(checkIn, checkInTime, checkOut, checkOutTime, guests) {
   const [rooms] = await db.promise().query(
     `
@@ -550,6 +554,8 @@ function canSkipCatalogIntentExtraction(message, context = {}) {
   return true;
 }
 
+// Ask Gemini to extract structured booking details instead of trusting free-form chatbot prose.
+// Missing or ambiguous values remain unresolved until enough details are gathered.
 async function extractStructuredIntent(message, existingContext = {}) {
   const today = new Date();
   const todayText = formatDateOnly(today);
@@ -633,6 +639,8 @@ ${message}
   return parsed || {};
 }
 
+// Build a suggested accommodation stay from the assistant's selected room and travel dates.
+// It is not a confirmed reservation or authoritative payment quote.
 function buildBookingPreview(room, context, stayDays) {
   // Suggestion only. The secure booking form determines slot-specific price.
   return {
@@ -788,6 +796,8 @@ async function buildQuotaLimitedAccommodationReply(payload, requestCatalog = nul
   };
 }
 
+// Handle a guest's AI conversation with English, Filipino or Taglish responses.
+// Availability comes from database queries; the assistant must not create bookings or payments.
 exports.chatWithGemini = async (req, res) => {
   let requestCatalog = null;
   try {

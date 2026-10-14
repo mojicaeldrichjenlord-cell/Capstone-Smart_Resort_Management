@@ -384,6 +384,8 @@ async function loadAvailableAccommodations() {
 // until staff clicks Check Out.
 // ============================================================
 
+// Fetch operational guest records and rebuild the visible checked-in guest list.
+// The page also includes overdue checked-in stays while filtering out completed reservations.
 async function loadGuestsInside() {
   const tbody = document.getElementById("guestsInsideTableBody");
 
@@ -908,6 +910,8 @@ function updateGuestAdjustmentPreview() {
 // Calls the admin backend endpoint and refreshes the active guest table.
 // ============================================================
 
+// Send a reviewed actual guest count and any extra-guest charge information to the server.
+// The server preserves original booking counts and already-paid charge history.
 async function saveGuestAdjustment() {
   const booking = findBookingByRowId(
     selectedGuestAdjustmentBookingId,
@@ -1081,6 +1085,8 @@ function getEntranceAdjustmentPaxValues() {
 // Free Kid = entrance rate x pax
 // ============================================================
 
+// Show a client-side estimate for Senior, PWD and child entrance adjustments.
+// The server independently recalculates final eligibility and payment before saving.
 function calculateEntranceAdjustmentPreview() {
   const values = getEntranceAdjustmentPaxValues();
   const entranceRate = Number(currentDiscountMeta.entrance_rate_per_pax || 0);
@@ -1337,6 +1343,8 @@ function updateDiscountPreview() {
 // Backend computes final amounts automatically.
 // ============================================================
 
+// Submit verified qualified guest counts to update entrance-fee adjustments.
+// This action adjusts fee data; collection itself is handled by the payment workflow.
 async function saveBookingDiscount() {
   const noteInput = document.getElementById("discountNoteInput");
   const saveBtn = document.getElementById("saveDiscountBtn");
@@ -1691,6 +1699,8 @@ async function markExtraBedPaid(bookingId) {
 // Adds an onsite accommodation under the same reservation code.
 // ============================================================
 
+// Prepare the extra-accommodation or stay-extension form for the selected booking.
+// The backend still validates the requested accommodation and checks for schedule conflicts.
 async function openAddAccommodationModal(bookingId) {
   const booking = allBookings.find(
     (item) => Number(item.id) === Number(bookingId),

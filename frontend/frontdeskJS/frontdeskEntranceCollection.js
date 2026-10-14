@@ -170,6 +170,8 @@
   // OFFICIAL FIXED-RATE PREVIEW
   // ==========================================================
 
+  // Display a breakdown of regular entrance rates and qualified guest adjustments.
+  // This is a preview based on backend metadata, not proof that a payment has been recorded.
   function renderOfficialPricingPreview(meta = latestEntranceMeta) {
     if (!meta) {
       return;
@@ -346,6 +348,8 @@
   // COLLECTION BUTTON STATE
   // ==========================================================
 
+  // Enable the collection button only when the loaded fee state permits collection.
+  // Show a disabled/loading label while the request is running to discourage duplicate clicks.
   function updateCollectionButton(meta = latestEntranceMeta) {
     const button = getCollectButton();
 
@@ -482,6 +486,8 @@
   // LOAD CURRENT SAVED BACKEND META
   // ==========================================================
 
+  // Request current entrance-fee totals and eligibility using the signed Front Desk session.
+  // Refresh after adjustments because verified pax and balances can change.
   async function refreshEntranceCollectionState() {
     if (!activeReservationId) {
       latestEntranceMeta = null;
@@ -537,6 +543,8 @@
   // COLLECT FINAL / REMAINING ENTRANCE FEE
   // ==========================================================
 
+  // Recheck the current entrance balance before sending a collection request.
+  // Guest count verification and backend fee checks must pass before recording collection.
   async function collectFinalEntranceFee() {
     if (!activeReservationId || isCollectingEntrance) {
       return;
