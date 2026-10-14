@@ -10,6 +10,8 @@ const VALID_FILTERS = new Set([
 ]);
 
 // Manager may search and review a bounded booking list without full Admin powers.
+// Let Managers search and filter a limited list of reservations for operational review.
+// This handler is read-only and must not grant Admin or Front Desk privileges.
 exports.listManagerReservations = async (req, res) => {
   const status = String(req.query.status || "all").trim().toLowerCase();
   const search = String(req.query.search || "").trim();
@@ -95,6 +97,8 @@ exports.listManagerReservations = async (req, res) => {
 
 // Only pending, unchecked bookings can transition to approved/rejected.
 // Guarded SQL updates prevent a concurrent Manager/Admin review being overwritten.
+// Managers may approve or reject only pending, not-checked-in reservations.
+// The guarded database update prevents two reviewers from overwriting each other's decision.
 exports.reviewManagerReservation = async (req, res) => {
   const id = Number(req.params.id);
   const target = String(req.body?.status || "").trim().toLowerCase();

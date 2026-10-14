@@ -97,6 +97,8 @@ function validateOperationalReservation(reservation) {
   return null;
 }
 
+// Recalculate the remaining accommodation amount from total minus paid amount.
+// Also flag a mismatch with the stored snapshot and any overpayment for staff review.
 function buildBalanceSummary(reservation) {
   const accommodationTotal = toMoney(reservation.accommodation_total);
   const paidAmount = toMoney(reservation.paid_amount);
@@ -142,6 +144,8 @@ function buildBalanceSummary(reservation) {
   };
 }
 
+// Prevent another balance collection when the reservation is overpaid or already settled.
+// This avoids recording unnecessary or duplicate financial transactions.
 function validateBalanceCanBeCollected(summary) {
   if (summary.overpaid_amount > MONEY_EPSILON) {
     const error = new Error(
@@ -215,6 +219,8 @@ async function insertManualBalanceTransaction(
 // ============================================================
 // GET /api/admin/bookings/:id/accommodation-balance
 // ============================================================
+// Read-only summary used by Front Desk to review the amount still due.
+// The backend calculates this from stored reservation totals, not a browser-submitted price.
 exports.getAccommodationBalanceSummary = async (req, res) => {
   const reservationId = Number(req.params.id);
 
@@ -278,6 +284,8 @@ exports.getAccommodationBalanceSummary = async (req, res) => {
 // PayPal is intentionally rejected here and must use the automated
 // PayPal order + capture endpoints below.
 // ============================================================
+// Record a staff-confirmed accommodation balance payment using Cash, GCash, or Maya.
+// PayPal is handled separately by the server-side order and capture workflow.
 exports.collectAccommodationBalance = async (req, res) => {
   const reservationId = Number(req.params.id);
   const paymentMethod = normalizeManualPaymentMethod(
@@ -564,6 +572,8 @@ function getCaptureCurrency(capture) {
   return normalize(capture?.amount?.currency_code).toUpperCase();
 }
 
+// Reject a PayPal capture if its amount or currency differs from the current expected balance.
+// This prevents a browser or mismatched PayPal order from silently changing collected totals.
 function assertPayPalCaptureMatchesBalance(capture, expectedAmount) {
   const actualAmount = getCaptureAmount(capture);
   const actualCurrency = getCaptureCurrency(capture);
@@ -676,6 +686,8 @@ async function getCurrentBalanceReservation(reservationId) {
 // Browser sends NO amount.
 // The backend uses the current calculated remaining accommodation balance.
 // ============================================================
+// Create the remaining-balance PayPal order using the latest server-calculated amount.
+// Do not accept an amount from the frontend: the reservation database is authoritative.
 exports.createAccommodationBalancePayPalOrder = async (req, res) => {
   const reservationId = Number(req.params.id);
 
@@ -839,6 +851,8 @@ exports.createAccommodationBalancePayPalOrder = async (req, res) => {
   }
 };
 
+// Finalize a confirmed PayPal balance payment using a database transaction.
+// Reservation balances and payment history are updated only after validating the capture.
 async function finalizeAccommodationBalancePayPalCapture({
   reservationId,
   transaction,

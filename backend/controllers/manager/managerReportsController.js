@@ -41,6 +41,9 @@ function count(value) {
 
 // Aggregates only: one inclusive creation-date range and separate paid-charge dates.
 // Read-only MySQL expressions must match their GROUP BY under ONLY_FULL_GROUP_BY.
+// Build read-only aggregate operational reports for a validated Manila-date range.
+// Reservation paid_amount is a cumulative snapshot; do not present it as net cash received.
+// Limit requested dates and exclude personal guest records from Manager report responses.
 exports.getManagerReports = async (req, res) => {
   const today = parseDay(phpToday());
   const requestedTo = req.query.to === undefined ? dayText(today) : req.query.to;

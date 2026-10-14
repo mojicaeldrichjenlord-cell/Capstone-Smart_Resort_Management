@@ -267,6 +267,8 @@ async function getChargeRows(connection, reservationId, lock = false) {
   }));
 }
 
+// Summarize the accommodation's total, paid amount and outstanding balance for checkout.
+// Accommodation balance is checked separately from entrance and operational charges.
 function calculateAccommodationSummary(reservation) {
   const total = toMoney(reservation.accommodation_total);
   const paid = toMoney(reservation.paid_amount);
@@ -406,6 +408,8 @@ function calculateEntranceSummary(
   };
 }
 
+// Separate settled and unsettled operational booking charges for the checkout review.
+// Unpaid amounts must be resolved before the reservation can be completed.
 function calculateBookingChargeSummary(chargeRows) {
   const total = chargeRows.reduce(
     (sum, row) => sum + toMoney(row.charge_amount),
@@ -490,6 +494,8 @@ function calculateExtraBedSummary(reservation, chargeSummary) {
   };
 }
 
+// Produce the list of reasons why Front Desk cannot complete a checkout yet.
+// This includes status and financial validations; the UI shows these blockers to staff.
 function buildBlockers({
   reservation,
   accommodation,
@@ -633,6 +639,8 @@ function buildBlockers({
   return blockers;
 }
 
+// Collect reservation, guest and financial summaries before deciding if checkout is allowed.
+// When lock is enabled, this runs within the checkout transaction for a consistent decision.
 async function buildCheckoutSummary(
   connection,
   reservationId,
@@ -719,6 +727,8 @@ async function buildCheckoutSummary(
 // ============================================================
 // GET /api/admin/bookings/:id/checkout-summary
 // ============================================================
+// Show Front Desk a read-only pre-checkout breakdown and any unresolved blockers.
+// Reviewing the summary itself must not collect money or mark the guest checked out.
 const getCheckoutSummary = async (req, res) => {
   let connection;
 
@@ -763,6 +773,8 @@ const getCheckoutSummary = async (req, res) => {
 // ============================================================
 // PUT /api/admin/bookings/:id/checkout
 // ============================================================
+// Run final validation inside a transaction before marking a stay completed.
+// If any blocker remains, do not complete checkout or silently change payment totals.
 const completeCheckout = async (req, res) => {
   let connection;
 

@@ -178,6 +178,8 @@ async function getChargeRows(
   }));
 }
 
+// Compute paid and unpaid charge totals from the recorded charge rows.
+// The summary supports collection decisions without modifying reservation payment totals.
 function summarizeCharges(rows) {
   const allTotal = rows.reduce(
     (sum, row) =>
@@ -310,6 +312,8 @@ async function syncExtraBedPaidSummary(
 // No financial write is performed.
 // ============================================================
 
+// Provide Front Desk with an itemized list of charges still awaiting collection.
+// This endpoint is informational and does not itself mark any charge paid.
 const getUnpaidChargesSummary = async (
   req,
   res,
@@ -420,6 +424,8 @@ const getUnpaidChargesSummary = async (
 // - Extra Bed reservation summary is synchronized afterward.
 // ============================================================
 
+// Collect eligible unpaid operational charges and record their settlement.
+// Keep charge collection separate from accommodation and entrance payment flows.
 const collectUnpaidCharges = async (
   req,
   res,

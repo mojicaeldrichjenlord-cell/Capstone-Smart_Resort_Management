@@ -102,6 +102,8 @@ async function getExtraBedChargeRows(
   return rows;
 }
 
+// Reconcile the separate extra-bed charge rows with previous payment history.
+// Avoid counting historical paid charges again as new unpaid fees.
 function summarizeChargeRows(
   reservation,
   chargeRows,
@@ -259,6 +261,8 @@ async function migrateLegacyPaidSummary(
   );
 }
 
+// Maintain the current unpaid extra-bed difference when the requested bed count changes.
+// Already-collected amounts stay in historical rows instead of being overwritten.
 async function syncCurrentUnpaidCharge(
   connection,
   reservationId,
@@ -400,6 +404,8 @@ function validateOperationalReservation(
 // GET /api/admin/bookings/:id/extra-bed
 // ============================================================
 
+// Give Front Desk the current requested beds, charges and unpaid balance.
+// Reading this summary does not collect fees or change check-in status.
 const getExtraBedSummary = async (
   req,
   res,
@@ -483,6 +489,8 @@ const getExtraBedSummary = async (
 // - Only the unpaid difference is created/updated.
 // ============================================================
 
+// Apply a validated adjustment to the requested number of extra beds.
+// Keep a distinct unpaid difference so that already-paid amounts are not charged twice.
 const updateExtraBed = async (
   req,
   res,
@@ -724,6 +732,8 @@ const updateExtraBed = async (
 // The backend calculates the exact remaining amount again.
 // ============================================================
 
+// Record the staff-confirmed collection of outstanding extra-bed charges.
+// Paid charge rows are preserved for receipts and later financial review.
 const collectExtraBedFee = async (
   req,
   res,

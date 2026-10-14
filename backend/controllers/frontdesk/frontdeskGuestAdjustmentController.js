@@ -68,6 +68,9 @@ function toMoney(value) {
 // The previous ₱600 paid row stays untouched.
 // ============================================================
 
+// Save the verified actual guest count while keeping the original booked count as history.
+// Preserve already-paid extra-guest charges and recalculate only the unpaid difference.
+// Reopen entrance-fee review if guest changes invalidate previously reviewed entrance amounts.
 const updateGuestAdjustment = async (req, res) => {
   const connection =
     await db.promise().getConnection();

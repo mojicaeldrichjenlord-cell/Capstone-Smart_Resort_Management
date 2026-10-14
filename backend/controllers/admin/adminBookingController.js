@@ -23,6 +23,8 @@ function toInteger(value, fallback = 0) {
 // Uses the current reservations/reservation_items/accommodations tables.
 // This replaces the old query that still used the old bookings/rooms table.
 // ============================================================
+// Read reservations with their related accommodation information for the Admin dashboard.
+// This query uses the current reservations and reservation_items data model.
 exports.getAllAdminBookings = async (req, res) => {
   try {
     const [rows] = await db.promise().query(
@@ -135,6 +137,8 @@ exports.getAllAdminBookings = async (req, res) => {
 // UPDATE RESERVATION STATUS
 // Uses reservations.reservation_status.
 // ============================================================
+// Handle permitted Admin reservation status changes.
+// Completion must go through the Front Desk checkout validator rather than this status endpoint.
 exports.updateAdminBookingStatus = async (req, res) => {
   try {
     const reservationId = Number(req.params.id);
@@ -245,6 +249,8 @@ exports.updateAdminBookingStatus = async (req, res) => {
 // Endpoint:
 // PUT /api/admin/bookings/:id/guest-adjustment
 // ============================================================
+// Legacy Admin guest-adjustment handler: review alongside the dedicated Front Desk controller.
+// Guest changes must preserve original counts and already-collected charge history.
 exports.updateGuestAdjustment = async (req, res) => {
   const connection = await db.promise().getConnection();
 
@@ -475,6 +481,8 @@ exports.updateGuestAdjustment = async (req, res) => {
 // This is the endpoint used by Guests Inside:
 // PUT /api/admin/bookings/:id/extra-bed
 // ============================================================
+// Legacy Admin extra-bed handler: adjust beds without losing earlier collected amounts.
+// Confirm current route usage before modifying this older implementation.
 exports.updateExtraBed = async (req, res) => {
   try {
     const reservationId = Number(req.params.id);
@@ -627,6 +635,9 @@ exports.markExtraBedPaid = async (req, res) => {
 // MARK BOOKING AS COMPLETED
 // Kept for backward compatibility if another route still calls it.
 // ============================================================
+// LEGACY CAUTION: This function directly sets a reservation to completed and clears check-in.
+// It does not perform the full financial checkout validation shown in the Front Desk controller.
+// Do not expose it as a current checkout route; review route usage separately.
 exports.markBookingAsCompleted = async (req, res) => {
   try {
     const reservationId = Number(req.params.id || req.params.booking_id);

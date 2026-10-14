@@ -77,6 +77,8 @@ function validateOperationalReservation(reservation) {
   return null;
 }
 
+// Convert a selected damage, missing-item, service or custom category to a stored charge name.
+// Keep the generated name distinct from automatic extra-bed and extra-guest charges.
 function buildChargeName(category, customName = "") {
   const key = normalizeLower(category);
 
@@ -228,6 +230,8 @@ function summarize(rows) {
 // GET /api/admin/bookings/:id/additional-charges
 // ============================================================
 
+// Read the list and summary of manual additional charges for this reservation.
+// This does not collect payment or modify existing charge records.
 const getAdditionalCharges = async (req, res) => {
   try {
     const reservationId = Number(req.params.id);
@@ -290,6 +294,8 @@ const getAdditionalCharges = async (req, res) => {
 // }
 // ============================================================
 
+// Add a validated Front Desk charge, initially marked unpaid.
+// Reject exact duplicate unpaid manual charges to avoid charging a guest twice.
 const addAdditionalCharge = async (req, res) => {
   const connection = await db.promise().getConnection();
 
@@ -478,6 +484,8 @@ const addAdditionalCharge = async (req, res) => {
 // Paid rows are financial history and are preserved.
 // ============================================================
 
+// Remove an eligible unpaid manual charge only; preserve collected items as payment history.
+// Deletion is checked within a database transaction to avoid unsafe concurrent changes.
 const deleteAdditionalCharge = async (req, res) => {
   const connection = await db.promise().getConnection();
 
