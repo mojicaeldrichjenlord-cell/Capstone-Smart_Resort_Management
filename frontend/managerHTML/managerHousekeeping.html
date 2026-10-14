@@ -19,6 +19,8 @@
 <a href="managerHousekeeping.html" aria-current="page">Housekeeping</a>
 <button type="button" id="logoutBtn">Logout</button>
 </nav>
+<!-- Mobile users can horizontally scroll the navigation without hiding any links. -->
+<p class="manager-mobile-nav-hint">Swipe the menu sideways to view more options &rarr;</p>
 </header>
 <main class="manager-page" id="mainContent" tabindex="-1">
 <!-- Overview explains the separation between cleaning and booking availability. -->
@@ -52,6 +54,8 @@
 <!-- Manager can reassign before work begins and verify after staff marks cleaned. -->
 <section class="manager-activity">
 <h2>Cleaning Task Status</h2>
+<!-- Wide task columns remain scrollable on narrow screens. -->
+<p class="manager-mobile-table-hint">Swipe the table sideways to see staff, status, and actions &harr;</p>
 <div class="activity-scroll" role="region" aria-label="Scrollable Housekeeping task list" tabindex="0">
 <!-- Task status rows and buttons are built safely by managerHousekeeping.js. -->
 <table aria-label="Housekeeping tasks" class="manager-task-table">
