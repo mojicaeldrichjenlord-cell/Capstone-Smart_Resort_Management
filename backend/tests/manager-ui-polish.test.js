@@ -230,3 +230,21 @@ test("Manager and Housekeeping task screens disable actions during pending API r
   assert.doesNotMatch(manager, /\.innerHTML\s*=/);
   assert.doesNotMatch(housekeeping, /\.innerHTML\s*=/);
 });
+
+test("Mobile Housekeeping screens explain scrollable navigation and tables", () => {
+  // Regression covers mobile discoverability; no database or browser needed.
+  const managerPage = html("managerHousekeeping.html");
+  const staffPage = read("housekeepingHTML/housekeepingDashboard.html");
+  const managerCss = read("managerCSS/managerDashboard.css");
+  const staffCss = read("housekeepingCSS/housekeepingDashboard.css");
+
+  assert.match(managerPage, /class="manager-mobile-nav-hint"/);
+  assert.match(managerPage, /class="manager-mobile-table-hint"/);
+  assert.match(managerCss, /\.manager-mobile-nav-hint/);
+  assert.match(managerCss, /\.manager-nav\s*\{\s*overflow-x:\s*auto/);
+  assert.equal((staffPage.match(/class="hk-mobile-table-hint"/g) || []).length, 2);
+  assert.match(staffCss, /\.hk-mobile-table-hint/);
+  assert.match(staffCss, /\.hk-table-region\s*\{\s*width:\s*100%;\s*overflow-x:\s*auto/);
+  assert.match(managerPage, /class="activity-scroll"[^>]+tabindex="0"/);
+  assert.match(staffPage, /class="hk-table-region"[^>]+tabindex="0"/);
+});
