@@ -210,3 +210,17 @@ body {
 .hk-pill[data-status="in_progress"] { background: #dbeafe; color: #1d4ed8; }
 .hk-pill[data-status="cleaned"] { background: #fef3c7; color: #92400e; }
 .hk-pill[data-status="verified_ready"] { background: #dcfce7; color: #166534; }
+
+/* Mobile tables keep their full details in a dedicated swipeable region.
+   The visual hint appears only when screen width makes scrolling likely. */
+.hk-mobile-table-hint { display: none; }
+@media (max-width: 700px) {
+  .hk-mobile-table-hint {
+    display: block;
+    margin: 12px 0 8px;
+    color: #475569;
+    font-size: .82rem;
+    line-height: 1.4;
+  }
+  .hk-table-region { overscroll-behavior-x: contain; }
+}
