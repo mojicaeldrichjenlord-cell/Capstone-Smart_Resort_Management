@@ -36,6 +36,8 @@ function positiveId(value) {
 }
 // Optimistic locking: every status change must carry the version just displayed.
 // A stale version makes the UPDATE affect zero rows instead of overwriting another action.
+// Reads the task version shown to the user, requiring it to be a valid integer.
+// The UPDATE checks this version so stale browser tabs cannot overwrite newer task progress.
 function versionFrom(body) {
   if (!body || typeof body !== "object" || Array.isArray(body) ||
     Object.keys(body).length !== 1 || !Object.hasOwn(body, "version")) return null;
@@ -53,6 +55,8 @@ function sendError(res, error, label) {
   return res.status(500).json({ success: false, message: "Housekeeping operation failed." });
 }
 // API whitelist: never send guest identity, contact details, payments or private notes.
+// Returns only fields the task screens need, excluding private guest and payment records.
+// Keep this whitelist small when future task columns are added.
 function slim(row) {
   return {
     id: Number(row.id),
@@ -151,6 +155,8 @@ exports.listEligibleHousekeepingItems = async (req, res) => {
 
 // MANAGER: create one task per completed reservation item. The UNIQUE constraint
 // prevents duplicates even when two managers click Create simultaneously.
+// Creates a unique cleaning task for a completed reservation item.
+// The task is operational: creating it must not change room availability or payment status.
 exports.createHousekeepingTask = async (req, res) => {
   const body = req.body;
   const item = positiveId(body?.reservation_item_id);
@@ -255,6 +261,8 @@ exports.markHousekeepingCleaned = async (req, res) => {
 
 // MANAGER: Cleaned -> Verified Ready only when no checked-in booking occupies
 // this accommodation. This DOES NOT make the accommodation bookable automatically.
+// Only a Manager can approve the transition from Cleaned to Verified Ready.
+// The endpoint also checks for an occupied accommodation and does not change booking availability.
 exports.verifyHousekeepingTask = async (req, res) => {
   const id = positiveId(req.params.id), version = versionFrom(req.body);
   if (!id || version === null) {

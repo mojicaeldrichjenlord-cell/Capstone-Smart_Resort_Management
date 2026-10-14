@@ -304,6 +304,8 @@ function isOvernightStyleSlot(slotType) {
 // SECTION 7: Render draft summary and payment breakdown
 // ============================================================
 
+// Builds the readable reservation and payment breakdown from the customer's draft.
+// The backend independently checks prices, dates and payment details on submission.
 function renderDraftSummary() {
   if (!bookingDraft) return;
 
@@ -873,6 +875,8 @@ function clearPendingPayPalReservation() {
   sessionStorage.removeItem(PAYPAL_PENDING_KEY);
 }
 
+// Creates a reservation for PayPal checkout only if this draft has no matching pending one.
+// Stores the draft signature so a changed booking cannot silently reuse an older reservation.
 async function createPayPalReservationIfNeeded() {
   const user = JSON.parse(localStorage.getItem("user"));
 
@@ -962,6 +966,8 @@ async function createPayPalReservationIfNeeded() {
   };
 }
 
+// Asks the backend to create an official PayPal order for the current reservation.
+// Sends signed Customer authorization but never submits a client-calculated charge amount.
 async function createPayPalOrderForCheckout() {
   const reservation = await createPayPalReservationIfNeeded();
 
@@ -1001,6 +1007,8 @@ async function createPayPalOrderForCheckout() {
   };
 }
 
+// After PayPal approval, requests a server-side capture using the returned order ID.
+// Only the backend can verify the captured amount and update actual payment records.
 async function capturePayPalOrderForCheckout(orderId) {
   const pending = readPendingPayPalReservation();
 
@@ -1036,6 +1044,8 @@ async function capturePayPalOrderForCheckout(orderId) {
   return data;
 }
 
+// Initializes the PayPal SDK once and prevents overlapping initialization attempts.
+// Checkout options are configured using the public client ID supplied by the backend.
 async function preparePayPalCheckout() {
   if (paypalPaymentSession && paypalSdkInstance) {
     return;
@@ -1261,6 +1271,8 @@ function updateProofPreview() {
 // SECTION 13: Submit reservation
 // ============================================================
 
+// Handles the customer's selected non-PayPal payment/proof submission.
+// Checks form fields before sending the reservation; final validation is done on the server.
 async function submitReservation(e) {
   if (e) {
     e.preventDefault();

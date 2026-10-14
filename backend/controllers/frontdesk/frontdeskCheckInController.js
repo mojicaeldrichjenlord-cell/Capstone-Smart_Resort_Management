@@ -87,6 +87,9 @@ function getPhilippineTodayDateKey() {
 // PUT /api/bookings/:id/check-in
 // ======================================================
 
+// Records guest arrival and validates the reservation's eligibility to check in.
+// Check-in must not silently collect remaining accommodation or entrance-fee payments.
+// Front Desk uses the dedicated collection flows for any money still due.
 const checkInBooking = async (req, res) => {
   const connection = await db
     .promise()

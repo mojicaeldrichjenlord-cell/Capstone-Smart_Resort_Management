@@ -709,6 +709,8 @@ function setupGlobalPickerClose() {
 // SECTION 9: Restore booking draft
 // ============================================================
 
+// Restores unfinished booking form values from this browser tab's sessionStorage.
+// This improves convenience only; the backend revalidates details when a reservation is submitted.
 function restoreDraftIfAny() {
   const raw = sessionStorage.getItem(BOOKING_DRAFT_KEY);
   if (!raw) return;
@@ -1026,6 +1028,8 @@ function updateItemPreview(itemId) {
   `;
 }
 
+// Reads completed accommodation cards and converts them into the item list sent at checkout.
+// Skips incomplete cards and bounds extended-stay duration to the supported range.
 function collectBookingItems() {
   const cards = [...document.querySelectorAll(".booking-item-card")];
   const items = [];
@@ -1057,6 +1061,8 @@ function collectBookingItems() {
 // SECTION 11: Date and entrance fee calculations
 // ============================================================
 
+// Provides the earliest date allowed by the current Customer booking UI settings.
+// The server remains responsible for enforcing its own booking-date rules.
 function getCustomerEarliestBookingDate() {
   const today = getDateOnlyLocal();
   today.setDate(today.getDate() + CUSTOMER_MIN_BOOKING_DAYS_AHEAD);
@@ -1114,6 +1120,8 @@ function resetInvalidDateInputs() {
   });
 }
 
+// Calculates the displayed departure date when a stay crosses midnight or covers extra days.
+// This preview is informational; booking validation still happens on the backend.
 function calculateCheckOutDate(checkInDate, startTime, endTime, stayDuration = 1) {
   if (!checkInDate || !startTime || !endTime) return checkInDate || "-";
 
@@ -1175,6 +1183,8 @@ function getEstimatedEntranceFee() {
   return chargeableGuests * rate;
 }
 
+// Recalculates the visible accommodation total, estimated entrance fee and 50% deposit.
+// These are draft estimates, not the final authoritative values saved by the server.
 function updateSummary() {
   const items = collectBookingItems();
 
