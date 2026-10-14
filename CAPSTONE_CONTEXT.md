@@ -1,326 +1,140 @@
-# Smart Resort Booking System — Capstone Context
+# Smart Resort Booking System — Current Capstone Context
 
-> Canonical project context for implementation, testing, and defense preparation.
-> Working branch: `revision-phase1-landing-policy`
+> Updated: 2026-10-14 (Philippine local date)
 > Client: Arvic Seaside Beach Resort and Hotel, Naic, Cavite
-> Last context refresh: 2026-09-04
+> **Active development branch:** dev/admin-frontdesk-cleanup-2026-10-10
+> **Release status:** development and isolated tests progressing; NOT yet certified production-ready or approved for final merge.
+> Historical decisions and September 2026 tests are preserved in CHANGELOG.md. Validate this snapshot against current code, screenshots, and the active environment before making further changes.
 
-## 1. Purpose
+## 1. Purpose and scope
 
-The Smart Resort Booking System is a web-based resort management and reservation system with role-based operations, automated and manual payment flows, guest management, reports, and AI customer assistance with voice recognition.
+Smart Resort Booking System supports accommodation discovery, online and manual reservations, online and onsite payments, staff guest operations, reporting and receipts, AI guest assistance, and independent turnover cleaning tasks. The system has five authorized roles. Its client-facing workflows must agree with the actual resort policies and the project's Level 0 / Level 1 DFD.
 
-This file is the source of truth for permanent project decisions. If chat history conflicts with this file, verify the latest code/roadmap/changelog before changing implementation.
+## 2. Current architecture and operating environments
 
-## 2. Technology Stack
+- Frontend: HTML, CSS and vanilla JavaScript; local browser testing via VS Code Live Server (port 5500); hosted frontend platform is Vercel.
+- Backend: Node.js and Express; local service usually port 5000; hosted backend platform is Render.
+- Database: MySQL, hosted on Aiven. MySQL Workbench is the management client, not the database host.
+- Services: Brevo-based email/OTP workflow, Gemini AI assistant, PayPal REST Orders / capture, and GCash/Maya proof-upload flow.
+- Current frontend, backend, migrations and tests must all be read from the **active development branch**, not an older September branch.
+- The Aiven database connection and any live PayPal credentials are real external systems. Never use them for destructive tests, unreviewed migrations, or regression scripts.
+- Local MySQL restore was tested independently using smartresort_restore_test; the live Aiven defaultdb is a separate environment. Do not confuse these schemas.
+- A deployed Vercel/Render site exists from previous work, but **deployment of the latest branch and complete production-like retesting remain unverified**.
 
-- Frontend: HTML, CSS, JavaScript
-- Frontend hosting: Vercel
-- Backend: Node.js + Express
-- Backend hosting: Render
-- Database: MySQL on Aiven, managed through MySQL Workbench
-- Repository: GitHub
-- Email/OTP: Brevo
-- AI: Gemini
-- Automated online payment target: PayPal Sandbox for final defense
-
-## 3. Five Official Roles
+## 3. Official roles and authorization boundaries
 
 ### Customer / Guest
-Primary purpose: self-service resort inquiry, reservation, payment, and booking management.
-
-Core functions:
-- Register and verify account through email OTP
-- Login/logout and profile management
-- Browse accommodations, rates, capacity, amenities, images, and schedules
-- View resort information and view-only resort map
-- Check availability and create online reservations
-- View booking summary and price breakdown
-- Pay required online downpayment using PayPal Sandbox once Phase 2 is implemented
-- Existing GCash/Maya proof-upload flow remains part of the manual payment lifecycle until intentionally migrated/retained
-- View reservation/payment status and receipts
-- Cancel eligible pending reservations
-- Use AI customer assistant with English, Filipino/Tagalog, Mandarin, speech-to-text, and text-to-speech
+- OTP account registration, login/logout, profile/password updates; browse resort rooms, categories, images, rate information and view-only map.
+- Check schedules and availability, create eligible online reservations, see booking history, download permitted receipts, request modifications or cancel eligible pending bookings.
+- Use PayPal checkout for server-calculated online accommodation downpayment; manual GCash/Maya evidence flows remain supported where applicable.
+- Use Gemini guest assistant with English, Tagalog/Taglish, Mandarin and voice interaction.
+- Customer must never gain access to another Customer's reservation/receipt or to staff operations.
 
 ### Front Desk Staff
-Primary purpose: daily reservation, payment, arrival, stay, and checkout operations.
-
-Core functions:
-- View and manage operational reservation records
-- Create manual walk-in reservations
-- Create Facebook/Messenger reservations
-- Review manual GCash/Maya proof submissions where applicable
-- Handle Ready Today and Check-In / Allow Entry
-- Manage guests already inside
-- Verify actual guest counts
-- Apply entrance-fee adjustments
-- Handle extra beds and additional charges
-- Collect unpaid onsite charges
-- Add accommodation / extend stay after availability validation
-- Calculate final outstanding balance
-- Validate checkout
-- Complete reservation and issue final receipt
-
-Restricted from:
-- Staff account administration
-- Accommodation master-data configuration
-- Resort map editing
-- Management-only analytics
+- Create walk-in and Facebook/Messenger manual reservations; review payments/proofs, check in, verify actual guests, apply Senior/PWD/kid entrance adjustments.
+- Handle extra guests, extra beds, additional charges, unpaid-charge collections, remaining accommodation balance, extensions, new accommodation items, checkout validation and receipts.
+- Manual walk-in is same-day; Messenger/Facebook manual bookings may be today or later according to the server's date guard.
+- Requires verified active Front Desk authorization for operational writes; does not administer staff, inventory masters, resort map, or management-only analytics.
 
 ### Administrator
-Primary purpose: superuser, system administration, configuration, and override authority.
-
-Core functions:
-- Create/manage Front Desk, Housekeeping, and Manager accounts
-- Activate/disable staff accounts
-- Manage accommodations, categories, rates, capacity, amenities, gallery/images, and availability configuration
-- Manage resort map
-- Access and override Front Desk operations when necessary
-- Maintain role permissions and system configuration
-- Review administrative records
-
-Important rule:
-Admin remains a superuser/override role. Cleanup may remove unnecessary duplicated UI, but must not remove Admin's ability to manage Front Desk operations.
-
-### Housekeeping Staff
-Primary purpose: preparation and accommodation schedule visibility.
-
-Core functions:
-- Login with role guard
-- View today's schedule
-- View arrivals
-- View currently occupied accommodations
-- View expected departures
-- View accommodation assignment/details
-- View guest counts
-- View checkout/departure status
-
-Restricted from:
-- Payments
-- Reservation approval/financial changes
-- Accommodation configuration
-- Management analytics
+- Admin booking overview, authorized reservation status operations, staff-account administration and permitted operational overrides.
+- Configuration of accommodations/categories/rates/gallery/inventory/map, access to operational receipts and administrative pages.
+- Admin remains a superuser in the approved design, but **each operational route has its own middleware**. An Admin token is not automatically a Front Desk token. Any required overrides must be explicitly designed and tested; do not silently bypass financial checks.
+- Legacy admin booking functions may still exist. Do not expose direct-completion helpers in place of validated Front Desk checkout.
 
 ### Resort Manager / Owner
-Primary purpose: read-oriented business monitoring and reporting.
+- Signed Manager-only login, operational overview, filtered reservation review and pending-only approve/reject, limited accommodation rate/status controls, read-only reports, Housekeeping assignment/reassignment and final cleaning verification.
+- Reports distinguish booked value, cumulative payment snapshots, and recorded payments; none should be mislabeled as audited net revenue.
+- Cannot act as Customer/Front Desk, bypass financial checkout, or collect charges merely by having Manager access.
 
-Core functions:
-- Management dashboard
-- Revenue overview
-- Reservation statistics
-- Payment reports
-- Occupancy/utilization reports
-- Guest statistics
-- Daily/monthly summaries
-- Operational overview
-- Read-only reporting where appropriate
+### Housekeeping Staff
+- Signed Housekeeping-only login; daily arrivals/departures/occupied/completed schedule (read-only) and assigned cleaning-task list.
+- Assigned staff may move their own task: needs_cleaning -> in_progress -> cleaned. Manager alone verifies cleaned -> verified_ready.
+- Housekeeping cannot change booking availability, reservation/payment status, prices, collect fees or access unrelated guest/payment records.
 
-## 4. DFD-Aligned Core Processes
+## 4. Current DFD alignment
 
-The implementation must remain aligned with the approved DFD:
+The approved DFD is organized around these processes and D1 System Database:
 
-1.0 Account and Role Management  
-2.0 Accommodation and Availability  
-3.0 Reservation Management  
-4.0 Payment Management  
-5.0 Guest Management  
-6.0 AI Customer Assistance  
-7.0 Reports and Receipts  
-D1 System Database
+1.0 Account and Role Management
+2.0 Accommodation and Availability
+3.0 Reservation Management
+4.0 Payment Management
+5.0 Guest Management
+6.0 AI Guest Assistance
+7.0 Reports and Receipts
+8.0 Cleaning Task Management (added with the Housekeeping workflow)
 
-Before adding a feature, identify:
-1. Which DFD process owns it?
-2. Which role is authorized?
-3. Which database records are affected?
-4. Which roadmap phase/substep contains it?
+The Level 0 and Level 1 diagrams were updated during the October Housekeeping work. A Housekeeping conceptual ERD was assigned to a groupmate; final ERD acceptance and complete paper cross-check are **not confirmed**. Keep data flows consistent with the actual role permissions and tables.
 
-## 5. Reservation and Payment Rules
+## 5. Reservation, pricing and guest rules
 
-### Online reservation
-Target automated online payment:
-- PayPal Sandbox
-- 50% accommodation downpayment
-- Backend creates and captures PayPal order
-- Backend/webhook verifies payment
-- Successful verified payment updates transaction/payment status automatically
-- Final defense target is deployed PayPal Sandbox, not production merchant credentials
+- Normal Customer reservations use advance-booking rules; historical requirement is 2 days ahead. Reconfirm the server's currently enforced earliest-date logic before final client sign-off.
+- Manual walk-ins: same-day, cash/full onsite payment and staff check-in workflow. Messenger/Facebook manual entries have different allowed date rules.
+- Online accommodation downpayment: 50% of official accommodation amount; remaining accommodation amount and applicable entrance fee are collected onsite.
+- Entrance adjustments: Senior Citizen 20% and PWD 20% of **eligible entrance fees only**; qualified kids free according to the resort's actual rules. Multiple adjustment types can coexist; never discount accommodation price by accident.
+- Extra bed: current configured resort rule is PHP 200 per bed, with quantity and paid/unpaid tracking.
+- Guest adjustments: original booked guest count is immutable historical data. Save actual count separately. Recalculate extra-guest charge differences without deleting previously paid rows or adding duplicate unpaid charges.
+- Additional booking charges: damage, missing-item, service/custom and applicable guest/bed difference charges have separate settlement histories.
+- Add-accommodation/extend-stay operations must re-check date/time overlaps and update applicable balances without marking payments collected.
+- Front Desk final checkout must block while required payments/charges or other eligibility checks remain unresolved.
+- **Housekeeping Verified Ready is an inspection result, NOT automatic availability, a new booking, or proof of payment.**
 
-### Manual GCash/Maya flow
-Current manual flow includes:
-- GCash/Maya proof upload
-- Payment submission and redirect
-- Staff review/verification where applicable
-- This remains part of the manual payment lifecycle unless intentionally migrated during Phase 2
+Historical verification example retained from September 4: 6 original guests, 10 actual guests, PHP 1,000 required extra-guest fee, PHP 600 previously paid, new unpaid difference PHP 400; both paid and unpaid records were preserved. This is historical test evidence, not a live-customer transaction.
 
-### Walk-in
-- Manual reservation
-- Same-day allowed
-- Cash
-- Full payment
-- Can proceed through Front Desk guest operations/check-in
+## 6. Data model and migrations
 
-### Onsite balances
-Possible onsite amounts:
-- Remaining accommodation balance
-- Entrance fee
-- Extra guest charge
-- Extra bed
-- Additional/custom approved charges
-- Discounts/adjustments applied according to resort rules
+- Current reservation model includes accommodations / accommodation_categories, reservations, reservation_items, users, booking_discounts, booking_charges, payment_transactions, room_gallery, map_markers, and operational reconciliation data.
+- The older rooms and bookings tables may still exist for compatibility. Do not remove them until code references and data migration are verified.
+- Housekeeping tasks are stored independently in housekeeping_tasks (unique reservation_item_id, assignment/verification user foreign keys, status, optimistic version).
+- The 2026-10-13 housekeeping SQL file is the reproducible schema definition, **not an instruction to rerun against Aiven**. In the October 14 MySQL Workbench test, the user verified that Aiven defaultdb.housekeeping_tasks existed with 5 foreign keys, 1 unique constraint, and initially 0 tasks.
+- In a controlled follow-up test, completed reservation OCT-02-001 / Family Room A progressed needs_cleaning -> in_progress -> cleaned -> verified_ready. The reservation stayed completed/paid and the accommodation's listing status stayed available.
+- A separate local backup restore and schema-count check was completed. Do not publish raw test records, passwords, or payment evidence in the repo.
+- Additional SQL migrations (including the rejected reservation enum and entrance reconciliation) must be verified **per environment** before any new deployment. Never infer a production migration from a local test.
 
-## 6. Financial / Guest Rules
+## 7. PayPal, uploads and AI boundaries
 
-### Online accommodation downpayment
-- 50% of accommodation amount for automated online PayPal flow
+### PayPal
+- Existing backend routes provide client configuration, authorized server-side order creation and server-side capture.
+- Server computes the official 50% downpayment, checks order/capture amount and currency, and updates stored payment transactions only after verified capture. Tests cover authorization, double-payment and financial invariants.
+- Default PayPal API endpoint in the service is Sandbox; a previous October 3-4 live test for PHP 1.00 succeeded and was visible in the merchant account. **That historical result does not certify the current branch's full deployment/payment behavior.**
+- No PayPal webhook route is evident in the current Express route inventory; determine the project's webhook requirement and implementation/verification before release. Do not claim webhooks are complete.
+- Test cancel, error, retry, reused order, capture reconciliation, customer refresh/back navigation, refund/correction and actual deployed Sandbox checkout before defense.
 
-### Senior Citizen
-- 20% discount on applicable entrance fee only
+### Payment proof uploads
+- GCash/Maya images are accepted by guarded upload endpoints. The backend currently uses local filesystem upload paths; file persistence, access control and retention on Render require a final deployment review.
 
-### PWD
-- 20% discount on applicable entrance fee only
+### Gemini
+- Reads resort data and can help explain accommodation/policy/availability, detect English/Tagalog/Taglish/Mandarin and use voice interactions.
+- Safe behavior: no direct booking creation/approval, payment modification or arbitrary SQL changes from AI text.
+- Gemini quota fallback, request handling and privacy tests exist, but deployed AI and microphone tests still require final browser QA.
 
-### Qualified kids
-- Free according to resort height/qualification rule
+## 8. Evidence and test interpretation (as of October 14)
 
-### Extra Bed
-- Current rule: ₱200 per bed
-- Quantity tracked
-- Paid/unpaid state tracked
+- Latest user-run full **isolated** Node.js suite: 523 tests passed; 0 failed; 0 skipped. It excludes real MySQL concurrency integration.
+- Housekeeping Manager-to-Staff workflow was exercised in the browser, with database screenshots showing verified_ready and unchanged reservation/payment/accommodation statuses.
+- Housekeeping and Manager mobile layout were checked at a 440px responsive viewport; initial system-wide static HTML audit reviewed 32 pages.
+- These results support isolated logic, role boundaries, and selected manual paths. They do **not** prove the complete live system is bug-free, all role paths are browser-tested, or PayPal live/Sandbox deployments are fully validated.
+- The gated real InnoDB concurrency test requires a **disposable localhost MariaDB** instance with a restricted dedicated test user. Never point it to Aiven/defaultdb.
 
-### Guest Adjustment
-Original booked guest count must be preserved.
+## 9. Known release gates and next priorities
 
-Current verified behavior:
-- Save actual onsite guest count separately
-- Calculate extra guests against original booked guests
-- Maintain structured Extra Guest Charge records
-- Prevent duplicate unpaid charge rows
-- Preserve already-paid Extra Guest Charge history
-- If recalculated required total exceeds previously paid amount, create/update only the unpaid difference
+1. Final desktop/mobile UI walkthroughs for Admin, Front Desk, Manager, Customer (Housekeeping largely smoke-tested).
+2. Complete end-to-end booking/approval/check-in/financial reconciliation/checkout/receipt/Housekeeping flow, including failure/duplicate scenarios.
+3. Real isolated local MySQL concurrency test; final role/privacy/security audit and migration consistency checks.
+4. Confirm PayPal Sandbox deployed behavior, upload persistence, Brevo OTP and Gemini voice/quotas, environment variables and backend/frontend URL configuration.
+5. Update screenshots, final DFD/ERD, use cases, manual, test evidence and client acceptance.
+6. Review divergent main and development branches; **do not force push or merge without review and tests**.
 
-Verified test on 2026-09-04:
-- Booking ID: 48
-- Booked guests: 6
-- Actual guests: 10
-- Extra guest rate: ₱250
-- Required extra guest total: ₱1,000
-- Previously paid Extra Guest Charge: ₱600
-- New unpaid difference: ₱400
-- Database verification: paid ₱600 row preserved + unpaid ₱400 row created
+See IMPLEMENTATION_ROADMAP.md for statuses and CHANGELOG.md for dated verification history.
 
-## 7. Guest Management Completion Target
+## 10. Safe developer workflow
 
-Guests Inside should ultimately support:
-- Booked guests vs actual guests
-- Guest Adjustment
-- Entrance Fee Adjustments
-- Extra Bed
-- Additional Charges
-- Collect Unpaid Charges
-- Add Accommodation / Extend Stay
-- Final Balance Calculation
-- Checkout Validation
-- Checkout / Complete Reservation
-- Final Receipt
-
-Checkout must not complete while required outstanding charges remain unpaid.
-
-## 8. PayPal Integration Principles
-
-Phase 2 must include:
-- Remove/migrate old PayMongo-specific implementation carefully
-- PayPal Sandbox configuration
-- Customer checkout button
-- Backend Create Order
-- Server-side 50% amount calculation
-- Backend Capture Order
-- payment_transactions persistence
-- Automatic Partially Paid
-- Automatic Confirmed
-- Webhook + verification
-- Idempotency
-- Duplicate-payment protection
-- Cancel/fail/success testing
-- Deployed Vercel + Render Sandbox test
-
-Critical rule:
-Never trust the browser alone to mark a PayPal payment as successful. Backend verification and transaction persistence are required.
-
-## 9. AI Assistant Boundaries
-
-AI assistant should use real resort data where possible:
-- Accommodations
-- Availability/reservation policies
-- Rates/rules
-- Payment policies
-
-Languages:
-- English
-- Filipino/Tagalog
-- Mandarin
-
-Voice:
-- Speech-to-text
-- Text-to-speech
-
-Safety boundary:
-AI cannot approve reservations, modify payments, apply discounts, or directly change booking records.
-
-## 10. Development Workflow
-
-Use this workflow for every implementation substep:
-
-1. Confirm DFD process and authorized role
-2. Check `IMPLEMENTATION_ROADMAP.md`
-3. Check latest GitHub branch code
-4. If local unpushed changes exist, upload the latest ZIP or push first
-5. Implement one small substep
-6. Restart backend when backend code changes
-7. Run UI behavior test
-8. Verify database records when persistence/financial logic changes
-9. Test duplicate/error scenarios
-10. Commit and push only after the step is verified
-11. Update `CHANGELOG.md`
-12. Update roadmap status
-13. Move to next substep
-
-## 11. Git / Branch Policy
-
-Working development branch:
-`revision-phase1-landing-policy`
-
-Policy:
-- Do active revisions on the working branch
-- Do not merge unfinished work into `main`
-- After a verified step, commit and push a clear checkpoint
-- Final review happens before merge to `main`
-- Uncommitted local VS Code changes are not visible through GitHub; upload a ZIP or push them when code review is needed
-
-Suggested commit style:
-`Step <phase/substep>: <short implementation summary>`
-
-Example:
-`Step 3F-B1: finalize paid extra guest charge difference handling`
-
-## 12. Current Position
-
-Current phase:
-**PHASE 1 — Finish Front Desk Operations**
-
-Completed:
-- Manual reservation — Walk-in
-- Manual reservation — Facebook/Messenger
-- GCash/Maya proof upload
-- Payment submit + redirect
-- Ready Today / Check-In
-- Already Inside collection UI
-- Guest Adjustment finalization, including paid-charge difference handling
-
-Next official task:
-**Entrance Fee Adjustments**
-- Senior Citizen 20%
-- PWD 20%
-- Qualified kids free
-- Multiple adjustment types
-- Correct final entrance-fee calculation
-
-See `IMPLEMENTATION_ROADMAP.md` for the full official sequence.
+1. Inspect actual GitHub branch source, route guard, existing DB tables and DFD before edits.
+2. Work in small, commented changes on dev/admin-frontdesk-cleanup-2026-10-10; preserve main.
+3. Compare and document code changes; run syntax and isolated tests; restart backend only for backend/runtime changes.
+4. Before any real DB write/migration: independently verify destination, obtain an approved backup and explicit authorization; test in disposable local DB when possible.
+5. Check business process UI and MySQL/PayPal evidence only in authorized test environments.
+6. Record PASS/FAIL with actual proof in CHANGELOG and update roadmap after every substantial milestone.
+7. Keep secrets and personal guest information out of commits and screenshots.
+8. Deploy only after full review and client sign-off.

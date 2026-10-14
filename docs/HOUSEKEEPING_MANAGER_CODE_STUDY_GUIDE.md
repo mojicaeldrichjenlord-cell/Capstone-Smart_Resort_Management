@@ -44,7 +44,7 @@ Main files:
 - `backend/controllers/housekeeping/housekeepingTasksController.js`: all task listing, assignment, creation, start, cleaned and verification operations.
 - `frontend/housekeepingJS/housekeepingTasks.js`: staff's own tasks, Start and Mark Cleaned buttons.
 - `frontend/managerHTML/managerHousekeeping.html` and `frontend/managerJS/managerHousekeeping.js`: Manager task assignment/verification UI.
-- `database/migrations/2026-10-13_create_housekeeping_tasks.sql`: **prepared, not automatically executed** table creation.
+- `database/migrations/2026-10-13_create_housekeeping_tasks.sql`: schema definition initially prepared for controlled execution. The user subsequently verified `housekeeping_tasks` in Aiven `defaultdb` on October 14; **do not rerun the migration without checking the target**.
 - `backend/tests/housekeeping-task-boundaries.test.js`: isolated task lifecycle and role-permission tests.
 
 ### Why the `version` field exists
@@ -86,13 +86,13 @@ The tests use mocked SQL and a temporary local Express listener. They never perf
 
 If routes/controllers change, restart the Node backend after pulling. For frontend-only changes, a browser hard refresh is enough.
 
-### Migration activation checklist
+### Migration verification / future environment checklist
 
 1. Verify the actual live database table/foreign-key structure in MySQL Workbench.
 2. Verify an independent backup exists and can be restored.
-3. Obtain explicit authorization before executing the housekeeping migration.
+3. For any NEW environment, obtain explicit authorization before executing the housekeeping migration; do not rerun against the already verified Aiven table.
 4. Run `SHOW TABLES LIKE 'housekeeping_tasks';` after authorized migration.
-5. Only then test creating a **test checkout** task via Manager → Housekeeping.
-6. Confirm `needs_cleaning → in_progress → cleaned → verified_ready` and that **bookings/payments remain unchanged**.
+5. In the October 14 controlled Aiven test, the user already created a test checkout task via Manager → Housekeeping. Repeat only in an approved test environment.
+6. October 14 testing confirmed `needs_cleaning → in_progress → cleaned → verified_ready`; booking, payment and accommodation listing status stayed unchanged. Reverify after any deployment or schema change.
 
-The workflow is intentionally manual: completing a checkout does **not** automatically create or clear a cleaning task in this phase.
+The workflow is intentionally manual: completing a checkout does **not** automatically create or clear a cleaning task in this phase. The verified test was one completed reservation item, not a full production release certification.

@@ -1,7 +1,33 @@
 # Capstone Changelog
 
 > Verified implementation checkpoints and important project decisions.
-> Working branch: `revision-phase1-landing-policy`
+> Current development branch: `dev/admin-frontdesk-cleanup-2026-10-10`; earlier entries below are historical.
+
+## 2026-10-14 — Documentation sync and verified development checkpoint
+
+**Documentation-only status reconciliation.** Previous September roadmap statements remain historical below; this section and IMPLEMENTATION_ROADMAP.md supersede them for current status.
+
+- Active development branch is dev/admin-frontdesk-cleanup-2026-10-10; main remains unmerged. The branch was recently 305 commits ahead and 1 commit behind main at time of audit; recheck before merging.
+- Working five-role design: Customer, Front Desk, Administrator, Resort Manager and Housekeeping. Manager is no longer accurately described as read-only: it can review pending reservations, edit approved accommodation fields and assign/verify cleaning tasks.
+- Housekeeping Phase 1 schedule and Phase 2 separate task lifecycle are implemented. Aiven defaultdb.housekeeping_tasks was inspected with 5 foreign keys and one unique task-per-item constraint. User tested OCT-02-001 / Family Room A through needs_cleaning -> in_progress -> cleaned -> verified_ready. Booking completed/paid and room status available were unchanged.
+- Local independent SQL restore was tested separately; do not conflate restored localhost schema and live Aiven.
+- PayPal REST checkout/order/capture and signed authorizations exist. An earlier live PHP 1.00 smoke payment succeeded; current-branch deployed Sandbox full-cycle and webhook decision remain pending. Do not call these production-ready based on isolated tests.
+- Front Desk additions include guest count reconciliation, entrance discounts, extra beds, separate operational charges, onsite balances, extra accommodation/extension, checkout blocks and receipts. Many isolated checks passed; full integrated financial journey is still pending.
+- Gemini assistant includes multilingual intent, resort queries, resilience fallback and voice tests; final device and deployed checks pending.
+- Full **isolated** automated Node.js regression run reported **523 passed, 0 failed, 0 skipped** on October 14. The local real MySQL concurrency integration suite is excluded.
+- Static HTML audit covered 32 frontend pages; Admin/Customer action button accessibility fixes and Housekeeping mobile UX improvements were committed.
+- Code comment audit inspected 196 source files: 13 missing file-level comments were updated. Four later documentation batches explained 133 additional important functions. A Manager/Housekeeping code study guide was also added.
+- Level 0 and Level 1 DFD updated to include 8.0 Cleaning Task Management; groupmate preparing conceptual Housekeeping ERD. Final paper consistency/adviser sign-off pending.
+- Release gates: five-role browser QA, complete reservation/payment/receipt end-to-end tests, actual local InnoDB concurrency, latest-branch staging, upload persistence, documentation, client acceptance and safe development-to-main merge.
+- This checkpoint updates project documentation only; no application logic, migrations, payments or deployments should be changed by this documentation commit.
+
+## 2026-10-13 — Manager and Housekeeping expansion (implementation history)
+
+- Added dedicated Manager signed session, overview, reservation approve/reject for pending records, accommodation operations, reporting and associated role-security tests.
+- Added Housekeeping signed session, privacy-limited daily schedule, task table migration and Manager-assigned turnover workflow.
+- Verified task isolation from reservation, payment and room availability writes; strengthened version/role protections.
+- Added migration for rejected reservation status after identifying historical enum compatibility requirements.
+- Refined Gemini language classification, fallback behavior and request usage metrics.
 
 ## 2026-09-04
 
