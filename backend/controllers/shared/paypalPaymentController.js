@@ -160,6 +160,9 @@ function calculateRequiredDownpayment(reservation) {
   );
 }
 
+// Decides the official PayPal amount and post-payment statuses from saved reservation data.
+// Online Customers pay an accommodation downpayment; manual booking intent can require full payment.
+// The browser is not allowed to choose the authoritative payable amount.
 function buildPayPalPaymentPlan(reservation) {
   const bookingSource = normalizeStatus(reservation?.booking_source);
   const accommodationTotal = toMoney(reservation?.accommodation_total);
@@ -257,6 +260,8 @@ function buildPayPalPaymentPlan(reservation) {
   throw error;
 }
 
+// Rejects reservations that are not eligible to start an initial PayPal payment.
+// Validates booking source, payment method and existing reservation state before any order is created.
 function validateReservationForPayPalOrder(reservation) {
   if (!reservation) {
     const error = new Error("Reservation not found.");
@@ -387,6 +392,8 @@ async function countPayPalTransactions(reservationId) {
   return Number(rows[0]?.total || 0);
 }
 
+// Avoids unnecessary duplicate checkout orders when an earlier compatible order exists.
+// Only reuse an order after checking its actual PayPal status and expected amount.
 async function tryReuseExistingOrder(transaction, expectedAmount) {
   if (!transaction?.paypal_order_id) {
     return null;
@@ -499,6 +506,8 @@ exports.getPayPalClientConfig = async (req, res) => {
 // - Facebook/Messenger: saved 50% or full PayPal intent.
 // - Walk-in: full accommodation payment.
 // ============================================================
+// Creates or reuses a PayPal order for an existing reservation.
+// Derives the charge from the server-side payment plan; never accepts a browser-provided price.
 exports.createOrderForReservation = async (req, res) => {
   try {
     const reservationId = Number(req.params.reservationId);
@@ -781,6 +790,8 @@ function getCaptureCurrency(capture) {
     .toUpperCase();
 }
 
+// Checks BOTH PayPal's order and capture against the official expected amount and currency.
+// Stops local payment finalization when PayPal's financial details do not match.
 function assertPayPalAmountAndCurrency({
   expectedAmount,
   paypalOrder,
@@ -814,6 +825,8 @@ function assertPayPalAmountAndCurrency({
   }
 }
 
+// After a confirmed capture, saves the payment transaction and updates reservation balances.
+// Rechecks PayPal capture details to avoid recording an incorrect or duplicate payment.
 async function finalizeSuccessfulPayPalCapture({
   reservation,
   transaction,
@@ -1058,6 +1071,8 @@ async function finalizeSuccessfulPayPalCapture({
 //   COMPLETED capture.
 // - Walk-in is checked in only after successful capture.
 // ============================================================
+// Validates the requested PayPal order and captures it through the backend.
+// A successful capture must be verified before the reservation payment status is finalized.
 exports.captureOrderForReservation = async (req, res) => {
   try {
     const reservationId = Number(req.params.reservationId);

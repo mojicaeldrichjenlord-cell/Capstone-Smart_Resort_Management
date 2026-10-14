@@ -201,6 +201,8 @@ async function sendOtpEmail({ email, otp, purpose }) {
 // If email exists and verified, blocks registration.
 // ============================================================
 
+// Registers a Customer after validating required fields, password rules and duplicate email.
+// Stores password hashes and starts the email OTP verification workflow.
 exports.register = async (req, res) => {
   try {
     const { fullname, email, password, phone, address } = req.body;
@@ -359,6 +361,8 @@ exports.register = async (req, res) => {
 // Confirms the user's email and returns user data for auto-login.
 // ============================================================
 
+// Checks the submitted email OTP and its expiration against the stored registration record.
+// Marks the verified account only after the OTP succeeds.
 exports.verifyRegistrationOtp = async (req, res) => {
   try {
     const { email, otp } = req.body;
@@ -571,6 +575,8 @@ exports.resendRegistrationOtp = async (req, res) => {
 // Blocks disabled and unverified accounts.
 // ============================================================
 
+// Authenticates the submitted credentials and checks account verification/status.
+// After successful login, selects the signed session token for that user's role.
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -744,6 +750,8 @@ exports.login = async (req, res) => {
 // Sends password reset OTP to registered email.
 // ============================================================
 
+// Starts the password-reset workflow by sending a time-limited OTP to the registered email.
+// This step does not change the password; a later OTP confirmation is required.
 exports.requestPasswordResetOtp = async (req, res) => {
   try {
     const { email } = req.body;
@@ -823,6 +831,8 @@ exports.requestPasswordResetOtp = async (req, res) => {
 // Verifies reset OTP and updates password.
 // ============================================================
 
+// Verifies the password-reset OTP before replacing the password hash.
+// The plain-text new password must never be stored in the users table.
 exports.resetPasswordWithOtp = async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;
@@ -1044,6 +1054,8 @@ exports.updateProfile = async (req, res) => {
 // Requires current password and new password.
 // ============================================================
 
+// For signed-in users, verifies the current password before saving a new bcrypt hash.
+// The current-password check prevents a password change based only on an account ID.
 exports.changePassword = async (req, res) => {
   try {
     const userId = req.params.id;

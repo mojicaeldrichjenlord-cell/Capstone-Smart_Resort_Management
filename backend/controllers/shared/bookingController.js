@@ -144,6 +144,8 @@ function parseRequestReservationBody(req) {
 // BLOCK: Generate reservation code
 // Purpose: Handles the generate reservation code part of this file.
 // ============================================================
+// Builds a readable reservation code using today's Manila date and the next stored sequence.
+// Passes the current database connection so this lookup shares the caller's transaction.
 async function generateReservationCode(connection) {
   const now = new Date(
     new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" }),
@@ -607,6 +609,9 @@ function getScheduleEndedMessage(accommodationName = "Selected accommodation") {
 // BLOCK: Check reservation conflicts
 // Purpose: Handles the check reservation conflicts part of this file.
 // ============================================================
+// Checks each selected accommodation for overlapping reservation schedules.
+// For writes, locks accommodation rows in a consistent order to reduce double-booking races.
+// This check must run on the server; client date selection alone cannot guarantee availability.
 async function checkReservationConflicts(
   connection,
   reservationItems,
@@ -841,6 +846,9 @@ async function validateManualReservationCreator(createdBy) {
 // BLOCK: Create reservation
 // Purpose: Handles the create reservation part of this file.
 // ============================================================
+// Shared reservation creator for Customer online bookings and staff-entered reservations.
+// Validates the submitted guest, schedule, payment and accommodation data before saving.
+// The source and approval settings determine whether this is an online or manual workflow.
 async function createReservation({
   source = "online",
   user_id = null,
@@ -1478,6 +1486,8 @@ async function createReservation({
 // BACKEND/API HANDLER: Create booking
 // Purpose: Handles the create booking part of this file.
 // ============================================================
+// Customer-facing booking endpoint: ownership comes from the verified Customer session.
+// The user_id supplied by the browser is not trusted for authorization.
 exports.createBooking = async (req, res) => {
   try {
     const parsedBody = parseRequestReservationBody(req);
@@ -1522,6 +1532,8 @@ exports.createBooking = async (req, res) => {
 // BACKEND/API HANDLER: Create walk in booking
 // Purpose: Handles the create walk in booking part of this file.
 // ============================================================
+// Staff-facing manual reservation endpoint; records the staff creator for accountability.
+// Manual reservations use a separate source and approval workflow from Customer bookings.
 exports.createWalkInBooking = async (req, res) => {
   try {
     const parsedBody = parseRequestReservationBody(req);
@@ -2668,6 +2680,8 @@ exports.checkInBooking = async (req, res) => {
 // - Add Accommodation checks the selected accommodation/date/slot/duration.
 // - Extend Stay checks the extension window from current checkout to new checkout.
 // ============================================================
+// Checks a proposed extra accommodation or stay extension before applying changes.
+// Extending a stay checks the additional time window rather than creating a new booking.
 exports.checkItemAvailability = async (req, res) => {
   try {
     const mode = normalizeText(req.body.mode || "add").toLowerCase();
