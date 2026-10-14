@@ -67,8 +67,8 @@ async function requireHousekeepingAuth(req, res, next) {
   try {
     const [rows] = await db.promise().query(
       "SELECT id, role, fullname, email, " +
-      "COALESCE(account_status, 'active') AS account_status, " +
-      "COALESCE(is_verified,1) AS is_verified " +
+      // Do not default NULL account flags to active/verified: fail closed.
+      "account_status, is_verified " +
       "FROM users WHERE id = ? LIMIT 1", [id],
     );
     const user = rows[0];
@@ -80,7 +80,7 @@ async function requireHousekeepingAuth(req, res, next) {
         success: false, message: "Housekeeping role required.",
       });
     }
-    if (String(user.account_status || "active").toLowerCase() !== "active" ||
+    if (String(user.account_status ?? "").toLowerCase() !== "active" ||
       Number(user.is_verified) !== 1) {
       return res.status(403).json({
         success: false, message: "Housekeeping account disabled or unverified.",
