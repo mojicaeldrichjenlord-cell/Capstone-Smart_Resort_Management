@@ -1248,10 +1248,12 @@ function calculateCollectedRevenueForReport(booking) {
   let amount = 0;
 
   if (checkedInInRange) {
-    amount += Number(booking.accommodation_total || booking.paid_amount || 0);
+    // Only use an amount explicitly recorded as paid. Booking price is not cash.
+    amount += Number(booking.paid_amount || 0);
     amount += Number(booking.entrance_fee_collected || 0);
   } else if (createdInRange) {
-    amount += Number(booking.paid_amount || booking.required_downpayment || 0);
+    // Required downpayment is an obligation, NOT proof of payment.
+    amount += Number(booking.paid_amount || 0);
   }
 
   if (isExtraBedPaid(booking) && extraBedPaidInRange) {

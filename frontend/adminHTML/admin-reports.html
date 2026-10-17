@@ -149,10 +149,19 @@
         </div>
 
         <div class="stat-card">
-          <h3>Money Collected</h3>
+          <h3>Booking Collections Estimate</h3>
           <p id="totalRevenueAmount">₱0.00</p>
         </div>
       </section>
+
+      <!-- This number is not the final payment ledger: onsite charges, refund
+           adjustments and date-of-payment differences need reconciliation. -->
+      <p class="revenue-report-disclaimer" role="note">
+        Collection figures are <strong>estimates from reservation payment snapshots</strong>,
+        not audited net revenue. Paid onsite booking charges, refunds and payment
+        corrections may not be included. Check final receipts and the dated
+        payment records before using these totals for accounting.
+      </p>
 
       <!-- ======================================================
          REPORT CHARTS
@@ -199,10 +208,10 @@
 
         <div class="chart-box">
           <div class="chart-header">
-            <h2>Monthly Sales by Accommodation Category</h2>
+            <h2>Estimated Collections by Accommodation Category</h2>
             <p>
-              Shows which category earns more money: Rooms, Cottages, or
-              Function Areas.
+              Compares estimated booking collections by category. Excludes
+              separately recorded paid booking charges and refunds.
             </p>
           </div>
 
