@@ -279,6 +279,15 @@ async function createCategory() {
 // ============================================================
 
 async function seedDefaults() {
+  // Only seed during intentional setup. Existing inventory may already represent
+  // real resort accommodations, so never write example rows with one accidental tap.
+  const approved = confirm(
+    "Seed Default Accommodations will add example records if their names are missing. " +
+    "It will not replace your existing accommodations, but it can add sample items " +
+    "to the database. Continue?"
+  );
+  if (!approved) return;
+
   try {
     const response = await fetch(`${API_BASE}/rooms/seed-defaults`, {
       method: "POST",
