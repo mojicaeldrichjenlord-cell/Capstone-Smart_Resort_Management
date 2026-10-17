@@ -249,6 +249,15 @@
     margin: 6mm;
   }
 
+  /* Global style.css adds decorative palm/wave emoji using body pseudo-
+     elements. Those screen-only symbols must never appear on printed
+     reservation reports (the wave was visible on the bottom of page 2). */
+  body:not(.auth-page)::before,
+  body:not(.auth-page)::after {
+    content: none !important;
+    display: none !important;
+  }
+
   html,
   body {
     width: 100% !important;
