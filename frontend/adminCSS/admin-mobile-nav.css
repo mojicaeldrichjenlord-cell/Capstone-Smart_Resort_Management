@@ -1,0 +1,31 @@
+/* Admin-area mobile navigation. The shared mobile stylesheet hides navbar links
+   under 900px, so this button gives keyboard and touch users a way to open them. */
+.navbar .admin-mobile-nav-btn {
+  display: none;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 12px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.14);
+  color: white;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.navbar .admin-mobile-nav-btn:focus-visible {
+  outline: 3px solid #ffffff;
+  outline-offset: 3px;
+}
+@media (max-width: 900px) {
+  .navbar .admin-mobile-nav-btn {
+    display: inline-flex !important;
+    justify-content: center;
+    align-items: center;
+    justify-self: end;
+    min-width: 84px;
+    min-height: 44px;
+  }
+  .navbar nav.mobile-open { display: flex !important; }
+}
+@media print {
+  .navbar .admin-mobile-nav-btn { display: none !important; }
+}
