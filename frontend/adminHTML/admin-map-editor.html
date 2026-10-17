@@ -81,7 +81,16 @@
             </button>
           </div>
 
-          <div class="map-editor-wrap" id="mapEditorWrap">
+          <!-- Scrollable viewport keeps the map large on phones without
+               changing marker coordinates or modifying the stored map. -->
+          <div
+            class="map-editor-viewport"
+            role="region"
+            aria-label="Scrollable resort map"
+            aria-describedby="mapMobileHint"
+            tabindex="0"
+          >
+            <div class="map-editor-wrap" id="mapEditorWrap">
             <img
               id="resortMapImage"
               src="../images/resort-map-layout.jpg"
@@ -89,8 +98,14 @@
               onerror="this.src='../images/no-image.jpg'"
             />
 
-            <div id="mapMarkersLayer"></div>
+              <div id="mapMarkersLayer"></div>
+            </div>
           </div>
+          <p id="mapMobileHint" class="map-mobile-hint">
+            On phones, swipe sideways to explore the enlarged map. Tap a marker
+            or choose it in the list below, then use X/Y Position to adjust it.
+            Changes are saved only when you choose Save Layout.
+          </p>
 
           <div class="editor-note">
             Tip: Click <strong>Add Marker</strong>, then click the exact spot on

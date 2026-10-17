@@ -277,3 +277,57 @@
     width: 100%;
   }
 }
+
+/* Mobile map readability (Oct 2026).
+   The image and marker layer share a single coordinate system. We scroll that
+   complete canvas instead of scaling markers independently or changing X/Y. */
+.map-editor-viewport {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-radius: 22px;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+.map-editor-viewport:focus-visible {
+  outline: 3px solid #0ea5e9;
+  outline-offset: 3px;
+}
+
+.map-mobile-hint {
+  display: none;
+  margin: 10px 2px 0;
+  color: #1e3a8a;
+  font-size: 0.86rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 700px) {
+  /* Prevent grid min-content sizing from pushing the full page horizontally. */
+  .editor-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .editor-card, .editor-panel {
+    min-width: 0;
+  }
+
+  /* Pan within the map only. The image and % marker layer stay aligned. */
+  .map-editor-viewport .map-editor-wrap {
+    width: 680px;
+    max-width: none;
+  }
+
+  .map-editor-viewport .admin-map-marker {
+    width: 28px;
+    height: 28px;
+    touch-action: manipulation;
+  }
+
+  .map-mobile-hint {
+    display: block;
+  }
+}
