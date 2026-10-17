@@ -562,7 +562,13 @@ function renderPopularRoomsChart(bookings) {
         x: {
           beginAtZero: true,
           grid: getGridStyle(),
-          ticks: getTickStyle(),
+          // Reservation counts are whole numbers; avoid 0.2 / 0.4 ticks.
+          ticks: {
+            ...getTickStyle(),
+            precision: 0,
+            stepSize: 1,
+            maxTicksLimit: 8,
+          },
         },
         y: {
           grid: {
@@ -951,7 +957,9 @@ function getBarChartOptions() {
     },
     plugins: {
       legend: {
-        display: true,
+        // Each bar is already identified by an axis label. A single-color
+        // legend is misleading when individual statuses use different colors.
+        display: false,
         position: "bottom",
         labels: getLegendStyle(),
       },
