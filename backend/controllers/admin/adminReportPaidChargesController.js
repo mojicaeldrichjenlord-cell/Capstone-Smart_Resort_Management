@@ -34,8 +34,31 @@ exports.getAdminReportPaidCharges = async (req, res) => {
       "GROUP BY booking_id, LOWER(TRIM(charge_name)) ORDER BY booking_id",
       [from.toISOString().slice(0, 10), endExclusive],
     );
+    // Entrance-fee overpayment history is separate from onsite charges.
+    // 'refund' means value returned; 'correction' voids an erroneous receipt.
+    // These events are dated independently of the original reservation.
+    const [reconciliationRows] = await db.promise().query(
+      "SELECT LOWER(TRIM(reconciliation_type)) AS reconciliation_type, " +
+      "COALESCE(SUM(amount),0) AS amount " +
+      "FROM entrance_fee_reconciliations " +
+      "WHERE LOWER(TRIM(reconciliation_type)) IN ('refund','correction') " +
+      "AND created_at >= ? AND created_at < ? " +
+      "GROUP BY LOWER(TRIM(reconciliation_type))",
+      [from.toISOString().slice(0, 10), endExclusive],
+    );
+    const entranceReconciliations = { refunds: 0, corrections: 0 };
+    for (const row of reconciliationRows) {
+      const kind = String(row.reconciliation_type || "").toLowerCase();
+      const amount = Number(row.amount);
+      if (!Number.isFinite(amount) || amount < 0) {
+        throw new Error("Invalid entrance reconciliation aggregate.");
+      }
+      if (kind === "refund") entranceReconciliations.refunds += amount;
+      if (kind === "correction") entranceReconciliations.corrections += amount;
+    }
     return res.json({
       success: true,
+      entrance_reconciliations: entranceReconciliations,
       charges: rows.map(row => ({
         booking_id: Number(row.booking_id),
         charge_name: String(row.charge_name || ""),

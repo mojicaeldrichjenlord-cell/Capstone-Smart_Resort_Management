@@ -12,6 +12,8 @@
 let allBookings = [];
 // Paid charge aggregates are read independently of reservation creation dates.
 let paidChargeRows = [];
+// Read-only refunds/corrections must be loaded before displaying a net estimate.
+let entranceReconciliationTotals = null;
 let paidChargesLoaded = false;
 let bookingStatusChart = null;
 let bookingSourceChart = null;
@@ -249,6 +251,7 @@ async function fetchReports(url) {
 
     allBookings = Array.isArray(data) ? data : data.bookings || [];
     paidChargeRows = [];
+    entranceReconciliationTotals = null;
     paidChargesLoaded = false;
     try {
       const chargeQuery = new URLSearchParams({ from: activeStartDate, to: activeEndDate });
@@ -260,7 +263,15 @@ async function fetchReports(url) {
       if (!chargeResponse.ok || !Array.isArray(chargeData.charges)) {
         throw new Error(chargeData.message || "Paid charges could not be verified.");
       }
+      // Never silently assume a refund is zero when the server did not verify it.
+      const refunds = Number(chargeData.entrance_reconciliations?.refunds);
+      const corrections = Number(chargeData.entrance_reconciliations?.corrections);
+      if (![refunds, corrections].every(value => Number.isFinite(value) && value >= 0) ||
+          !chargeData.entrance_reconciliations) {
+        throw new Error("Entrance refund/correction totals are unavailable.");
+      }
       paidChargeRows = chargeData.charges;
+      entranceReconciliationTotals = { refunds, corrections };
       paidChargesLoaded = true;
     } catch (chargeError) {
       // Missing charge records must never turn into a fabricated 0 total.
@@ -275,6 +286,7 @@ async function fetchReports(url) {
     showReportError(error.message || "Something went wrong while loading reports.");
     allBookings = [];
     paidChargeRows = [];
+    entranceReconciliationTotals = null;
     paidChargesLoaded = false;
     renderReports([]);
     updatePrintReportMeta();
@@ -382,12 +394,22 @@ function updateStats(bookings) {
     const summary = summarizePaidAdditionalCharges(bookings, paidChargeRows);
     setText("paidBookingChargesAmount", `₱${formatMoney(summary.totalPaid)}`);
     setText("paidBedOverlapAmount", `₱${formatMoney(summary.alreadyCountedBed)}`);
+    setText("entranceRefundAmount",
+      `₱${formatMoney(entranceReconciliationTotals.refunds)}`);
+    setText("entranceCorrectionAmount",
+      `₱${formatMoney(entranceReconciliationTotals.corrections)}`);
+    // A correction voids a recorded entrance collection; a refund returns cash.
+    // Both reduce the estimate, but this is still not an audited payment ledger.
     setText("adjustedCollectionsEstimate",
-      `₱${formatMoney(moneyCollected + summary.totalPaid - summary.alreadyCountedBed)}`);
+      `₱${formatMoney(moneyCollected + summary.totalPaid -
+        summary.alreadyCountedBed - entranceReconciliationTotals.refunds -
+        entranceReconciliationTotals.corrections)}`);
   } else {
     // Do not display a combined estimate without the verified charge read.
     setText("paidBookingChargesAmount", "Unavailable");
     setText("paidBedOverlapAmount", "Unavailable");
+    setText("entranceRefundAmount", "Unavailable");
+    setText("entranceCorrectionAmount", "Unavailable");
     setText("adjustedCollectionsEstimate", "Unavailable");
   }
 }

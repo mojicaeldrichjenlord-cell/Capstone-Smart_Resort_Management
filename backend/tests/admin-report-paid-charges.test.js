@@ -8,11 +8,16 @@ const vm = require("node:vm");
 const Module = require("node:module");
 const dbPath = require.resolve("../config/db");
 const fakeCalls = [];
+// Isolated rows simulate dated entrance refunds without contacting MySQL.
+let fakeReconciliationRows = [];
 const fakeDB = new Module(dbPath);
 fakeDB.filename = dbPath; fakeDB.loaded = true;
 fakeDB.exports = { promise() { return { async query(sql, params) {
   assert.match(sql.trim(), /^SELECT /);
   fakeCalls.push({ sql, params });
+  if (/FROM entrance_fee_reconciliations/i.test(sql)) {
+    return [fakeReconciliationRows.map(row => ({ ...row }))];
+  }
   return [[
     { booking_id: 10, charge_name: "extra guest charge", amount: 1000 },
     { booking_id: 10, charge_name: "extra bed charge", amount: 200 },
@@ -59,10 +64,15 @@ test("Only paid charges are read, using bounded inclusive date range", async () 
   const response=await call("2026-10-01","2026-10-17");
   assert.equal(response.status,200);
   assert.equal(response.payload.charges.length,3);
-  assert.equal(fakeCalls.length,1);
+  assert.equal(fakeCalls.length,2);
   assert.match(fakeCalls[0].sql,/COALESCE\(is_paid,0\) = 1/);
   assert.match(fakeCalls[0].sql,/paid_at >= \? AND paid_at < \?/);
   assert.deepEqual(fakeCalls[0].params,["2026-10-01","2026-10-18"]);
+  assert.match(fakeCalls[1].sql,/FROM entrance_fee_reconciliations/);
+  assert.match(fakeCalls[1].sql,/created_at >= \? AND created_at < \?/);
+  assert.deepEqual(fakeCalls[1].params,["2026-10-01","2026-10-18"]);
+  assert.deepEqual(response.payload.entrance_reconciliations,
+    { refunds: 0, corrections: 0 });
   assert.doesNotMatch(JSON.stringify(response.payload),/email|guest_name|contact_no/);
 });
 test("The report endpoint is signed Admin-only", () => {
@@ -89,4 +99,50 @@ test("The report makes all financial sources visible as estimates", () => {
   assert.match(html,/Adjusted Collections Estimate/);
   assert.match(html,/Extra Bed Already Counted/);
   assert.match(html,/not audited net revenue/);
+});
+
+
+// Refund and correction are separate events: never treat a correction as a
+// second positive payment, and never use the reservation creation date.
+test("Dated entrance refunds and corrections are returned without guest details", async () => {
+  fakeReconciliationRows = [
+    { reconciliation_type: "refund", amount: "150.00" },
+    { reconciliation_type: "correction", amount: "25.00" },
+  ];
+  try {
+    const response = await call("2026-10-01", "2026-10-17");
+    assert.equal(response.status, 200);
+    assert.deepEqual(response.payload.entrance_reconciliations,
+      { refunds: 150, corrections: 25 });
+    assert.doesNotMatch(JSON.stringify(response.payload), /note|guest_name|contact_no/);
+  } finally {
+    fakeReconciliationRows = [];
+  }
+});
+
+test("Adjusted estimate subtracts refunds and voided entrance collections", () => {
+  const output = {};
+  const statsStart = script.indexOf("function updateStats(bookings) {");
+  const statsEnd = script.indexOf("// ============================================================", statsStart);
+  assert.ok(statsStart >= 0 && statsEnd > statsStart);
+  const view = {
+    activeStartDate: "2026-10-01", activeEndDate: "2026-10-17",
+    paidChargeRows: chargeRows, paidChargesLoaded: true,
+    entranceReconciliationTotals: { refunds: 150, corrections: 25 },
+    setText(id, value) { output[id] = value; },
+    formatMoney(value) { return Number(value).toFixed(2); },
+  };
+  vm.runInNewContext(script.slice(start, end) + script.slice(statsStart, statsEnd) +
+    "\nthis.render = updateStats;", view);
+  view.render([booking]);
+  assert.equal(output.entranceRefundAmount, "₱150.00");
+  assert.equal(output.entranceCorrectionAmount, "₱25.00");
+  assert.equal(output.adjustedCollectionsEstimate, "₱5675.00");
+  assert.match(html, /Entrance Refunds/);
+  assert.match(html, /Entrance Payment Corrections/);
+});
+
+test("Without verified refund totals the UI must not show net collections", () => {
+  assert.match(script, /Entrance refund\/correction totals are unavailable/);
+  assert.match(script, /setText\("adjustedCollectionsEstimate", "Unavailable"\)/);
 });
