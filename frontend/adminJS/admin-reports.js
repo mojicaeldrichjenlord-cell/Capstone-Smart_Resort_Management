@@ -10,6 +10,9 @@
 // ============================================================
 
 let allBookings = [];
+// Paid charge aggregates are read independently of reservation creation dates.
+let paidChargeRows = [];
+let paidChargesLoaded = false;
 let bookingStatusChart = null;
 let bookingSourceChart = null;
 let popularRoomsChart = null;
@@ -245,6 +248,25 @@ async function fetchReports(url) {
     }
 
     allBookings = Array.isArray(data) ? data : data.bookings || [];
+    paidChargeRows = [];
+    paidChargesLoaded = false;
+    try {
+      const chargeQuery = new URLSearchParams({ from: activeStartDate, to: activeEndDate });
+      const chargeResponse = await fetch(
+        `${API_BASE}/bookings/admin-report/paid-charges?${chargeQuery}`,
+        { headers: { Authorization: "Bearer " + adminToken } },
+      );
+      const chargeData = await chargeResponse.json();
+      if (!chargeResponse.ok || !Array.isArray(chargeData.charges)) {
+        throw new Error(chargeData.message || "Paid charges could not be verified.");
+      }
+      paidChargeRows = chargeData.charges;
+      paidChargesLoaded = true;
+    } catch (chargeError) {
+      // Missing charge records must never turn into a fabricated 0 total.
+      showReportError("Reservation statistics loaded, but paid charges are unavailable: " +
+        chargeError.message);
+    }
     renderReports(allBookings);
     updatePrintReportMeta();
   } catch (error) {
@@ -252,6 +274,8 @@ async function fetchReports(url) {
 
     showReportError(error.message || "Something went wrong while loading reports.");
     allBookings = [];
+    paidChargeRows = [];
+    paidChargesLoaded = false;
     renderReports([]);
     updatePrintReportMeta();
   }
@@ -353,6 +377,19 @@ function updateStats(bookings) {
   setText("approvedBookingsCount", approvedBookings);
   setText("completedBookingsCount", completedBookings);
   setText("totalRevenueAmount", `₱${formatMoney(moneyCollected)}`);
+
+  if (paidChargesLoaded) {
+    const summary = summarizePaidAdditionalCharges(bookings, paidChargeRows);
+    setText("paidBookingChargesAmount", `₱${formatMoney(summary.totalPaid)}`);
+    setText("paidBedOverlapAmount", `₱${formatMoney(summary.alreadyCountedBed)}`);
+    setText("adjustedCollectionsEstimate",
+      `₱${formatMoney(moneyCollected + summary.totalPaid - summary.alreadyCountedBed)}`);
+  } else {
+    // Do not display a combined estimate without the verified charge read.
+    setText("paidBookingChargesAmount", "Unavailable");
+    setText("paidBedOverlapAmount", "Unavailable");
+    setText("adjustedCollectionsEstimate", "Unavailable");
+  }
 }
 
 // ============================================================
@@ -1261,6 +1298,33 @@ function calculateCollectedRevenueForReport(booking) {
   }
 
   return amount;
+}
+
+
+// Compare paid additional charges with the legacy extra-bed field.
+// Deduct an overlap ONLY for the same booking and the same report period.
+function summarizePaidAdditionalCharges(bookings, rows) {
+  const byId = new Map(bookings.map(booking => [Number(booking.id), booking]));
+  const bedsById = new Map();
+  let totalPaid = 0;
+  for (const row of rows) {
+    const amount = Number(row.amount);
+    if (!Number.isFinite(amount) || amount <= 0) continue;
+    totalPaid += amount;
+    const type = String(row.charge_name || "").trim().toLowerCase();
+    if (type === "extra bed charge" || type === "extra bed") {
+      const id = Number(row.booking_id);
+      bedsById.set(id, (bedsById.get(id) || 0) + amount);
+    }
+  }
+  let alreadyCountedBed = 0;
+  for (const [id, amount] of bedsById) {
+    const booking = byId.get(id);
+    if (!booking || !isExtraBedPaid(booking) ||
+        !isDateWithinActiveRange(booking.extra_bed_paid_at)) continue;
+    alreadyCountedBed += Math.min(amount, Math.max(0, Number(booking.extra_bed_fee || 0)));
+  }
+  return { totalPaid, alreadyCountedBed };
 }
 
 // ============================================================

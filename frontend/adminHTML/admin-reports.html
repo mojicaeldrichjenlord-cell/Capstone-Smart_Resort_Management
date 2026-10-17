@@ -154,12 +154,31 @@
         </div>
       </section>
 
+      <!-- Show paid additional charges and possible overlapping extra-bed entries. -->
+      <section class="report-charge-grid" aria-label="Paid charge reconciliation">
+        <div class="report-charge-card">
+          <h3>Paid Additional Charges</h3>
+          <p id="paidBookingChargesAmount">Loading…</p>
+          <small>Charges paid within this date range, including extra beds.</small>
+        </div>
+        <div class="report-charge-card">
+          <h3>Extra Bed Already Counted</h3>
+          <p id="paidBedOverlapAmount">Loading…</p>
+          <small>Deducted from the combined estimate to avoid double-counting.</small>
+        </div>
+        <div class="report-charge-card">
+          <h3>Adjusted Collections Estimate</h3>
+          <p id="adjustedCollectionsEstimate">Loading…</p>
+          <small>Booking estimate + paid charges − counted extra beds.</small>
+        </div>
+      </section>
+
       <!-- This number is not the final payment ledger: onsite charges, refund
            adjustments and date-of-payment differences need reconciliation. -->
       <p class="revenue-report-disclaimer" role="note">
         Collection figures are <strong>estimates from reservation payment snapshots</strong>,
-        not audited net revenue. Paid onsite booking charges, refunds and payment
-        corrections may not be included. Check final receipts and the dated
+        not audited net revenue. Separately paid additional charges appear above. Refunds,
+        corrections and historical payment dates may still affect net totals. Check final receipts and the dated
         payment records before using these totals for accounting.
       </p>
 

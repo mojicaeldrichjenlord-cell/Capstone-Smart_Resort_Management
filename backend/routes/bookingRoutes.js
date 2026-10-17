@@ -50,6 +50,7 @@ const { requireAdminAuth } = require("../middleware/adminAuth");
 const { requireCustomerAuth } = require("../middleware/customerAuth");
 const { requireReceiptAuth } = require("../middleware/receiptAuth");
 const { requireOperationalBookingRead } = require("../middleware/operationalBookingReadAuth");
+const { getAdminReportPaidCharges } = require("../controllers/admin/adminReportPaidChargesController");
 
 function bindAuthenticatedFrontDeskCreator(req, res, next) {
   const creatorId = Number(req.frontDeskUser?.id);
@@ -216,6 +217,9 @@ router.post(
 ====================================================== */
 
 router.get("/", requireOperationalBookingRead, getAllBookings);
+
+// Read-only Admin financial summary; permission checked before reading charge rows.
+router.get("/admin-report/paid-charges", requireAdminAuth, getAdminReportPaidCharges);
 
 router.post(
   "/check-item-availability",
