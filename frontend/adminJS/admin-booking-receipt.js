@@ -81,12 +81,28 @@ function setupLogoutButton() {
 
 function setupPrintButton() {
   const printThermalBtn = document.getElementById("printThermalBtn");
+  const printA4Btn = document.getElementById("printA4Btn");
 
-  if (!printThermalBtn) return;
-
-  printThermalBtn.addEventListener("click", () => {
+  // Printing does not fetch new data or change payment/booking records.
+  // The two buttons share the exact same verified, rendered receipt.
+  function printReceipt(mode) {
+    document.body.classList.toggle("print-a4", mode === "a4");
     window.print();
+  }
+
+  // Remove the A4-only styles after the print preview/dialog closes.
+  // Thermal remains the default for existing printing workflows.
+  window.addEventListener("afterprint", () => {
+    document.body.classList.remove("print-a4");
   });
+
+  if (printThermalBtn) {
+    printThermalBtn.addEventListener("click", () => printReceipt("thermal"));
+  }
+
+  if (printA4Btn) {
+    printA4Btn.addEventListener("click", () => printReceipt("a4"));
+  }
 }
 
 async function loadAdminReceipt() {

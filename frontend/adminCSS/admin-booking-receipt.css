@@ -270,3 +270,79 @@ body::after {
     content: none !important;
   }
 }
+/* Optional A4 mode for office inkjet/laser printers.
+   It uses exactly the same receipt content as the 80mm thermal preview.
+   Named @page overrides the legacy thermal-only page for this print job. */
+.print-a4-btn {
+  background: linear-gradient(135deg, #155e75, #0e7490);
+}
+
+@page adminReceiptA4 {
+  size: A4;
+  margin: 10mm;
+}
+
+@media print {
+  body.print-a4 .receipt-page {
+    page: adminReceiptA4;
+    width: 100% !important;
+    max-width: 190mm !important;
+    margin: 0 !important;
+  }
+
+  body.print-a4 .receipt-preview-card {
+    width: 100% !important;
+    box-sizing: border-box;
+  }
+
+  body.print-a4 #thermalReceipt.thermal-receipt-shell {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+    margin: 0 !important;
+  }
+
+  /* More page width means long charge notes wrap less on A4.
+     Compact spacing instead of dropping any payment details. */
+  body.print-a4 .thermal-inner {
+    box-sizing: border-box;
+    padding: 0 !important;
+    font-size: 10px !important;
+    line-height: 1.22 !important;
+  }
+
+  body.print-a4 .thermal-row {
+    margin: 1px 0 !important;
+  }
+
+  body.print-a4 .thermal-divider {
+    margin: 3px 0 !important;
+  }
+
+  body.print-a4 .thermal-section-title {
+    margin-bottom: 3px !important;
+  }
+
+  body.print-a4 .thermal-item {
+    margin-bottom: 3px !important;
+  }
+
+  body.print-a4 .thermal-small,
+  body.print-a4 .thermal-note {
+    font-size: 9px !important;
+    line-height: 1.22 !important;
+  }
+
+  body.print-a4 .thermal-total-box {
+    padding: 5px !important;
+    margin: 5px 0 !important;
+  }
+
+  body.print-a4 .thermal-total-label {
+    font-size: 10px !important;
+  }
+
+  body.print-a4 .thermal-total-amount {
+    font-size: 15px !important;
+  }
+}
