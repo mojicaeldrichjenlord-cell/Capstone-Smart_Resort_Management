@@ -266,8 +266,9 @@ async function fetchReports(url) {
       // Never silently assume a refund is zero when the server did not verify it.
       const refunds = Number(chargeData.entrance_reconciliations?.refunds);
       const corrections = Number(chargeData.entrance_reconciliations?.corrections);
-      if (![refunds, corrections].every(value => Number.isFinite(value) && value >= 0) ||
-          !chargeData.entrance_reconciliations) {
+      if (chargeData.entrance_reconciliations?.refunds == null ||
+          chargeData.entrance_reconciliations?.corrections == null ||
+          ![refunds, corrections].every(value => Number.isFinite(value) && value >= 0)) {
         throw new Error("Entrance refund/correction totals are unavailable.");
       }
       paidChargeRows = chargeData.charges;

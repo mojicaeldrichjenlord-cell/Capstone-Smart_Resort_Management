@@ -28,7 +28,8 @@ function evaluate(booking) {
 test("Report makes estimated collection semantics explicit on screen and print", () => {
   assert.match(html, /Booking Collections Estimate/);
   assert.match(html, /estimates from reservation payment snapshots/);
-  assert.match(html, /Paid onsite booking charges, refunds/);
+  // Entrance refund/correction rows are now shown and deducted separately.
+  assert.match(html, /Entrance refunds and payment corrections are deducted above/);
   assert.match(html, /Estimated Collections by Accommodation Category/);
   assert.doesNotMatch(html, /<h3>Money Collected<\/h3>/);
   assert.match(css, /@media print[\s\S]*\.revenue-report-disclaimer/);
