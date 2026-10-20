@@ -14,6 +14,14 @@
 let categories = [];
 let allRooms = [];
 
+// Photos chosen by the admin are staged in memory until Save is clicked.
+// Existing image URLs remain in hidden inputs, so Edit keeps existing photos.
+let selectedGalleryFiles = [];
+let coverPreviewObjectUrl = null;
+let galleryPreviewObjectUrls = [];
+const MAX_GALLERY_PHOTOS = 10;
+const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
+
 // Admin mutation requests MUST carry the signed session; the backend
 // independently validates current Admin role before modifying inventory.
 function adminInventoryHeaders(includeJson = true) {
@@ -108,34 +116,120 @@ function setupLogout() {
 function setupForm() {
   const roomForm = document.getElementById("roomForm");
   const clearFormBtn = document.getElementById("clearFormBtn");
-  const roomImage = document.getElementById("roomImage");
-  const galleryImages = document.getElementById("galleryImages");
+  const coverFile = document.getElementById("coverPhotoFile");
+  const galleryPicker = document.getElementById("galleryPhotoFiles");
+  const galleryPreview = document.getElementById("galleryPreview");
+  const removeCover = document.getElementById("removeCoverPhotoBtn");
   const addCategoryBtn = document.getElementById("addCategoryBtn");
   const seedDefaultsBtn = document.getElementById("seedDefaultsBtn");
 
-  if (roomForm) {
-    roomForm.addEventListener("submit", handleRoomSubmit);
-  }
+  roomForm?.addEventListener("submit", handleRoomSubmit);
+  clearFormBtn?.addEventListener("click", clearForm);
+  coverFile?.addEventListener("change", () => {
+    const file = coverFile.files?.[0];
+    if (file && !validatePhoto(file)) {
+      coverFile.value = "";
+      return;
+    }
+    updateImagePreview();
+  });
+  galleryPicker?.addEventListener("change", () => {
+    const files = Array.from(galleryPicker.files || []);
+    // Keep previous chosen photos when an admin opens the picker again.
+    // We do not upload anything until the admin presses Save.
+    galleryPicker.value = "";
+    if (!files.length) return;
+    if (files.some(file => !validatePhoto(file))) return;
+    const current = getGalleryImagesFromInput().length + selectedGalleryFiles.length;
+    if (current + files.length > MAX_GALLERY_PHOTOS) {
+      showMessage("Maximum 10 gallery photos per accommodation.", "error");
+      return;
+    }
+    selectedGalleryFiles.push(...files);
+    updateGalleryPreview();
+  });
+  removeCover?.addEventListener("click", () => {
+    // Remove only from the pending form. Saving is required to update the DB.
+    if (coverFile) coverFile.value = "";
+    document.getElementById("roomImage").value = "";
+    updateImagePreview();
+  });
+  galleryPreview?.addEventListener("click", event => {
+    const button = event.target.closest("button[data-photo-index]");
+    if (!button) return;
+    const index = Number(button.dataset.photoIndex);
+    if (!Number.isSafeInteger(index) || index < 0) return;
+    const saved = getGalleryImagesFromInput();
+    if (button.dataset.photoKind === "saved") {
+      if (index >= saved.length) return;
+      saved.splice(index, 1);
+      document.getElementById("galleryImages").value = saved.join("\n");
+    } else {
+      if (index >= selectedGalleryFiles.length) return;
+      selectedGalleryFiles.splice(index, 1);
+    }
+    updateGalleryPreview();
+  });
+  addCategoryBtn?.addEventListener("click", createCategory);
+  seedDefaultsBtn?.addEventListener("click", seedDefaults);
+}
 
-  if (clearFormBtn) {
-    clearFormBtn.addEventListener("click", clearForm);
+// The browser file extension can lie. Backend checks the file signature too.
+function validatePhoto(file) {
+  const allowed = ["image/jpeg", "image/png", "image/webp"];
+  if (!allowed.includes(file.type) || file.size > MAX_PHOTO_BYTES ||
+      file.size < 100) {
+    showMessage("Choose JPG, PNG or WebP photos between 100 bytes and 3 MB.", "error");
+    return false;
   }
+  return true;
+}
 
-  if (roomImage) {
-    roomImage.addEventListener("input", updateImagePreview);
+// One signed upload per photo. MySQL stores photo bytes on Aiven so files
+// do not disappear when Render restarts or redeploys.
+async function uploadAdminPhoto(file) {
+  const form = new FormData();
+  form.append("image", file, file.name);
+  const response = await fetch(`${API_BASE}/rooms/media`, {
+    method: "POST",
+    headers: adminInventoryHeaders(false),
+    body: form
+  });
+  const data = await response.json();
+  if (!response.ok || !/^\/api\/rooms\/media\/[1-9]\d*$/.test(data.path || "")) {
+    throw new Error(data.message || "Could not upload photo.");
   }
+  return data.path;
+}
 
-  if (galleryImages) {
-    galleryImages.addEventListener("input", updateGalleryPreview);
+async function uploadSelectedPhotos(payload) {
+  const coverFile = document.getElementById("coverPhotoFile");
+  const statusText = document.getElementById("photoUploadStatus");
+  const cover = coverFile.files?.[0];
+  const total = (cover ? 1 : 0) + selectedGalleryFiles.length;
+  let completed = 0;
+  if (cover) {
+    statusText.textContent = `Uploading cover photo (1/${total})...`;
+    const path = await uploadAdminPhoto(cover);
+    payload.image = path;
+    document.getElementById("roomImage").value = path;
+    coverFile.value = "";
+    completed++;
+    updateImagePreview();
   }
-
-  if (addCategoryBtn) {
-    addCategoryBtn.addEventListener("click", createCategory);
+  // Successful uploads are moved to saved paths immediately: retrying a
+  // failed accommodation save won't upload the same picture twice.
+  while (selectedGalleryFiles.length) {
+    const file = selectedGalleryFiles[0];
+    statusText.textContent = `Uploading gallery photo (${completed + 1}/${total})...`;
+    const path = await uploadAdminPhoto(file);
+    payload.gallery_images.push(path);
+    document.getElementById("galleryImages").value = payload.gallery_images.join("\n");
+    selectedGalleryFiles.shift();
+    completed++;
+    updateGalleryPreview();
   }
-
-  if (seedDefaultsBtn) {
-    seedDefaultsBtn.addEventListener("click", seedDefaults);
-  }
+  if (total) statusText.textContent = "All photos uploaded. Saving accommodation...";
 }
 
 // ============================================================
@@ -388,6 +482,10 @@ async function handleRoomSubmit(e) {
       saveBtn.style.opacity = "0.75";
       saveBtn.style.cursor = "not-allowed";
     }
+
+    // Upload only newly selected photos; existing images remain unchanged.
+    // If an upload fails, stop before modifying the accommodation record.
+    await uploadSelectedPhotos(payload);
 
     let response;
 
@@ -724,6 +822,7 @@ async function editRoom(roomId) {
     }
 
     const room = data.room;
+    resetPhotoChoices();
 
     document.getElementById("roomId").value = room.id || "";
     document.getElementById("categoryId").value = room.category_id || "";
@@ -823,154 +922,116 @@ async function deleteRoom(roomId) {
 // Resets add/edit form and previews.
 // ============================================================
 
+function resetPhotoChoices() {
+  selectedGalleryFiles = [];
+  const coverInput = document.getElementById("coverPhotoFile");
+  const galleryInput = document.getElementById("galleryPhotoFiles");
+  if (coverInput) coverInput.value = "";
+  if (galleryInput) galleryInput.value = "";
+  if (coverPreviewObjectUrl) {
+    URL.revokeObjectURL(coverPreviewObjectUrl);
+    coverPreviewObjectUrl = null;
+  }
+  galleryPreviewObjectUrls.forEach(url => URL.revokeObjectURL(url));
+  galleryPreviewObjectUrls = [];
+}
+
 function clearForm() {
   document.getElementById("roomForm").reset();
+  resetPhotoChoices();
   document.getElementById("roomId").value = "";
+  document.getElementById("roomImage").value = "";
+  document.getElementById("galleryImages").value = "";
   document.getElementById("formTitle").textContent = "Add New Accommodation";
   document.getElementById("saveRoomBtn").textContent = "Save Accommodation";
-
-  const preview = document.getElementById("imagePreview");
-  const previewText = document.getElementById("imagePreviewText");
-
-  if (preview) {
-    preview.style.display = "none";
-    preview.src = "";
-  }
-
-  if (previewText) {
-    previewText.textContent = "No image selected.";
-  }
-
-  const galleryPreview = document.getElementById("galleryPreview");
-  const galleryPreviewText = document.getElementById("galleryPreviewText");
-
-  if (galleryPreview) {
-    galleryPreview.innerHTML = "";
-  }
-
-  if (galleryPreviewText) {
-    galleryPreviewText.textContent = "No gallery images added.";
-  }
+  document.getElementById("photoUploadStatus").textContent = "";
+  updateImagePreview();
+  updateGalleryPreview();
 }
 
-// ============================================================
-// SECTION 18: Cover image preview
-// Shows preview for cover image input.
-// ============================================================
-
+// SECTION 18: Cover preview: a new file takes priority over the saved image.
 function updateImagePreview() {
-  const value = document.getElementById("roomImage").value.trim();
+  const input = document.getElementById("coverPhotoFile");
+  const file = input.files?.[0];
+  const previous = document.getElementById("roomImage").value.trim();
   const preview = document.getElementById("imagePreview");
-  const previewText = document.getElementById("imagePreviewText");
-
-  if (!preview || !previewText) return;
-
-  if (!value) {
-    preview.style.display = "none";
-    preview.src = "";
-    previewText.textContent = "No image selected.";
-    return;
-  }
-
-  preview.src = resolveImagePath(value);
+  const text = document.getElementById("imagePreviewText");
+  const removeButton = document.getElementById("removeCoverPhotoBtn");
+  if (coverPreviewObjectUrl) URL.revokeObjectURL(coverPreviewObjectUrl);
+  coverPreviewObjectUrl = file ? URL.createObjectURL(file) : null;
+  const photo = coverPreviewObjectUrl || (previous ? resolveImagePath(previous) : "");
+  preview.style.display = photo ? "block" : "none";
+  if (photo) preview.src = photo;
+  else preview.removeAttribute("src");
   preview.onerror = () => {
+    preview.onerror = null;
     preview.src = "../images/no-image.jpg";
   };
-
-  preview.style.display = "block";
-  previewText.textContent = value;
+  text.textContent = file ? `New photo: ${file.name}`
+    : (previous ? "Current cover photo (choose another to replace)." : "No image selected.");
+  removeButton.hidden = !file && !previous;
 }
 
-// ============================================================
-// SECTION 19: Gallery preview
-// Shows preview thumbnails for gallery image links.
-// ============================================================
-
+// SECTION 19: Gallery preview combines saved images with staged new files.
 function updateGalleryPreview() {
-  const images = getGalleryImagesFromInput();
-  const galleryPreview = document.getElementById("galleryPreview");
-  const galleryPreviewText = document.getElementById("galleryPreviewText");
-
-  if (!galleryPreview || !galleryPreviewText) return;
-
-  if (!images.length) {
-    galleryPreview.innerHTML = "";
-    galleryPreviewText.textContent = "No gallery images added.";
-    return;
-  }
-
-  galleryPreviewText.textContent = `${images.length} gallery image(s) added.`;
-
-  galleryPreview.innerHTML = images
-    .map((imageUrl) => {
-      const resolvedPath = resolveImagePath(imageUrl);
-
-      return `
-        <div class="gallery-preview-item">
-          <img
-            src="${escapeHtml(resolvedPath)}"
-            alt="Gallery preview"
-            onerror="this.src='../images/no-image.jpg'"
-          />
-          <span>${escapeHtml(imageUrl)}</span>
-        </div>
-      `;
-    })
-    .join("");
+  const stored = getGalleryImagesFromInput();
+  const preview = document.getElementById("galleryPreview");
+  const previewText = document.getElementById("galleryPreviewText");
+  galleryPreviewObjectUrls.forEach(url => URL.revokeObjectURL(url));
+  galleryPreviewObjectUrls = selectedGalleryFiles.map(file => URL.createObjectURL(file));
+  const rows = [
+    ...stored.map((path, index) => ({
+      src: resolveImagePath(path), label: "Saved photo",
+      kind: "saved", index
+    })),
+    ...selectedGalleryFiles.map((file, index) => ({
+      src: galleryPreviewObjectUrls[index], label: file.name,
+      kind: "pending", index
+    }))
+  ];
+  previewText.textContent = rows.length
+    ? `${rows.length} gallery photo(s). Select more or remove individual photos.`
+    : "No gallery images added.";
+  // Escaping paths and labels prevents saved filenames from injecting markup.
+  preview.innerHTML = rows.map(row => `
+    <div class="gallery-preview-item">
+      <img src="${escapeHtml(row.src)}" alt="Gallery photo preview" />
+      <span>${escapeHtml(row.label)}</span>
+      <button type="button" data-photo-kind="${row.kind}"
+        data-photo-index="${row.index}"
+        aria-label="Remove gallery photo">Remove</button>
+    </div>
+  `).join("");
 }
 
-// ============================================================
-// SECTION 20: Gallery input parser
-// Reads one image per line or comma.
-// ============================================================
-
+// SECTION 20: A hidden text input stores existing URLs and uploaded paths.
 function getGalleryImagesFromInput() {
   const input = document.getElementById("galleryImages");
   if (!input) return [];
-
-  return input.value
-    .split(/\r?\n|,/)
-    .map((item) => item.trim())
-    .filter(Boolean);
+  return input.value.split(/\r?\n|,/).map(item => item.trim()).filter(Boolean);
 }
 
-// ============================================================
-// SECTION 21: Image path resolver
-// Fixes image paths because this page is inside adminHTML.
-// Example: images/a.jpg becomes ../images/a.jpg for preview.
-// ============================================================
-
+// SECTION 21: Existing project photos continue resolving as before.
 function resolveImagePath(value) {
   const imagePath = String(value || "").trim();
-
-  if (!imagePath) {
-    return "../images/no-image.jpg";
+  if (!imagePath) return "../images/no-image.jpg";
+  // Newly uploaded photos are served by the Node backend (MySQL-backed).
+  if (/^\/api\/rooms\/media\/[1-9]\d*$/.test(imagePath)) {
+    return API_BASE.replace(/\/api\/?$/, "") + imagePath;
   }
-
-  if (
-    imagePath.startsWith("http://") ||
-    imagePath.startsWith("https://") ||
-    imagePath.startsWith("data:") ||
-    imagePath.startsWith("blob:")
-  ) {
+  if (/^https?:\/\//.test(imagePath) ||
+      imagePath.startsWith("data:") || imagePath.startsWith("blob:")) {
     return imagePath;
   }
-
-  if (imagePath.startsWith("../")) {
-    return imagePath;
-  }
-
+  if (imagePath.startsWith("../")) return imagePath;
   if (imagePath.startsWith("/uploads/")) {
-    return `http://127.0.0.1:5000${imagePath}`;
+    return API_BASE.replace(/\/api\/?$/, "") + imagePath;
   }
-
   if (imagePath.startsWith("uploads/")) {
-    return `http://127.0.0.1:5000/${imagePath}`;
+    return API_BASE.replace(/\/api\/?$/, "") + "/" + imagePath;
   }
-
-  return `../${imagePath}`;
+  return "../" + imagePath.replace(/^\/+/, "");
 }
-
 
 // ============================================================
 // SECTION 22A: Amenities formatter
