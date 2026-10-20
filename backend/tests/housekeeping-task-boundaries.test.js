@@ -7,6 +7,8 @@ const Module = require("node:module");
 const express = require("express");
 
 process.env.FRONTDESK_TOKEN_SECRET = randomBytes(48).toString("base64url");
+// Consistent synthetic bcrypt hash for signed staff tokens in mock DB users.
+const STAFF_TEST_HASH = require("./helpers/staffPasswordFixture");
 let accounts, task, queries, missingTable, occupied, completed, reservationItem;
 const currentDay = (() => {
   const parts = new Intl.DateTimeFormat("en-CA", {
@@ -133,10 +135,10 @@ const { issueHousekeepingToken } = require("../middleware/housekeepingAuth");
 const { issueAdminToken } = require("../middleware/adminAuth");
 const { issueCustomerToken } = require("../middleware/customerAuth");
 const { issueFrontDeskToken } = require("../middleware/frontDeskAuth");
-const managerToken = issueManagerToken(1);
-const staffToken = issueHousekeepingToken(2);
-const otherToken = issueHousekeepingToken(3);
-const unrelated = [issueAdminToken(1), issueFrontDeskToken(1), issueCustomerToken(1)];
+const managerToken = issueManagerToken(1, STAFF_TEST_HASH);
+const staffToken = issueHousekeepingToken(2, STAFF_TEST_HASH);
+const otherToken = issueHousekeepingToken(3, STAFF_TEST_HASH);
+const unrelated = [issueAdminToken(1), issueFrontDeskToken(1, STAFF_TEST_HASH), issueCustomerToken(1)];
 const noop = (_req, res) => res.json({ success: true });
 mock("../controllers/manager/managerOverviewController", { getManagerMe: noop, getManagerOverview: noop });
 mock("../controllers/manager/managerReservationsController", { listManagerReservations: noop, reviewManagerReservation: noop });
@@ -167,9 +169,9 @@ after(async () => {
 // Reset test users and task status before every test (no shared DB state).
 beforeEach(() => {
   accounts = new Map([
-    [1, { id:1, fullname:"Manager", role:"manager", account_status:"active", is_verified:1 }],
-    [2, { id:2, fullname:"House Keeper", role:"housekeeping", account_status:"active", is_verified:1 }],
-    [3, { id:3, fullname:"Other Housekeeper", role:"housekeeping", account_status:"active", is_verified:1 }],
+    [1, { id:1, password: STAFF_TEST_HASH, fullname:"Manager", role:"manager", account_status:"active", is_verified:1 }],
+    [2, { id:2, password: STAFF_TEST_HASH, fullname:"House Keeper", role:"housekeeping", account_status:"active", is_verified:1 }],
+    [3, { id:3, password: STAFF_TEST_HASH, fullname:"Other Housekeeper", role:"housekeeping", account_status:"active", is_verified:1 }],
   ]);
   task = null; queries = []; missingTable = false; occupied = false;
   completed = true; reservationItem = 41;
