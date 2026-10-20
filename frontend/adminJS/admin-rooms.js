@@ -21,6 +21,7 @@ let coverPreviewObjectUrl = null;
 let galleryPreviewObjectUrls = [];
 const MAX_GALLERY_PHOTOS = 10;
 const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
+const MAX_SOURCE_PHOTO_BYTES = 12 * 1024 * 1024;
 
 // Admin mutation requests MUST carry the signed session; the backend
 // independently validates current Admin role before modifying inventory.
@@ -177,19 +178,56 @@ function setupForm() {
 // The browser file extension can lie. Backend checks the file signature too.
 function validatePhoto(file) {
   const allowed = ["image/jpeg", "image/png", "image/webp"];
-  if (!allowed.includes(file.type) || file.size > MAX_PHOTO_BYTES ||
+  if (!allowed.includes(file.type) || file.size > MAX_SOURCE_PHOTO_BYTES ||
       file.size < 100) {
-    showMessage("Choose JPG, PNG or WebP photos between 100 bytes and 3 MB.", "error");
+    showMessage("Choose JPG, PNG or WebP photos between 100 bytes and 12 MB.", "error");
     return false;
   }
   return true;
 }
 
+// On large camera images we resize a local copy before upload.
+// The original selected file on the admin's device is not changed.
+async function preparePhotoForUpload(file) {
+  if (file.size <= MAX_PHOTO_BYTES) return file;
+  if (typeof createImageBitmap !== "function") {
+    throw new Error("This browser cannot optimize large photos. Choose a photo under 3 MB.");
+  }
+
+  const bitmap = await createImageBitmap(file);
+  try {
+    // 1600px is enough for resort cards/gallery and keeps MySQL space bounded.
+    const scale = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Could not optimize photo in this browser.");
+    // White background avoids black areas when transparent PNG -> JPEG.
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+    for (const quality of [0.88, 0.75, 0.6]) {
+      const blob = await new Promise(resolve =>
+        canvas.toBlob(resolve, "image/jpeg", quality)
+      );
+      if (blob && blob.size >= 100 && blob.size <= MAX_PHOTO_BYTES) {
+        return new File([blob], "resort-photo.jpg", { type: "image/jpeg" });
+      }
+    }
+    throw new Error("Photo is too large even after optimization.");
+  } finally {
+    bitmap.close?.();
+  }
+}
+
 // One signed upload per photo. MySQL stores photo bytes on Aiven so files
 // do not disappear when Render restarts or redeploys.
 async function uploadAdminPhoto(file) {
+  const optimized = await preparePhotoForUpload(file);
   const form = new FormData();
-  form.append("image", file, file.name);
+  form.append("image", optimized, optimized.name);
   const response = await fetch(`${API_BASE}/rooms/media`, {
     method: "POST",
     headers: adminInventoryHeaders(false),
