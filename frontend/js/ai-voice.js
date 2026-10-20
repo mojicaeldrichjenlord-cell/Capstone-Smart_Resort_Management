@@ -1,7 +1,9 @@
-// Arvic AI Voice Assistant (free/browser-based Option A).
+// Arvic AI Voice Assistant: optional Azure Blessica for Taglish plus browser fallback.
 // Voice Message: transcribe -> review/edit -> press Send.
 // Live Conversation: listen -> existing Gemini chat -> speak -> listen again.
-// No raw audio is uploaded or stored. Microphone/voices depend on the browser.
+// Microphone audio stays in browser speech recognition; Taglish text can be
+// sent to the authenticated Azure-backed server for speech generation.
+// When Azure is unavailable, regular browser speech remains functional.
 (() => {
   "use strict";
 
@@ -28,6 +30,30 @@
     transcriptLimit: 1800,
   };
   let controls = null;
+  let voiceRequest = null;
+  let playingAudio = null;
+  let playingUrl = null;
+  let cloudUnavailable = false;
+
+  function voiceApiBase() {
+    // Use the same local/Render API selection already used by the resort.
+    return typeof API_BASE === "string"
+      ? API_BASE
+      : (typeof AI_API_BASE === "string" ? AI_API_BASE : "/api");
+  }
+
+  function releaseCloudPlayback() {
+    if (playingAudio) {
+      playingAudio.pause();
+      playingAudio.removeAttribute("src");
+      playingAudio.load();
+      playingAudio = null;
+    }
+    if (playingUrl) {
+      URL.revokeObjectURL(playingUrl);
+      playingUrl = null;
+    }
+  }
 
   function getLocale() {
     return LOCALES[state.language] || LOCALES.english;
@@ -46,6 +72,11 @@
 
   function cancelSpeech() {
     state.speechSequence++;
+    // Interrupt BOTH browser TTS and Azure MP3/fetch without replaying
+    // old responses or restarting the microphone after interruption.
+    voiceRequest?.abort();
+    voiceRequest = null;
+    releaseCloudPlayback();
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
   }
 
@@ -136,35 +167,108 @@
     utterance.lang = chosen?.lang || getLocale().tts;
   }
 
+  async function playBlessicaCloud(content, serial, onFinish, useBrowser) {
+    // This endpoint verifies the signed customer token and keeps the Azure key
+    // exclusively on the backend. Do not send password/payment details.
+    const token = sessionStorage.getItem("customerToken");
+    if (!token || cloudUnavailable || content.length > 2000) return false;
+    const controller = new AbortController();
+    voiceRequest = controller;
+    try {
+      const response = await fetch(voiceApiBase() + "/ai/voice", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify({ text: content }),
+        signal: controller.signal
+      });
+      if (!response.ok) {
+        // If Azure has not been configured, avoid repeating paid-voice
+        // requests until the page is refreshed after backend setup.
+        if ([401, 403, 503].includes(response.status)) cloudUnavailable = true;
+        throw new Error("Blessica voice returned HTTP " + response.status);
+      }
+      const blob = await response.blob();
+      if (serial !== state.speechSequence) return true;
+      playingUrl = URL.createObjectURL(blob);
+      const audio = new Audio();
+      playingAudio = audio;
+      audio.src = playingUrl;
+      audio.onended = () => {
+        if (serial !== state.speechSequence) return;
+        releaseCloudPlayback();
+        onFinish();
+      };
+      audio.onerror = () => {
+        if (serial !== state.speechSequence) return;
+        releaseCloudPlayback();
+        status("Blessica playback failed; using browser voice.");
+        useBrowser();
+      };
+      await audio.play();
+      status("Speaking with Microsoft Blessica (Filipino).");
+      return true;
+    } catch (error) {
+      if (controller.signal.aborted || serial !== state.speechSequence) return true;
+      console.warn("Blessica cloud voice unavailable:", error.message);
+      status("Blessica cloud voice unavailable; using browser voice.");
+      return false;
+    } finally {
+      if (voiceRequest === controller) voiceRequest = null;
+    }
+  }
+
   function speakReply(text, onDone = null) {
     const content = String(text || "").trim();
     cancelSpeech();
     const serial = state.speechSequence;
-    if (!content || !("speechSynthesis" in window) ||
-        !("SpeechSynthesisUtterance" in window)) {
+    if (!content) {
       if (onDone) onDone();
       return;
     }
-
-    const utterance = new SpeechSynthesisUtterance(content);
-    selectSpeechVoice(utterance);
-    // Subtle pacing change. A neural-capable voice matters more than pitch tweaks.
-    utterance.rate = 0.98;
-    utterance.pitch = 1;
     let finished = false;
     const finish = () => {
       if (finished || serial !== state.speechSequence) return;
       finished = true;
       if (onDone) onDone();
     };
-    utterance.onend = finish;
-    utterance.onerror = finish;
-    try {
-      window.speechSynthesis.speak(utterance);
-    } catch (error) {
-      console.warn("Speech synthesis failed:", error.message);
-      finish();
+    const speakInBrowser = () => {
+      if (serial !== state.speechSequence) return;
+      if (!("speechSynthesis" in window) ||
+          !("SpeechSynthesisUtterance" in window)) {
+        finish();
+        return;
+      }
+      const utterance = new SpeechSynthesisUtterance(content);
+      selectSpeechVoice(utterance);
+      utterance.rate = 0.98;
+      utterance.pitch = 1;
+      utterance.onend = finish;
+      utterance.onerror = finish;
+      try {
+        window.speechSynthesis.speak(utterance);
+      } catch (error) {
+        console.warn("Browser TTS failed:", error.message);
+        finish();
+      }
+    };
+
+    if (state.language === "taglish") {
+      // Cloud voice produces the SAME Filipina voice in Chrome and Edge.
+      // Browser TTS is only the graceful fallback when Azure is not ready.
+      playBlessicaCloud(content, serial, finish, speakInBrowser)
+        .then(played => {
+          if (!played && serial === state.speechSequence) speakInBrowser();
+        })
+        .catch(() => {
+          if (serial === state.speechSequence) speakInBrowser();
+        });
+      return;
     }
+    // English still prefers Google US English; Spanish/Mandarin unchanged.
+    speakInBrowser();
   }
 
   function stopConversation(message = "Voice conversation ended.") {
