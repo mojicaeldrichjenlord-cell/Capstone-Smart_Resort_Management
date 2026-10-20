@@ -48,17 +48,19 @@ function mock(path, exported) {
 }
 mock("../config/db", fakeDb);
 process.env.FRONTDESK_TOKEN_SECRET = randomBytes(48).toString("base64url");
+// Consistent synthetic bcrypt hash for signed staff tokens in mock DB users.
+const STAFF_TEST_HASH = require("./helpers/staffPasswordFixture");
 
 const { issueHousekeepingToken } = require("../middleware/housekeepingAuth");
 const { issueAdminToken, requireAdminAuth } = require("../middleware/adminAuth");
 const { issueFrontDeskToken } = require("../middleware/frontDeskAuth");
 const { issueManagerToken } = require("../middleware/managerAuth");
 const { issueCustomerToken } = require("../middleware/customerAuth");
-const valid = issueHousekeepingToken(1);
+const valid = issueHousekeepingToken(1, STAFF_TEST_HASH);
 const otherTokens = {
   admin: issueAdminToken(1),
-  manager: issueManagerToken(1),
-  frontdesk: issueFrontDeskToken(1),
+  manager: issueManagerToken(1, STAFF_TEST_HASH),
+  frontdesk: issueFrontDeskToken(1, STAFF_TEST_HASH),
   customer: issueCustomerToken(1),
 };
 const app = express();
@@ -85,7 +87,7 @@ beforeEach(() => {
   user = {
     id: 1, email: "housekeeping@resort.invalid",
     fullname: "Housekeeping Tester", role: "housekeeping",
-    password: bcrypt.hashSync("ValidHousekeeping123!", 8),
+    password: STAFF_TEST_HASH,
     account_status: "active", is_verified: 1, phone: "PRIVATE_PHONE",
   };
   scheduleRows = [{
