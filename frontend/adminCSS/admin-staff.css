@@ -12,7 +12,7 @@
 .staff-section-heading {display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;}
 .staff-section-heading p, .staff-description {font-size:.9rem;color:#52627b;line-height:1.5;}
 .staff-filters {display:grid;grid-template-columns:2fr 1fr;gap:12px;margin:12px 0 18px;}
-.staff-card label {display:flex;flex-direction:column;gap:6px;font-weight:700;margin:12px 0;color:#132542;}
+/* Explicitly honor the hidden attribute even on flex labels. Without this,\n   Edit Staff Profile incorrectly shows role and initial-password fields. */\n.staff-card [hidden] { display:none !important; }\n.staff-card label {display:flex;flex-direction:column;gap:6px;font-weight:700;margin:12px 0;color:#132542;}
 .staff-card input,.staff-card select {width:100%;min-width:0;min-height:44px;border:1px solid #c6d8e2;
   padding:10px 12px;border-radius:12px;background:white;color:#17233a;font:inherit;box-sizing:border-box;}
 .staff-card input:focus,.staff-card select:focus,.staff-card button:focus-visible {outline:3px solid #83ded5;outline-offset:2px;}
