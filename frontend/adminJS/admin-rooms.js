@@ -515,11 +515,16 @@ async function handleRoomSubmit(e) {
     loadRooms();
   } catch (error) {
     console.error("handleRoomSubmit error:", error);
+    document.getElementById("photoUploadStatus").textContent =
+      "Save was not completed. Uploaded photos will be retained on this form for retry.";
     showMessage(error.message || "Failed to save accommodation.", "error");
   } finally {
     if (saveBtn) {
       saveBtn.disabled = false;
-      saveBtn.textContent = originalBtnText;
+      // After a successful edit, clearForm switches back to Add New.
+      // Avoid restoring the old "Update Accommodation" label.
+      saveBtn.textContent = document.getElementById("roomId").value
+        ? "Update Accommodation" : "Save Accommodation";
       saveBtn.style.opacity = "1";
       saveBtn.style.cursor = "pointer";
     }
