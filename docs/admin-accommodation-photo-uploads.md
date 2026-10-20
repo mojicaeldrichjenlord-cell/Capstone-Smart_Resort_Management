@@ -22,7 +22,7 @@ schema migration while doing the financial/test-record cleanup.
 
 ## Storage and security
 - The signed admin token is required for uploads (no anonymous uploads).
-- JPEG/PNG/WebP only, MIME determined from file bytes; 3 MB maximum each.
+- JPEG/PNG/WebP only; the file picker accepts up to 12 MB per photo.\n  Files over 3 MB are optimized client-side to JPEG before upload; the backend\n  independently checks MIME from file bytes and accepts at most 3 MB each.
 - MySQL stores image binary in `accommodation_media` instead of Render disk.
 - Uploaded image URLs such as `/api/rooms/media/10` go into the existing
   `accommodations.image` and `room_gallery.image_url` columns.
@@ -52,7 +52,7 @@ On the Admin Accommodations page:
 4. Remove one gallery preview. Save; verify the new cover and retained gallery.
 5. Open Customer > Accommodations; verify both images load and image viewer
    works after a refresh.
-6. Test JPG, PNG, WebP, non-image, >3MB, expired admin session, phone-width UI.
+6. Test JPG, PNG, WebP, non-image, a 5 MB camera photo (auto optimized),\n   >12 MB file rejection, expired admin session, and phone-width UI.
 7. Check Chrome Console and Node terminal for errors; confirm no file paths
    are manually required.
 8. Optionally restart Node and refresh both pages: persisted MySQL images
