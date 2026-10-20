@@ -1,5 +1,8 @@
 const express = require("express");
 const router = express.Router();
+const { requireCustomerAuth } = require("../middleware/customerAuth");
+const { voiceStatus, speakBlessica } =
+  require("../controllers/ai/azureSpeechController");
 
 const {
   chatWithGemini,
@@ -31,6 +34,10 @@ function limitAiPayload(kind) {
   };
 }
 router.post("/chat", limitAiPayload("chat"), chatWithGemini);
+// Browser-independent Filipina voice. Paid Azure synthesis requires a real,
+// signed-in customer token, so anonymous requests cannot consume Azure credits.
+router.get("/voice/status", voiceStatus);
+router.post("/voice", requireCustomerAuth, speakBlessica);
 // Legacy endpoint used an obsolete bookings table and trusted user_id from
 // the request. Disable direct AI writes: customer reservations must use the
 // signed /api/bookings flow with final price/slot/conflict validation.
