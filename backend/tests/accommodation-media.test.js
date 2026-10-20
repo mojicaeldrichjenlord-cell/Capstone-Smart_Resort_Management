@@ -4,7 +4,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { detectImageMime, validMediaId, MAX_IMAGE_BYTES } =
-  require("../controllers/shared/accommodationMediaController");
+  require("../utils/accommodationMediaValidation");
 
 test("accepts valid JPEG, PNG, WebP signatures", () => {
   assert.equal(detectImageMime(Buffer.from([255, 216, 255, 224])), "image/jpeg");
