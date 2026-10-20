@@ -15,6 +15,8 @@
 
 const crypto = require("node:crypto");
 const db = require("../config/db");
+const { tagForHash, isCurrentStaffCredential } =
+  require("./staffCredentialTag");
 
 const TOKEN_PREFIX = "fd1";
 const TOKEN_AUDIENCE = "smartresort-frontdesk-manual-reservations";
@@ -37,7 +39,7 @@ function signPayload(encodedPayload) {
     .digest();
 }
 
-function issueFrontDeskToken(userId) {
+function issueFrontDeskToken(userId, passwordHash) {
   const id = Number(userId);
   if (!Number.isSafeInteger(id) || id <= 0) {
     throw new Error("Invalid Front Desk user ID.");
@@ -49,6 +51,7 @@ function issueFrontDeskToken(userId) {
     aud: TOKEN_AUDIENCE,
     iat: now,
     exp: now + TOKEN_LIFETIME_SECONDS,
+    pv: tagForHash(passwordHash),
   };
   const encodedPayload = Buffer.from(
     JSON.stringify(payload),
@@ -128,7 +131,7 @@ async function requireFrontDeskAuth(req, res, next) {
     const [rows] = await db.promise().query(
       `SELECT id, role,
               COALESCE(account_status, 'active') AS account_status,
-              COALESCE(is_verified, 1) AS is_verified
+              COALESCE(is_verified, 1) AS is_verified, password
          FROM users
         WHERE id = ?
         LIMIT 1`,
@@ -157,6 +160,10 @@ async function requireFrontDeskAuth(req, res, next) {
       return res.status(403).json({
         message: "Front Desk account is disabled or unverified.",
       });
+    }
+
+    if (!isCurrentStaffCredential(match[1].split('.')[1], user.password)) {
+      return res.status(401).json({ message: 'Staff session expired after password change. Log in again.' });
     }
 
     req.frontDeskUser = {
