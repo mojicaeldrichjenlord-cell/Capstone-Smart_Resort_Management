@@ -1,0 +1,113 @@
+<!doctype html>
+<!-- SMART RESORT BOOKING SYSTEM: Admin-only Staff Accounts Management.
+     Passwords are entered for creation/reset only; stored hashes are never displayed. -->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Staff Accounts | Arvic Seaside</title>
+  <link rel="icon" type="image/png" href="../images/arvic-logo.png" />
+  <link rel="stylesheet" href="../sharedCSS/global.css" />
+  <link rel="stylesheet" href="../css/style.css" />
+  <link rel="stylesheet" href="../adminCSS/admin-staff.css" />
+  <link rel="stylesheet" href="../adminCSS/admin-mobile-nav.css" />
+</head>
+<body class="has-fixed-navbar">
+  <header class="navbar">
+    <div class="logo">Arvic Seaside Admin</div>
+    <nav>
+      <a href="admin.html">Bookings</a>
+      <a href="admin-rooms.html">Accommodations</a>
+      <a href="admin-map-editor.html">Map Editor</a>
+      <a href="admin-reports.html">Reports</a>
+      <a href="admin-staff.html" class="active-nav" aria-current="page">Staff Accounts</a>
+      <a href="admin-profile.html">Profile</a>
+      <a href="#" id="logoutBtn">Logout</a>
+    </nav>
+  </header>
+  <main class="staff-shell">
+    <header class="staff-hero">
+      <h1>Staff Account Management</h1>
+      <p>Create and manage Front Desk, Manager and Housekeeping accounts.
+         Password resets require administrator confirmation. Customer and Admin
+         accounts cannot be changed here.</p>
+    </header>
+
+    <section class="staff-card">
+      <div class="staff-section-heading">
+        <div><h2>Staff Directory</h2><p id="staffListStatus" role="status" aria-live="polite">Loading staff accounts...</p></div>
+        <button class="staff-primary" id="refreshStaff" type="button">Refresh Staff</button>
+      </div>
+      <div class="staff-filters">
+        <label>Search staff <input id="staffSearch" type="search" placeholder="Name, email or role..." /></label>
+        <label>Role
+          <select id="staffRoleFilter"><option value="">All staff</option><option value="frontdesk">Front Desk</option>
+          <option value="manager">Manager</option><option value="housekeeping">Housekeeping</option></select>
+        </label>
+      </div>
+      <div class="staff-table-wrap" role="region" aria-label="Staff directory" tabindex="0">
+        <table>
+          <thead><tr><th>Name</th><th>Role</th><th>Email</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="staffList"><tr><td colspan="5">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="staff-columns">
+      <section class="staff-card">
+        <h2 id="staffFormTitle">Create Staff Account</h2>
+        <p class="staff-description">Create an account with a strong initial password. Give credentials only to the intended staff member.</p>
+        <form id="staffForm" autocomplete="off">
+          <label>Full name <input id="staffFullname" maxlength="120" required autocomplete="off"/></label>
+          <label>Email <input id="staffEmail" type="email" maxlength="190" required autocomplete="off"/></label>
+          <label>Contact number <input id="staffPhone" maxlength="40" autocomplete="off"/></label>
+          <label>Address <input id="staffAddress" maxlength="255" autocomplete="off"/></label>
+          <label id="staffRoleLabel">Access role
+            <select id="staffRole" required>
+              <option value="frontdesk">Front Desk</option><option value="manager">Manager</option>
+              <option value="housekeeping">Housekeeping</option>
+            </select>
+          </label>
+          <label id="initialPasswordLabel">Initial password
+            <input id="staffInitialPassword" type="password" minlength="12" maxlength="72"
+              autocomplete="new-password" required />
+          </label>
+          <p class="staff-description" id="staffPasswordHint">Minimum 12 characters, uppercase, lowercase, number and symbol.</p>
+          <div class="staff-actions">
+            <button type="submit" class="staff-primary" id="saveStaff">Create Account</button>
+            <button type="button" class="staff-secondary" id="clearStaffForm">Clear / New</button>
+          </div>
+        </form>
+      </section>
+      <section class="staff-card">
+        <h2>Selected Staff Actions</h2>
+        <p class="staff-description" id="selectedStaffLabel">Select Manage in the directory to edit, disable or reset a staff account.</p>
+        <div id="selectedStaffActions" hidden>
+          <div class="staff-actions">
+            <button type="button" class="staff-secondary" id="staffStatusAction">Disable Account</button>
+          </div>
+          <hr />
+          <h3>Reset Staff Password</h3>
+          <p class="staff-description">This replaces their password. Previous signed staff sessions become invalid. Never share passwords publicly.</p>
+          <form id="staffResetForm" autocomplete="off">
+            <label>New password
+              <input id="resetStaffPassword" type="password" minlength="12" maxlength="72" autocomplete="new-password" required />
+            </label>
+            <label>Confirm new password
+              <input id="confirmStaffPassword" type="password" minlength="12" maxlength="72" autocomplete="new-password" required />
+            </label>
+            <label>Your Admin password (authorization)
+              <input id="confirmAdminPassword" type="password" required autocomplete="current-password" />
+            </label>
+            <button type="submit" class="staff-primary" id="resetStaffSubmit">Reset Staff Password</button>
+          </form>
+        </div>
+      </section>
+    </div>
+    <p class="staff-page-status" id="staffPageStatus" role="status" aria-live="polite"></p>
+  </main>
+  <script src="../sharedJS/toast.js"></script>
+  <script src="../sharedJS/api-config.js"></script>
+  <script src="../adminJS/admin-staff.js"></script>
+  <script src="../adminJS/admin-mobile-nav.js"></script>
+</body></html>
