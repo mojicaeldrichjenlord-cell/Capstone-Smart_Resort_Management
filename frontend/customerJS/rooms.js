@@ -661,6 +661,12 @@ function resolveImagePath(value) {
     return `/${cleanPath}`;
   }
 
+  // Photo bytes are kept in Aiven. Resolve its /api/rooms/media/:id
+  // path through the configured backend, not the Vercel/Live Server origin.
+  if (/^api\/rooms\/media\/[1-9]\d*$/.test(cleanPath)) {
+    return `${API_BASE.replace(/\/api\/?$/, "")}/${cleanPath}`;
+  }
+
   if (cleanPath.startsWith("uploads/")) {
     return `${API_BASE.replace("/api", "")}/${cleanPath}`;
   }
