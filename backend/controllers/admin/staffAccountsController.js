@@ -33,6 +33,15 @@ function handleFailure(res, error, label) {
   }
   return res.status(500).json({ message: "Unable to complete staff account request." });
 }
+// Validate email against ALL accounts, not only staff, in case the database
+// was created without an explicit UNIQUE constraint on users.email.
+async function emailIsTaken(email, exceptId = 0) {
+  const [rows] = await db.promise().query(
+    "SELECT id FROM users WHERE email = ? AND id <> ? LIMIT 1",
+    [email, exceptId]
+  );
+  return rows.length > 0;
+}
 async function findStaff(id) {
   const [rows] = await db.promise().query(
     "SELECT id, fullname, email, phone, address, role, account_status, is_verified " +
@@ -65,6 +74,9 @@ async function createStaff(req, res) {
   const pass = validateStaffPassword(password);
   if (!pass.valid) return res.status(400).json({ message: pass.message });
   try {
+    if (await emailIsTaken(profile.email)) {
+      return res.status(409).json({ message: "Email is already registered." });
+    }
     const hashedPassword = await bcrypt.hash(password, 12);
     const [result] = await db.promise().query(
       "INSERT INTO users (fullname, email, password, phone, address, role, account_status, is_verified) " +
@@ -86,6 +98,9 @@ async function updateStaff(req, res) {
   }
   try {
     if (!await findStaff(id)) return res.status(404).json({ message: "Staff not found." });
+    if (await emailIsTaken(p.email, id)) {
+      return res.status(409).json({ message: "Email is already registered." });
+    }
     await db.promise().query(
       "UPDATE users SET fullname=?, email=?, phone=?, address=? " +
       "WHERE id=? AND role IN (?, ?, ?, ?)",
@@ -122,7 +137,7 @@ async function resetStaffPassword(req, res) {
   const id = staffIdFrom(req);
   const newPassword = String(req.body?.newPassword || "");
   const adminPassword = String(req.body?.adminPassword || "");
-  if (!id || !adminPassword) {
+  if (!id || !adminPassword || adminPassword.length > 128) {
     return res.status(400).json({ message: "Staff ID and admin confirmation password are required." });
   }
   const validation = validateStaffPassword(newPassword);
