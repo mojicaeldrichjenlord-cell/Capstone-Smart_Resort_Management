@@ -17,6 +17,7 @@ const roomRoutes = require("./routes/roomRoutes");
 const bookingRoutes = require("./routes/bookingRoutes");
 const adminBookingRoutes = require("./routes/adminBookingRoutes");
 const adminPaymentRoutes = require("./routes/adminPaymentRoutes");
+const adminStaffRoutes = require("./routes/adminStaffRoutes");
 const aiRoutes = require("./routes/aiRoutes");
 const managerRoutes = require("./routes/managerRoutes");
 const housekeepingRoutes = require("./routes/housekeepingRoutes");
@@ -45,6 +46,8 @@ app.use("/api/rooms", roomRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/admin/bookings", adminBookingRoutes);
 app.use("/api/admin/payments", adminPaymentRoutes);
+// Admin manages staff identities; authorization enforced inside the router.
+app.use("/api/admin/staff", adminStaffRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/manager", managerRoutes);
 // Housekeeping API has independent signed-role checks and never inherits Admin rights.
