@@ -1,0 +1,41 @@
+/* Staff Accounts — responsive admin controls with readable labels. */
+.staff-shell { width:min(1200px,94%); margin:24px auto 64px; color:#14243a; }
+.staff-hero { padding:28px 32px; background:linear-gradient(130deg,#17244a,#107a71);
+  border-radius:25px; color:white; margin-bottom:20px; }
+.staff-hero h1 {font-size:clamp(1.5rem,3vw,2.1rem); margin:0 0 8px;}
+.staff-hero p {max-width:850px; line-height:1.55; margin:0;}
+.staff-card { background:white; padding:26px; margin-bottom:20px;
+  border:1px solid #dfebef; border-radius:22px;
+  box-shadow:0 12px 28px rgba(18,41,65,.06); min-width:0; }
+.staff-card h2 {font-size:1.35rem; margin:0 0 12px;}
+.staff-card h3 {font-size:1.12rem; margin:18px 0 6px;}
+.staff-section-heading {display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;}
+.staff-section-heading p, .staff-description {font-size:.9rem;color:#52627b;line-height:1.5;}
+.staff-filters {display:grid;grid-template-columns:2fr 1fr;gap:12px;margin:12px 0 18px;}
+.staff-card label {display:flex;flex-direction:column;gap:6px;font-weight:700;margin:12px 0;color:#132542;}
+.staff-card input,.staff-card select {width:100%;min-width:0;min-height:44px;border:1px solid #c6d8e2;
+  padding:10px 12px;border-radius:12px;background:white;color:#17233a;font:inherit;box-sizing:border-box;}
+.staff-card input:focus,.staff-card select:focus,.staff-card button:focus-visible {outline:3px solid #83ded5;outline-offset:2px;}
+.staff-primary,.staff-secondary {padding:11px 16px;border-radius:11px;font-weight:800;cursor:pointer;border:1px solid #0d766e;}
+.staff-primary {background:#0f766e;color:white;}
+.staff-secondary {background:#fff;color:#096b62;}
+.staff-primary:disabled,.staff-secondary:disabled {opacity:.6;cursor:wait;}
+.staff-table-wrap {width:100%;overflow-x:auto;}
+.staff-table-wrap table {width:100%;border-collapse:collapse;min-width:660px;}
+.staff-table-wrap th,.staff-table-wrap td {border-bottom:1px solid #dfebef;text-align:left;padding:12px 10px;vertical-align:middle;}
+.staff-table-wrap th {background:#f2f6f9;color:#314760;font-size:.86rem;}
+.staff-table-wrap button {padding:7px 11px;font-weight:700;border:1px solid #089387;background:#eefbf9;color:#09675f;border-radius:9px;cursor:pointer;}
+.staff-tag {display:inline-flex;align-items:center;border-radius:999px;font-weight:800;font-size:.78rem;
+  padding:5px 11px;color:#146b55;background:#def9ea;}
+.staff-tag.disabled {color:#9a3412;background:#ffedd5;}
+.staff-columns {display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;}
+.staff-actions {display:flex;gap:10px;flex-wrap:wrap;margin-top:15px;}
+.staff-card hr {margin:20px 0;border:0;border-top:1px solid #dce8ed;}
+.staff-page-status {font-weight:700;min-height:1.5em;color:#0d766e;}
+@media(max-width:760px){
+  .staff-shell {width:94%;margin-top:16px;}
+  .staff-card {padding:17px;border-radius:18px;}
+  .staff-hero {padding:22px 18px;border-radius:18px;}
+  .staff-columns,.staff-filters {grid-template-columns:1fr;}
+  .staff-section-heading .staff-primary{width:100%;}
+}
