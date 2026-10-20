@@ -61,7 +61,7 @@ const { issueFrontDeskToken } = require("../middleware/frontDeskAuth");
 const signed = {
   customer: issueCustomerToken(1),
   admin: issueAdminToken(1),
-  frontdesk: issueFrontDeskToken(1),
+  frontdesk: issueFrontDeskToken(1, initialPassword),
 };
 const app = express();
 app.use(express.json());
