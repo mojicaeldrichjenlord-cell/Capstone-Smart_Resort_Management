@@ -10,11 +10,13 @@ const script = fs.readFileSync(
   path.resolve(__dirname, "../../frontend/js/ai-voice.js"), "utf8",
 );
 
-function mount({ recognizerAvailable = true, savedLanguage = null, voices = [] } = {}) {
+function mount({ recognizerAvailable = true, savedLanguage = null, voices = [], customerToken = null, cloudStatus = 503 } = {}) {
   const nodes = {};
   const recognitionInstances = [];
   const speechUtterances = [];
   const requests = [];
+  const cloudRequests = [];
+  const cloudAudio = [];
   const pendingTimers = new Map();
   const stored = new Map();
   const documentHandlers = {};
@@ -81,6 +83,18 @@ function mount({ recognizerAvailable = true, savedLanguage = null, voices = [] }
   class FakeUtterance {
     constructor(text) { this.text = text; }
   }
+  // Browser-only speech tests and optional Azure speech tests use fake APIs.
+  class FakeCloudAudio {
+    constructor() { cloudAudio.push(this); }
+    play() { this.played = true; return Promise.resolve(); }
+    pause() { this.paused = true; }
+    removeAttribute() {}
+    load() {}
+  }
+  class FakeAbortController {
+    constructor() { this.signal = { aborted: false }; }
+    abort() { this.signal.aborted = true; }
+  }
 
   const fakeWindow = {
     addEventListener(name, handler) { windowHandlers[name] = handler; },
@@ -107,6 +121,22 @@ function mount({ recognizerAvailable = true, savedLanguage = null, voices = [] }
     localStorage: {
       getItem(key) { return stored.get(key) ?? null; },
       setItem(key, value) { stored.set(key, value); },
+    },
+    sessionStorage: {
+      getItem(key) { return key === "customerToken" ? customerToken : null; },
+    },
+    AbortController: FakeAbortController,
+    Audio: FakeCloudAudio,
+    URL: {
+      createObjectURL() { return "blob:mock-blessica-mp3"; },
+      revokeObjectURL() {},
+    },
+    fetch: async (url, opts) => {
+      cloudRequests.push({ url, opts });
+      return {
+        ok: cloudStatus === 200, status: cloudStatus,
+        async blob() { return { type: "audio/mpeg" }; },
+      };
     },
     console,
     sendAiMessage: async opts => {
@@ -135,7 +165,7 @@ function mount({ recognizerAvailable = true, savedLanguage = null, voices = [] }
   }
   return {
     nodes, fire, runScheduled, settle, recognitionInstances, speechUtterances,
-    requests, fakeWindow, stored, windowHandlers,
+    requests, cloudRequests, cloudAudio, fakeWindow, stored, windowHandlers,
     get voice() { return fakeWindow.ArvicVoice; },
     get speechCancelCount() { return speechCancelCount; },
     changeVoices(newVoices) {
@@ -256,10 +286,14 @@ test("Unsupported speech browser keeps text chat available and disables voice", 
   assert.equal(h.requests.length, 0);
 });
 
-test("Source keeps all audio local and does not use a paid voice service", () => {
-  assert.doesNotMatch(script, /MediaRecorder|fetch\(|\/api\/paypal|\/api\/bookings/);
+test("Speech recognition stays browser-native; optional Azure speech requires customer auth", () => {
+  // Microphone stays in browser STT; only Taglish reply TEXT may go to Azure.
+  assert.doesNotMatch(script, /MediaRecorder|\/api\/paypal|\/api\/bookings/);
   assert.match(script, /webkitSpeechRecognition/);
   assert.match(script, /SpeechSynthesisUtterance/);
+  assert.match(script, /sessionStorage\.getItem\("customerToken"\)/);
+  assert.match(script, /voiceApiBase\(\) \+ "\/ai\/voice"/);
+  assert.match(script, /"Authorization": "Bearer " \+ token/);
   assert.match(script, /session !== state\.session/);
 });
 
@@ -296,13 +330,15 @@ test("English automatically uses user-approved Google US English voice", () => {
   assert.equal(h.requests.length, 0);
 });
 
-test("Taglish automatically uses selected Microsoft Blessica Natural voice", () => {
+test("Taglish prefers locally installed Microsoft Blessica without Azure credentials", async () => {
   const h = mount({ savedLanguage: "taglish", voices: [
     { name: "Microsoft Jenny Online (Natural)", lang: "en-US", voiceURI: "jenny" },
     { name: "Microsoft Blessica Online (Natural)", lang: "fil-PH", voiceURI: "blessica" },
     { name: "Other Filipino", lang: "fil-PH", voiceURI: "other" },
   ] });
   h.voice.readAloud("Hello po, welcome sa Arvic Seaside!");
+  await h.settle(); // Cloud availability is asynchronous even without a token.
+  assert.equal(h.cloudRequests.length, 0);
   assert.equal(h.speechUtterances[0].voice.name, "Microsoft Blessica Online (Natural)");
   assert.equal(h.speechUtterances[0].lang, "fil-PH");
 });
@@ -320,13 +356,44 @@ test("Spanish and Mandarin keep appropriate browser default-language voices", ()
   assert.equal(h.speechUtterances[1].voice.lang, "zh-CN");
 });
 
-test("Missing preferred voices fall back cleanly without paid speech APIs", () => {
+test("Without Azure credentials, Taglish falls back to an available Filipino browser voice", async () => {
   const h = mount({ savedLanguage: "taglish", voices: [
     { name: "Built-in Filipino", lang: "fil-PH", voiceURI: "fil" },
   ] });
   h.voice.readAloud("Magandang araw po");
+  await h.settle();
+  assert.equal(h.cloudRequests.length, 0);
   assert.equal(h.speechUtterances[0].voice.name, "Built-in Filipino");
   assert.equal(h.requests.length, 0);
+});
+
+test("Unavailable Azure returns 503 and falls back to browser without retrying", async () => {
+  const h = mount({ savedLanguage: "taglish", customerToken: "synthetic-test-token",
+    cloudStatus: 503, voices: [{ name: "Built-in Filipino", lang: "fil-PH" }] });
+  h.voice.readAloud("Kumusta po");
+  await h.settle();
+  assert.equal(h.cloudRequests.length, 1);
+  assert.match(h.cloudRequests[0].url, /\/ai\/voice$/);
+  assert.equal(h.cloudRequests[0].opts.method, "POST");
+  assert.equal(h.cloudRequests[0].opts.headers.Authorization, "Bearer synthetic-test-token");
+  assert.equal(h.speechUtterances[0].voice.name, "Built-in Filipino");
+  h.voice.readAloud("Magandang araw");
+  await h.settle();
+  assert.equal(h.cloudRequests.length, 1, "Unavailable Azure should not be queried repeatedly");
+  assert.equal(h.speechUtterances.length, 2);
+});
+
+test("Available Azure Blessica plays MP3 instead of browser TTS", async () => {
+  const h = mount({ savedLanguage: "taglish", customerToken: "synthetic-test-token",
+    cloudStatus: 200, voices: [{ name: "Built-in Filipino", lang: "fil-PH" }] });
+  h.voice.readAloud("Welcome po!");
+  await h.settle();
+  assert.equal(h.cloudRequests.length, 1);
+  assert.equal(h.cloudAudio.length, 1);
+  assert.equal(h.cloudAudio[0].played, true);
+  assert.equal(h.speechUtterances.length, 0, "Must not play browser voice alongside Azure");
+  h.cloudAudio[0].onended();
+  assert.equal(h.nodes.aiVoiceStatus.textContent, "Finished reading aloud.");
 });
 
 test("Voice picker is removed while language and live controls remain", () => {
