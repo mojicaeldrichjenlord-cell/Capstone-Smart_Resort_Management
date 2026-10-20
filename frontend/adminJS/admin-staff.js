@@ -93,6 +93,7 @@
     const s=selectedStaff();
     if(!s) return;
     $("staffFormTitle").textContent="Edit Staff Profile";
+    $("staffFormDescription").textContent="Update this staff member’s contact details. Use Reset Staff Password on the right to change their password.";
     $("staffFullname").value=s.fullname || "";
     $("staffEmail").value=s.email || "";
     $("staffPhone").value=s.phone || "";
@@ -112,6 +113,7 @@
     selectedId=null;
     $("staffForm").reset();
     $("staffFormTitle").textContent="Create Staff Account";
+    $("staffFormDescription").textContent="Create an account with a strong initial password. Give credentials only to the intended staff member.";
     $("staffRoleLabel").hidden=false;
     $("initialPasswordLabel").hidden=false;
     $("staffInitialPassword").required=true;
