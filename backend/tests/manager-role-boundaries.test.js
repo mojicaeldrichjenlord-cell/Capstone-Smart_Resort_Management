@@ -64,9 +64,9 @@ const { issueManagerToken } = require("../middleware/managerAuth");
 const { issueAdminToken, requireAdminAuth } = require("../middleware/adminAuth");
 const { issueFrontDeskToken } = require("../middleware/frontDeskAuth");
 const { issueCustomerToken } = require("../middleware/customerAuth");
-const managerToken = issueManagerToken(1);
+const managerToken = issueManagerToken(1, hashedPassword);
 const wrongTokens = {
-  admin: issueAdminToken(1), frontdesk: issueFrontDeskToken(1),
+  admin: issueAdminToken(1), frontdesk: issueFrontDeskToken(1, hashedPassword),
   customer: issueCustomerToken(1),
 };
 
