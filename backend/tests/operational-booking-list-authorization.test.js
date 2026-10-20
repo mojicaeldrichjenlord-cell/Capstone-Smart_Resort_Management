@@ -70,12 +70,14 @@ for (const [filepath, methods] of [
 }
 
 process.env.FRONTDESK_TOKEN_SECRET = randomBytes(48).toString("base64url");
+// Mock users and signed staff test tokens share one stable bcrypt hash.
+const STAFF_TEST_HASH = require("./helpers/staffPasswordFixture");
 const { issueAdminToken } = require("../middleware/adminAuth");
 const { issueFrontDeskToken } = require("../middleware/frontDeskAuth");
 const { issueCustomerToken } = require("../middleware/customerAuth");
 const tokens = {
   admin: issueAdminToken(1),
-  frontdesk: issueFrontDeskToken(1),
+  frontdesk: issueFrontDeskToken(1, STAFF_TEST_HASH),
   customer: issueCustomerToken(1),
 };
 const express = require("express");
@@ -99,7 +101,7 @@ after(async () => {
   }
 });
 beforeEach(() => {
-  account = { id: 1, role: "admin", account_status: "active", is_verified: 1 };
+  account = { password: STAFF_TEST_HASH, id: 1, role: "admin", account_status: "active", is_verified: 1 };
   queries = [];
   invoked = [];
 });
