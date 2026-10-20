@@ -51,6 +51,8 @@ replaceModule("../services/paypalService", {
   getPayPalOrder: noPayPal
 });
 process.env.FRONTDESK_TOKEN_SECRET = randomBytes(48).toString("base64url");
+// Mock users and signed staff test tokens share one stable bcrypt hash.
+const STAFF_TEST_HASH = require("./helpers/staffPasswordFixture");
 
 const express = require("express");
 const { issueCustomerToken } = require("../middleware/customerAuth");
@@ -58,7 +60,7 @@ const { issueAdminToken } = require("../middleware/adminAuth");
 const { issueFrontDeskToken } = require("../middleware/frontDeskAuth");
 const tokenCustomer = issueCustomerToken(1);
 const tokenAdmin = issueAdminToken(1);
-const tokenFrontDesk = issueFrontDeskToken(1);
+const tokenFrontDesk = issueFrontDeskToken(1, STAFF_TEST_HASH);
 const app = express();
 app.use(express.json());
 app.use("/api/bookings", require("../routes/bookingRoutes"));
@@ -79,7 +81,7 @@ after(async () => {
 });
 beforeEach(() => {
   calls = [];
-  account = { id: 1, role: "customer", account_status: "active", is_verified: 1 };
+  account = { password: STAFF_TEST_HASH, id: 1, role: "customer", account_status: "active", is_verified: 1 };
   booking = {
     id: 101, user_id: 1, reservation_code: "MOCK-101",
     first_name: "Test", last_name: "Customer", contact_no: "00000000000",
