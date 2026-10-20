@@ -1,4 +1,8 @@
-const AI_API_BASE = "http://127.0.0.1:5000/api";
+// Match the resort API selector: local development uses localhost, Vercel uses Render.
+const AI_API_BASE = typeof API_BASE === "string" ? API_BASE
+  : (["localhost", "127.0.0.1"].includes(window.location.hostname)
+    ? "http://127.0.0.1:5000/api"
+    : "https://smartresort-backend.onrender.com/api");
 const AI_CONTEXT_KEY = "smartresort_ai_context_v1";
 const AI_WINDOW_STATE_KEY = "smartresort_ai_window_state_v1";
 const AI_CHAT_HISTORY_KEY = "smartresort_ai_chat_history_v1";
