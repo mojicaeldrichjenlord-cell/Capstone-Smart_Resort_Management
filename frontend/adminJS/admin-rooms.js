@@ -164,7 +164,7 @@ function setupForm() {
     if (button.dataset.photoKind === "saved") {
       if (index >= saved.length) return;
       saved.splice(index, 1);
-      document.getElementById("galleryImages").value = saved.join("\n");
+      document.getElementById("galleryImages").value = JSON.stringify(saved);
     } else {
       if (index >= selectedGalleryFiles.length) return;
       selectedGalleryFiles.splice(index, 1);
@@ -262,7 +262,7 @@ async function uploadSelectedPhotos(payload) {
     statusText.textContent = `Uploading gallery photo (${completed + 1}/${total})...`;
     const path = await uploadAdminPhoto(file);
     payload.gallery_images.push(path);
-    document.getElementById("galleryImages").value = payload.gallery_images.join("\n");
+    document.getElementById("galleryImages").value = JSON.stringify(payload.gallery_images);
     selectedGalleryFiles.shift();
     completed++;
     updateGalleryPreview();
@@ -912,7 +912,7 @@ async function editRoom(roomId) {
     const galleryInput = document.getElementById("galleryImages");
 
     if (galleryInput) {
-      galleryInput.value = galleryImages.join("\n");
+      galleryInput.value = JSON.stringify(galleryImages);
     }
 
     document.getElementById("formTitle").textContent = "Edit Accommodation";
@@ -1051,7 +1051,19 @@ function updateGalleryPreview() {
 function getGalleryImagesFromInput() {
   const input = document.getElementById("galleryImages");
   if (!input) return [];
-  return input.value.split(/\r?\n|,/).map(item => item.trim()).filter(Boolean);
+  // Hidden inputs serialize arrays as JSON so commas or line breaks inside
+  // existing external photo URLs cannot corrupt the gallery on Edit.
+  const raw = String(input.value || "").trim();
+  if (!raw) return [];
+  try {
+    const paths = JSON.parse(raw);
+    if (Array.isArray(paths)) {
+      return paths.map(value => String(value || "").trim()).filter(Boolean);
+    }
+  } catch (_) {
+    // Accept legacy newline-separated values during gradual upgrades.
+  }
+  return raw.split(/\r?\n|,/).map(item => item.trim()).filter(Boolean);
 }
 
 // SECTION 21: Existing project photos continue resolving as before.
