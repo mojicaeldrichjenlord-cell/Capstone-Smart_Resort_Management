@@ -654,7 +654,7 @@ exports.login = async (req, res) => {
 
     if (role === "frontdesk" || role === "staff") {
       try {
-        frontDeskToken = issueFrontDeskToken(user.id);
+        frontDeskToken = issueFrontDeskToken(user.id, user.password);
       } catch (tokenError) {
         console.error("Front Desk token configuration error:", tokenError.message);
         return res.status(503).json({
@@ -680,7 +680,7 @@ exports.login = async (req, res) => {
 
     if (role === "manager") {
       try {
-        managerToken = issueManagerToken(user.id);
+        managerToken = issueManagerToken(user.id, user.password);
       } catch (tokenError) {
         console.error("Manager token configuration error:", tokenError.message);
         return res.status(503).json({
@@ -692,7 +692,7 @@ exports.login = async (req, res) => {
     // Issue hk1 ONLY after the password, account state and role are verified.
     if (role === "housekeeping") {
       try {
-        housekeepingToken = issueHousekeepingToken(user.id);
+        housekeepingToken = issueHousekeepingToken(user.id, user.password);
       } catch (tokenError) {
         console.error("Housekeeping token configuration error:", tokenError.message);
         return res.status(503).json({
