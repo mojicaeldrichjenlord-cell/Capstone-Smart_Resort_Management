@@ -57,15 +57,17 @@ function mockModule(path, exported) {
 }
 mockModule("../config/db", mockDb);
 process.env.FRONTDESK_TOKEN_SECRET = randomBytes(48).toString("base64url");
+// Consistent synthetic bcrypt hash for signed staff tokens in mock DB users.
+const STAFF_TEST_HASH = require("./helpers/staffPasswordFixture");
 const { issueManagerToken } = require("../middleware/managerAuth");
 const { issueCustomerToken } = require("../middleware/customerAuth");
 const { issueAdminToken } = require("../middleware/adminAuth");
 const { issueFrontDeskToken } = require("../middleware/frontDeskAuth");
-const goodToken = issueManagerToken(1);
+const goodToken = issueManagerToken(1, STAFF_TEST_HASH);
 const unrelatedTokens = {
   customer: issueCustomerToken(1),
   admin: issueAdminToken(1),
-  frontdesk: issueFrontDeskToken(1),
+  frontdesk: issueFrontDeskToken(1, STAFF_TEST_HASH),
 };
 const noop = (_req, res) => res.json({ success: true });
 mockModule("../controllers/manager/managerOverviewController", {
@@ -91,7 +93,7 @@ after(async () => {
   }
 });
 beforeEach(() => {
-  user = {
+  user = { password: STAFF_TEST_HASH,
     id: 1, role: "manager", fullname: "Test Manager",
     email: "manager@invalid.example",
     is_verified: 1, account_status: "active",
