@@ -1,6 +1,8 @@
 // Distinct signed 8-hour Manager session. Revalidates live DB role on each call.
 const crypto = require("node:crypto");
 const db = require("../config/db");
+const { tagForHash, isCurrentStaffCredential } =
+  require("./staffCredentialTag");
 const PREFIX = "mgr1";
 const AUDIENCE = "smartresort-manager-operations";
 const MAX_AGE = 8 * 60 * 60;
@@ -16,12 +18,13 @@ function signature(payload) {
 }
 // Issue a signed Manager session with an expiry and a Manager-specific audience.
 // A token identifies the session but does not replace the live database role check.
-function issueManagerToken(userId) {
+function issueManagerToken(userId, passwordHash) {
   const id = Number(userId);
   if (!Number.isSafeInteger(id) || id <= 0) throw new Error("Invalid Manager ID.");
   const now = Math.floor(Date.now() / 1000);
   const payload = Buffer.from(JSON.stringify({
     sub: String(id), aud: AUDIENCE, iat: now, exp: now + MAX_AGE,
+    pv: tagForHash(passwordHash),
   }), "utf8").toString("base64url");
   return PREFIX + "." + payload + "." + signature(payload).toString("base64url");
 }
@@ -59,7 +62,7 @@ async function requireManagerAuth(req, res, next) {
     const [rows] = await db.promise().query(
       "SELECT id, role, fullname, email, " +
       "COALESCE(account_status,'active') AS account_status, " +
-      "COALESCE(is_verified,1) AS is_verified FROM users WHERE id = ? LIMIT 1",
+      "COALESCE(is_verified,1) AS is_verified, password FROM users WHERE id = ? LIMIT 1",
       [id]);
     const user = rows[0];
     if (!user) return res.status(401).json({ success: false, message: "Manager account not found." });
@@ -69,6 +72,9 @@ async function requireManagerAuth(req, res, next) {
     if (String(user.account_status || "active").toLowerCase() !== "active" ||
         Number(user.is_verified) !== 1) {
       return res.status(403).json({ success: false, message: "Manager account disabled or unverified." });
+    }
+    if (!isCurrentStaffCredential(match[1].split('.')[1], user.password)) {
+      return res.status(401).json({ success: false, message: 'Manager session expired after password change.' });
     }
     req.managerUser = { id: Number(user.id), role: "manager",
       fullname: user.fullname || "", email: user.email || "" };
