@@ -3,6 +3,8 @@
 // user role and account status for EVERY housekeeping operation.
 const crypto = require("node:crypto");
 const db = require("../config/db");
+const { tagForHash, isCurrentStaffCredential } =
+  require("./staffCredentialTag");
 const PREFIX = "hk1";
 const AUDIENCE = "smartresort-housekeeping-schedule";
 const MAX_AGE = 8 * 60 * 60;
@@ -19,12 +21,13 @@ function signature(encoded) {
     .update(PREFIX + "." + encoded, "utf8").digest();
 }
 // A login returns an eight-hour signed session, never a plain role flag.
-function issueHousekeepingToken(userId) {
+function issueHousekeepingToken(userId, passwordHash) {
   const id = Number(userId);
   if (!Number.isSafeInteger(id) || id <= 0) throw new Error("Invalid Housekeeping ID.");
   const now = Math.floor(Date.now() / 1000);
   const encoded = Buffer.from(JSON.stringify({
     sub: String(id), aud: AUDIENCE, iat: now, exp: now + MAX_AGE,
+    pv: tagForHash(passwordHash),
   }), "utf8").toString("base64url");
   return PREFIX + "." + encoded + "." + signature(encoded).toString("base64url");
 }
@@ -68,7 +71,7 @@ async function requireHousekeepingAuth(req, res, next) {
     const [rows] = await db.promise().query(
       "SELECT id, role, fullname, email, " +
       // Do not default NULL account flags to active/verified: fail closed.
-      "account_status, is_verified " +
+      "account_status, is_verified, password " +
       "FROM users WHERE id = ? LIMIT 1", [id],
     );
     const user = rows[0];
@@ -85,6 +88,9 @@ async function requireHousekeepingAuth(req, res, next) {
       return res.status(403).json({
         success: false, message: "Housekeeping account disabled or unverified.",
       });
+    }
+    if (!isCurrentStaffCredential(match[1].split('.')[1], user.password)) {
+      return res.status(401).json({ success: false, message: 'Housekeeping session expired after password change.' });
     }
     req.housekeepingUser = {
       id: Number(user.id), role: "housekeeping",
