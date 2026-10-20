@@ -209,16 +209,19 @@ Extra bed available: ₱200"
               </small>
             </div>
 
+            <!-- Admin chooses an actual photo. Existing saved URLs stay in hidden
+                 inputs so editing without a replacement retains the old image. -->
             <div class="room-form-group full-width">
-              <label for="roomImage">Cover Image</label>
-              <input
-                type="text"
-                id="roomImage"
-                placeholder="Example: images/cottage-a.jpg or https://..."
-              />
+              <label for="coverPhotoFile">Cover Image — Choose Photo</label>
+              <input type="file" id="coverPhotoFile" accept="image/jpeg,image/png,image/webp" />
+              <input type="hidden" id="roomImage" />
               <small class="field-help">
-                This is the main photo shown first on accommodation cards.
+                Choose a JPG, PNG, or WebP photo (up to 3 MB).
+                Leave empty when editing to keep the current cover.
               </small>
+              <button type="button" class="remove-photo-btn" id="removeCoverPhotoBtn" hidden>
+                Remove cover photo
+              </button>
             </div>
 
             <div class="room-form-group full-width">
@@ -236,19 +239,16 @@ Extra bed available: ₱200"
               </div>
             </div>
 
+            <!-- A multiple file picker replaces the old manual gallery path textarea.
+                 Stored paths are maintained in a hidden input by admin-rooms.js. -->
             <div class="room-form-group full-width">
-              <label for="galleryImages">Gallery Images</label>
-
-              <textarea
-                id="galleryImages"
-                placeholder="Paste one image link per line. Example:
-images/family-room-a-1.jpg
-images/family-room-a-2.jpg
-images/family-room-a-3.jpg"
-              ></textarea>
-
+              <label for="galleryPhotoFiles">Gallery Images — Choose Photos</label>
+              <input type="file" id="galleryPhotoFiles"
+                accept="image/jpeg,image/png,image/webp" multiple />
+              <input type="hidden" id="galleryImages" />
               <small class="field-help">
-                Add multiple photos here. Use one image path or URL per line.
+                Choose up to 10 gallery photos (3 MB each). Select more photos
+                to add them; use Remove on a preview to exclude a photo.
               </small>
             </div>
 
@@ -261,6 +261,8 @@ images/family-room-a-3.jpg"
               </div>
             </div>
           </div>
+
+          <p id="photoUploadStatus" class="field-help" role="status" aria-live="polite"></p>
 
           <div class="room-form-actions">
             <button type="submit" class="btn-main" id="saveRoomBtn">
