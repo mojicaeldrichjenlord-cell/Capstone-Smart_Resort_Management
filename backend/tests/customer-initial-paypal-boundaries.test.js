@@ -70,13 +70,15 @@ replaceModule("../controllers/shared/paypalPaymentController", {
 });
 
 process.env.FRONTDESK_TOKEN_SECRET = crypto.randomBytes(48).toString("base64url");
+// Consistent synthetic bcrypt hash for signed staff tokens in mock DB users.
+const STAFF_TEST_HASH = require("./helpers/staffPasswordFixture");
 const express = require("express");
 const { issueCustomerToken } = require("../middleware/customerAuth");
 const { issueFrontDeskToken } = require("../middleware/frontDeskAuth");
 const { issueAdminToken } = require("../middleware/adminAuth");
 const tokens = {
   customer: issueCustomerToken(1),
-  frontdesk: issueFrontDeskToken(1),
+  frontdesk: issueFrontDeskToken(1, STAFF_TEST_HASH),
   admin: issueAdminToken(1),
 };
 const app = express();
@@ -98,7 +100,7 @@ after(async () => {
   }
 });
 beforeEach(() => {
-  account = { id: 1, role: "customer", account_status: "active", is_verified: 1 };
+  account = { password: STAFF_TEST_HASH, id: 1, role: "customer", account_status: "active", is_verified: 1 };
   reservation = { id: 101, user_id: 1, booking_source: "online" };
   dbReads = [];
   handlers = [];
