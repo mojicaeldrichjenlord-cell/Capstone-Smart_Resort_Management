@@ -696,6 +696,56 @@ function buildBookingPreview(room, context, stayDays) {
   };
 }
 
+// The quota fallback cannot ask Gemini to extract intent, so match a named
+// accommodation against a FRESH database catalog (never an assumed price).
+// Whole-token matching prevents "Nipa Hut 2" matching "Nipa Hut 20".
+function findCatalogNameMention(catalog, message) {
+  const clean = value => normalizeText(value)
+    .normalize("NFKC").replace(/[^a-z0-9]+/g, " ").trim();
+  const question = " " + clean(message) + " ";
+  return catalog
+    .filter(room => {
+      const name = clean(room.room_name);
+      return name && question.includes(" " + name + " ");
+    })
+    .sort((a, b) => String(b.room_name).length - String(a.room_name).length)[0] || null;
+}
+
+// These are stable business rules, not AI-generated price quotations. A real
+// booking/payment is always completed on the secure Customer booking page.
+function getQuotaBookingGuidance(language) {
+  return {
+    english: "For online reservations, choose an accommodation and stay schedule on the booking page. The required PayPal downpayment is 50% of the final accommodation price. Pay the remaining 50%, entrance fee, and applicable onsite charges at the resort. The secure payment page shows the exact amount before payment; a booking is not confirmed by this chat.",
+    tagalog: "Para po sa online reservation, pumili kayo ng accommodation at schedule sa booking page. Ang kinakailangang downpayment sa PayPal ay 50% ng final accommodation price. Ang natitirang 50%, entrance fee, at iba pang applicable charges ay babayaran sa resort. Makikita ninyo ang eksaktong halaga sa secure payment page bago magbayad. Hindi po nakukumpirma ang booking sa chat.",
+    taglish: "Para po mag-book online, piliin ninyo ang accommodation at schedule sa booking page. Ang required PayPal downpayment ay 50% ng final accommodation price. Ang remaining 50%, entrance fee, at applicable onsite charges ay babayaran sa resort. Makikita ninyo ang exact amount sa secure payment page bago magbayad. Hindi po confirmed ang booking sa chat.",
+    spanish: "Para reservar en línea, elija alojamiento y horario en la página de reservas. El anticipo obligatorio por PayPal es el 50 % del precio final del alojamiento. El 50 % restante, la entrada y otros cargos se pagan en el resort. Confirme el importe exacto en la página de pago; el chat no confirma reservas.",
+    mandarin: "在线预订时，请在预订页面选择住宿和时段。须通过 PayPal 支付最终住宿价格的 50% 作为订金。剩余 50%、入场费及其他现场费用在度假村支付。准确金额以安全付款页面为准；聊天不会确认预订。",
+  }[language] || "For online reservations, pay 50% of the final accommodation price through PayPal on the secure booking page. Pay the balance and entrance fees onsite.";
+}
+
+function getQuotaPaymentIntro(language) {
+  return {
+    english: "AI is temporarily limited, but I can explain the resort's standard online booking payment process.",
+    tagalog: "Pansamantalang limitado ang AI, pero maipapaliwanag ko po ang karaniwang online booking payment process ng resort.",
+    taglish: "Temporarily limited ang AI, pero maipapaliwanag ko po ang standard online booking payment process ng resort.",
+    spanish: "La IA está temporalmente limitada, pero puedo explicar el proceso de pago en línea del resort.",
+    mandarin: "AI 暂时受限，但我可以说明度假村的在线预订付款流程。",
+  }[language] || "AI is temporarily limited.";
+}
+
+function quotaEstimatedDownpayment(language, stayKind, price) {
+  const half = "PHP " + formatCurrency(Number(price) / 2);
+  const kind = stayKind === "overnight" ? "overnight" : "day tour";
+  if (language === "tagalog" || language === "taglish") {
+    return "Estimated 50% downpayment para po sa listed " + kind +
+      " rate: " + half + ". Estimate lang ito; final amount ang nasa booking/payment page.";
+  }
+  if (language === "spanish") return "Anticipo estimado (50 %) para " + kind + ": " + half + ". El importe final aparece en la página de pago.";
+  if (language === "mandarin") return "按所列" + kind + "价格估算的 50% 订金：" + half + "。最终金额以付款页面为准。";
+  return "Estimated 50% downpayment for the listed " + kind +
+    " rate: " + half + ". Verify the final amount on the secure booking/payment page.";
+}
+
 // When Gemini's free tier is temporarily exhausted, serve only verified
 // read-only database facts for accommodation inquiries. Never generate a
 // reservation, alter payment state, or pretend dates are booked.
@@ -706,7 +756,12 @@ async function buildQuotaLimitedAccommodationReply(payload, requestCatalog = nul
       !Array.isArray(payload.context) ? payload.context : {}),
     ...payload,
   }, {});
-  if (!isAccommodationInquiry(message, context)) return null;
+  // A downpayment/how-to-book question can be answered safely even when
+  // Gemini is rate-limited; it should NOT produce five unrelated rooms.
+  const asksDeposit = /\b(?:down[\s-]*payments?|deposits?|dp)\b/i.test(message);
+  const asksHowToBook = /\b(?:paano|how|steps?|process)\b/i.test(message) &&
+    /\b(?:book(?:ing)?|reserv(?:e|ation)|mag[\s-]*book|mag[\s-]*reserve|makapag[\s-]*reserve)\b/i.test(message);
+  if (!isAccommodationInquiry(message, context) && !asksDeposit && !asksHowToBook) return null;
 
   // During an AI quota outage, extract only simple, explicit numbers.
   // Do not guess dates or times from arbitrary natural-language sentences.
@@ -729,6 +784,18 @@ async function buildQuotaLimitedAccommodationReply(payload, requestCatalog = nul
     detectLanguageFromMessage(message) ||
     normalizeLanguageStyle(context.language_style) || "english";
   context.language_style = language;
+
+  // Payment-only follow-ups must not inherit an older "list rooms" intent
+  // from saved context. No database read is required for the 50% policy.
+  const asksNamedRate = /\b(?:rooms?|cottages?|huts?|nipa|shade|pavilion|function|kuwarto|kwarto|kubo|day\s*tour|overnight)\b/i.test(message);
+  if ((asksDeposit || asksHowToBook) && !asksNamedRate) {
+    return {
+      success: true, mode: "database_fallback",
+      reply: getQuotaPaymentIntro(language) + "\n\n" + getQuotaBookingGuidance(language),
+      extracted_context: context, matched_rooms: [], catalog_recommendations: [],
+      alternative_dates: [], booking_preview: null,
+    };
+  }
 
   const intro = {
     english: "Our AI service is temporarily limited, but these accommodation details come directly from the resort database.",
@@ -789,10 +856,22 @@ async function buildQuotaLimitedAccommodationReply(payload, requestCatalog = nul
     // Reuse the catalog already read in THIS request if the final Gemini
     // generation hits its quota. Never persist it across requests.
     const catalog = Array.isArray(requestCatalog) ? requestCatalog : await getAccommodationCatalog();
-    candidates = catalogMatchFilter(catalog, context, message)
-      .filter(room => normalizeText(room.status) === "available")
-      .sort((a, b) =>
-        Number(a.day_price || Infinity) - Number(b.day_price || Infinity));
+    // Match the exact named record FIRST. Without this, a "Small Nipa Hut 2"
+    // pricing question can display the five cheapest *unrelated* properties.
+    const explicitlyNamed = findCatalogNameMention(catalog, message);
+    if (explicitlyNamed) {
+      candidates = normalizeText(explicitlyNamed.status) === "available"
+        ? [explicitlyNamed] : [];
+    } else if (asksDeposit || asksHowToBook) {
+      // Do not guess which property the customer meant, or bury the payment
+      // answer under generic catalog listings.
+      candidates = [];
+    } else {
+      candidates = catalogMatchFilter(catalog, context, message)
+        .filter(room => normalizeText(room.status) === "available")
+        .sort((a, b) =>
+          Number(a.day_price || Infinity) - Number(b.day_price || Infinity));
+    }
   }
 
   const voiceMode = Boolean(normalizeLanguageStyle(payload?.voice_language));
@@ -815,9 +894,27 @@ async function buildQuotaLimitedAccommodationReply(payload, requestCatalog = nul
       ? "以下显示 " + shown.length + " 个，共 " + candidates.length + " 个匹配住宿。"
       : "Showing " + shown.length + " of " + candidates.length + " matching listings.")
     : "";
-  const reply = [intro, limitedResults, roomLines.length ? roomLines.join("\n") : words.none, caution]
-    .filter(Boolean)
-    .join("\n\n");
+  const hasPaymentHelp = asksDeposit || asksHowToBook;
+  // A direct named-rate question can show a 50% estimate ONLY for a
+  // verified database price and an explicitly requested day/overnight type.
+  // Never mistake a listed base rate for the final booking quote.
+  const namedRate = !validWindow && shown.length === 1 &&
+    findCatalogNameMention(shown, message);
+  const stayKind = /\bovernight\b|\bnight\b/i.test(message)
+    ? "overnight" : /\bday\s*tour\b/i.test(message) ? "day" : null;
+  const listedRate = namedRate && stayKind
+    ? Number(stayKind === "overnight" ? namedRate.overnight_price : namedRate.day_price)
+    : 0;
+  const estimate = asksDeposit && Number.isFinite(listedRate) && listedRate > 0
+    ? quotaEstimatedDownpayment(language, stayKind, listedRate) : "";
+  const details = roomLines.length ? roomLines.join("\n") :
+    hasPaymentHelp ? "" : words.none;
+  const reply = [
+    intro, limitedResults, details,
+    hasPaymentHelp ? getQuotaBookingGuidance(language) : "",
+    estimate,
+    roomLines.length ? caution : "",
+  ].filter(Boolean).join("\n\n");
   return {
     success: true, mode: "database_fallback",
     reply, extracted_context: context,
