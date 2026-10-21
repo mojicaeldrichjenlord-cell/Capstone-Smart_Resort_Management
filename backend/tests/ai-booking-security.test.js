@@ -767,3 +767,63 @@ test("Normal short chat and translation remain usable after size limits", async 
   assert.equal(translated.body.translated_text, "Mock English translation");
   assert.equal(modelCalls, 3);
 });
+
+
+// Demo QA regression: use the real Philippine calendar date and never give
+// guests stale years as sample booking dates in the AI's instructions.
+test("AI prompts use current Philippine date and explicitly reject stale examples", async () => {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(new Date());
+  const get = type => parts.find(part => part.type === type).value;
+  const date = get("year") + "-" + get("month") + "-" + get("day");
+  const result = await post("/api/ai/chat", {
+    message: "Paano po kayo mag-book ng room?",
+  });
+  assert.equal(result.status, 200);
+  assert.match(modelPrompts[0], new RegExp("Today at the resort in the Philippines \\(Asia/Manila\\) is " + date.replace(/-/g, "\\-")));
+  assert.match(modelPrompts.at(-1), new RegExp("Current resort date: " + date.replace(/-/g, "\\-")));
+  assert.match(modelPrompts.at(-1), /Never use old example dates/);
+});
+
+// Asking for two categories must not silently filter out rooms just because
+// "cottage" also appears. The rates must come from the current mocked catalog.
+test("AI compares rooms and cottages with their current independent catalog rates", async () => {
+  catalogRows = [
+    { ...exampleRoom, id: 80, room_name: "Current Test Room", category_name: "Room",
+      day_price: 3000, overnight_price: 4500 },
+    { ...exampleRoom, id: 81, room_name: "Current Test Cottage", category_name: "Cottage",
+      day_price: 800, overnight_price: 1300 },
+  ];
+  const result = await post("/api/ai/chat", {
+    message: "Ano po ang mga available na kwarto at cottage? Magkano po ang day tour?",
+  });
+  assert.equal(result.status, 200);
+  assert.equal(queries.length, 1);
+  assert.deepEqual(result.body.catalog_recommendations.map(room => room.name),
+    ["Current Test Room", "Current Test Cottage"]);
+  assert.equal(result.body.catalog_recommendations[0].day_price, 3000);
+  assert.equal(result.body.catalog_recommendations[1].day_price, 800);
+  assert.match(modelPrompts.at(-1), /Day Tour: PHP 3,000/);
+  assert.match(modelPrompts.at(-1), /Day Tour: PHP 800/);
+  assert.match(modelPrompts.at(-1), /Never reuse prices from older conversations/);
+  assert.ok(result.body.catalog_recommendations.every(room => room.availability_verified === false));
+});
+
+// Text chat and manual translation should keep the same polite Filipino tone,
+// while preserving accommodation names and prices supplied by the source.
+test("Tagalog replies and translations request consistently polite customer tone", async () => {
+  const reply = await post("/api/ai/chat", {
+    message: "Magkano po ang kwarto at paano mag-reserve?",
+  });
+  assert.equal(reply.status, 200);
+  assert.match(modelPrompts.at(-1), /consistently address guests politely/);
+  assert.match(modelPrompts.at(-1), /exact Day Tour\/Overnight\/Extended rate/);
+  modelPrompts = [];
+  const translated = await post("/api/ai/translate", {
+    text: "Your room costs PHP 3,000 for the day tour.",
+  });
+  assert.equal(translated.status, 200);
+  assert.match(modelPrompts.at(-1), /Consistently use polite "po", "kayo", and "ninyo"/);
+  assert.match(modelPrompts.at(-1), /Do not introduce outdated example dates/);
+});
