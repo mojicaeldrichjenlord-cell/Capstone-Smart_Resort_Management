@@ -843,7 +843,7 @@ test("Gemini quota fallback answers a standalone Taglish downpayment question", 
   assert.ok(["tagalog", "taglish"].includes(result.body.extracted_context.language_style));
   assert.match(result.body.reply, /50%/);
   assert.match(result.body.reply, /PayPal/);
-  assert.match(result.body.reply, /remaining 50%/);
+  assert.match(result.body.reply, /(?:remaining|natitirang) 50%/i);
   assert.doesNotMatch(result.body.reply, /Family Room A|Old Room/);
   assert.deepEqual(result.body.catalog_recommendations, []);
   assert.equal(queries.length, 0);
