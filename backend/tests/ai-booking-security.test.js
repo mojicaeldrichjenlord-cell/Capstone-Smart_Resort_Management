@@ -827,3 +827,97 @@ test("Tagalog replies and translations request consistently polite customer tone
   assert.match(modelPrompts.at(-1), /Consistently use polite "po", "kayo", and "ninyo"/);
   assert.match(modelPrompts.at(-1), /Do not introduce outdated example dates/);
 });
+
+
+// Demo safety: payment-only follow-ups should use a known 50% policy, never
+// the unrelated accommodation catalog, even with stale prior booking context.
+test("Gemini quota fallback answers a standalone Taglish downpayment question", async () => {
+  injectedFailures = 1;
+  injectedStatus = 429;
+  const result = await post("/api/ai/chat", {
+    message: "Magkano po ang downpayment?",
+    context: { intent: "ask_price", room_name: "Old Room", language_style: "taglish" },
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.mode, "database_fallback");
+  assert.equal(result.body.extracted_context.language_style, "taglish");
+  assert.match(result.body.reply, /50%/);
+  assert.match(result.body.reply, /PayPal/);
+  assert.match(result.body.reply, /remaining 50%/);
+  assert.doesNotMatch(result.body.reply, /Family Room A|Old Room/);
+  assert.deepEqual(result.body.catalog_recommendations, []);
+  assert.equal(queries.length, 0);
+  assert.equal(modelCalls, 1);
+});
+
+test("Quota fallback answers Filipino paunang bayad without listing rooms", async () => {
+  injectedFailures = 1;
+  injectedStatus = 429;
+  const result = await post("/api/ai/chat", {
+    message: "Magkano po ang paunang bayad?",
+  });
+  assert.equal(result.status, 200);
+  assert.match(result.body.reply, /50%/);
+  assert.match(result.body.reply, /PayPal/);
+  assert.equal(result.body.extracted_context.language_style, "taglish");
+  assert.equal(queries.length, 0);
+});
+
+test("Quota fallback quotes only the exactly named cottage and its 50% estimate", async () => {
+  injectedFailures = 1;
+  injectedStatus = 429;
+  catalogRows = [
+    { ...exampleRoom, id: 81, room_name: "Small Nipa Hut 2",
+      category_name: "Cottage", day_price: 800, overnight_price: 900 },
+    { ...exampleRoom, id: 82, room_name: "Small Nipa Hut 20",
+      category_name: "Cottage", day_price: 1200 },
+    { ...exampleRoom, id: 83, room_name: "TEST ROOM",
+      category_name: "Cottage", day_price: 500 },
+  ];
+  const result = await post("/api/ai/chat", {
+    message: "Magkano po ang day tour ng Small Nipa Hut 2? Paano po mag-book online at magkano ang downpayment?",
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.mode, "database_fallback");
+  assert.match(result.body.reply, /Small Nipa Hut 2/);
+  assert.match(result.body.reply, /PHP 800\.00/);
+  assert.match(result.body.reply, /PHP 400\.00/);
+  assert.match(result.body.reply, /PayPal/);
+  assert.doesNotMatch(result.body.reply, /Small Nipa Hut 20|TEST ROOM/);
+  assert.deepEqual(result.body.catalog_recommendations.map(room => room.id), [81]);
+  assert.equal(result.body.catalog_recommendations[0].availability_verified, false);
+  assert.equal(result.body.booking_preview, null);
+  assert.equal(queries.length, 1);
+  assert.ok(queries.every(q => /^SELECT\b/i.test(q.sql)));
+});
+
+test("Quota fallback does not mistake Hut 2 for Hut 20", async () => {
+  injectedFailures = 1;
+  injectedStatus = 429;
+  catalogRows = [
+    { ...exampleRoom, id: 81, room_name: "Small Nipa Hut 2",
+      category_name: "Cottage", day_price: 800 },
+    { ...exampleRoom, id: 82, room_name: "Small Nipa Hut 20",
+      category_name: "Cottage", day_price: 1200 },
+  ];
+  const result = await post("/api/ai/chat", {
+    message: "How much is the Small Nipa Hut 20 day tour downpayment?",
+  });
+  assert.equal(result.status, 200);
+  assert.deepEqual(result.body.catalog_recommendations.map(room => room.id), [82]);
+  assert.match(result.body.reply, /PHP 600\.00/);
+  assert.doesNotMatch(result.body.reply, /Small Nipa Hut 2 —/);
+});
+
+test("Quota fallback answers plain English online booking deposit without SQL", async () => {
+  injectedFailures = 1;
+  injectedStatus = 429;
+  const result = await post("/api/ai/chat", {
+    message: "How much is the deposit for online reservations?",
+  });
+  assert.equal(result.status, 200);
+  assert.match(result.body.reply, /50%/);
+  assert.match(result.body.reply, /PayPal/);
+  assert.deepEqual(result.body.catalog_recommendations, []);
+  assert.equal(queries.length, 0);
+});
