@@ -758,9 +758,9 @@ async function buildQuotaLimitedAccommodationReply(payload, requestCatalog = nul
   }, {});
   // A downpayment/how-to-book question can be answered safely even when
   // Gemini is rate-limited; it should NOT produce five unrelated rooms.
-  const asksDeposit = /\b(?:down[\s-]*payments?|deposits?|dp)\b/i.test(message);
+  const asksDeposit = /\b(?:down[\s-]*payments?|deposits?|deposito|dp|advance\s+payment|paunang\s+bayad|unang\s+bayad)\b/i.test(message);
   const asksHowToBook = /\b(?:paano|how|steps?|process)\b/i.test(message) &&
-    /\b(?:book(?:ing)?|reserv(?:e|ation)|mag[\s-]*book|mag[\s-]*reserve|makapag[\s-]*reserve)\b/i.test(message);
+    /\b(?:book(?:ing)?|reserv(?:e|ation)|mag[\s-]*book|mag[\s-]*reserve|makapag[\s-]*reserve|makakapag[\s-]*(?:book|reserve))\b/i.test(message);
   if (!isAccommodationInquiry(message, context) && !asksDeposit && !asksHowToBook) return null;
 
   // During an AI quota outage, extract only simple, explicit numbers.
@@ -780,8 +780,12 @@ async function buildQuotaLimitedAccommodationReply(payload, requestCatalog = nul
     }
   }
 
+  // Short Tagalog questions such as "magkano ang downpayment?" may not
+  // contain enough tokens for the full conversation language detector.
+  const shortFilipinoQuestion = /\b(?:magkano|paano|bayad|puwede|pwede|kailangan|po)\b/i.test(message);
   const language = normalizeLanguageStyle(payload?.voice_language) ||
     detectLanguageFromMessage(message) ||
+    (shortFilipinoQuestion ? "taglish" : null) ||
     normalizeLanguageStyle(context.language_style) || "english";
   context.language_style = language;
 
