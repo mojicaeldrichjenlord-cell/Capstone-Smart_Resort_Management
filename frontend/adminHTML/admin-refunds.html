@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Refund Review Queue | SmartResort Admin</title>
+  <link rel="stylesheet" href="../sharedCSS/global.css"/>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <link rel="stylesheet" href="../adminCSS/admin.css"/>
+  <link rel="stylesheet" href="../adminCSS/admin-mobile-nav.css"/>
+  <style>
+    /* Phase 1: read-only and mobile-scrollable refund queue. */
+    .refund-note {padding:14px 16px;background:#fff7ed;color:#92400e;
+      border:1px solid #fdba74;border-radius:12px;margin:18px 0;line-height:1.6}
+    .refund-table-wrap {overflow-x:auto;max-width:100%;-webkit-overflow-scrolling:touch}
+    .refund-table {border-collapse:collapse;width:100%;min-width:860px}
+    .refund-table th,.refund-table td {padding:12px 13px;border-bottom:1px solid #e2e8f0;text-align:left;vertical-align:top}
+    .refund-table th {background:#f1f5f9;color:#0f172a}
+    .refund-table td {color:#334155;max-width:300px;overflow-wrap:anywhere}
+    .refund-status {font-weight:700;color:#92400e}
+  </style>
+</head>
+<body class="has-fixed-navbar">
+  <header class="navbar">
+    <div class="logo">SmartResort Admin</div>
+    <nav>
+      <a href="admin.html">Bookings</a>
+      <a href="admin-rooms.html">Accommodations</a>
+      <a href="admin-map-editor.html">Map Editor</a>
+      <a href="admin-reports.html">Reports</a>
+      <a href="admin-refunds.html" aria-current="page">Refund Requests</a>
+      <a href="admin-staff.html">Staff Accounts</a>
+      <a href="admin-profile.html">Profile</a>
+      <a href="#" id="logoutBtn">Logout</a>
+    </nav>
+  </header>
+  <main class="admin-wrapper">
+    <section class="admin-hero">
+      <h1>Refund Requests — Review Queue</h1>
+      <p>Track customer requests for cancelled or rejected online reservations.</p>
+      <a href="admin.html" class="hero-btn secondary">Back to Bookings</a>
+    </section>
+    <section class="admin-panel">
+      <div class="refund-note">
+        <strong>Review only — no refunds issued.</strong>
+        Recorded accommodation payments may include TEST/DEMO credits that do
+        not match actual PayPal captures. Confirm original gateway records,
+        resort policy and real collected amount before approving or paying a
+        refund. This phase has no payout or approval action.
+      </div>
+      <div class="panel-header">
+        <h2>Customer Refund Requests</h2>
+        <button type="button" class="refresh-btn" id="refreshRefunds">Refresh</button>
+      </div>
+      <p id="refundStatus" role="status" aria-live="polite">Loading refund requests…</p>
+      <div class="refund-table-wrap" role="region" aria-label="Refund requests table" tabindex="0">
+        <table class="refund-table">
+          <thead><tr><th>Request ID</th><th>Reservation</th><th>Payment Method</th><th>Recorded Paid</th><th>Reason</th><th>Request Status</th><th>Requested At</th></tr></thead>
+          <tbody id="refundRows"><tr><td colspan="7">Loading…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+  <script src="../sharedJS/api-config.js"></script>
+  <script src="../adminJS/admin-refunds.js"></script>
+  <script src="../adminJS/admin-mobile-nav.js"></script>
+</body>
+</html>
