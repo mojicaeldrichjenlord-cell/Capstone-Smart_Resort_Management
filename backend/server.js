@@ -23,6 +23,8 @@ const managerRoutes = require("./routes/managerRoutes");
 const housekeepingRoutes = require("./routes/housekeepingRoutes");
 const mapMarkerRoutes = require("./routes/mapMarkerRoutes");
 const paypalRoutes = require("./routes/paypalRoutes");
+// Refund requests are manual-review records only; no money moves here.
+const refundRoutes = require("./routes/refundRoutes");
 
 const app = express();
 
@@ -54,6 +56,7 @@ app.use("/api/manager", managerRoutes);
 app.use("/api/housekeeping", housekeepingRoutes);
 app.use("/api/map-markers", mapMarkerRoutes);
 app.use("/api/paypal", paypalRoutes);
+app.use("/api/refunds", refundRoutes);
 
 const PORT = process.env.PORT || 5000;
 
