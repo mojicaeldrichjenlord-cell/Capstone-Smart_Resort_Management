@@ -105,13 +105,35 @@ async function loadMyBookings(userId) {
       return;
     }
 
+    // Refund review status is separate from reservation/payment statuses.
+    // If the test database has not run the migration yet, do not show a
+    // non-working request button or interfere with the booking list.
+    const refundLookup = new Map();
+    let refundReady = false;
+    try {
+      const refundResponse = await fetch(`${API_BASE}/refunds/customer/requests`, {
+        headers: { Authorization: "Bearer " + customerToken },
+      });
+      if (refundResponse.ok) {
+        const refundData = await refundResponse.json();
+        if (refundData.success && Array.isArray(refundData.requests)) {
+          refundReady = true;
+          refundData.requests.forEach((request) => {
+            refundLookup.set(Number(request.reservation_id), request);
+          });
+        }
+      }
+    } catch (_) {
+      // Booking history still works if the refund module is unavailable.
+    }
+
     container.innerHTML = `
       <div style="
         display:grid;
         grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
         gap: 20px;
       ">
-        ${bookings.map((booking) => renderBookingCard(booking)).join("")}
+        ${bookings.map((booking) => renderBookingCard(booking, refundLookup, refundReady)).join("")}
       </div>
     `;
   } catch (error) {
@@ -126,7 +148,7 @@ async function loadMyBookings(userId) {
 // SECTION 4: Render booking card
 // ============================================================
 
-function renderBookingCard(booking) {
+function renderBookingCard(booking, refundLookup = new Map(), refundReady = false) {
   const status = String(booking.status || "pending").toLowerCase();
   const paymentMethod = String(booking.payment_method || "gcash").toLowerCase();
   const paymentStatus = String(booking.payment_status || "pending").toLowerCase();
@@ -136,6 +158,12 @@ function renderBookingCard(booking) {
   );
 
   const canCancelReservation = isCancellationAllowed(booking);
+  // Refund requests are manual review, not an automatic payment reversal.
+  const refundRequest = refundLookup.get(Number(booking.id));
+  const canRequestRefund = refundReady && !refundRequest &&
+    ["cancelled", "rejected"].includes(status) &&
+    String(booking.booking_source || "").toLowerCase() === "online" &&
+    Number(booking.paid_amount || 0) > 0;
 
   return `
     <div style="
@@ -237,6 +265,14 @@ function renderBookingCard(booking) {
           <div><strong>Required Down Payment:</strong> ₱${formatMoney(booking.required_downpayment)}</div>
         </div>
 
+        ${refundRequest ? `
+          <div style="padding:10px 13px;margin-bottom:12px;border-radius:12px;
+                background:#fff7ed;color:#9a3412;border:1px solid #fed7aa">
+            Refund request: ${escapeHtml(String(refundRequest.status || "pending_review").replace(/_/g, " "))}
+            — for manual review only. No refund is confirmed.
+          </div>
+        ` : ""}
+
         <div style="display:flex;gap:10px;flex-wrap:wrap;">
           <a
             href="booking-receipt.html?id=${booking.id}"
@@ -246,6 +282,14 @@ function renderBookingCard(booking) {
             View Receipt
           </a>
 
+          ${
+            canRequestRefund
+              ? `<button class="btn-secondary" type="button"
+                    style="flex:1;" onclick="requestRefund(${Number(booking.id)})">
+                    Request Refund Review
+                  </button>`
+              : ""
+          }
           ${
             canCancelReservation
               ? `
@@ -320,6 +364,46 @@ async function cancelBooking(bookingId) {
     } else {
       alert(error.message || "Failed to cancel reservation.");
     }
+  }
+}
+
+// Ask for a MANUAL refund review after cancellation. This cannot initiate
+// a PayPal payout or set any refundable amount automatically.
+async function requestRefund(reservationId) {
+  if (!currentUser || !Number.isSafeInteger(Number(reservationId))) return;
+  const token = sessionStorage.getItem("customerToken");
+  if (!token) {
+    alert("Please log in again.");
+    window.location.href = "../authHTML/login.html";
+    return;
+  }
+  const reason = window.prompt(
+    "Why are you requesting a refund? (10–500 characters). The resort must review the actual payment before any refund."
+  );
+  if (reason === null) return;
+  const trimmed = reason.trim();
+  if (trimmed.length < 10 || trimmed.length > 500) {
+    alert("Please provide a reason of 10–500 characters.");
+    return;
+  }
+  if (!window.confirm("Submit this request for manual review? This does NOT issue an immediate refund.")) return;
+  try {
+    const response = await fetch(`${API_BASE}/refunds/customer/requests`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token,
+      },
+      body: JSON.stringify({ reservation_id: Number(reservationId), reason: trimmed }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || "Unable to submit refund request.");
+    if (typeof showToast === "function") showToast(data.message, "success");
+    else alert(data.message);
+    await loadMyBookings(currentUser.id);
+  } catch (error) {
+    if (typeof showToast === "function") showToast(error.message, "error");
+    else alert(error.message);
   }
 }
 
