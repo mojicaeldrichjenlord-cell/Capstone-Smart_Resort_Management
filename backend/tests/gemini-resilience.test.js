@@ -154,3 +154,17 @@ test("A retryable Gemini 503 records two attempts but only one successful respon
   assert.equal(after.meteredResponses - before.meteredResponses, 1);
   assert.equal(after.totalTokens - before.totalTokens, 8);
 });
+
+
+test("Local demo budget refusal gets its own safe non-billing error code", () => {
+  const { budgetError, createGeminiBudgetGuard } = require("../controllers/ai/geminiBudgetGuard");
+  const error = budgetError();
+  const result = geminiPublicError(error);
+  assert.equal(result.status, 429);
+  assert.equal(result.body.code, "AI_LOCAL_BUDGET");
+  assert.doesNotMatch(JSON.stringify(result), /API key|credentials|secret/i);
+  assert.throws(() => createGeminiBudgetGuard(0, 0.03),
+    /Invalid Gemini budget guard configuration/);
+  assert.throws(() => createGeminiBudgetGuard(NaN, 0.03),
+    /Invalid Gemini budget guard configuration/);
+});
