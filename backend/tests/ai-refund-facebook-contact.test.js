@@ -1,6 +1,6 @@
 /**
- * Stage 86: Refund support must give a clickable verified resort Facebook
- * contact after the manual-refund explanation. This is a zero-credit test:
+ * Stage 86: Refund support must give clickable verified Facebook and phone
+ * contacts after the manual-refund explanation. This is a zero-credit test:
  * it requires neither Gemini nor database, network, payment or user records.
  * Run from backend/: node --test tests/ai-refund-facebook-contact.test.js
  */
@@ -19,6 +19,15 @@ const aiScript = fs.readFileSync(path.join(frontendRoot, "js/ai-chat.js"), "utf8
 const homeFb = home.match(/href="(https:\/\/www\.facebook\.com\/share\/[^"]+)"/);
 assert.ok(homeFb, "Customer Home page must have an official Facebook link.");
 const url = homeFb[1];
+const landing = fs.readFileSync(path.join(frontendRoot, "customerHTML/landing.html"), "utf8");
+// Derive phone test expectations from the actual Home contacts, not guesses.
+const phoneDigits = [...home.matchAll(/href="tel:(09\d{9})"/g)].map(x => x[1]);
+assert.equal(phoneDigits.length, 2, "Home must have two dialable resort numbers.");
+const formattedPhone = n => n.slice(0, 4) + "-" + n.slice(4, 7) + "-" + n.slice(7);
+for (const n of phoneDigits) {
+  assert.ok(landing.includes(formattedPhone(n)),
+    "Public Landing and Customer Home must agree on phone numbers.");
+}
 
 const browser = {
   window: { location: { hostname: "localhost" } },
@@ -43,6 +52,10 @@ for (const kind of ["refund", "cancellationRefund"]) {
       assert.ok(html.includes('href="' + url + '"'), "URL must be clickable in chat.");
       assert.match(html, /target="_blank" rel="noopener noreferrer"/);
       assert.match(html, /Message resort on Facebook/);
+      for (const n of phoneDigits) {
+        assert.ok(reply.includes(formattedPhone(n)), "Refund reply must include both verified numbers.");
+        assert.ok(html.includes('href="tel:' + n + '"'), "Verified phone must be clickable.");
+      }
     });
   }
 }
@@ -59,12 +72,18 @@ for (const [locale, fn, question] of [
     assert.match(result.reply, /refund/i);
     assert.match(result.reply, /manual|manually/i);
     assert.match(browser.formatAiReply(result.reply), /Message resort on Facebook/);
+    const html = browser.formatAiReply(result.reply);
+    for (const n of phoneDigits) {
+      assert.ok(result.reply.includes(formattedPhone(n)));
+      assert.ok(html.includes('href="tel:' + n + '"'));
+    }
   });
 }
 
 test("AI source prompt includes official refund contact and no guarantee", () => {
   const prompt = policyPromptLines();
   assert.ok(prompt.includes(url));
+  for (const n of phoneDigits) assert.ok(prompt.includes(formattedPhone(n)));
   assert.match(prompt, /Do not promise a refund/);
 });
 
@@ -73,4 +92,5 @@ test("AI renderer escapes untrusted HTML and does not make arbitrary links", () 
   assert.doesNotMatch(html, /<img/i);
   assert.match(html, /&lt;img/i);
   assert.doesNotMatch(html, /href="https:\/\/example\.com/);
+  assert.doesNotMatch(html, /href="tel:/);
 });
