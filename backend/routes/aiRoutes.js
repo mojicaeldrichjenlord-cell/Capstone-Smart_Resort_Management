@@ -1,6 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const { requireCustomerAuth } = require("../middleware/customerAuth");
+// Stage 85-A: throttle all Gemini-funded chat/translation endpoints.
+const { aiRateGuard } = require("../middleware/aiRateLimit");
 const { voiceStatus, speakBlessica } =
   require("../controllers/ai/azureSpeechController");
 
@@ -33,7 +35,7 @@ function limitAiPayload(kind) {
     return next();
   };
 }
-router.post("/chat", limitAiPayload("chat"), chatWithGemini);
+router.post("/chat", limitAiPayload("chat"), aiRateGuard.middleware, chatWithGemini);
 // Browser-independent Filipina voice. Paid Azure synthesis requires a real,
 // signed-in customer token, so anonymous requests cannot consume Azure credits.
 router.get("/voice/status", voiceStatus);
@@ -47,8 +49,8 @@ router.post("/create-booking", (_req, res) =>
     message: "AI direct booking has been retired. Continue to the secure Customer reservation page to select a slot, review prices and confirm payment.",
   }),
 );
-router.post("/translate", limitAiPayload("translation"), translateReplyToTagalog);
-router.post("/translate-english", limitAiPayload("translation"), translateReplyToEnglish);
-router.post("/translate-taglish", limitAiPayload("translation"), translateReplyToTaglish);
+router.post("/translate", limitAiPayload("translation"), aiRateGuard.middleware, translateReplyToTagalog);
+router.post("/translate-english", limitAiPayload("translation"), aiRateGuard.middleware, translateReplyToEnglish);
+router.post("/translate-taglish", limitAiPayload("translation"), aiRateGuard.middleware, translateReplyToTaglish);
 
 module.exports = router;
