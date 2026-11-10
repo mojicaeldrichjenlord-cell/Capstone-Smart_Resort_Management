@@ -6,10 +6,13 @@
 // Same official Facebook page linked from the signed-in Customer Home page.
 // Keep this contact URL in sync with frontend/customerHTML/index.html.
 const OFFICIAL_RESORT_FACEBOOK_URL = "https://www.facebook.com/share/1E1kZLtrV4/?mibextid=wwXIfr";
+ // Phone numbers match the contact cards on Customer Home and public Landing.
+const OFFICIAL_RESORT_PHONE_PRIMARY = "0956-912-5625";
+const OFFICIAL_RESORT_PHONE_ALTERNATIVE = "0967-817-0662";
 
 const POLICY_FACTS = Object.freeze({
   cancellation: "Customers may cancel their own pending/approved reservations in My Bookings at least one calendar day before check-in, provided they have not checked in. Front Desk handles checked-in reservations. Cancelling does not automatically reverse any payment.",
-  refund: `Automated refunds and dispute decisions are outside the current system scope. Management handles refund requests manually and determines eligibility according to resort policy and verified payment records. Do not promise a refund or quote an amount. After explaining the manual process, suggest that the guest message the resort's official Facebook page for assistance: ${OFFICIAL_RESORT_FACEBOOK_URL}.`,
+  refund: `Automated refunds and dispute decisions are outside the current system scope. Management handles refund requests manually and determines eligibility according to resort policy and verified payment records. Do not promise a refund or quote an amount. After explaining the manual process, suggest contacting the resort using its official Facebook page (${OFFICIAL_RESORT_FACEBOOK_URL}), Front Desk (${OFFICIAL_RESORT_PHONE_PRIMARY}), or alternative number (${OFFICIAL_RESORT_PHONE_ALTERNATIVE}).`,
   entrance: "Entrance fees are separate from the 50% online accommodation downpayment. The booking page may show an estimate; actual entrance fees, guest adjustments and applicable verified discounts are finalized and collected onsite by Front Desk. Do not quote a fixed entrance price.",
   walkin: "Front Desk can create same-day manual walk-in reservations. Full accommodation payment is handled onsite for walk-ins. Actual slots and charges must be checked before confirming.",
   booking: "The AI provides information and preliminary suggestions only. A confirmed booking requires the Customer booking page, schedule validation and the applicable payment process.",
@@ -76,6 +79,14 @@ function inferPolicyLanguage(message) {
 // Refund questions include a practical contact next step, NOT a refund promise.
 // The verified Home page uses the exact same URL. All five language variants
 // keep policy answers local (zero Gemini calls, zero database queries).
+const REFUND_PHONE_GUIDANCE = Object.freeze({
+  english: "Or contact the resort by phone:",
+  tagalog: "Maaari rin po kayong tumawag sa resort:",
+  taglish: "Pwede rin po kayong tumawag sa resort:",
+  spanish: "O contacte con el resort por teléfono:",
+  mandarin: "您也可以拨打度假村联系电话：",
+});
+
 const REFUND_FACEBOOK_GUIDANCE = Object.freeze({
   english: "For help with your refund request, please message the resort's official Facebook page:",
   tagalog: "Para po sa tulong sa refund request, maaari po kayong mag-message sa official Facebook page ng resort:",
@@ -91,7 +102,10 @@ function getPolicyReply(kind, language) {
   if (!answer) return null;
   if (kind === "refund" || kind === "cancellationRefund") {
     return answer + "\n\n" + REFUND_FACEBOOK_GUIDANCE[locale] +
-      "\n" + OFFICIAL_RESORT_FACEBOOK_URL;
+      "\n" + OFFICIAL_RESORT_FACEBOOK_URL +
+      "\n\n" + REFUND_PHONE_GUIDANCE[locale] +
+      "\nFront Desk: " + OFFICIAL_RESORT_PHONE_PRIMARY +
+      "\nAlternative: " + OFFICIAL_RESORT_PHONE_ALTERNATIVE;
   }
   return answer;
 }
