@@ -35,18 +35,16 @@ function budgetError() {
 }
 
 function createGeminiBudgetGuard(capUsd, reserveUsd) {
-  if (!Number.isFinite(capUsd) || capUsd < 0 ||
+  if (!Number.isFinite(capUsd) || capUsd <= 0 ||
       !Number.isFinite(reserveUsd) || reserveUsd <= 0) {
     throw new Error("Invalid Gemini budget guard configuration");
   }
-  // A cap of zero means unlimited for isolated automated tests ONLY.
-  // Never configure zero for a real paid deployment.
   let allocatedUsd = 0, estimatedSpendUsd = 0, inFlightUsd = 0;
   let blockedCalls = 0, callsWithoutMetadata = 0;
   function acquire() {
     // JS executes this synchronously; concurrent requests cannot both
     // reserve the same remaining local budget before an await.
-    if (capUsd > 0 && allocatedUsd + inFlightUsd + reserveUsd > capUsd + 1e-10) {
+    if (allocatedUsd + inFlightUsd + reserveUsd > capUsd + 1e-10) {
       blockedCalls++;
       throw budgetError();
     }
