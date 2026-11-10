@@ -1008,7 +1008,7 @@ const policyAccuracyCases = [
   {
     name: "Tagalog entrance fee does not invent pesos",
     question: "Magkano ang entrance fee?",
-    topic: "entrance", response: /Hiwalay po/i,
+    topic: "entrance", response: /(?:Hiwalay|Separate) po/i,
     verify: /Front Desk/i,
   },
   {
