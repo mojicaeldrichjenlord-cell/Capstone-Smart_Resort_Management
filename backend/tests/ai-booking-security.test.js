@@ -84,7 +84,7 @@ substitute("../config/db", {
 
 // Keep the broad mocked regression suite independent of a real demo budget.
 // Dedicated Stage 85-A tests cover the actual limiter and cutoff separately.
-process.env.AI_GEMINI_SESSION_CAP_USD = "0"; // Test fixture only; never use for production.
+process.env.AI_GEMINI_SESSION_CAP_USD = "100"; // Large mock-only allowance; no network requests.
 process.env.AI_RATE_PER_MINUTE = "10000";
 process.env.AI_RATE_PER_DAY = "10000";
 process.env.AI_RATE_GLOBAL_PER_MINUTE = "10000";
