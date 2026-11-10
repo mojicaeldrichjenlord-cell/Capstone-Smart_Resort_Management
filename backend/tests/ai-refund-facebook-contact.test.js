@@ -47,6 +47,21 @@ for (const kind of ["refund", "cancellationRefund"]) {
   }
 }
 
+// Network/service outage must not replace refund help with unrelated payment text.
+for (const [locale, fn, question] of [
+  ["English", "getEnglishFallbackReply", "What is the refund policy?"],
+  ["Tagalog", "getTagalogFallbackReply", "Paano po mag-refund?"],
+  ["Taglish", "getTaglishFallbackReply", "Pwede po bang refund?"],
+]) {
+  test(locale + " offline refund help includes the same clickable Facebook contact", () => {
+    const result = browser[fn](question.toLowerCase(), {});
+    assert.ok(result.reply.includes(url));
+    assert.match(result.reply, /refund/i);
+    assert.match(result.reply, /manual|manually/i);
+    assert.match(browser.formatAiReply(result.reply), /Message resort on Facebook/);
+  });
+}
+
 test("AI source prompt includes official refund contact and no guarantee", () => {
   const prompt = policyPromptLines();
   assert.ok(prompt.includes(url));
