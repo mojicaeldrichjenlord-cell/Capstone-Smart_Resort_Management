@@ -60,6 +60,9 @@ const ANSWERS = Object.freeze({
 // must not override an explicitly Filipino new question. Voice language wins.
 function inferPolicyLanguage(message) {
   const t = String(message || "").normalize("NFKC").toLowerCase();
+  if (/[\u3400-\u9fff]/u.test(t)) return "mandarin";
+  if (/\b(?:reembolso|reembolsos|cancelar|cancelaci[oó]n|entrada|reserva|reservaci[oó]n|alojamiento|puedo|c[oó]mo)\b/iu.test(t) &&
+      /[¿áéíóúñ]|\b(?:reembolso|cancelar|cancelaci[oó]n)\b/iu.test(t)) return "spanish";
   const filipino = /\b(?:magkano|paano|pwede|puwede|maaari|kansela|kanselahin|bayad|po|opo|ninyo|tumatanggap|paki|bakit)\b/i.test(t);
   if (!filipino) return null;
   const englishMix = /\b(?:entrance|fee|booking|cancel|refund|walk[\s-]?in|online|check[\s-]?in|downpayment|payment)\b/i.test(t);
@@ -79,11 +82,11 @@ function matchGeneralPolicyQuestion(message) {
   const t = String(message || "").normalize("NFKC").trim().toLowerCase();
   if (!t || t.length > 350) return null;
   if (/\b\d{2,}\b|₱|\bphp\b|\b(?:nipa|hut|villa|pavilion|cottages?|rooms?|accommodation\s+(?:a|b|c)|transaction|receipt|reference|booking\s+code|status\s+of|already\s+paid|paid\s+already|payment\s+status|available\s+(?:on|for)|price\s+of)\b/i.test(t)) return null;
-  const refund = /\b(?:refunds?|refundable|money back|refund\s+request|return.*payment)\b|ibalik.*(?:pera|bayad)|balik.*(?:pera|bayad)|marefund|ma-refund/i.test(t);
-  const cancel = /\b(?:cancel|cancellation|cancelled|canceled|cancelling)\b|(?:i|mag|pa)?kansela|mag-?cancel/i.test(t);
-  const entrance = /\bentrance(?:\s+fees?|\s+payment|\s+charges?)?\b|bayad.*(?:entrance|pasok)/i.test(t);
-  const walkin = /\bwalk[\s-]?ins?\b/i.test(t);
-  const question = /[?？]|\b(?:how|what|where|when|can|may|do|does|is|are|allowed|policy|paano|pwede|puwede|maaari|magkano|kailangan|saan|ilan|ano|tumatanggap|may)\b/i.test(t);
+  const refund = /\b(?:refunds?|refundable|money back|refund\s+request|return.*payment|reembolsos?)\b|ibalik.*(?:pera|bayad)|balik.*(?:pera|bayad)|marefund|ma-refund|退款|退费/i.test(t);
+  const cancel = /\b(?:cancel|cancellation|cancelled|canceled|cancelling|cancelar|cancelaci[oó]n)\b|(?:i|mag|pa)?kansela|mag-?cancel|取消|退订/i.test(t);
+  const entrance = /\bentrance(?:\s+fees?|\s+payment|\s+charges?)?\b|bayad.*(?:entrance|pasok)|\b(?:tarifa\s+de\s+entrada|precio\s+de\s+entrada)\b|入场费|门票/i.test(t);
+  const walkin = /\bwalk[\s-]?ins?\b|\b(?:sin\s+reserva|sin\s+reservaci[oó]n)\b|现场预订|到店预订/i.test(t);
+  const question = /[?？¿]|吗|可以|多少|怎么|\b(?:how|what|where|when|can|may|do|does|is|are|allowed|policy|paano|pwede|puwede|maaari|magkano|kailangan|saan|ilan|ano|tumatanggap|may|puedo|c[oó]mo|cu[aá]nto)\b/i.test(t);
   if (!question) return null;
   if (refund && cancel) return "cancellationRefund";
   if (refund) return "refund";
