@@ -29,10 +29,11 @@ function refresh(bucket, now) {
 }
 
 function createAiRateLimiter(options = {}) {
-  const perMinute = options.perMinute ?? 12;
-  const perDay = options.perDay ?? 100;
-  const globalMinute = options.globalMinute ?? 45;
-  const globalDay = options.globalDay ?? 300;
+  // Undefined means default. Null/zero/invalid from ENV must fail closed.
+  const perMinute = options.perMinute === undefined ? 12 : options.perMinute;
+  const perDay = options.perDay === undefined ? 100 : options.perDay;
+  const globalMinute = options.globalMinute === undefined ? 45 : options.globalMinute;
+  const globalDay = options.globalDay === undefined ? 300 : options.globalDay;
   const nowFn = options.now || Date.now;
   const valid = [perMinute, perDay, globalMinute, globalDay]
     .every(v => Number.isSafeInteger(v) && v >= 1);
@@ -79,8 +80,14 @@ function createAiRateLimiter(options = {}) {
     if (minuteExceeded || dayExceeded) {
       rejected++;
       const remaining = minuteExceeded
-        ? Math.max(MINUTE_MS - Math.max(now - own.minuteAt, now - global.minuteAt), 1000)
-        : Math.max(DAY_MS - Math.max(now - own.dayAt, now - global.dayAt), 1000);
+        ? Math.max(
+            own.minuteCount >= perMinute ? MINUTE_MS - (now - own.minuteAt) : 0,
+            global.minuteCount >= globalMinute ? MINUTE_MS - (now - global.minuteAt) : 0,
+            1000)
+        : Math.max(
+            own.dayCount >= perDay ? DAY_MS - (now - own.dayAt) : 0,
+            global.dayCount >= globalDay ? DAY_MS - (now - global.dayAt) : 0,
+            1000);
       res.set("Retry-After", String(Math.ceil(remaining / 1000)));
       return res.status(429).json({
         success: false, code: "AI_RATE_LIMIT",
