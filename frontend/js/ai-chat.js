@@ -691,6 +691,8 @@ function getOfflineFallbackReply(message, storedContext = {}, pageContext = {}) 
   return getEnglishFallbackReply(text, merged);
 }
 
+// Stage 85-D: Offline guidance mirrors the verified PayPal-only customer online flow.
+// It must not claim that cash checkout or an automatic booking is available.
 function getEnglishFallbackReply(text, merged) {
   if (text.includes("hello") || text.includes("hi") || text.includes("hey")) {
     return {
@@ -703,7 +705,7 @@ function getEnglishFallbackReply(text, merged) {
   if (text.includes("how to book") || text.includes("book room") || text.includes("booking process")) {
     return {
       modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.",
-      reply: "To book a room, open the Rooms page, choose a room, enter your check-in date, check-in time, check-out date, check-out time, number of guests, and payment method, then confirm the booking. After that, you can view the receipt in My Bookings.",
+      reply: "To book online, open the Rooms page and choose an accommodation. Enter your check-in and check-out dates and times and the number of guests, then review the secure booking and PayPal payment steps. Online reservations require a 50% accommodation downpayment through PayPal; entrance fees are settled onsite. You can view the reservation and receipt in My Bookings.",
       context: merged,
     };
   }
@@ -711,7 +713,7 @@ function getEnglishFallbackReply(text, merged) {
   if (text.includes("payment") || text.includes("paypal") || text.includes("cash")) {
     return {
       modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.",
-      reply: "Available payment methods are Cash on Arrival and PayPal. If you choose PayPal, the booking can be saved with pending online payment status until it is confirmed.",
+      reply: "Customer online reservations use PayPal for the required 50% accommodation downpayment; the remaining accommodation balance and entrance fees are paid onsite. Cash and other onsite payment methods apply to eligible staff-assisted manual reservations, not customer online checkout. Please verify the final amount on the secure booking page.",
       context: merged,
     };
   }
@@ -766,7 +768,7 @@ function getTagalogFallbackReply(text, merged) {
   if (text.includes("paano mag book") || text.includes("paano mag-book") || text.includes("booking process") || text.includes("mag book")) {
     return {
       modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
-      reply: "Para mag-book ng room, buksan ang Rooms page, pumili ng room, ilagay ang check-in date, check-in time, check-out date, check-out time, bilang ng bisita, at payment method, pagkatapos ay i-confirm ang booking. Pagkatapos noon, makikita mo ang receipt sa My Bookings.",
+      reply: "Para po mag-book online, buksan ang Rooms page at pumili ng accommodation. Ilagay ang check-in at check-out dates, oras, at bilang ng bisita, saka sundin ang secure booking at PayPal payment steps. Ang downpayment ay 50% ng accommodation price; hiwalay ang entrance fee na babayaran onsite. Makikita po ang booking at receipt sa My Bookings.",
       context: merged,
     };
   }
@@ -774,7 +776,7 @@ function getTagalogFallbackReply(text, merged) {
   if (text.includes("bayad") || text.includes("payment") || text.includes("paypal") || text.includes("cash")) {
     return {
       modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
-      reply: "Ang available na payment methods ay Cash on Arrival at PayPal. Kapag PayPal ang pinili mo, puwedeng ma-save ang booking bilang pending online payment habang hindi pa nakukumpirma.",
+      reply: "Para po sa customer online booking, PayPal ang ginagamit para sa 50% accommodation downpayment. Ang natitirang accommodation balance at entrance fee ay babayaran onsite. Ang cash at ibang onsite payment methods ay para sa eligible manual reservations na inaasikaso ng staff, hindi sa online checkout. I-check po ang final amount sa secure booking page.",
       context: merged,
     };
   }
@@ -829,7 +831,7 @@ function getTaglishFallbackReply(text, merged) {
   if (text.includes("how to book") || text.includes("paano mag book") || text.includes("paano mag-book") || text.includes("booking process")) {
     return {
       modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
-      reply: "Para mag-book ng room, open mo ang Rooms page, pumili ng room, ilagay ang check-in date, check-in time, check-out date, check-out time, number of guests, at payment method, then confirm the booking. After that, makikita mo ang receipt sa My Bookings.",
+      reply: "Para po mag-book online, open ang Rooms page, select an accommodation, then ilagay ang check-in/check-out dates, times, at number of guests. Review the secure booking and PayPal payment steps; required ang 50% accommodation downpayment via PayPal, at separate ang onsite entrance fee. Makikita po ang booking at receipt sa My Bookings.",
       context: merged,
     };
   }
@@ -837,7 +839,7 @@ function getTaglishFallbackReply(text, merged) {
   if (text.includes("payment") || text.includes("bayad") || text.includes("paypal") || text.includes("cash")) {
     return {
       modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
-      reply: "Available na payment methods ay Cash on Arrival at PayPal. Kapag PayPal ang pinili mo, puwedeng ma-save ang booking as pending online payment habang hindi pa confirmed.",
+      reply: "For customer online reservations po, PayPal ang payment method para sa 50% accommodation downpayment. Onsite naman ang remaining accommodation balance at entrance fee. Cash at other onsite payment methods are for eligible staff-assisted manual reservations, hindi sa online checkout. Confirm the final amount po sa secure booking page.",
       context: merged,
     };
   }
