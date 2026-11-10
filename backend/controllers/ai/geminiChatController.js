@@ -737,7 +737,9 @@ function isGeneralOnlineDownpaymentQuestion(message) {
   if (/\d|₱|\bphp\b|\b(?:nipa|huts?|rooms?|cottages?|villas?|pavilions?|function|overnight|day[\s-]*tour|refund|cancel|refundable)\b/i.test(text)) {
     return false;
   }
-  return /\b(?:online|booking|reservations?|required|how|what|much|magkano|kailangan|ilan|paunang|unang|deposit|downpayment)\b/i.test(text);
+  // Answer explicit policy/amount questions, not status statements such as
+  // "I already paid a deposit" (which need transaction-specific guidance).
+  return /(?:\?|\b(?:required|how|what|much|magkano|kailangan|ilan|percentage|percent)\b)/i.test(text);
 }
 
 function getQuotaPaymentIntro(language) {
