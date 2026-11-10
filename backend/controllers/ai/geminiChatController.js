@@ -3,6 +3,7 @@ const db = require("../../config/db");
 const { generateGemini, geminiPublicError, geminiErrorStatus } = require("./geminiResilience");
 // Verified policy knowledge uses no paid Gemini calls or customer booking writes.
 const { matchGeneralPolicyQuestion, inferPolicyLanguage, getPolicyReply, policyPromptLines } = require("./resortPolicyKnowledge");
+const { validateAiStayWindow, calendarDayDifference, addCalendarDays } = require("./resortStayWindow");
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -50,10 +51,8 @@ function extractJsonObject(text) {
 }
 
 function getNightDifference(checkIn, checkOut) {
-  const start = new Date(checkIn);
-  const end = new Date(checkOut);
-  const diff = end.getTime() - start.getTime();
-  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+  // Calendar-day arithmetic stays stable on both Manila desktops and UTC Render.
+  return calendarDayDifference(checkIn, checkOut);
 }
 
 function formatDateOnly(date) {
@@ -77,33 +76,13 @@ function getResortTodayText() {
 }
 
 function addDays(dateString, days) {
-  const date = new Date(dateString);
-  date.setDate(date.getDate() + days);
-  return formatDateOnly(date);
+  return addCalendarDays(dateString, days);
 }
 
 function cleanContextValue(value) {
   if (value === undefined || value === null) return null;
   if (typeof value === "string" && !value.trim()) return null;
   return value;
-}
-
-function ensureFutureDate(dateString) {
-  if (!dateString) return null;
-
-  const parsed = new Date(dateString);
-  if (Number.isNaN(parsed.getTime())) return dateString;
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  parsed.setHours(0, 0, 0, 0);
-
-  if (parsed >= today) {
-    return formatDateOnly(parsed);
-  }
-
-  parsed.setFullYear(parsed.getFullYear() + 1);
-  return formatDateOnly(parsed);
 }
 
 function normalizePaymentMethod(value) {
@@ -281,17 +260,7 @@ function hasEnoughForBookingPreview(context = {}, chosenRoom = null, nights = 0)
 // never the retired rooms/bookings tables. Final validation always happens
 // again in the secure Customer reservation workflow.
 function isValidAiStayWindow(context) {
-  const dateRe = /^\d{4}-\d{2}-\d{2}$/;
-  const ci = String(context.check_in || "");
-  const co = String(context.check_out || "");
-  const it = normalizeTimeValue(context.check_in_time);
-  const ot = normalizeTimeValue(context.check_out_time);
-  if (!dateRe.test(ci) || !dateRe.test(co) || !it || !ot) return false;
-  const start = new Date(ci + "T" + it);
-  const finish = new Date(co + "T" + ot);
-  return Number.isFinite(start.getTime()) &&
-    Number.isFinite(finish.getTime()) &&
-    finish.getTime() > start.getTime();
+  return validateAiStayWindow(context, getResortTodayText()).valid;
 }
 
 // Find available accommodations by capacity and overlapping reservation date/time ranges.
@@ -1063,14 +1032,9 @@ exports.chatWithGemini = async (req, res) => {
       mergedContext.language_style = detectedLanguage;
     }
 
-    if (mergedContext.check_in) {
-      mergedContext.check_in = ensureFutureDate(mergedContext.check_in);
-    }
-
-    if (mergedContext.check_out) {
-      mergedContext.check_out = ensureFutureDate(mergedContext.check_out);
-    }
-
+    // Never silently roll an explicitly past booking date to the next year.
+    // Only Gemini extraction may choose a future year for an AMBIGUOUS
+    // month/day; complete YYYY-MM-DD values are checked as supplied.
     let nights = 0;
     let matchedRooms = [];
     let availableRooms = [];
@@ -1085,8 +1049,29 @@ exports.chatWithGemini = async (req, res) => {
 
     const missingCoreDetails = getMissingCoreDetails(mergedContext);
     const hasBasicStayDetails = hasEnoughForAvailability(mergedContext);
-    const hasAvailabilityDetails = hasBasicStayDetails &&
-      isValidAiStayWindow(mergedContext);
+    const validation = hasBasicStayDetails
+      ? validateAiStayWindow(mergedContext, getResortTodayText())
+      : null;
+    const hasAvailabilityDetails = Boolean(validation?.valid);
+
+    // A complete but invalid date/time window must never be quoted as
+    // available. Do not spend a second Gemini call or query MySQL.
+    if (validation && !validation.valid) {
+      const language = mergedContext.language_style;
+      const reply = {
+        english: "That stay schedule is invalid or already in the past. Please provide a valid future check-in and check-out date and time. I have not checked room availability or created a reservation.",
+        tagalog: "Hindi po valid ang petsa/oras ng stay o lumipas na ito. Pakibigay po ang tamang future check-in at check-out date at time. Hindi pa po na-check ang availability o nakagawa ng reservation.",
+        taglish: "Hindi po valid ang schedule o past date na ito. Please provide a valid future check-in at check-out date and time. Hindi pa po verified ang availability at walang na-create na booking.",
+        spanish: "Las fechas u horas no son válidas o ya pasaron. Indique fechas y horas futuras válidas de entrada y salida. No se ha comprobado disponibilidad ni creado una reserva.",
+        mandarin: "入住日期或时间无效，或已过去。请提供有效的未来入住和退房日期及时间。尚未核查房源，也没有创建预订。",
+      }[language] || "Please provide valid future check-in and check-out dates and times.";
+      return res.status(200).json({
+        success: true, mode: "invalid_window", reason: validation.reason,
+        reply, extracted_context: mergedContext, matched_rooms: [],
+        catalog_recommendations: [], alternative_dates: [],
+        booking_preview: null,
+      });
+    }
 
     // A complete but invalid time window must be corrected instead of
     // silently downgrading the response to a booking recommendation.
