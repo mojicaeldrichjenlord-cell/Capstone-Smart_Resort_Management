@@ -1,6 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const { requireCustomerAuth } = require("../middleware/customerAuth");
+const { requireAdminAuth } = require("../middleware/adminAuth");
+const { getGeminiUsageSnapshot } = require("../controllers/ai/geminiResilience");
 // Stage 85-A: throttle all Gemini-funded chat/translation endpoints.
 const { aiRateGuard } = require("../middleware/aiRateLimit");
 const { voiceStatus, speakBlessica } =
@@ -52,5 +54,17 @@ router.post("/create-booking", (_req, res) =>
 router.post("/translate", limitAiPayload("translation"), aiRateGuard.middleware, translateReplyToTagalog);
 router.post("/translate-english", limitAiPayload("translation"), aiRateGuard.middleware, translateReplyToEnglish);
 router.post("/translate-taglish", limitAiPayload("translation"), aiRateGuard.middleware, translateReplyToTaglish);
+
+// Admin-only runtime telemetry: no prompts, guest messages, API keys, or IPs.
+// Process-local counters RESET on restart; Google billing remains authoritative.
+router.get("/usage", requireAdminAuth, (_req, res) => {
+  res.set("Cache-Control", "no-store");
+  return res.status(200).json({
+    success: true,
+    gemini: getGeminiUsageSnapshot(),
+    rateLimits: aiRateGuard.snapshot(),
+    warning: "Estimated spend and quotas are process-local and reset on server restart; confirm real usage in Google AI Studio billing.",
+  });
+});
 
 module.exports = router;
