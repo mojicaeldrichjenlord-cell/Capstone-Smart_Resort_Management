@@ -6,6 +6,8 @@ const AI_API_BASE = typeof API_BASE === "string" ? API_BASE
 const AI_CONTEXT_KEY = "smartresort_ai_context_v1";
 const AI_WINDOW_STATE_KEY = "smartresort_ai_window_state_v1";
 const AI_CHAT_HISTORY_KEY = "smartresort_ai_chat_history_v1";
+// Verified official Facebook page from the Customer Home page (refund support).
+const OFFICIAL_RESORT_FACEBOOK_URL = "https://www.facebook.com/share/1E1kZLtrV4/?mibextid=wwXIfr";
 
 let aiMessageInFlight = false;
 
@@ -998,6 +1000,14 @@ function formatAiReply(text) {
   let safe = escapeHtml(String(text || ""));
   safe = safe.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
   safe = safe.replace(/\*(.*?)\*/g, "<em>$1</em>");
+
+  // Only linkify this verified resort contact URL; never turn arbitrary
+  // AI-generated text/HTML into unsafe links. Open a new tab securely.
+  const officialUrl = escapeHtml(OFFICIAL_RESORT_FACEBOOK_URL);
+  safe = safe.split(officialUrl).join(
+    '<a href="' + officialUrl + '" target="_blank" rel="noopener noreferrer">' +
+    'Message resort on Facebook</a>'
+  );
 
   const lines = safe.split("\n");
   let html = "";
