@@ -2,7 +2,7 @@
 const db = require("../../config/db");
 const { generateGemini, geminiPublicError, geminiErrorStatus } = require("./geminiResilience");
 // Verified policy knowledge uses no paid Gemini calls or customer booking writes.
-const { matchGeneralPolicyQuestion, getPolicyReply, policyPromptLines } = require("./resortPolicyKnowledge");
+const { matchGeneralPolicyQuestion, inferPolicyLanguage, getPolicyReply, policyPromptLines } = require("./resortPolicyKnowledge");
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -1008,6 +1008,7 @@ exports.chatWithGemini = async (req, res) => {
     const policyKind = matchGeneralPolicyQuestion(message);
     if (policyKind) {
       const language = normalizeLanguageStyle(req.body.voice_language) ||
+        inferPolicyLanguage(message) ||
         detectLanguageFromMessage(message) ||
         normalizeLanguageStyle(req.body.language_style) ||
         normalizeLanguageStyle(req.body.context?.language_style) ||
