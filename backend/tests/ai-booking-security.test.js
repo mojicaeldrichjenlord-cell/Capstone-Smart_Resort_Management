@@ -1162,3 +1162,35 @@ test("Valid future overnight window continues fresh reservation availability loo
   assert.deepEqual(queries[0].params,
     [3, "2099-04-11", "05:00:00", "2099-04-10", "19:00:00"]);
 });
+
+
+test("Missing accommodation prices are not misrepresented as free PHP 0.00", async () => {
+  catalogRows = [{
+    ...exampleRoom,
+    day_price: null, overnight_price: 0, extended_price: "not set",
+  }];
+  const r = await post("/api/ai/chat", {
+    message: "What room rates do you offer?",
+  });
+  assert.equal(r.status, 200);
+  assert.equal(queries.length, 1);
+  const finalPrompt = modelPrompts.at(-1);
+  assert.match(finalPrompt, /Day Tour: Not listed/);
+  assert.match(finalPrompt, /Overnight: Not listed/);
+  assert.match(finalPrompt, /Extended: Not listed/);
+  assert.doesNotMatch(finalPrompt, /Day Tour: PHP 0\.00/);
+});
+
+test("Fresh positive accommodation rate stays numerically exact in AI prompt", async () => {
+  catalogRows = [{
+    ...exampleRoom,
+    day_price: 3500, overnight_price: 4300, extended_price: 5000,
+  }];
+  const r = await post("/api/ai/chat", {
+    message: "What room rates do you offer?",
+  });
+  assert.equal(r.status, 200);
+  assert.match(modelPrompts.at(-1), /Day Tour: PHP 3,500\.00/);
+  assert.match(modelPrompts.at(-1), /Overnight: PHP 4,300\.00/);
+  assert.match(modelPrompts.at(-1), /Extended: PHP 5,000\.00/);
+});
