@@ -696,6 +696,15 @@ function getOfflineFallbackReply(message, storedContext = {}, pageContext = {}) 
 // Stage 85-D: Offline guidance mirrors the verified PayPal-only customer online flow.
 // It must not claim that cash checkout or an automatic booking is available.
 function getEnglishFallbackReply(text, merged) {
+  // Offline refund guidance mirrors the verified manual refund policy.
+  // Do not promise a refund or attempt any refund transaction here.
+  if (/refund|reimbursement|money back|return.*payment/i.test(text)) {
+    return {
+      modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.",
+      reply: "Refunds are not processed automatically. Resort management reviews refund requests manually based on resort policy and verified payments; cancellation does not guarantee a refund. For assistance, please message the resort's official Facebook page: " + OFFICIAL_RESORT_FACEBOOK_URL,
+      context: merged,
+    };
+  }
   if (text.includes("hello") || text.includes("hi") || text.includes("hey")) {
     return {
       modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.",
@@ -759,6 +768,14 @@ function getEnglishFallbackReply(text, merged) {
 }
 
 function getTagalogFallbackReply(text, merged) {
+  // Offline Tagalog refund assistance uses the same official contact.
+  if (/refund|marefund|ma-refund|ibalik.*(?:bayad|pera)|balik.*(?:bayad|pera)/i.test(text)) {
+    return {
+      modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
+      reply: "Hindi po automatic ang refund. Manual na sinusuri ng resort management ang requests batay sa policy at verified payment; hindi guaranteed ang refund kapag nag-cancel. Para po sa assistance, mag-message sa official Facebook page ng resort: " + OFFICIAL_RESORT_FACEBOOK_URL,
+      context: merged,
+    };
+  }
   if (text.includes("hello") || text.includes("hi") || text.includes("hey") || text.includes("kumusta")) {
     return {
       modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
@@ -822,6 +839,14 @@ function getTagalogFallbackReply(text, merged) {
 }
 
 function getTaglishFallbackReply(text, merged) {
+  // Offline Taglish refund assistance uses the same official contact.
+  if (/refund|marefund|ma-refund|ibalik.*(?:bayad|pera)|balik.*(?:bayad|pera)/i.test(text)) {
+    return {
+      modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
+      reply: "Hindi po automatic ang refund. Resort management manually reviews requests based on policy at verified payments; hindi guaranteed ang refund dahil lang sa cancellation. For assistance po, message the official Facebook page ng resort: " + OFFICIAL_RESORT_FACEBOOK_URL,
+      context: merged,
+    };
+  }
   if (text.includes("hello") || text.includes("hi") || text.includes("hey") || text.includes("kumusta")) {
     return {
       modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
