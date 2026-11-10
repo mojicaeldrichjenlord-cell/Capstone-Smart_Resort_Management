@@ -56,6 +56,16 @@ const ANSWERS = Object.freeze({
   },
 });
 
+// Fixed-policy language correction: a prior English conversation preference
+// must not override an explicitly Filipino new question. Voice language wins.
+function inferPolicyLanguage(message) {
+  const t = String(message || "").normalize("NFKC").toLowerCase();
+  const filipino = /\b(?:magkano|paano|pwede|puwede|maaari|kansela|kanselahin|bayad|po|opo|ninyo|tumatanggap|paki|bakit)\b/i.test(t);
+  if (!filipino) return null;
+  const englishMix = /\b(?:entrance|fee|booking|cancel|refund|walk[\s-]?in|online|check[\s-]?in|downpayment|payment)\b/i.test(t);
+  return englishMix ? "taglish" : "tagalog";
+}
+
 function getPolicyReply(kind, language) {
   const locale = ["english","tagalog","taglish","spanish","mandarin"].includes(language)
     ? language : "english";
@@ -90,4 +100,4 @@ function policyPromptLines() {
   return Object.entries(POLICY_FACTS).map(([k,v]) => "- " + k + ": " + v).join("\n");
 }
 
-module.exports = { POLICY_FACTS, matchGeneralPolicyQuestion, getPolicyReply, policyPromptLines };
+module.exports = { POLICY_FACTS, matchGeneralPolicyQuestion, inferPolicyLanguage, getPolicyReply, policyPromptLines };
