@@ -962,11 +962,116 @@ test("Named cottage deposit still checks a fresh database price instead of inven
   assert.ok(modelCalls >= 1);
   assert.ok(queries.some(q => /FROM accommodations/.test(q.sql)));
 });
-test("Non-deposit payment inquiries are not mistaken for the 50% policy fast path", async () => {
+test("Cancellation plus refund question is handled accurately without Gemini", async () => {
   const result = await post("/api/ai/chat", {
     message: "Can I cancel my booking and get a refund?",
   });
   assert.equal(result.status, 200);
+  assert.equal(result.body.mode, "policy_answer");
+  assert.equal(result.body.policy_topic, "cancellationRefund");
+  assert.match(result.body.reply, /1 day before check-in/);
+  assert.match(result.body.reply, /manual|management/i);
+  assert.doesNotMatch(result.body.reply, /automatic.*refund.*yes/i);
+  assert.equal(queries.length, 0);
+  assert.equal(modelCalls, 0);
+});
+
+
+// Stage 85-B verified resort policies must be correct, not inferred by Gemini.
+// The answers do not query MySQL, change money or consume live API credits.
+const policyAccuracyCases = [
+  {
+    name: "Refund policy avoids promising any refund",
+    question: "What is the refund policy?",
+    topic: "refund", response: /not processed automatically/i,
+    verify: /resort management/i,
+  },
+  {
+    name: "Cancellation requires one day and pending/approved",
+    question: "How do I cancel my reservation?",
+    topic: "cancellation", response: /pending or approved/i,
+    verify: /at least 1 day before check-in/i,
+  },
+  {
+    name: "Taglish cancellation stays polite and gives the actual rule",
+    question: "Pwede po ba mag-cancel ng booking?",
+    topic: "cancellation", response: /po/,
+    verify: /at least 1 day before check-in/i,
+  },
+  {
+    name: "Entrance fees are separate and not a fixed price",
+    question: "How much is the entrance fee?",
+    topic: "entrance", response: /separate from the accommodation downpayment/i,
+    verify: /estimate/i,
+  },
+  {
+    name: "Tagalog entrance fee does not invent pesos",
+    question: "Magkano ang entrance fee?",
+    topic: "entrance", response: /Hiwalay po/i,
+    verify: /Front Desk/i,
+  },
+  {
+    name: "Walk-in guidance never guarantees accommodation availability",
+    question: "Do you accept walk-ins?",
+    topic: "walkin", response: /subject to availability/i,
+    verify: /Front Desk/i,
+  },
+  {
+    name: "Taglish walk-in is same-day and onsite",
+    question: "Pwede po ba mag walk in?",
+    topic: "walkin", response: /same-day/i,
+    verify: /Onsite po/i,
+  },
+  {
+    name: "AI never claims that chat confirms a reservation",
+    question: "Can you confirm my reservation?",
+    topic: "booking", response: /cannot confirm or pay for a reservation in chat/i,
+    verify: /booking page/i,
+  },
+];
+for (const testCase of policyAccuracyCases) {
+  test("Policy accuracy: " + testCase.name, async () => {
+    const result = await post("/api/ai/chat", {
+      message: testCase.question,
+      context: { room_name: "Old Room", language_style: "english" },
+    });
+    assert.equal(result.status, 200);
+    assert.equal(result.body.mode, "policy_answer");
+    assert.equal(result.body.policy_topic, testCase.topic);
+    assert.match(result.body.reply, testCase.response);
+    assert.match(result.body.reply, testCase.verify);
+    assert.equal(result.body.booking_preview, null);
+    assert.deepEqual(result.body.catalog_recommendations, []);
+    assert.equal(queries.length, 0);
+    assert.equal(modelCalls, 0);
+  });
+}
+
+test("A named accommodation keeps fresh database lookups rather than generic policy", async () => {
+  const result = await post("/api/ai/chat", {
+    message: "How much is the entrance fee for Small Nipa Hut 2?",
+  });
+  assert.equal(result.status, 200);
   assert.notEqual(result.body.mode, "policy_answer");
   assert.ok(modelCalls >= 1);
+});
+
+test("A customer-specific refund amount is not guessed by generic policy", async () => {
+  const result = await post("/api/ai/chat", {
+    message: "How much is the refund for booking 45332?",
+  });
+  assert.equal(result.status, 200);
+  assert.notEqual(result.body.mode, "policy_answer");
+  assert.ok(modelCalls >= 1);
+});
+
+test("General policy facts are embedded in Gemini prompt for non-FAQ conversations", async () => {
+  const result = await post("/api/ai/chat", {
+    message: "I need help planning a family trip. Please explain the basics.",
+  });
+  assert.equal(result.status, 200);
+  assert.ok(modelCalls >= 1);
+  assert.match(modelPrompts.at(-1), /Automated refunds and dispute decisions are outside the current system scope/);
+  assert.match(modelPrompts.at(-1), /Customers may cancel their own pending\/approved reservations/);
+  assert.match(modelPrompts.at(-1), /Entrance fees are separate/);
 });
