@@ -21,6 +21,18 @@ function formatCurrency(value) {
   });
 }
 
+// Only show a numeric rate when it is a verified positive DB value.
+// Missing/zero/invalid rates must not be advertised as free accommodation.
+function formatVerifiedAccommodationPrice(value) {
+  if (value === null || value === undefined || String(value).trim() === "") {
+    return "Not listed — confirm on booking page";
+  }
+  const amount = Number(value);
+  return Number.isFinite(amount) && amount > 0
+    ? "PHP " + formatCurrency(amount)
+    : "Not listed — confirm on booking page";
+}
+
 function safeJsonParse(text) {
   try {
     return JSON.parse(text);
@@ -389,9 +401,9 @@ function buildCatalogSummary(catalog, context, message) {
       (room.category_name || "Uncategorized") + ")",
     "Admin status: " + (room.status || "unknown"),
     "Maximum guests: " + room.capacity,
-    "Day Tour: PHP " + formatCurrency(room.day_price),
-    "Overnight: PHP " + formatCurrency(room.overnight_price),
-    "Extended: PHP " + formatCurrency(room.extended_price),
+    "Day Tour: " + formatVerifiedAccommodationPrice(room.day_price),
+    "Overnight: " + formatVerifiedAccommodationPrice(room.overnight_price),
+    "Extended: " + formatVerifiedAccommodationPrice(room.extended_price),
     "Amenities: " + (room.amenities || "Not specified"),
     "Description: " + (room.description || "Not provided"),
   ].join(" | ");
@@ -458,9 +470,9 @@ function buildRoomsSummary(rooms) {
     String(index + 1) + ". " + room.room_name,
     "   - Accommodation ID: " + room.id,
     "   - Category: " + (room.category_name || "N/A"),
-    "   - Day Tour: PHP " + formatCurrency(room.day_price),
-    "   - Overnight: PHP " + formatCurrency(room.overnight_price),
-    "   - Extended: PHP " + formatCurrency(room.extended_price),
+    "   - Day Tour: " + formatVerifiedAccommodationPrice(room.day_price),
+    "   - Overnight: " + formatVerifiedAccommodationPrice(room.overnight_price),
+    "   - Extended: " + formatVerifiedAccommodationPrice(room.extended_price),
     "   - Maximum capacity: " + room.capacity,
     "   - Listed amenities: " + (room.amenities || "Not specified"),
     "   - Description: " + (room.description || "Not provided"),
@@ -471,8 +483,8 @@ function buildTopRecommendationSummary(rooms) {
   if (!rooms.length) return "No matching recommendation is available.";
   return rooms.slice(0, 3).map((room, index) =>
     String(index + 1) + ". " + room.room_name +
-    " | Day PHP " + formatCurrency(room.day_price) +
-    " | Overnight PHP " + formatCurrency(room.overnight_price) +
+    " | Day " + formatVerifiedAccommodationPrice(room.day_price) +
+    " | Overnight " + formatVerifiedAccommodationPrice(room.overnight_price) +
     " | Capacity " + room.capacity
   ).join("\n");
 }
