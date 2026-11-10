@@ -1077,3 +1077,32 @@ test("General policy facts are embedded in Gemini prompt for non-FAQ conversatio
   assert.match(modelPrompts.at(-1), /Customers may cancel their own pending\/approved reservations/);
   assert.match(modelPrompts.at(-1), /Entrance fees are separate/);
 });
+
+
+test("Spanish cancellation FAQ overrides stale English preference without Gemini", async () => {
+  const result = await post("/api/ai/chat", {
+    message: "¿Puedo cancelar mi reserva?",
+    context: { language_style: "english" },
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.mode, "policy_answer");
+  assert.equal(result.body.policy_topic, "cancellation");
+  assert.equal(result.body.extracted_context.language_style, "spanish");
+  assert.match(result.body.reply, /al menos un día/i);
+  assert.equal(modelCalls, 0);
+  assert.equal(queries.length, 0);
+});
+
+test("Mandarin refund FAQ overrides stale English preference without Gemini", async () => {
+  const result = await post("/api/ai/chat", {
+    message: "退款怎么办？",
+    context: { language_style: "english" },
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.mode, "policy_answer");
+  assert.equal(result.body.policy_topic, "refund");
+  assert.equal(result.body.extracted_context.language_style, "mandarin");
+  assert.match(result.body.reply, /不会自动退款/);
+  assert.equal(modelCalls, 0);
+  assert.equal(queries.length, 0);
+});
