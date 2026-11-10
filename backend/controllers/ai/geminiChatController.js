@@ -723,6 +723,23 @@ function getQuotaBookingGuidance(language) {
   }[language] || "For online reservations, pay 50% of the final accommodation price through PayPal on the secure booking page. Pay the balance and entrance fees onsite.";
 }
 
+// Answer a narrow, FIXED resort policy without a paid Gemini call.
+// This prevents hallucinating that the known 50% online downpayment percentage
+// is "to be confirmed" and preserves paid API credits for real inquiries.
+// Do NOT take this path for named accommodation price quotations or refunds.
+function isGeneralOnlineDownpaymentQuestion(message) {
+  const text = normalizeText(message);
+  if (!text || text.length > 300) return false;
+  const depositWord = /\b(?:down[\s-]*payments?|deposits?|advance[\s-]*payments?|paunang\s+bayad|unang\s+bayad|dp)\b/i;
+  if (!depositWord.test(text)) return false;
+  // A named accommodation, a quoted amount, or a refund needs context and
+  // fresh records; do not accidentally answer those using a flat generic rate.
+  if (/\d|₱|\bphp\b|\b(?:nipa|huts?|rooms?|cottages?|villas?|pavilions?|function|overnight|day[\s-]*tour|refund|cancel|refundable)\b/i.test(text)) {
+    return false;
+  }
+  return /\b(?:online|booking|reservations?|required|how|what|much|magkano|kailangan|ilan|paunang|unang|deposit|downpayment)\b/i.test(text);
+}
+
 function getQuotaPaymentIntro(language) {
   return {
     english: "AI is temporarily limited, but I can explain the resort's standard online booking payment process.",
@@ -954,6 +971,33 @@ exports.chatWithGemini = async (req, res) => {
       });
     }
 
+    // Fixed-policy fast path: 0 Gemini calls, 0 DB queries, 0 tokens.
+    // Do not let an old saved room/payment preference override the user's
+    // current generic downpayment question. Final peso amount is still
+    // confirmed on the official booking/payment page.
+    if (isGeneralOnlineDownpaymentQuestion(message)) {
+      const language = normalizeLanguageStyle(req.body.voice_language) ||
+        detectLanguageFromMessage(message) ||
+        normalizeLanguageStyle(req.body.language_style) ||
+        normalizeLanguageStyle(req.body.context?.language_style) ||
+        "english";
+      const context = mergeContext(
+        req.body.context && typeof req.body.context === "object" &&
+          !Array.isArray(req.body.context) ? req.body.context : {},
+        { language_style: language, payment_method: "paypal" },
+      );
+      return res.status(200).json({
+        success: true,
+        mode: "policy_answer",
+        reply: getQuotaBookingGuidance(language),
+        extracted_context: context,
+        matched_rooms: [],
+        catalog_recommendations: [],
+        alternative_dates: [],
+        booking_preview: null,
+      });
+    }
+
     const requestContext = {
       check_in: req.body.check_in,
       check_in_time: req.body.check_in_time,
@@ -1150,6 +1194,8 @@ LIVE SPOKEN CONVERSATION (important):
 ` : ""}
 
 Important rules:
+- Fixed resort payment policy: online reservations require a PayPal downpayment equal to 50% of the FINAL accommodation price; entrance fees are EXCLUDED from that downpayment. The remaining 50% of accommodation price plus entrance fees and applicable charges are paid onsite.
+- When asked for the general online downpayment percentage, say 50% directly; NEVER say the percentage is unknown or only confirmed on the booking page. The booking page confirms the final peso amount for the selected accommodation and schedule.
 - Only use the room/system data provided below.
 - Do not invent rooms, prices, amenities, availability, or times.
 - Quote an accommodation's rate ONLY if that named accommodation and its exact Day Tour/Overnight/Extended rate are in the fresh database results below. If absent, say the rate needs checking on the booking page.
@@ -1178,7 +1224,7 @@ Important rules:
 - Briefly explain why each recommended room matches.
 - If there are no exact matches, say that clearly and mention alternative dates if provided.
 - A booking suggestion is NOT a reservation. Tell the user to press Continue to Booking, then confirm dates, slot price, and payment on the secure reservation page.
-- Explain that payment options are confirmed on the secure Customer booking/payment page; do not promise cash on arrival for online reservations.
+- Explain that online downpayments use PayPal; the secure Customer booking/payment page verifies the final amount. Do not promise cash on arrival for online reservations.
 - If the user wants to book but check-in time or check-out time is missing, ask for the missing time.
 - Online payments are finalized only on the secure Customer booking/payment page. Never imply an AI chat creates a reservation.
 - If the date/time range is invalid, ask the user to correct both dates and times. Same-day day tours may be valid if checkout is later than check-in.
