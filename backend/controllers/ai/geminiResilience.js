@@ -1,3 +1,7 @@
+// Local budget protection applies to each paid Gemini attempt, including
+// translations and the second call used for booking-intent extraction.
+const { localGuard } = require("./geminiBudgetGuard");
+
 // Isolated Gemini high-demand handling. Do not change models, API keys,
 // billing settings or request real database/payment operations here.
 const GEMINI_MODEL = "gemini-2.5-flash";
@@ -20,7 +24,7 @@ function usableTokenCount(value) {
 }
 
 function getGeminiUsageSnapshot() {
-  return { ...geminiUsage };
+  return { ...geminiUsage, sessionBudget: localGuard.snapshot() };
 }
 
 // Accumulate optional token metadata returned by Gemini after successful responses.
@@ -65,22 +69,28 @@ async function generateGemini(ai, contents, sleep = ms => new Promise(
   resolve => setTimeout(resolve, ms),
 )) {
   for (let attempt = 0; attempt <= MAX_BUSY_RETRIES; attempt++) {
+    // Synchronous allowance reservation prevents concurrent requests from
+    // bypassing the process-local cost guard. A denied call is never sent.
+    const finalize = localGuard.acquire();
     geminiUsage.attempts++;
     try {
       const response = await ai.models.generateContent({
         model: GEMINI_MODEL, contents,
       });
+      finalize(response); // Record conservative metered estimate.
       geminiUsage.successfulCalls++;
       recordGeminiResponseUsage(response);
       return response;
     } catch (error) {
+      // Preserve an allowance even for failed/unmetered calls: partial errors
+      // can have uncertain billing; no automatic retry except a single 503.
+      finalize();
       geminiUsage.failedCalls++;
       const status = geminiErrorStatus(error);
       if (status === 429) geminiUsage.rateLimitedCalls++;
       if (status === 503) geminiUsage.busyCalls++;
       if (status !== 503 || attempt === MAX_BUSY_RETRIES) throw error;
       geminiUsage.retries++;
-      // Only one short retry; avoids amplifying traffic during demand spikes.
       await sleep(RETRY_DELAY_MS);
     }
   }
@@ -89,6 +99,16 @@ async function generateGemini(ai, contents, sleep = ms => new Promise(
 // Convert internal Gemini failures into safe, understandable messages for the guest.
 // Keep SDK error details and credentials out of the public API response.
 function geminiPublicError(error) {
+  // Distinguish our LOCAL budget from Google's own 429 quota response.
+  if (error?.code === "AI_LOCAL_BUDGET") {
+    return {
+      status: 429,
+      body: {
+        success: false, code: "AI_LOCAL_BUDGET",
+        message: "AI live-answer budget limit reached. You can still use booking forms and local resort policy answers.",
+      },
+    };
+  }
   const status = geminiErrorStatus(error);
   if (status === 503) {
     return {
