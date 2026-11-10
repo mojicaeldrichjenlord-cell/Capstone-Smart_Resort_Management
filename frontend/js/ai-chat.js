@@ -8,6 +8,9 @@ const AI_WINDOW_STATE_KEY = "smartresort_ai_window_state_v1";
 const AI_CHAT_HISTORY_KEY = "smartresort_ai_chat_history_v1";
 // Verified official Facebook page from the Customer Home page (refund support).
 const OFFICIAL_RESORT_FACEBOOK_URL = "https://www.facebook.com/share/1E1kZLtrV4/?mibextid=wwXIfr";
+// Keep these contact numbers consistent with the Customer Home contact card.
+const OFFICIAL_RESORT_PHONE_PRIMARY = "0956-912-5625";
+const OFFICIAL_RESORT_PHONE_ALTERNATIVE = "0967-817-0662";
 
 let aiMessageInFlight = false;
 
@@ -701,7 +704,9 @@ function getEnglishFallbackReply(text, merged) {
   if (/refund|reimbursement|money back|return.*payment/i.test(text)) {
     return {
       modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.",
-      reply: "Refunds are not processed automatically. Resort management reviews refund requests manually based on resort policy and verified payments; cancellation does not guarantee a refund. For assistance, please message the resort's official Facebook page: " + OFFICIAL_RESORT_FACEBOOK_URL,
+      reply: "Refunds are not processed automatically. Resort management reviews refund requests manually based on resort policy and verified payments; cancellation does not guarantee a refund. For assistance, please message the resort's official Facebook page: " + OFFICIAL_RESORT_FACEBOOK_URL + "\n\nFront Desk: " +
+        OFFICIAL_RESORT_PHONE_PRIMARY + "\nAlternative: " +
+        OFFICIAL_RESORT_PHONE_ALTERNATIVE,
       context: merged,
     };
   }
@@ -772,7 +777,9 @@ function getTagalogFallbackReply(text, merged) {
   if (/refund|marefund|ma-refund|ibalik.*(?:bayad|pera)|balik.*(?:bayad|pera)/i.test(text)) {
     return {
       modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
-      reply: "Hindi po automatic ang refund. Manual na sinusuri ng resort management ang requests batay sa policy at verified payment; hindi guaranteed ang refund kapag nag-cancel. Para po sa assistance, mag-message sa official Facebook page ng resort: " + OFFICIAL_RESORT_FACEBOOK_URL,
+      reply: "Hindi po automatic ang refund. Manual na sinusuri ng resort management ang requests batay sa policy at verified payment; hindi guaranteed ang refund kapag nag-cancel. Para po sa assistance, mag-message sa official Facebook page ng resort: " + OFFICIAL_RESORT_FACEBOOK_URL + "\n\nFront Desk: " +
+        OFFICIAL_RESORT_PHONE_PRIMARY + "\nAlternative: " +
+        OFFICIAL_RESORT_PHONE_ALTERNATIVE,
       context: merged,
     };
   }
@@ -843,7 +850,9 @@ function getTaglishFallbackReply(text, merged) {
   if (/refund|marefund|ma-refund|ibalik.*(?:bayad|pera)|balik.*(?:bayad|pera)/i.test(text)) {
     return {
       modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
-      reply: "Hindi po automatic ang refund. Resort management manually reviews requests based on policy at verified payments; hindi guaranteed ang refund dahil lang sa cancellation. For assistance po, message the official Facebook page ng resort: " + OFFICIAL_RESORT_FACEBOOK_URL,
+      reply: "Hindi po automatic ang refund. Resort management manually reviews requests based on policy at verified payments; hindi guaranteed ang refund dahil lang sa cancellation. For assistance po, message the official Facebook page ng resort: " + OFFICIAL_RESORT_FACEBOOK_URL + "\n\nFront Desk: " +
+        OFFICIAL_RESORT_PHONE_PRIMARY + "\nAlternative: " +
+        OFFICIAL_RESORT_PHONE_ALTERNATIVE,
       context: merged,
     };
   }
@@ -1033,6 +1042,17 @@ function formatAiReply(text) {
     '<a href="' + officialUrl + '" target="_blank" rel="noopener noreferrer">' +
     'Message resort on Facebook</a>'
   );
+
+  // Linkify ONLY the exact verified phone numbers. The HTML was escaped
+  // above, and tel: destinations contain only trusted digits from Home.
+  for (const [display, phoneDigits] of [
+    [OFFICIAL_RESORT_PHONE_PRIMARY, "09569125625"],
+    [OFFICIAL_RESORT_PHONE_ALTERNATIVE, "09678170662"],
+  ]) {
+    safe = safe.split(display).join(
+      '<a href="tel:' + phoneDigits + '">' + display + '</a>'
+    );
+  }
 
   const lines = safe.split("\n");
   let html = "";
