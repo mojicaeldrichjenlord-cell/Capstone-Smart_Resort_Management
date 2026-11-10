@@ -152,7 +152,7 @@ async function sendAiMessage(options = {}) {
     console.warn("AI chat request failed:", error.code || error.message);
     removeTypingIndicator();
 
-    if (error.code === "GEMINI_BUSY" || error.code === "GEMINI_RATE_LIMIT") {
+    if (["GEMINI_BUSY", "GEMINI_RATE_LIMIT", "AI_LOCAL_BUDGET", "AI_RATE_LIMIT"].includes(error.code)) {
       // Upstream demand/quota issues do not mean a room is unavailable.
       // Keep booking context unchanged, and do not invent rates.
       const voiceLanguage = options.source === "voice"
