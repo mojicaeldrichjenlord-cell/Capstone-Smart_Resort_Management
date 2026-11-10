@@ -1106,3 +1106,59 @@ test("Mandarin refund FAQ overrides stale English preference without Gemini", as
   assert.equal(modelCalls, 0);
   assert.equal(queries.length, 0);
 });
+
+
+// Stage 85-C: invalid explicit dates must not silently move to the next year.
+// No MySQL availability query and no paid final response for an invalid window.
+test("Past explicit year never rolls forward to create a misleading AI booking preview", async () => {
+  const r = await post("/api/ai/chat", {
+    ...futureContext,
+    check_in: "2025-11-10",
+    check_out: "2025-11-10",
+  });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.mode, "invalid_window");
+  assert.equal(r.body.reason, "PAST_DATE");
+  assert.equal(r.body.extracted_context.check_in, "2025-11-10");
+  assert.deepEqual(r.body.matched_rooms, []);
+  assert.equal(r.body.booking_preview, null);
+  assert.equal(queries.length, 0);
+  assert.ok(modelCalls <= 1); // at most intent extraction; no final Gemini call
+});
+test("Impossible February 30 is rejected without querying availability", async () => {
+  const r = await post("/api/ai/chat", {
+    ...futureContext,
+    check_in: "2099-02-30",
+    check_out: "2099-03-01",
+  });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.mode, "invalid_window");
+  assert.equal(r.body.reason, "INVALID_DATE_TIME");
+  assert.equal(r.body.booking_preview, null);
+  assert.equal(queries.length, 0);
+});
+test("Reversed same-day window returns an actionable invalid-window response", async () => {
+  const r = await post("/api/ai/chat", {
+    ...futureContext,
+    check_in_time: "17:00:00",
+    check_out_time: "07:00:00",
+  });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.mode, "invalid_window");
+  assert.equal(r.body.reason, "INVALID_ORDER");
+  assert.equal(r.body.booking_preview, null);
+  assert.equal(queries.length, 0);
+});
+test("Valid future overnight window continues fresh reservation availability lookup", async () => {
+  const r = await post("/api/ai/chat", {
+    ...futureContext,
+    check_in: "2099-04-10", check_out: "2099-04-11",
+    check_in_time: "19:00:00", check_out_time: "05:00:00",
+  });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.booking_preview.room_id, 61);
+  assert.equal(queries.length, 1);
+  assert.match(queries[0].sql, /NOT EXISTS/);
+  assert.deepEqual(queries[0].params,
+    [3, "2099-04-11", "05:00:00", "2099-04-10", "19:00:00"]);
+});
