@@ -995,6 +995,7 @@ const policyAccuracyCases = [
   {
     name: "Taglish cancellation stays polite and gives the actual rule",
     question: "Pwede po ba mag-cancel ng booking?",
+    voice_language: "taglish",
     topic: "cancellation", response: /po/,
     verify: /at least 1 day before check-in/i,
   },
@@ -1033,6 +1034,7 @@ for (const testCase of policyAccuracyCases) {
   test("Policy accuracy: " + testCase.name, async () => {
     const result = await post("/api/ai/chat", {
       message: testCase.question,
+      ...(testCase.voice_language ? { voice_language: testCase.voice_language } : {}),
       context: { room_name: "Old Room", language_style: "english" },
     });
     assert.equal(result.status, 200);
