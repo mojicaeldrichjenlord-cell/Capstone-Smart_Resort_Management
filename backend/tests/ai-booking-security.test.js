@@ -831,7 +831,7 @@ test("Tagalog replies and translations request consistently polite customer tone
 
 // Demo safety: payment-only follow-ups should use a known 50% policy, never
 // the unrelated accommodation catalog, even with stale prior booking context.
-test("Gemini quota fallback answers a standalone Taglish downpayment question", async () => {
+test("Standard Taglish downpayment policy is returned locally even with stale context", async () => {
   injectedFailures = 1;
   injectedStatus = 429;
   const result = await post("/api/ai/chat", {
@@ -839,7 +839,7 @@ test("Gemini quota fallback answers a standalone Taglish downpayment question", 
     context: { intent: "ask_price", room_name: "Old Room", language_style: "taglish" },
   });
   assert.equal(result.status, 200);
-  assert.equal(result.body.mode, "database_fallback");
+  assert.equal(result.body.mode, "policy_answer");
   assert.ok(["tagalog", "taglish"].includes(result.body.extracted_context.language_style));
   assert.match(result.body.reply, /50%/);
   assert.match(result.body.reply, /PayPal/);
@@ -847,20 +847,22 @@ test("Gemini quota fallback answers a standalone Taglish downpayment question", 
   assert.doesNotMatch(result.body.reply, /Family Room A|Old Room/);
   assert.deepEqual(result.body.catalog_recommendations, []);
   assert.equal(queries.length, 0);
-  assert.equal(modelCalls, 1);
+  assert.equal(modelCalls, 0);
 });
 
-test("Quota fallback answers Filipino paunang bayad without listing rooms", async () => {
+test("Local policy answers Filipino paunang bayad without listing rooms", async () => {
   injectedFailures = 1;
   injectedStatus = 429;
   const result = await post("/api/ai/chat", {
     message: "Magkano po ang paunang bayad?",
   });
   assert.equal(result.status, 200);
+  assert.equal(result.body.mode, "policy_answer");
   assert.match(result.body.reply, /50%/);
   assert.match(result.body.reply, /PayPal/);
   assert.ok(["tagalog", "taglish"].includes(result.body.extracted_context.language_style));
   assert.equal(queries.length, 0);
+  assert.equal(modelCalls, 0);
 });
 
 test("Quota fallback quotes only the exactly named cottage and its 50% estimate", async () => {
@@ -909,15 +911,55 @@ test("Quota fallback does not mistake Hut 2 for Hut 20", async () => {
   assert.doesNotMatch(result.body.reply, /Small Nipa Hut 2 —/);
 });
 
-test("Quota fallback answers plain English online booking deposit without SQL", async () => {
+test("Local policy answers plain English online booking deposit without SQL", async () => {
   injectedFailures = 1;
   injectedStatus = 429;
   const result = await post("/api/ai/chat", {
     message: "How much is the deposit for online reservations?",
   });
   assert.equal(result.status, 200);
+  assert.equal(result.body.mode, "policy_answer");
   assert.match(result.body.reply, /50%/);
   assert.match(result.body.reply, /PayPal/);
   assert.deepEqual(result.body.catalog_recommendations, []);
   assert.equal(queries.length, 0);
+  assert.equal(modelCalls, 0);
+});
+
+
+// Regression from the Nov 10 live test: Gemini previously withheld the known
+// 50% policy, incorrectly saying the percentage would be confirmed later.
+test("Observed English question gets correct fixed 50% policy using zero API calls", async () => {
+  const result = await post("/api/ai/chat", {
+    message: "What is the required downpayment for an online reservation at Arvic Seaside?",
+    context: { payment_method: "paypal", language_style: "english", room_name: "Old Room" },
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.mode, "policy_answer");
+  assert.match(result.body.reply, /50% of the final accommodation price/i);
+  assert.match(result.body.reply, /entrance fee/i);
+  assert.match(result.body.reply, /PayPal/i);
+  assert.doesNotMatch(result.body.reply, /percentage.*confirmed|exact percentage.*booking page/i);
+  assert.equal(queries.length, 0);
+  assert.equal(modelCalls, 0);
+  assert.equal(result.body.booking_preview, null);
+});
+test("Named cottage deposit still checks a fresh database price instead of inventing an amount", async () => {
+  catalogRows = [{ ...exampleRoom, id: 81, room_name: "Small Nipa Hut 2",
+    category_name: "Cottage", day_price: 800 }];
+  const result = await post("/api/ai/chat", {
+    message: "How much is the Small Nipa Hut 2 day tour downpayment?",
+  });
+  assert.equal(result.status, 200);
+  assert.notEqual(result.body.mode, "policy_answer");
+  assert.ok(modelCalls >= 1);
+  assert.ok(queries.some(q => /FROM accommodations/.test(q.sql)));
+});
+test("Non-deposit payment inquiries are not mistaken for the 50% policy fast path", async () => {
+  const result = await post("/api/ai/chat", {
+    message: "Can I cancel my booking and get a refund?",
+  });
+  assert.equal(result.status, 200);
+  assert.notEqual(result.body.mode, "policy_answer");
+  assert.ok(modelCalls >= 1);
 });
