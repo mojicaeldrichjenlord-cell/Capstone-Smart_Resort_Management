@@ -72,7 +72,7 @@ function matchGeneralPolicyQuestion(message) {
   const refund = /\b(?:refunds?|refundable|money back|refund\s+request|return.*payment)\b|ibalik.*(?:pera|bayad)|balik.*(?:pera|bayad)|marefund|ma-refund/i.test(t);
   const cancel = /\b(?:cancel|cancellation|cancelled|canceled|cancelling)\b|(?:i|mag|pa)?kansela|mag-?cancel/i.test(t);
   const entrance = /\bentrance(?:\s+fees?|\s+payment|\s+charges?)?\b|bayad.*(?:entrance|pasok)/i.test(t);
-  const walkin = /\bwalk[\s-]?in\b|walkin/i.test(t);
+  const walkin = /\bwalk[\s-]?ins?\b/i.test(t);
   const question = /[?？]|\b(?:how|what|where|when|can|may|do|does|is|are|allowed|policy|paano|pwede|puwede|maaari|magkano|kailangan|saan|ilan|ano|tumatanggap|may)\b/i.test(t);
   if (!question) return null;
   if (refund && cancel) return "cancellationRefund";
