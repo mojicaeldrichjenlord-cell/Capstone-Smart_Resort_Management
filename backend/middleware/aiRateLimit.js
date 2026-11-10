@@ -79,15 +79,14 @@ function createAiRateLimiter(options = {}) {
       global.dayCount >= globalDay;
     if (minuteExceeded || dayExceeded) {
       rejected++;
-      const remaining = minuteExceeded
-        ? Math.max(
-            own.minuteCount >= perMinute ? MINUTE_MS - (now - own.minuteAt) : 0,
-            global.minuteCount >= globalMinute ? MINUTE_MS - (now - global.minuteAt) : 0,
-            1000)
-        : Math.max(
-            own.dayCount >= perDay ? DAY_MS - (now - own.dayAt) : 0,
-            global.dayCount >= globalDay ? DAY_MS - (now - global.dayAt) : 0,
-            1000);
+      // Honor the LONGEST active limit. When minute and day limits are
+      // exhausted together, never tell the customer to retry too early.
+      const remaining = Math.max(
+        own.minuteCount >= perMinute ? MINUTE_MS - (now - own.minuteAt) : 0,
+        global.minuteCount >= globalMinute ? MINUTE_MS - (now - global.minuteAt) : 0,
+        own.dayCount >= perDay ? DAY_MS - (now - own.dayAt) : 0,
+        global.dayCount >= globalDay ? DAY_MS - (now - global.dayAt) : 0,
+        1000);
       res.set("Retry-After", String(Math.ceil(remaining / 1000)));
       return res.status(429).json({
         success: false, code: "AI_RATE_LIMIT",
