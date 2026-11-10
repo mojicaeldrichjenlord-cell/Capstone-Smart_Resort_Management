@@ -1,6 +1,8 @@
 ﻿const { GoogleGenAI } = require("@google/genai");
 const db = require("../../config/db");
 const { generateGemini, geminiPublicError, geminiErrorStatus } = require("./geminiResilience");
+// Verified policy knowledge uses no paid Gemini calls or customer booking writes.
+const { matchGeneralPolicyQuestion, getPolicyReply, policyPromptLines } = require("./resortPolicyKnowledge");
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -1000,6 +1002,30 @@ exports.chatWithGemini = async (req, res) => {
       });
     }
 
+    // Fixed resort-policy FAQ: avoid hallucinations and save paid credits.
+    // This is only for generic rules, never personal refunds, booking status,
+    // dates, prices or room availability. No real transaction is performed.
+    const policyKind = matchGeneralPolicyQuestion(message);
+    if (policyKind) {
+      const language = normalizeLanguageStyle(req.body.voice_language) ||
+        detectLanguageFromMessage(message) ||
+        normalizeLanguageStyle(req.body.language_style) ||
+        normalizeLanguageStyle(req.body.context?.language_style) ||
+        "english";
+      const policyContext = mergeContext(
+        req.body.context && typeof req.body.context === "object" &&
+          !Array.isArray(req.body.context) ? req.body.context : {},
+        { language_style: language },
+      );
+      return res.status(200).json({
+        success: true, mode: "policy_answer", policy_topic: policyKind,
+        reply: getPolicyReply(policyKind, language),
+        extracted_context: policyContext,
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null,
+      });
+    }
+
     const requestContext = {
       check_in: req.body.check_in,
       check_in_time: req.body.check_in_time,
@@ -1196,6 +1222,8 @@ LIVE SPOKEN CONVERSATION (important):
 ` : ""}
 
 Important rules:
+Verified resort operations and policies (NEVER contradict these facts):
+${policyPromptLines()}
 - Fixed resort payment policy: online reservations require a PayPal downpayment equal to 50% of the FINAL accommodation price; entrance fees are EXCLUDED from that downpayment. The remaining 50% of accommodation price plus entrance fees and applicable charges are paid onsite.
 - When asked for the general online downpayment percentage, say 50% directly; NEVER say the percentage is unknown or only confirmed on the booking page. The booking page confirms the final peso amount for the selected accommodation and schedule.
 - Only use the room/system data provided below.
