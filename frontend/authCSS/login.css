@@ -335,14 +335,28 @@
    - Prevents login message from pushing the login card layout
 ====================================================== */
 
-#loginMessage {
-  position: fixed;
-  top: 24px;
-  right: 24px;
-  z-index: 9999;
-  max-width: 420px;
-  width: auto;
-  margin: 0;
+/* Inline message is only a fallback when toast.js fails to load.
+   Under normal operation the centered toast is used instead. */
+#loginMessage[hidden] { display: none !important; }
+#loginMessage:not([hidden]) {
+  position: static;
+  width: 100%;
+  margin: 14px 0 0;
+  padding: 11px 14px;
+  border-radius: 12px;
+  background: #e0f2fe;
+  color: #0c4a6e;
+  font-size: 0.9rem;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+#loginMessage.error:not([hidden]) {
+  background: #fee2e2;
+  color: #991b1b;
+}
+#loginMessage.success:not([hidden]) {
+  background: #dcfce7;
+  color: #166534;
 }
 
 /* ======================================================
@@ -454,13 +468,7 @@
     width: 100%;
   }
 
-  #loginMessage {
-    left: 14px;
-    right: 14px;
-    top: 14px;
-    max-width: none;
-    text-align: center;
-  }
+  
 }
 
 /* ======================================================
@@ -557,5 +565,17 @@
     text-decoration: none !important;
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
+  }
+}
+/* Keep the login card fully responsive when browser width is narrow.
+   Popup notifications remain fixed overlays, never flex children. */
+.auth-container,
+.auth-card {
+  min-width: 0;
+}
+@media (max-width: 768px) {
+  .auth-container {
+    width: 100%;
+    margin-inline: auto;
   }
 }

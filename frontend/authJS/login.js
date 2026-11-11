@@ -266,25 +266,30 @@ function getRoleRedirect(role) {
 // SECTION 5: Message helpers
 // ============================================================
 
+// Clear the old fallback message before each request.
 function clearMessage() {
   if (!loginMessage) return;
 
   loginMessage.textContent = "";
-  loginMessage.className = "";
+  loginMessage.className = "message";
+  loginMessage.hidden = true;
 }
 
+// Show one centered toast rather than duplicating the error on the page.
+// Retain an inline fallback for cases where toast.js fails to load.
 function showMessage(message, type = "success") {
   if (typeof showToast === "function") {
     showToast(message, type);
+    clearMessage();
+    return;
   }
 
   if (loginMessage) {
     loginMessage.textContent = message;
     loginMessage.className = `login-message ${type}`;
+    loginMessage.hidden = false;
     return;
   }
 
-  if (typeof showToast !== "function") {
-    alert(message);
-  }
+  alert(message);
 }

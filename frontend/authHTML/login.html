@@ -108,7 +108,8 @@
           <button type="submit" class="auth-submit">Login</button>
         </form>
 
-        <p id="loginMessage" class="message"></p>
+        <!-- Accessible fallback is hidden while the shared floating toast is active. -->
+        <p id="loginMessage" class="message" role="status" aria-live="polite" hidden></p>
 
         <div class="auth-link">
           Don’t have an account yet?

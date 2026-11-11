@@ -73,3 +73,51 @@ body {
         max-width: none;
     }
 }
+/* ======================================================
+   CENTERED FLOATING NOTIFICATIONS
+   A toast is appended to <body> by toast.js.
+   Fixed positioning keeps it OUT of flex/grid layout so
+   displaying an error never shrinks the Login form.
+   Applies to Login/Register and pages using showToast().
+====================================================== */
+.toast {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    right: auto;
+    bottom: auto;
+    z-index: 100000;
+    width: min(440px, calc(100vw - 32px));
+    max-width: calc(100vw - 32px);
+    margin: 0;
+    text-align: center;
+    overflow-wrap: anywhere;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(-50%, -50%) scale(0.98);
+    transition: opacity 180ms ease, transform 180ms ease, visibility 180ms ease;
+}
+
+.toast.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(-50%, -50%) scale(1);
+}
+
+.toast.toast-success { background: #047857; }
+.toast.toast-error   { background: #b91c1c; }
+.toast.toast-info    { background: #0369a1; }
+
+@media (max-width: 480px) {
+    .toast {
+        width: calc(100vw - 28px);
+        max-width: 420px;
+        padding: 14px 16px;
+        font-size: 0.88rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .toast { transition: none; }
+}
