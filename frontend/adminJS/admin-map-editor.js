@@ -1,5 +1,5 @@
 // ============================================================
-// SMARTRESORT ADMIN MAP EDITOR SCRIPT
+// ARVICSEASIDE ADMIN MAP EDITOR SCRIPT
 // Purpose:
 // - Check admin access
 // - Load accommodations for marker linking

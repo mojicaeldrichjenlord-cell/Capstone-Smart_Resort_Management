@@ -1,5 +1,5 @@
 // ============================================================
-// SMARTRESORT ADMIN PROFILE SCRIPT
+// ARVICSEASIDE ADMIN PROFILE SCRIPT
 // Purpose:
 // - Check admin access
 // - Load admin profile details

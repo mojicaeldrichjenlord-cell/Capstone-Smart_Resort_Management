@@ -1,5 +1,5 @@
 // ============================================================
-// SMARTRESORT FRONT DESK GUEST MANAGEMENT
+// ARVICSEASIDE FRONT DESK GUEST MANAGEMENT
 // File: frontend/frontdeskJS/frontdeskGuests.js
 //
 // STEP 3F-A:

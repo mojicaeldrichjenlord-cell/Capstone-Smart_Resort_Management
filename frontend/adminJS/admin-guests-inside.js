@@ -1,5 +1,5 @@
 // ============================================================
-// SMARTRESORT ADMIN GUESTS INSIDE SCRIPT
+// ARVICSEASIDE ADMIN GUESTS INSIDE SCRIPT
 // Purpose:
 // - Check admin/staff access
 // - Load active approved guests for today

@@ -1,5 +1,5 @@
 // ============================================================
-// SMARTRESORT FRONT DESK FINAL THERMAL RECEIPT SCRIPT
+// ARVICSEASIDE FRONT DESK FINAL THERMAL RECEIPT SCRIPT
 // File: frontend/frontdeskJS/frontdesk-booking-receipt.js
 // Purpose:
 // - Check Front Desk access
@@ -843,7 +843,7 @@ function renderThermalReceipt(booking) {
       <div class="thermal-center thermal-small">
         Facebook: Arvic Seaside Beach Resort and Hotel<br>
         TikTok: @arvicseaside<br>
-        SmartResort System<br>
+        ArvicSeaside System<br>
         ${
           isCompleted
             ? "Final transaction record"

@@ -1,5 +1,5 @@
 // ============================================================
-// SMARTRESORT ADMIN DASHBOARD SCRIPT
+// ARVICSEASIDE ADMIN DASHBOARD SCRIPT
 // File: frontend/adminJS/admin.js
 //
 // ADMIN SCOPE:

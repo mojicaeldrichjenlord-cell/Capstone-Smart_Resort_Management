@@ -1,5 +1,5 @@
 // ============================================================
-// SMARTRESORT ADMIN REPORTS SCRIPT
+// ARVICSEASIDE ADMIN REPORTS SCRIPT
 // Purpose:
 // - Check admin/staff access
 // - Load today-only reports by default

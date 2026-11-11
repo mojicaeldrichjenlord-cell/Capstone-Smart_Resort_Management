@@ -1,5 +1,5 @@
 // ============================================================
-// SMARTRESORT MANUAL RESERVATION ROLE NAVIGATION
+// ARVICSEASIDE MANUAL RESERVATION ROLE NAVIGATION
 //
 // File:
 // frontend/sharedJS/manualReservationRoleNav.js
@@ -83,8 +83,8 @@ function configureFrontDeskManualPage() {
   }
 
   document.title = document.title.replace(
-    "SmartResort Admin",
-    "SmartResort Front Desk",
+    "ArvicSeaside Admin",
+    "ArvicSeaside Front Desk",
   );
 
   document

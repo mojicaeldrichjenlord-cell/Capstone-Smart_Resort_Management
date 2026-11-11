@@ -1,5 +1,5 @@
 // ============================================================
-// SMARTRESORT FRONT DESK RESERVATION RECORDS
+// ARVICSEASIDE FRONT DESK RESERVATION RECORDS
 // File: frontend/frontdeskJS/frontdeskReservations.js
 //
 // Step 3D scope:

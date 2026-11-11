@@ -1,5 +1,5 @@
 // ============================================================
-// SMARTRESORT LOGIN SCRIPT - FULL REPLACEMENT
+// ARVICSEASIDE LOGIN SCRIPT - FULL REPLACEMENT
 // Replace: frontend/authJS/login.js
 //
 // Final roles:

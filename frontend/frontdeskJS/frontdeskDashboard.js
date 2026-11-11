@@ -1,5 +1,5 @@
 // ============================================================
-// SMARTRESORT FRONT DESK DASHBOARD
+// ARVICSEASIDE FRONT DESK DASHBOARD
 // File: frontend/frontdeskJS/frontdeskDashboard.js
 // Logout security: clear both Front Desk authentication token and user session.
 // ============================================================

@@ -1,5 +1,5 @@
 // ============================================================
-// SMARTRESORT REGISTER SCRIPT
+// ARVICSEASIDE REGISTER SCRIPT
 // Purpose:
 // - Submit registration form
 // - First name and last name are required

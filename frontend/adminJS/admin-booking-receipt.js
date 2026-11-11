@@ -1,5 +1,5 @@
 // ============================================================
-// SMARTRESORT ADMIN THERMAL RECEIPT SCRIPT
+// ARVICSEASIDE ADMIN THERMAL RECEIPT SCRIPT
 // File: frontend/adminJS/admin-booking-receipt.js
 // Purpose:
 // - Check admin/staff access
@@ -811,7 +811,7 @@ function renderThermalReceipt(booking) {
       <div class="thermal-center thermal-small">
         Facebook: Arvic Seaside Beach Resort and Hotel<br>
         TikTok: @arvicseaside<br>
-        SmartResort System<br>
+        ArvicSeaside System<br>
         ${isCompleted ? "Final transaction record" : "Keep for front-desk verification"}
       </div>
     </div>

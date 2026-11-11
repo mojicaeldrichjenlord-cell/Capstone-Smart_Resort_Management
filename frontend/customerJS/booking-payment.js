@@ -1,5 +1,5 @@
 // ============================================================
-// SMARTRESORT BOOKING PAYMENT SCRIPT
+// ARVICSEASIDE BOOKING PAYMENT SCRIPT
 // File: frontend/customerJS/booking-payment.js
 // Purpose:
 // - Read booking draft from sessionStorage

@@ -289,7 +289,7 @@ function restoreChatHistory() {
   if (!history.length) {
     appendAiMessage(
       "assistant",
-      "Hi! I’m your SmartResort assistant. This is a fresh new chat. You can ask about rooms, booking dates, check-in/check-out time, guests, or payment method.",
+      "Hi! I’m your ArvicSeaside assistant. This is a fresh new chat. You can ask about rooms, booking dates, check-in/check-out time, guests, or payment method.",
       false
     );
 

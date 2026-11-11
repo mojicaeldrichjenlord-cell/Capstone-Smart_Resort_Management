@@ -1,5 +1,5 @@
 // ============================================================
-// SMARTRESORT FRONT DESK WALK-IN PAYMENT SCRIPT
+// ARVICSEASIDE FRONT DESK WALK-IN PAYMENT SCRIPT
 // FULL REPLACEMENT
 //
 // File to replace:

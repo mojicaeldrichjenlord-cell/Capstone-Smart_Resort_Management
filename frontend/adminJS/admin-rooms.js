@@ -1,5 +1,5 @@
 // ============================================================
-// SMARTRESORT ADMIN ROOMS SCRIPT
+// ARVICSEASIDE ADMIN ROOMS SCRIPT
 // Purpose:
 // - Check admin access
 // - Load/create categories

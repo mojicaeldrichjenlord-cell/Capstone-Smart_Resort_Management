@@ -1,5 +1,5 @@
 // ============================================================
-// SMARTRESORT FRONT DESK PAYMENT MANAGEMENT
+// ARVICSEASIDE FRONT DESK PAYMENT MANAGEMENT
 // File: frontend/frontdeskJS/frontdeskPayments.js
 //
 // Step 3E:
