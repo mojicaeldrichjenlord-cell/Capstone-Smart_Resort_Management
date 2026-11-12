@@ -1,21 +1,48 @@
 // ============================================================
-// SMARTRESORT ADMIN WALK-IN PAYMENT SCRIPT
+// ARVICSEASIDE FRONT DESK WALK-IN PAYMENT SCRIPT
+// FULL REPLACEMENT
+//
+// File to replace:
+// frontend/adminJS/admin-walkin-payment.js
+//
 // Purpose:
-// - Check admin access
+// - Allow Front Desk access only
 // - Load manual reservation draft from sessionStorage
 // - Render reservation summary
-// - Compute payment totals
-// - Handle proof/reference requirement
+// - Correctly read day_tour / night / day_extended / night_extended
+// - Correctly compute accommodation total and 50% downpayment
+// - Correctly multiply extended-stay price by stay_duration
+// - Treat Day 22/23 Hours as DAY entrance rate and Night 22/23 Hours as NIGHT
+// - Walk-in collects accommodation only; entrance is finalized after check-in
+// - Handle Cash / GCash / Maya manual payment rules (no Front Desk PayPal)
+// - Send created_by using the logged-in staff account
 // - Submit manual reservation to backend
-// - Works from frontend/adminHTML/admin-walkin-payment.html
+// - Authenticate manual reservation API requests with the short-lived
+//   Front Desk token issued by the login endpoint (Cash / GCash / Maya)
 // ============================================================
 
 const ADMIN_WALKIN_DRAFT_KEY = "smartresort_admin_walkin_draft_v2";
-const ADMIN_WALKIN_SUCCESS_RESET_KEY = "smartresort_admin_walkin_success_reset";
+const ADMIN_WALKIN_SUCCESS_RESET_KEY =
+  "smartresort_admin_walkin_success_reset";
+
+// If a successful submit somehow reloads this same payment page instead of
+// navigating away, this URL hash survives the reload and lets startup recover.
+const ADMIN_WALKIN_SUCCESS_REDIRECT_HASH =
+  "#manual-reservation-created";
+
+const ADMIN_FRONTDESK_PAYPAL_PENDING_KEY =
+  "smartresort_frontdesk_paypal_pending_v1";
 
 let walkInDraft = null;
 let availableAccommodations = [];
 let isSubmittingManualReservation = false;
+
+// The normal POST response redirect remains the primary path.
+// This watchdog handles the observed edge case where the backend has already
+// created the reservation but the browser never receives/finishes the POST
+// success response, leaving the staff on the payment page.
+let manualReservationRedirectStarted = false;
+let manualReservationWatchdogTimer = null;
 
 let computedTotals = {
   accommodationTotal: 0,
@@ -27,17 +54,33 @@ let computedTotals = {
 
 // ============================================================
 // SECTION 1: Page startup
-// Checks admin access, loads draft, rooms, and renders payment page.
 // ============================================================
 
 document.addEventListener("DOMContentLoaded", async () => {
-  checkAdminAccess();
+  if (!checkStaffAccess()) {
+    return;
+  }
+
   setupLogout();
+
+  // ----------------------------------------------------------
+  // SUCCESS-RELOAD RECOVERY
+  //
+  // We observed that the reservation can already be saved while the
+  // browser unexpectedly reloads this same payment page. The successful
+  // submission marker is checked before the draft is loaded, so the user
+  // is sent to the correct Guest page instead of seeing a reset form.
+  // ----------------------------------------------------------
+  if (redirectFromCompletedManualReservation()) {
+    return;
+  }
 
   walkInDraft = getWalkInDraft();
 
   if (!walkInDraft) {
-    alert("No manual reservation draft found. Please create the reservation first.");
+    alert(
+      "No manual reservation draft found. Please create the reservation first.",
+    );
     window.location.href = "admin-walkin.html";
     return;
   }
@@ -45,6 +88,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   walkInDraft.reservation_type = getManualReservationType();
 
   await loadAccommodations();
+
   setupPaymentForm();
   renderReservationSummary();
   updatePaymentRequirementUI();
@@ -52,36 +96,481 @@ document.addEventListener("DOMContentLoaded", async () => {
 });
 
 // ============================================================
-// SECTION 2: Admin access checker
-// Redirects unauthenticated or non-admin users.
+// SECTION 2: Front Desk-only access
 // ============================================================
 
-function checkAdminAccess() {
-  const user = JSON.parse(localStorage.getItem("user"));
+function getLoggedInUser() {
+  try {
+    return JSON.parse(localStorage.getItem("user") || "null");
+  } catch (error) {
+    console.error("getLoggedInUser error:", error);
+    return null;
+  }
+}
+
+// The backend verifies this signed token and derives created_by from it.
+// Do not rely on the locally stored account ID as authentication.
+function getFrontDeskAuthorizationHeader() {
+  const token = String(
+    sessionStorage.getItem("frontDeskToken") || "",
+  ).trim();
+
+  if (!/^fd1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(token)) {
+    throw new Error(
+      "Your secure Front Desk session is missing. Please log out and log in again before submitting a reservation.",
+    );
+  }
+
+  return `Bearer ${token}`;
+}
+
+function normalizeManualPaymentRole(role) {
+  const value = String(role || "")
+    .trim()
+    .toLowerCase();
+
+  return value === "staff"
+    ? "frontdesk"
+    : value;
+}
+
+function checkStaffAccess() {
+  const user = getLoggedInUser();
 
   if (!user) {
     alert("Please login first.");
-    window.location.href = "../authHTML/login.html";
+    window.location.replace("../authHTML/login.html");
+    return false;
+  }
+
+  const role = normalizeManualPaymentRole(user.role);
+
+  if (role === "frontdesk") {
+    return true;
+  }
+
+  const routes = {
+    admin: "admin.html",
+    manager: "../managerHTML/managerDashboard.html",
+    housekeeping:
+      "../housekeepingHTML/housekeepingDashboard.html",
+    customer: "../customerHTML/index.html",
+  };
+
+  alert(
+    "Access denied. Manual reservations are handled by Front Desk.",
+  );
+
+  window.location.replace(
+    routes[role] || "../authHTML/login.html",
+  );
+
+  return false;
+}
+
+
+// ============================================================
+// SECTION 2.1: Front Desk success destination
+//
+// A successful manual reservation always returns to Front Desk
+// Guest Management.
+// ============================================================
+
+function getManualReservationSuccessDestination() {
+  return "/frontend/frontdeskHTML/frontdeskGuests.html";
+}
+
+function buildManualReservationSuccessUrl(data = {}) {
+  const target = new URL(
+    getManualReservationSuccessDestination(),
+    window.location.origin,
+  );
+
+  target.searchParams.set("created", "1");
+
+  if (data?.reservationCode) {
+    target.searchParams.set(
+      "reservationCode",
+      String(data.reservationCode),
+    );
+  }
+
+  if (data?.bookingId) {
+    target.searchParams.set(
+      "reservationId",
+      String(data.bookingId),
+    );
+  }
+
+  return target.href;
+}
+
+function markCompletedManualReservationInCurrentUrl() {
+  try {
+    const currentUrl = new URL(window.location.href);
+
+    currentUrl.hash =
+      ADMIN_WALKIN_SUCCESS_REDIRECT_HASH;
+
+    // No reload here. This only places a recovery marker in the URL.
+    window.history.replaceState(
+      null,
+      document.title,
+      currentUrl.href,
+    );
+  } catch (error) {
+    console.error(
+      "Could not set manual reservation success marker:",
+      error,
+    );
+  }
+}
+
+function redirectFromCompletedManualReservation() {
+  if (
+    window.location.hash !==
+    ADMIN_WALKIN_SUCCESS_REDIRECT_HASH
+  ) {
+    return false;
+  }
+
+  const target = new URL(
+    getManualReservationSuccessDestination(),
+    window.location.origin,
+  ).href;
+
+  // This is running during a fresh page load, so there is no submit click
+  // left to interfere with the navigation.
+  window.location.replace(target);
+
+  return true;
+}
+
+function redirectAfterSuccessfulManualReservation(data = {}) {
+  if (manualReservationRedirectStarted) {
     return;
   }
 
-  if (user.role !== "admin") {
-    alert("Access denied. Admin only.");
-    window.location.href = "../index.html";
+  manualReservationRedirectStarted = true;
+
+  if (manualReservationWatchdogTimer) {
+    window.clearInterval(
+      manualReservationWatchdogTimer,
+    );
+    manualReservationWatchdogTimer = null;
   }
+
+  const target =
+    buildManualReservationSuccessUrl(data);
+
+  // ----------------------------------------------------------
+  // IMPORTANT:
+  // Mark this payment URL BEFORE navigating.
+  //
+  // If the browser unexpectedly reloads this exact payment page after the
+  // reservation was saved, DOMContentLoaded sees the hash and redirects
+  // again before it tries to read the cleared draft.
+  // ----------------------------------------------------------
+  markCompletedManualReservationInCurrentUrl();
+
+  // Primary navigation.
+  window.location.replace(target);
+
+  // Independent fallback if the page is somehow still here.
+  window.setTimeout(() => {
+    if (
+      window.location.hash ===
+      ADMIN_WALKIN_SUCCESS_REDIRECT_HASH
+    ) {
+      window.open(target, "_self");
+    }
+  }, 250);
+}
+
+// ============================================================
+// SECTION 2.2: Manual reservation creation watchdog
+//
+// Why this exists:
+// We confirmed a real case where the reservation is already present in the
+// database / Front Desk Guests page, but the payment page does not receive
+// or finish the POST success flow and therefore never reaches its redirect.
+//
+// This watchdog does NOT create another reservation.
+// It only checks GET /bookings?scope=all for a NEW matching reservation
+// after the submit started. Once found, it redirects to Guests.
+// ============================================================
+
+function getBookingsArrayFromApiResponse(data) {
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  if (Array.isArray(data?.bookings)) {
+    return data.bookings;
+  }
+
+  return [];
+}
+
+async function getManualReservationBaselineId() {
+  try {
+    const response = await fetch(
+      `${API_BASE}/bookings?scope=all`,
+      {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          Authorization: getFrontDeskAuthorizationHeader(),
+        },
+        cache: "no-store",
+      },
+    );
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    const bookings =
+      getBookingsArrayFromApiResponse(data);
+
+    return bookings.reduce(
+      (maxId, booking) =>
+        Math.max(
+          maxId,
+          Number(booking?.id || 0),
+        ),
+      0,
+    );
+  } catch (error) {
+    console.warn(
+      "Manual reservation baseline lookup failed:",
+      error,
+    );
+
+    return null;
+  }
+}
+
+function normalizeWatchdogText(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase();
+}
+
+function normalizeWatchdogPhone(value) {
+  return String(value || "")
+    .replace(/\D/g, "");
+}
+
+function bookingMatchesCurrentManualDraft(
+  booking,
+  baselineId,
+) {
+  if (!booking || !walkInDraft) {
+    return false;
+  }
+
+  const bookingId = Number(booking.id || 0);
+
+  if (
+    Number.isFinite(baselineId) &&
+    bookingId <= baselineId
+  ) {
+    return false;
+  }
+
+  if (
+    normalizeWatchdogText(
+      booking.booking_source,
+    ) !== "manual"
+  ) {
+    return false;
+  }
+
+  const bookingPhone =
+    normalizeWatchdogPhone(
+      booking.contact_no || booking.phone,
+    );
+
+  const draftPhone =
+    normalizeWatchdogPhone(
+      walkInDraft.contact_no,
+    );
+
+  if (
+    draftPhone &&
+    bookingPhone !== draftPhone
+  ) {
+    return false;
+  }
+
+  const bookingFirstName =
+    normalizeWatchdogText(
+      booking.first_name,
+    );
+
+  const bookingLastName =
+    normalizeWatchdogText(
+      booking.last_name,
+    );
+
+  const draftFirstName =
+    normalizeWatchdogText(
+      walkInDraft.first_name,
+    );
+
+  const draftLastName =
+    normalizeWatchdogText(
+      walkInDraft.last_name,
+    );
+
+  if (
+    draftFirstName &&
+    bookingFirstName !== draftFirstName
+  ) {
+    return false;
+  }
+
+  if (
+    draftLastName &&
+    bookingLastName !== draftLastName
+  ) {
+    return false;
+  }
+
+  const firstDraftItem =
+    Array.isArray(walkInDraft.items)
+      ? walkInDraft.items[0]
+      : null;
+
+  const draftCheckInDate =
+    String(
+      firstDraftItem?.check_in_date || "",
+    ).slice(0, 10);
+
+  const bookingCheckInDate =
+    String(
+      booking.check_in_date ||
+        booking.check_in ||
+        "",
+    ).slice(0, 10);
+
+  if (
+    draftCheckInDate &&
+    bookingCheckInDate &&
+    draftCheckInDate !== bookingCheckInDate
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+function startManualReservationCreationWatchdog(
+  baselineId,
+) {
+  if (!Number.isFinite(baselineId)) {
+    return;
+  }
+
+  if (manualReservationWatchdogTimer) {
+    window.clearInterval(
+      manualReservationWatchdogTimer,
+    );
+  }
+
+  let attempts = 0;
+  const maxAttempts = 20;
+
+  manualReservationWatchdogTimer =
+    window.setInterval(async () => {
+      attempts += 1;
+
+      if (
+        manualReservationRedirectStarted ||
+        attempts > maxAttempts
+      ) {
+        window.clearInterval(
+          manualReservationWatchdogTimer,
+        );
+        manualReservationWatchdogTimer = null;
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `${API_BASE}/bookings?scope=all`,
+          {
+            method: "GET",
+            headers: {
+              Accept: "application/json",
+              Authorization: getFrontDeskAuthorizationHeader(),
+            },
+            cache: "no-store",
+          },
+        );
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data = await response.json();
+
+        const matchedBooking =
+          getBookingsArrayFromApiResponse(data)
+            .find((booking) =>
+              bookingMatchesCurrentManualDraft(
+                booking,
+                baselineId,
+              ),
+            );
+
+        if (!matchedBooking) {
+          return;
+        }
+
+        // The reservation definitely exists, even if the original POST
+        // response is still pending or failed to finish in the browser.
+        sessionStorage.removeItem(
+          ADMIN_WALKIN_DRAFT_KEY,
+        );
+
+        sessionStorage.setItem(
+          ADMIN_WALKIN_SUCCESS_RESET_KEY,
+          "1",
+        );
+
+        showMessage(
+          "Manual reservation created successfully.",
+          "success",
+        );
+
+        redirectAfterSuccessfulManualReservation({
+          bookingId: matchedBooking.id,
+          reservationCode:
+            matchedBooking.reservation_code,
+        });
+      } catch (error) {
+        console.warn(
+          "Manual reservation watchdog check failed:",
+          error,
+        );
+      }
+    }, 1200);
 }
 
 // ============================================================
 // SECTION 3: Logout
-// Clears current user and returns to login page.
 // ============================================================
 
 function setupLogout() {
   const logoutBtn = document.getElementById("logoutBtn");
+
   if (!logoutBtn) return;
 
-  logoutBtn.addEventListener("click", (e) => {
-    e.preventDefault();
+  logoutBtn.addEventListener("click", (event) => {
+    event.preventDefault();
 
     localStorage.removeItem("user");
 
@@ -96,8 +585,7 @@ function setupLogout() {
 }
 
 // ============================================================
-// SECTION 4: Get walk-in draft
-// Reads manual reservation data from sessionStorage.
+// SECTION 4: Manual reservation draft
 // ============================================================
 
 function getWalkInDraft() {
@@ -115,15 +603,27 @@ function getWalkInDraft() {
   }
 }
 
-
 // ============================================================
-// SECTION 4.1: Manual reservation type helpers
-// Walk-in = onsite guest, cash full payment, auto check-in.
-// Facebook/Messenger = advance/manual booking, GCash/PayMaya proof required.
+// SECTION 5: Manual reservation type helpers
+// Walk-in:
+// - Cash, GCash, or Maya
+// - Full accommodation payment only
+// - GCash/Maya reference is OPTIONAL
+// - GCash/Maya proof screenshot is REQUIRED
+// - Auto check-in
+//
+// Facebook / Messenger:
+// - GCash or Maya
+// - 50% downpayment or full payment
+// - Reference is OPTIONAL
+// - Proof screenshot is REQUIRED
 // ============================================================
 
 function getManualReservationType() {
-  const value = String(walkInDraft?.reservation_type || "walkin").toLowerCase();
+  const value = String(
+    walkInDraft?.reservation_type || "walkin",
+  ).toLowerCase();
+
   return value === "facebook" ? "facebook" : "walkin";
 }
 
@@ -135,55 +635,132 @@ function isFacebookManualReservation() {
   return getManualReservationType() === "facebook";
 }
 
-function formatManualReservationType(type = getManualReservationType()) {
-  return type === "facebook" ? "Facebook / Messenger Reservation" : "Walk-in Guest";
+function formatManualReservationType(
+  type = getManualReservationType(),
+) {
+  return type === "facebook"
+    ? "Facebook / Messenger Reservation"
+    : "Walk-in Guest";
+}
+
+
+// ============================================================
+// SECTION 5.1: Manual reservation date safety check
+//
+// This is a second frontend guard on the payment screen.
+// Even if an old/stale sessionStorage draft contains a future walk-in date,
+// submission is blocked before the API request is sent.
+// ============================================================
+
+function getPhilippineTodayInputDate() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+
+  const values = {};
+
+  parts.forEach((part) => {
+    values[part.type] = part.value;
+  });
+
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+function validateManualReservationDraftDates() {
+  const items = Array.isArray(walkInDraft?.items)
+    ? walkInDraft.items
+    : [];
+
+  const today = getPhilippineTodayInputDate();
+  const reservationType = getManualReservationType();
+
+  for (const item of items) {
+    const checkInDate = String(item?.check_in_date || "").slice(0, 10);
+
+    if (!checkInDate) {
+      return {
+        valid: false,
+        message:
+          "An accommodation item has no reservation date. Please go back and review the reservation.",
+      };
+    }
+
+    if (reservationType === "walkin" && checkInDate !== today) {
+      return {
+        valid: false,
+        message:
+          "Walk-in guests must use today's reservation date because they are already onsite. Please go back and review the reservation.",
+      };
+    }
+
+    if (reservationType === "facebook" && checkInDate < today) {
+      return {
+        valid: false,
+        message:
+          "Facebook/Messenger reservations cannot use a past reservation date. Please go back and review the reservation.",
+      };
+    }
+  }
+
+  return {
+    valid: true,
+    message: "",
+  };
 }
 
 function enforcePaymentOptionsByReservationType() {
   const paymentMethod = document.getElementById("paymentMethod");
   const paymentType = document.getElementById("paymentType");
-
   if (!paymentMethod || !paymentType) return;
 
-  if (isWalkInManualReservation()) {
-    paymentMethod.innerHTML = `<option value="cash">Cash</option>`;
-    paymentMethod.value = "cash";
-    paymentMethod.disabled = true;
+  const previousMethod = String(paymentMethod.value || "").toLowerCase();
+  const previousType = String(paymentType.value || "").toLowerCase();
 
+  paymentMethod.disabled = false;
+  paymentMethod.title = "";
+
+  if (isWalkInManualReservation()) {
+    // Walk-in: full accommodation payment, Cash / GCash / Maya only.
+    paymentMethod.innerHTML = `
+      <option value="cash">Cash</option>
+      <option value="gcash">GCash</option>
+      <option value="paymaya">Maya / PayMaya</option>
+    `;
+    paymentMethod.value = ["cash", "gcash", "paymaya"].includes(previousMethod)
+      ? previousMethod
+      : "cash";
     paymentType.innerHTML = `<option value="full">Full Payment</option>`;
     paymentType.value = "full";
     paymentType.disabled = true;
-    paymentType.title = "Walk-in reservations are cash and full payment only.";
+    paymentType.title = "Walk-in reservations must be full payment only.";
     return;
   }
 
-  const selectedPaymentMethod = paymentMethod.value;
-
-  paymentMethod.disabled = false;
+  // Facebook/Messenger: GCash / Maya only (full or 50% downpayment).
   paymentMethod.innerHTML = `
     <option value="gcash">GCash</option>
-    <option value="paymaya">PayMaya</option>
+    <option value="paymaya">Maya / PayMaya</option>
   `;
-
-  paymentMethod.value = ["gcash", "paymaya"].includes(selectedPaymentMethod)
-    ? selectedPaymentMethod
+  paymentMethod.value = ["gcash", "paymaya"].includes(previousMethod)
+    ? previousMethod
     : "gcash";
-
-  paymentType.disabled = false;
-  paymentType.title = "";
   paymentType.innerHTML = `
     <option value="downpayment">50% Down Payment</option>
     <option value="full">Full Payment</option>
   `;
-
-  if (!["downpayment", "full"].includes(paymentType.value)) {
-    paymentType.value = "downpayment";
-  }
+  paymentType.value = ["downpayment", "full"].includes(previousType)
+    ? previousType
+    : "downpayment";
+  paymentType.disabled = false;
+  paymentType.title = "";
 }
 
 // ============================================================
-// SECTION 5: Load available accommodations
-// Used to compute item labels, slot prices, and totals.
+// SECTION 6: Load accommodations
+// Supports all current backend response formats.
 // ============================================================
 
 async function loadAccommodations() {
@@ -192,23 +769,41 @@ async function loadAccommodations() {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.message || "Failed to load accommodations.");
+      throw new Error(
+        data.message || "Failed to load accommodations.",
+      );
     }
 
-    availableAccommodations = Array.isArray(data) ? data : data.rooms || [];
+    if (Array.isArray(data)) {
+      availableAccommodations = data;
+    } else if (Array.isArray(data.rooms)) {
+      availableAccommodations = data.rooms;
+    } else if (Array.isArray(data.accommodations)) {
+      availableAccommodations = data.accommodations;
+    } else {
+      availableAccommodations = [];
+    }
+
+    console.log(
+      "[admin-walkin-payment] Loaded accommodations:",
+      availableAccommodations.length,
+    );
   } catch (error) {
     console.error("loadAccommodations error:", error);
-    showMessage(error.message || "Failed to load accommodations.", "error");
+
+    availableAccommodations = [];
+
+    showMessage(
+      error.message || "Failed to load accommodations.",
+      "error",
+    );
   }
 }
 
-
 // ============================================================
-// SECTION: Payment reference number helpers
-// Rules:
-// - GCash: exactly 13 digits
-// - Maya / PayMaya: 6 to 30 digits
-// - Dashes are display only; backend receives digits only.
+// SECTION 7: Payment reference helpers
+// GCash: exactly 13 digits
+// Maya: 6 to 30 digits
 // ============================================================
 
 function normalizeReferenceNumber(value) {
@@ -216,26 +811,36 @@ function normalizeReferenceNumber(value) {
 }
 
 function getReferenceMaxDigits(method) {
-  const cleanMethod = String(method || "").toLowerCase();
-  return cleanMethod === "gcash" ? 13 : 30;
+  return String(method || "").toLowerCase() === "gcash"
+    ? 13
+    : 30;
 }
 
 function formatReferenceNumberForDisplay(value, method) {
   const maxDigits = getReferenceMaxDigits(method);
-  const digits = normalizeReferenceNumber(value).slice(0, maxDigits);
+
+  const digits = normalizeReferenceNumber(value).slice(
+    0,
+    maxDigits,
+  );
+
   const groups = digits.match(/.{1,4}/g) || [];
 
   return groups.join("-");
 }
 
-function validateReferenceNumberByMethod(referenceNumber, method) {
+function validateReferenceNumberByMethod(
+  referenceNumber,
+  method,
+) {
   const cleanMethod = String(method || "").toLowerCase();
   const digits = normalizeReferenceNumber(referenceNumber);
 
   if (cleanMethod === "gcash") {
     return {
       valid: /^\d{13}$/.test(digits),
-      message: "GCash reference number must be exactly 13 digits.",
+      message:
+        "GCash reference number must be exactly 13 digits.",
       digits,
     };
   }
@@ -243,7 +848,8 @@ function validateReferenceNumberByMethod(referenceNumber, method) {
   if (cleanMethod === "paymaya") {
     return {
       valid: /^\d{6,30}$/.test(digits),
-      message: "Maya / PayMaya reference number must be numbers only, 6 to 30 digits.",
+      message:
+        "Maya / PayMaya reference number must be numbers only, 6 to 30 digits.",
       digits,
     };
   }
@@ -256,16 +862,19 @@ function validateReferenceNumberByMethod(referenceNumber, method) {
 }
 
 // ============================================================
-// SECTION 6: Setup payment form
-// Connects method/type changes, proof preview, and form submit.
+// SECTION 8: Setup payment form
 // ============================================================
 
 function setupPaymentForm() {
   const form = document.getElementById("adminPaymentForm");
-  const paymentMethod = document.getElementById("paymentMethod");
+  const paymentMethod =
+    document.getElementById("paymentMethod");
   const paymentType = document.getElementById("paymentType");
   const proofImage = document.getElementById("proofImage");
-  const proofReference = document.getElementById("proofReference");
+  const proofReference =
+    document.getElementById("proofReference");
+  const submitBtn =
+    document.getElementById("submitPaymentBtn");
 
   enforcePaymentOptionsByReservationType();
 
@@ -275,65 +884,84 @@ function setupPaymentForm() {
       updatePaymentBreakdown();
 
       if (proofReference) {
-        proofReference.value = formatReferenceNumberForDisplay(
-          proofReference.value,
-          paymentMethod.value
-        );
+        proofReference.value =
+          formatReferenceNumberForDisplay(
+            proofReference.value,
+            paymentMethod.value,
+          );
       }
     });
   }
 
+  if (paymentType) {
+    paymentType.addEventListener(
+      "change",
+      () => {
+        updatePaymentBreakdown();
+      },
+    );
+  }
+
   if (proofReference) {
     proofReference.addEventListener("input", () => {
-      proofReference.value = formatReferenceNumberForDisplay(
-        proofReference.value,
-        paymentMethod?.value || "gcash"
-      );
+      proofReference.value =
+        formatReferenceNumberForDisplay(
+          proofReference.value,
+          paymentMethod?.value || "gcash",
+        );
     });
 
     proofReference.addEventListener("paste", () => {
       setTimeout(() => {
-        proofReference.value = formatReferenceNumberForDisplay(
-          proofReference.value,
-          paymentMethod?.value || "gcash"
-        );
+        proofReference.value =
+          formatReferenceNumberForDisplay(
+            proofReference.value,
+            paymentMethod?.value || "gcash",
+          );
       }, 0);
     });
   }
 
-  if (paymentType) {
-    paymentType.addEventListener("change", updatePaymentBreakdown);
-  }
-
   if (proofImage) {
-    proofImage.addEventListener("change", previewProofImage);
+    proofImage.addEventListener(
+      "change",
+      previewProofImage,
+    );
   }
 
-  const submitBtn = document.getElementById("submitPaymentBtn");
-
+  // adminPaymentForm is currently a DIV in the HTML.
+  // This guard also works if it becomes a real FORM later.
   if (form) {
     form.setAttribute("novalidate", "novalidate");
+
     form.onsubmit = (event) => {
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation?.();
+
       return false;
     };
   }
 
   if (submitBtn) {
     submitBtn.type = "button";
-    submitBtn.onclick = submitManualReservation;
+
+    // Cash, GCash, and Maya all use the secure Front Desk submit path.
+    submitBtn.addEventListener(
+      "click",
+      submitManualReservation,
+    );
   }
 }
 
 // ============================================================
-// SECTION 7: Render reservation summary
-// Shows guest info, entrance type, and selected accommodations.
+// SECTION 9: Reservation summary
 // ============================================================
 
 function renderReservationSummary() {
-  const container = document.getElementById("reservationSummaryList");
+  const container =
+    document.getElementById("reservationSummaryList");
+
   if (!container || !walkInDraft) return;
 
   const fullName = [
@@ -344,28 +972,44 @@ function renderReservationSummary() {
     .filter(Boolean)
     .join(" ");
 
-  const items = Array.isArray(walkInDraft.items) ? walkInDraft.items : [];
+  const items = Array.isArray(walkInDraft.items)
+    ? walkInDraft.items
+    : [];
 
   computedTotals = computeTotals();
 
   container.innerHTML = `
     <div class="summary-item">
-      <strong>Guest Name:</strong> ${escapeHtml(fullName || "N/A")}<br />
-      <strong>Contact No:</strong> ${escapeHtml(walkInDraft.contact_no || "N/A")}<br />
-      <strong>Guest Count:</strong> ${Number(walkInDraft.guest_count || 0)}<br />
-      <strong>Reservation Type:</strong> ${formatManualReservationType()}
+      <strong>Guest Name:</strong>
+      ${escapeHtml(fullName || "N/A")}<br />
+
+      <strong>Contact No:</strong>
+      ${escapeHtml(walkInDraft.contact_no || "N/A")}<br />
+
+      <strong>Guest Count:</strong>
+      ${Number(walkInDraft.guest_count || 0)}<br />
+
+      <strong>Reservation Type:</strong>
+      ${escapeHtml(formatManualReservationType())}
     </div>
 
     <div class="summary-item">
-      <strong>Entrance Type:</strong> ${formatEntranceType(walkInDraft.entrance_type)}<br />
-      <strong>Estimated Entrance Fee:</strong> ₱${formatMoney(
-        computedTotals.estimatedEntranceFee
-      )}
+      <strong>Entrance Type:</strong>
+      ${escapeHtml(
+        formatEntranceType(walkInDraft.entrance_type),
+      )}<br />
+
+      <strong>Estimated Entrance Fee:</strong>
+      ₱${formatMoney(computedTotals.estimatedEntranceFee)}
     </div>
 
     ${
       items.length
-        ? items.map((item, index) => renderReservationItem(item, index)).join("")
+        ? items
+            .map((item, index) =>
+              renderReservationItem(item, index),
+            )
+            .join("")
         : `
           <div class="summary-item">
             No accommodation item found.
@@ -375,23 +1019,35 @@ function renderReservationSummary() {
   `;
 }
 
-// ============================================================
-// SECTION 8: Render one reservation item summary
-// Shows accommodation, slot, schedule, and price.
-// ============================================================
-
 function renderReservationItem(item, index) {
-  const accommodation = getAccommodationById(item.accommodation_id);
+  const accommodation = getAccommodationById(
+    item.accommodation_id,
+  );
 
   const slot = getSlotOptions(accommodation).find(
-    (slotItem) => slotItem.value === item.slot_type
+    (slotItem) => slotItem.value === item.slot_type,
   );
+
+  const stayDuration = getStayDuration(item);
 
   const checkOutDate = calculateCheckOutDate(
     item.check_in_date,
     slot?.start,
-    slot?.end
+    slot?.end,
+    stayDuration,
   );
+
+  const unitPrice = Number(slot?.price || 0);
+  const itemTotal = unitPrice * stayDuration;
+
+  const durationText =
+    ["day_extended", "night_extended"].includes(
+      String(item.slot_type || "").toLowerCase(),
+    )
+      ? `${stayDuration} ${
+          stayDuration === 1 ? "day" : "days"
+        }`
+      : "Fixed schedule";
 
   return `
     <div class="summary-item">
@@ -399,13 +1055,21 @@ function renderReservationItem(item, index) {
       ${escapeHtml(accommodation?.name || "N/A")}<br />
 
       <strong>Category:</strong>
-      ${escapeHtml(accommodation?.category_name || "N/A")}<br />
+      ${escapeHtml(
+        accommodation?.category_name || "N/A",
+      )}<br />
 
       <strong>Slot:</strong>
-      ${escapeHtml(slot?.label || item.slot_type || "N/A")}<br />
+      ${escapeHtml(
+        slot?.label || item.slot_type || "N/A",
+      )}<br />
 
       <strong>Schedule:</strong>
-      ${formatTimeDisplay(slot?.start)} - ${formatTimeDisplay(slot?.end)}<br />
+      ${formatTimeDisplay(slot?.start)} -
+      ${formatTimeDisplay(slot?.end)}<br />
+
+      <strong>Stay Duration:</strong>
+      ${escapeHtml(durationText)}<br />
 
       <strong>Check-in:</strong>
       ${formatDateDisplay(item.check_in_date)}<br />
@@ -414,186 +1078,313 @@ function renderReservationItem(item, index) {
       ${formatDateDisplay(checkOutDate)}<br />
 
       <strong>Price:</strong>
-      ₱${formatMoney(slot?.price || 0)}
+      ₱${formatMoney(unitPrice)}
+      ${
+        stayDuration > 1
+          ? ` × ${stayDuration} = ₱${formatMoney(
+              itemTotal,
+            )}`
+          : ""
+      }
     </div>
   `;
 }
 
 // ============================================================
-// SECTION 9: Payment requirements UI
-// Makes proof/reference required for electronic payments.
+// SECTION 10: Payment requirement UI
 // ============================================================
 
 function updatePaymentRequirementUI() {
   enforcePaymentOptionsByReservationType();
 
-  const method = document.getElementById("paymentMethod")?.value || "cash";
-  const paymentType = document.getElementById("paymentType");
+  const method = String(
+    document.getElementById("paymentMethod")?.value || "cash",
+  ).toLowerCase();
+  const isWalkIn = isWalkInManualReservation();
+  const isCash = method === "cash";
+  const requiresScreenshot = ["gcash", "paymaya"].includes(method);
+
   const methodHelp = document.getElementById("paymentMethodHelp");
   const referenceGroup = document.getElementById("referenceGroup");
   const proofGroup = document.getElementById("proofGroup");
   const referenceRequiredText = document.getElementById("referenceRequiredText");
   const proofRequiredText = document.getElementById("proofRequiredText");
   const proofReference = document.getElementById("proofReference");
-  const referenceHelpText = document.getElementById("referenceHelpText");
   const proofImage = document.getElementById("proofImage");
   const proofPreview = document.getElementById("proofPreview");
   const paymentRuleNote = document.getElementById("paymentRuleNote");
-
-  const isWalkIn = isWalkInManualReservation();
-  const isCash = method === "cash";
-  const requiresProof = !isWalkIn && isProofRequired(method);
-
-  if (paymentType && isWalkIn) {
-    paymentType.value = "full";
-    paymentType.disabled = true;
-    paymentType.title = "Walk-in reservations are cash and full payment only.";
-  }
+  const submitBtn = document.getElementById("submitPaymentBtn");
 
   if (proofReference) {
-    proofReference.required = requiresProof;
-    proofReference.disabled = isCash || isWalkIn;
-
-    if (isCash || isWalkIn) {
+    proofReference.required = false;
+    proofReference.disabled = isCash;
+    if (isCash) {
       proofReference.value = "";
       proofReference.placeholder = "Not required for cash payment";
       proofReference.removeAttribute("maxlength");
     } else {
-      proofReference.placeholder =
-        method === "gcash"
-          ? "GCash: 1234-5678-9012-3"
-          : "Maya: 1234-5678-9012";
-      proofReference.setAttribute(
-        "maxlength",
-        method === "gcash" ? "16" : "37"
-      );
+      proofReference.placeholder = method === "gcash"
+        ? "Optional GCash reference" : "Optional Maya reference";
+      proofReference.setAttribute("maxlength", method === "gcash" ? "16" : "37");
       proofReference.value = formatReferenceNumberForDisplay(
-        proofReference.value,
-        method
+        proofReference.value, method,
       );
     }
   }
 
   if (proofImage) {
-    proofImage.required = requiresProof;
-    proofImage.disabled = isCash || isWalkIn;
-
-    if (isCash || isWalkIn) {
-      proofImage.value = "";
-    }
+    proofImage.required = requiresScreenshot;
+    proofImage.disabled = isCash;
+    if (isCash) proofImage.value = "";
   }
-
-  if (proofPreview && (isCash || isWalkIn)) {
+  if (proofPreview && isCash) {
     proofPreview.style.display = "none";
     proofPreview.src = "";
   }
-
-  if (referenceGroup) {
-    referenceGroup.style.display = isCash || isWalkIn ? "none" : "flex";
-  }
-
-  if (proofGroup) {
-    proofGroup.style.display = isCash || isWalkIn ? "none" : "flex";
-  }
+  if (referenceGroup) referenceGroup.style.display = requiresScreenshot ? "flex" : "none";
+  if (proofGroup) proofGroup.style.display = requiresScreenshot ? "flex" : "none";
 
   if (referenceRequiredText) {
-    referenceRequiredText.textContent = requiresProof ? " *Required" : " (Not needed)";
-    referenceRequiredText.style.color = requiresProof ? "#dc2626" : "#64748b";
+    referenceRequiredText.textContent = requiresScreenshot ? " (Optional)" : " (Not needed)";
+    referenceRequiredText.style.color = "#64748b";
   }
-
   if (proofRequiredText) {
-    proofRequiredText.textContent = requiresProof ? " *Required" : " (Not needed)";
-    proofRequiredText.style.color = requiresProof ? "#dc2626" : "#64748b";
-  }
-
-  if (referenceHelpText) {
-    referenceHelpText.textContent =
-      isCash || isWalkIn
-        ? "Reference number is not required for cash payment."
-        : method === "gcash"
-          ? "GCash reference number must be exactly 13 digits."
-          : "Maya / PayMaya reference number must be numbers only, 6 to 30 digits.";
+    proofRequiredText.textContent = requiresScreenshot ? " *Required" : " (Not needed)";
+    proofRequiredText.style.color = requiresScreenshot ? "#dc2626" : "#64748b";
   }
 
   if (methodHelp) {
     methodHelp.textContent = isWalkIn
-      ? "Walk-in reservations use Cash only and are automatically recorded as full payment."
-      : isCash
-        ? "Cash payments do not require uploaded proof."
-        : "Facebook/Messenger reservations use GCash or PayMaya and require reference number plus proof screenshot.";
+      ? "Walk-in accepts Cash, GCash, or Maya. GCash/Maya needs proof screenshot; reference is optional."
+      : "Facebook/Messenger accepts GCash or Maya. A proof screenshot is required; reference is optional.";
   }
 
+  const pendingLegacyPayPal = getMatchingLegacyPayPalPending();
   if (paymentRuleNote) {
-    paymentRuleNote.innerHTML = isWalkIn
-      ? `
-        <strong>Walk-in Rule:</strong><br />
-        Walk-in guests are already onsite, so the payment method is Cash only,
-        full payment only, and the reservation will be automatically checked in
-        after submission.
-      `
-      : isCash
-        ? `
-          <strong>Cash Rule:</strong><br />
-          Cash payments can be submitted without transaction reference number
-          and without proof screenshot.
-        `
-        : `
-          <strong>Facebook/Messenger Rule:</strong><br />
-          Since this is a Facebook/Messenger reservation, only GCash or PayMaya is
-          allowed. The admin must enter the transaction reference number and upload
-          the proof screenshot before submitting.
-        `;
+    paymentRuleNote.innerHTML = pendingLegacyPayPal
+      ? `<strong>Existing Pending Reservation:</strong><br />
+         This draft already has a PayPal-created reservation (ID ${Number(pendingLegacyPayPal.bookingId)}).
+         Do not submit a duplicate. Ask authorized staff to review/cancel the existing
+         reservation before making a new manual reservation.`
+      : isWalkIn
+        ? `<strong>Walk-in Rule:</strong><br />
+           Collect the full accommodation amount through Cash, GCash, or Maya.
+           For GCash/Maya, upload the payment proof screenshot (reference optional).
+           After submission, the reservation is automatically checked in.
+           Entrance fee is finalized and collected separately.`
+        : `<strong>Facebook / Messenger Rule:</strong><br />
+           Only GCash or Maya is accepted. Upload a payment proof screenshot
+           (reference optional). Collect either the selected 50% downpayment
+           or full accommodation payment. Entrance fee is collected at arrival.`;
   }
 
+  if (submitBtn) {
+    submitBtn.style.display = "";
+    submitBtn.disabled = Boolean(pendingLegacyPayPal);
+    submitBtn.title = pendingLegacyPayPal
+      ? "Resolve the previously created PayPal reservation before submitting again."
+      : "";
+  }
+  // Deliberately no PayPal SDK setup, buttons, or checkout calls.
   updatePaymentBreakdown();
 }
 
 // ============================================================
-// SECTION 10: Payment breakdown
-// Computes full/downpayment, remaining balance, and front desk reminder.
+// SECTION 11: Payment breakdown
+// Highlight the actual selected accommodation payment separately from
+// entrance fee and later Front Desk collections. Presentation only:
+// this does NOT change computedTotals or reservation payment payloads.
 // ============================================================
+
+function updatePaymentDueHighlight({
+  amount,
+  isWalkIn,
+  paymentType,
+  paymentMethod,
+  estimatedEntranceFee,
+}) {
+  const breakdown = document.querySelector(".payment-breakdown");
+  if (!breakdown) return;
+
+  if (!document.getElementById("paymentDueHighlightStyle")) {
+    const style = document.createElement("style");
+    style.id = "paymentDueHighlightStyle";
+    style.textContent = `
+      .payment-due-highlight {
+        background: linear-gradient(130deg, #ccfbf1, #f0fdfa);
+        color: #0f172a;
+        border: 2px solid #14b8a6;
+        border-radius: 16px;
+        padding: 17px 18px 15px;
+        margin-bottom: 18px;
+        box-shadow: 0 8px 22px rgba(20,184,166,.16);
+      }
+      .payment-due-highlight__label {
+        display: block;
+        color: #115e59;
+        font-size: .79rem;
+        font-weight: 900;
+        letter-spacing: .075em;
+        text-transform: uppercase;
+      }
+      .payment-due-highlight__amount {
+        display: block;
+        font-size: clamp(1.75rem, 3vw, 2.5rem);
+        line-height: 1.2;
+        font-weight: 900;
+        color: #0f172a;
+        letter-spacing: -.035em;
+        margin: 5px 0 4px;
+        font-variant-numeric: tabular-nums;
+        overflow-wrap: anywhere;
+      }
+      .payment-due-highlight__description {
+        display: block;
+        font-size: .88rem;
+        color: #115e59;
+        font-weight: 650;
+        line-height: 1.5;
+      }
+      .payment-due-highlight__later {
+        margin: 11px 0 0;
+        padding-top: 10px;
+        border-top: 1px solid #99f6e4;
+        font-size: .79rem;
+        color: #334155;
+        line-height: 1.5;
+      }
+      @media (max-width: 450px) {
+        .payment-due-highlight { padding: 14px; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  let card = document.getElementById("paymentDueHighlight");
+  if (!card) {
+    card = document.createElement("div");
+    card.id = "paymentDueHighlight";
+    card.className = "payment-due-highlight";
+    card.setAttribute("role", "status");
+    card.setAttribute("aria-live", "polite");
+    card.innerHTML = `
+      <span class="payment-due-highlight__label">Amount to Collect Now</span>
+      <strong class="payment-due-highlight__amount" id="paymentDueNowAmount"></strong>
+      <span class="payment-due-highlight__description" id="paymentDueNowDescription"></span>
+      <p class="payment-due-highlight__later" id="paymentDueNowLater"></p>
+    `;
+    breakdown.insertBefore(card, breakdown.firstChild);
+  }
+
+  const methodNames = {
+    cash: "cash",
+    gcash: "GCash",
+    paymaya: "Maya",
+  };
+  const method = methodNames[paymentMethod] || "selected method";
+  const typeLabel =
+    isWalkIn || paymentType === "full"
+      ? "FULL ACCOMMODATION PAYMENT"
+      : "50% ACCOMMODATION DOWN PAYMENT";
+
+  const label = card.querySelector(".payment-due-highlight__label");
+  if (label) label.textContent = `AMOUNT TO PAY NOW · ${typeLabel}`;
+  setText("paymentDueNowAmount", `₱${formatMoney(amount)}`);
+  setText(
+    "paymentDueNowDescription",
+    `${isWalkIn ? "Collect" : "Collect / verify"} the ${
+      isWalkIn || paymentType === "full" ? "full payment" : "50% downpayment"
+    } via ${method}.`,
+  );
+  setText(
+    "paymentDueNowLater",
+    `Entrance fee (~₱${formatMoney(estimatedEntranceFee)}) is NOT included above. ` +
+      "It is estimated now and finalized/collected separately at check-in.",
+  );
+}
 
 function updatePaymentBreakdown() {
   computedTotals = computeTotals();
+  const isWalkIn = isWalkInManualReservation();
+  const paymentMethod = String(
+    document.getElementById("paymentMethod")?.value || "cash",
+  ).toLowerCase();
+  const paymentType = isWalkIn
+    ? "full"
+    : document.getElementById("paymentType")?.value || "downpayment";
 
-  const paymentType = document.getElementById("paymentType")?.value || "full";
-
-  const paidAmount =
-    paymentType === "full"
-      ? computedTotals.accommodationTotal
-      : computedTotals.requiredDownpayment;
-
+  const paidAmount = paymentType === "full"
+    ? computedTotals.accommodationTotal
+    : computedTotals.requiredDownpayment;
   const remainingBalance = Math.max(
-    computedTotals.accommodationTotal - paidAmount,
-    0
+    computedTotals.accommodationTotal - paidAmount, 0,
   );
-
   const frontDeskReminder = remainingBalance + computedTotals.estimatedEntranceFee;
 
   computedTotals.paidAmount = paidAmount;
   computedTotals.remainingBalance = remainingBalance;
 
-  setText(
-    "paymentAccommodationTotal",
-    `₱${formatMoney(computedTotals.accommodationTotal)}`
-  );
+  updatePaymentDueHighlight({
+    amount: paidAmount,
+    isWalkIn,
+    paymentType,
+    paymentMethod,
+    estimatedEntranceFee: computedTotals.estimatedEntranceFee,
+  });
+
+  setText("paymentAccommodationTotal", `₱${formatMoney(computedTotals.accommodationTotal)}`);
   setText("paymentDownpayment", `₱${formatMoney(computedTotals.requiredDownpayment)}`);
   setText("paymentPaidAmount", `₱${formatMoney(paidAmount)}`);
   setText("paymentRemaining", `₱${formatMoney(remainingBalance)}`);
   setText("paymentEntranceFee", `₱${formatMoney(computedTotals.estimatedEntranceFee)}`);
-  setText("paymentFrontDeskReminder", `₱${formatMoney(frontDeskReminder)}`);
+
+  const downpaymentRow = document.getElementById("paymentDownpaymentRow");
+  const totalCollectedRow = document.getElementById("paymentTotalCollectedRow");
+  const collectionNote = document.getElementById("paymentCollectionNote");
+
+  if (downpaymentRow) {
+    downpaymentRow.style.display = isWalkIn
+      ? "none" : paymentType === "downpayment" ? "flex" : "none";
+  }
+  if (totalCollectedRow) totalCollectedRow.style.display = isWalkIn ? "flex" : "none";
+
+  setText("paymentPaidLabel", "Accommodation Payment Selected");
+  setText("paymentEntranceLabel", "Estimated Entrance Fee");
+  setText("paymentTotalDueLabel", isWalkIn
+    ? "Amount Due Now" : "Est. to Collect at Arrival (Later)");
+  setText("paymentFrontDeskReminder", `₱${formatMoney(
+    isWalkIn ? computedTotals.accommodationTotal : frontDeskReminder,
+  )}`);
+
+  if (isWalkIn) {
+    setText("paymentTotalCollected", `₱${formatMoney(computedTotals.accommodationTotal)}`);
+    if (collectionNote) {
+      collectionNote.innerHTML = `
+        <strong>Walk-in Collection:</strong><br />
+        Collect the full accommodation amount now via Cash, GCash, or Maya.
+        The entrance fee shown above is only an estimate. After automatic
+        check-in, verify guest details, apply entrance adjustments, and
+        collect the final entrance fee separately.`;
+    }
+  } else if (collectionNote) {
+    collectionNote.innerHTML = `
+      <strong>Reminder:</strong><br />
+      The selected 50% downpayment or full accommodation payment is handled now
+      via GCash or Maya. The entrance fee is NOT included; it is estimated
+      and collected separately at arrival/check-in.`;
+  }
 }
 
 // ============================================================
-// SECTION 11: Submit manual reservation
-// Sends draft + payment information to backend.
+// SECTION 12: Submit manual reservation
+// Step 2 created_by is included here.
 // ============================================================
 
-async function submitManualReservation(e) {
-  if (e) {
-    e.preventDefault();
-    e.stopPropagation();
-    e.stopImmediatePropagation?.();
+async function submitManualReservation(event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+    event.stopImmediatePropagation?.();
   }
 
   if (isSubmittingManualReservation) {
@@ -601,64 +1392,190 @@ async function submitManualReservation(e) {
   }
 
   if (!walkInDraft) {
-    showMessage("Missing manual reservation draft.", "error");
+    showMessage(
+      "Missing manual reservation draft.",
+      "error",
+    );
     return;
   }
 
-  const paymentMethod = document.getElementById("paymentMethod").value;
-  const paymentTypeSelect = document.getElementById("paymentType");
-  const isWalkIn = isWalkInManualReservation();
-  const paymentType = isWalkIn ? "full" : paymentTypeSelect.value;
-  const proofReferenceInput = document.getElementById("proofReference");
-  const proofReference = normalizeReferenceNumber(proofReferenceInput?.value || "");
-  const proofImage = document.getElementById("proofImage").files[0] || null;
-  const paymentNote = document.getElementById("paymentNote").value.trim();
-  const requiresProof = !isWalkIn && isProofRequired(paymentMethod);
-
-  if (isWalkIn && paymentMethod !== "cash") {
-    showMessage("Walk-in reservations must use cash payment only.", "error");
-    return;
-  }
-
-  if (!isWalkIn && !["gcash", "paymaya"].includes(paymentMethod)) {
-    showMessage("Facebook/Messenger reservations must use GCash or PayMaya only.", "error");
-    return;
-  }
-
-  if (requiresProof) {
-    const referenceValidation = validateReferenceNumberByMethod(
-      proofReference,
-      paymentMethod
+  const loggedInUser = getLoggedInUser();
+  const createdBy = Number(loggedInUser?.id || 0);
+  const loggedInRole =
+    normalizeManualPaymentRole(
+      loggedInUser?.role,
     );
 
+  if (!createdBy) {
+    showMessage(
+      "Your logged-in staff account could not be identified. Please log in again.",
+      "error",
+    );
+    return;
+  }
+
+  if (loggedInRole !== "frontdesk") {
+    showMessage(
+      "Only Front Desk accounts can create manual reservations.",
+      "error",
+    );
+    return;
+  }
+
+  const paymentMethod =
+    String(
+      document.getElementById("paymentMethod")?.value ||
+        "cash",
+    ).toLowerCase();
+
+  // Prevent duplicate bookings if the same draft already created a PayPal
+  // reservation before manual PayPal was removed from Front Desk.
+  if (getMatchingLegacyPayPalPending()) {
+    showMessage(
+      "An earlier PayPal reservation exists for this draft. Ask authorized staff to review/cancel it before submitting another reservation.",
+      "error",
+    );
+    return;
+  }
+  // Defense-in-depth for tampered selectors: Front Desk cannot submit PayPal.
+  if (!["cash", "gcash", "paymaya"].includes(paymentMethod)) {
+    showMessage("Manual payments accept only Cash, GCash, or Maya.", "error");
+    return;
+  }
+
+  const paymentTypeSelect =
+    document.getElementById("paymentType");
+
+  const isWalkIn = isWalkInManualReservation();
+
+  const paymentType = isWalkIn
+    ? "full"
+    : paymentTypeSelect?.value || "downpayment";
+
+  const proofReferenceInput =
+    document.getElementById("proofReference");
+
+  const proofReference =
+    normalizeReferenceNumber(
+      proofReferenceInput?.value || "",
+    );
+
+  const proofImageInput =
+    document.getElementById("proofImage");
+
+  const proofImage =
+    proofImageInput?.files?.[0] || null;
+
+  const paymentNote =
+    document
+      .getElementById("paymentNote")
+      ?.value.trim() || "";
+
+  const requiresScreenshot =
+    isProofRequired(paymentMethod);
+
+  if (
+    !Array.isArray(walkInDraft.items) ||
+    !walkInDraft.items.length
+  ) {
+    showMessage(
+      "No accommodation item was found in this reservation. Please go back and select an accommodation.",
+      "error",
+    );
+    return;
+  }
+
+  const reservationDateValidation =
+    validateManualReservationDraftDates();
+
+  if (!reservationDateValidation.valid) {
+    showMessage(
+      reservationDateValidation.message,
+      "error",
+    );
+    return;
+  }
+
+  const totals = computeTotals();
+
+  if (totals.accommodationTotal <= 0) {
+    showMessage(
+      "Accommodation price could not be read. Please go back, select the accommodation and slot again, then continue to payment.",
+      "error",
+    );
+    return;
+  }
+
+  if (
+    isWalkIn &&
+    !["cash", "gcash", "paymaya"].includes(paymentMethod)
+  ) {
+    showMessage(
+      "Walk-in reservations only accept Cash, GCash, or Maya.",
+      "error",
+    );
+    return;
+  }
+
+  if (
+    !isWalkIn &&
+    !["gcash", "paymaya"].includes(paymentMethod)
+  ) {
+    showMessage(
+      "Facebook/Messenger reservations must use GCash or Maya.",
+      "error",
+    );
+    return;
+  }
+
+  if (
+    proofReference &&
+    ["gcash", "paymaya"].includes(paymentMethod)
+  ) {
+    const referenceValidation =
+      validateReferenceNumberByMethod(
+        proofReference,
+        paymentMethod,
+      );
+
     if (!referenceValidation.valid) {
-      showMessage(referenceValidation.message, "error");
+      showMessage(
+        referenceValidation.message,
+        "error",
+      );
+
       proofReferenceInput?.focus();
       return;
     }
   }
 
-  if (requiresProof && !proofImage) {
+  if (requiresScreenshot && !proofImage) {
     showMessage(
-      "Proof screenshot is required for PayMaya, or GCash.",
-      "error"
+      "Proof screenshot is required for GCash or Maya payments.",
+      "error",
     );
     return;
   }
 
-  const proofImageData = proofImage ? await fileToBase64(proofImage) : null;
-
   const payload = {
     ...walkInDraft,
-    reservation_type: getManualReservationType(),
+    created_by: createdBy,
+    reservation_type:
+      getManualReservationType(),
     payment_method: paymentMethod,
     payment_type: paymentType,
-    proof_reference: proofReference || null,
-    proof_image_data: proofImageData,
-    note: combineNotes(walkInDraft.note, paymentNote),
+    proof_reference:
+      proofReference || null,
+    proof_image_data: null,
+    note: combineNotes(
+      walkInDraft.note,
+      paymentNote,
+    ),
   };
 
-  const submitBtn = document.getElementById("submitPaymentBtn");
+  const submitBtn =
+    document.getElementById("submitPaymentBtn");
+
   const originalText = submitBtn
     ? submitBtn.textContent
     : "Submit Manual Reservation";
@@ -673,50 +1590,87 @@ async function submitManualReservation(e) {
       submitBtn.style.cursor = "not-allowed";
     }
 
-    const response = await fetch(`${API_BASE}/bookings/walk-in`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
+    const formData = new FormData();
 
-    const responseText = await response.text();
-    let data = {};
-
-    try {
-      data = responseText ? JSON.parse(responseText) : {};
-    } catch (jsonError) {
-      console.warn("Manual reservation response was not JSON:", responseText);
-      data = {};
-    }
-
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to create manual reservation.");
-    }
-
-    sessionStorage.removeItem(ADMIN_WALKIN_DRAFT_KEY);
-    sessionStorage.setItem(ADMIN_WALKIN_SUCCESS_RESET_KEY, "1");
-
-    showMessage(
-      data.message || "Manual reservation created successfully. Redirecting to dashboard...",
-      "success"
+    formData.append(
+      "payload",
+      JSON.stringify(payload),
     );
 
-    if (typeof showToast === "function") {
-      showToast("Manual reservation created successfully. Redirecting to dashboard...", "success");
+    if (proofImage) {
+      formData.append(
+        "proof_image",
+        proofImage,
+        proofImage.name,
+      );
     }
 
-    const dashboardUrl = new URL("admin.html", window.location.href).href;
-    window.location.assign(dashboardUrl);
+    const frontDeskAuthHeader =
+      getFrontDeskAuthorizationHeader();
+
+    const baselineReservationId =
+      await getManualReservationBaselineId();
+
+    startManualReservationCreationWatchdog(
+      baselineReservationId,
+    );
+
+    const response = await fetch(
+      `${API_BASE}/bookings/walk-in`,
+      {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+          Authorization: frontDeskAuthHeader,
+        },
+        body: formData,
+      },
+    );
+
+    const data = await readFrontDeskJsonResponse(response);
+
+    if (!response.ok) {
+      throw new Error(
+        data.message ||
+          "Failed to create manual reservation.",
+      );
+    }
+
+    sessionStorage.removeItem(
+      ADMIN_WALKIN_DRAFT_KEY,
+    );
+
+    sessionStorage.setItem(
+      ADMIN_WALKIN_SUCCESS_RESET_KEY,
+      "1",
+    );
+
+    const successMessage =
+      data.message ||
+      "Manual reservation created successfully.";
+
+    showMessage(
+      successMessage,
+      "success",
+    );
+
+    redirectAfterSuccessfulManualReservation(data);
     return;
   } catch (error) {
-    console.error("submitManualReservation error:", error);
+    console.error(
+      "submitManualReservation error:",
+      error,
+    );
+
+    if (manualReservationRedirectStarted) {
+      return;
+    }
+
     isSubmittingManualReservation = false;
 
     const errorMessage =
-      error.message || "Failed to create manual reservation.";
+      error.message ||
+      "Failed to create manual reservation.";
 
     showMessage(errorMessage, "error");
     showReservationErrorModal(errorMessage);
@@ -730,270 +1684,63 @@ async function submitManualReservation(e) {
   }
 }
 
-
 // ============================================================
-// SECTION 12: Success popup
-// Confirms that the manual reservation was saved.
+// SECTION 12.1: Legacy manual PayPal duplicate-prevention only.
+// Front Desk PayPal checkout, SDK, and capture have been REMOVED.
+// Customer online PayPal processing lives elsewhere and is unaffected.
 // ============================================================
+function getManualDraftSignatureForLegacyPayPal() {
+  if (!walkInDraft) return "";
+  return JSON.stringify({
+    first_name: walkInDraft.first_name || "",
+    middle_name: walkInDraft.middle_name || "",
+    last_name: walkInDraft.last_name || "",
+    contact_no: walkInDraft.contact_no || "",
+    guest_count: Number(walkInDraft.guest_count || 0),
+    entrance_type: walkInDraft.entrance_type || "",
+    reservation_type: getManualReservationType(),
+    note: walkInDraft.note || "",
+    items: Array.isArray(walkInDraft.items) ? walkInDraft.items : [],
+  });
+}
 
-function showManualReservationSuccessModal(details = {}) {
-  ensureSuccessModalStyles();
-
-  const existingModal = document.getElementById("manualReservationSuccessModal");
-  if (existingModal) {
-    existingModal.remove();
-  }
-
-  const bookingId = details.bookingId;
-  const reservationCode = details.reservationCode || `#${bookingId || "-"}`;
-  const paymentType =
-    details.paymentType === "full" ? "Full Payment" : "50% Down Payment";
-
-  const modal = document.createElement("div");
-  modal.id = "manualReservationSuccessModal";
-  modal.className = "manual-success-modal show";
-
-  modal.innerHTML = `
-    <div class="manual-success-backdrop"></div>
-
-    <div class="manual-success-box" role="dialog" aria-modal="true">
-      <div class="manual-success-icon">✓</div>
-
-      <h2>Manual Reservation Created</h2>
-
-      <p>
-        The manual reservation has been successfully saved in the system.
-      </p>
-
-      <div class="manual-success-details">
-        <div>
-          <span>Reservation Code</span>
-          <strong>${escapeHtml(reservationCode)}</strong>
-        </div>
-
-        <div>
-          <span>Reservation Type</span>
-          <strong>${escapeHtml(formatManualReservationType(details.reservationType || getManualReservationType()))}</strong>
-        </div>
-
-        <div>
-          <span>Payment Type</span>
-          <strong>${escapeHtml(paymentType)}</strong>
-        </div>
-
-        <div>
-          <span>Paid Amount</span>
-          <strong>₱${formatMoney(details.paidAmount || 0)}</strong>
-        </div>
-
-        <div>
-          <span>Remaining Balance</span>
-          <strong>₱${formatMoney(details.remainingBalance || 0)}</strong>
-        </div>
-      </div>
-
-      <div class="manual-success-actions">
-        <button type="button" class="manual-success-primary" id="successViewReceiptBtn">
-          View Receipt
-        </button>
-
-        <button type="button" class="manual-success-secondary" id="successCreateAnotherBtn">
-          Create Another
-        </button>
-
-        <button type="button" class="manual-success-secondary" id="successDashboardBtn">
-          Back to Dashboard
-        </button>
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(modal);
-  document.body.style.overflow = "hidden";
-
-  const viewReceiptBtn = document.getElementById("successViewReceiptBtn");
-  const createAnotherBtn = document.getElementById("successCreateAnotherBtn");
-  const dashboardBtn = document.getElementById("successDashboardBtn");
-
-  if (viewReceiptBtn) {
-    viewReceiptBtn.addEventListener("click", () => {
-      if (bookingId) {
-        window.location.href = `admin-booking-receipt.html?id=${bookingId}`;
-      } else {
-        window.location.href = "admin.html";
-      }
-    });
-  }
-
-  if (createAnotherBtn) {
-    createAnotherBtn.addEventListener("click", () => {
-      sessionStorage.removeItem(ADMIN_WALKIN_DRAFT_KEY);
-      sessionStorage.setItem(ADMIN_WALKIN_SUCCESS_RESET_KEY, "1");
-      window.location.href = "admin-walkin.html?new=1";
-    });
-  }
-
-  if (dashboardBtn) {
-    dashboardBtn.addEventListener("click", () => {
-      window.location.href = "admin.html";
-    });
+function getMatchingLegacyPayPalPending() {
+  const raw = sessionStorage.getItem(ADMIN_FRONTDESK_PAYPAL_PENDING_KEY);
+  if (!raw) return null;
+  try {
+    const pending = JSON.parse(raw);
+    return pending?.bookingId &&
+      pending?.draftSignature === getManualDraftSignatureForLegacyPayPal()
+      ? pending : null;
+  } catch (error) {
+    return null;
   }
 }
 
-function ensureSuccessModalStyles() {
-  if (document.getElementById("manualReservationSuccessModalStyle")) {
-    return;
+// Shared JSON response parser still required by manual reservation submit.
+async function readFrontDeskJsonResponse(response) {
+  const text = await response.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    console.error("Non-JSON response from server:", text);
+    throw new Error(
+      "Server returned an invalid response. Check the backend terminal.",
+    );
   }
-
-  const style = document.createElement("style");
-  style.id = "manualReservationSuccessModalStyle";
-
-  style.textContent = `
-    .manual-success-modal {
-      position: fixed;
-      inset: 0;
-      z-index: 99999;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 18px;
-    }
-
-    .manual-success-modal.show {
-      display: flex;
-    }
-
-    .manual-success-backdrop {
-      position: absolute;
-      inset: 0;
-      background: rgba(15, 23, 42, 0.72);
-      backdrop-filter: blur(6px);
-    }
-
-    .manual-success-box {
-      position: relative;
-      z-index: 1;
-      width: min(94vw, 520px);
-      background: #ffffff;
-      border-radius: 28px;
-      padding: 28px;
-      text-align: center;
-      border: 1px solid rgba(226, 232, 240, 0.96);
-      box-shadow: 0 26px 70px rgba(15, 23, 42, 0.28);
-    }
-
-    .manual-success-icon {
-      width: 64px;
-      height: 64px;
-      margin: 0 auto 14px;
-      border-radius: 999px;
-      background: #dcfce7;
-      color: #166534;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 2rem;
-      font-weight: 950;
-      border: 1px solid #bbf7d0;
-    }
-
-    .manual-success-box h2 {
-      margin: 0 0 8px;
-      color: #0f172a;
-      font-size: 1.55rem;
-    }
-
-    .manual-success-box p {
-      margin: 0;
-      color: #64748b;
-      line-height: 1.55;
-    }
-
-    .manual-success-details {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin: 20px 0;
-      text-align: left;
-    }
-
-    .manual-success-details div {
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 16px;
-      padding: 12px;
-    }
-
-    .manual-success-details span {
-      display: block;
-      color: #64748b;
-      font-size: 0.78rem;
-      font-weight: 800;
-      margin-bottom: 4px;
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
-    }
-
-    .manual-success-details strong {
-      color: #0f172a;
-      font-size: 0.96rem;
-    }
-
-    .manual-success-actions {
-      display: grid;
-      gap: 10px;
-    }
-
-    .manual-success-primary,
-    .manual-success-secondary {
-      border: none;
-      border-radius: 999px;
-      padding: 12px 16px;
-      font-weight: 950;
-      cursor: pointer;
-      transition: 0.2s ease;
-    }
-
-    .manual-success-primary {
-      background: linear-gradient(135deg, #0f766e, #14b8a6);
-      color: #ffffff;
-      box-shadow: 0 12px 22px rgba(20, 184, 166, 0.18);
-    }
-
-    .manual-success-secondary {
-      background: #e2e8f0;
-      color: #0f172a;
-    }
-
-    .manual-success-primary:hover,
-    .manual-success-secondary:hover {
-      transform: translateY(-1px);
-    }
-
-    @media (max-width: 520px) {
-      .manual-success-box {
-        padding: 22px;
-        border-radius: 22px;
-      }
-
-      .manual-success-details {
-        grid-template-columns: 1fr;
-      }
-    }
-  `;
-
-  document.head.appendChild(style);
 }
 
 // ============================================================
-// SECTION 12: Error popup
-// Clearly shows why manual reservation was not created.
+// SECTION 13: Error modal
 // ============================================================
 
 function showReservationErrorModal(message) {
   ensureReservationErrorModalStyles();
 
-  let modal = document.getElementById("manualReservationErrorModal");
+  let modal = document.getElementById(
+    "manualReservationErrorModal",
+  );
 
   if (!modal) {
     modal = document.createElement("div");
@@ -1003,7 +1750,11 @@ function showReservationErrorModal(message) {
     modal.innerHTML = `
       <div class="manual-error-backdrop"></div>
 
-      <div class="manual-error-box" role="dialog" aria-modal="true">
+      <div
+        class="manual-error-box"
+        role="dialog"
+        aria-modal="true"
+      >
         <div class="manual-error-icon">!</div>
 
         <h2>Reservation Not Created</h2>
@@ -1011,11 +1762,17 @@ function showReservationErrorModal(message) {
         <p id="manualReservationErrorText"></p>
 
         <div class="manual-error-actions">
-          <button type="button" id="closeManualErrorBtn">
+          <button
+            type="button"
+            id="closeManualErrorBtn"
+          >
             Okay, I Understand
           </button>
 
-          <a href="admin-walkin.html" id="editManualReservationBtn">
+          <a
+            href="admin-walkin.html"
+            id="editManualReservationBtn"
+          >
             Edit Reservation
           </a>
         </div>
@@ -1024,8 +1781,15 @@ function showReservationErrorModal(message) {
 
     document.body.appendChild(modal);
 
-    const closeBtn = document.getElementById("closeManualErrorBtn");
-    const backdrop = modal.querySelector(".manual-error-backdrop");
+    const closeBtn =
+      document.getElementById(
+        "closeManualErrorBtn",
+      );
+
+    const backdrop =
+      modal.querySelector(
+        ".manual-error-backdrop",
+      );
 
     if (closeBtn) {
       closeBtn.addEventListener("click", () => {
@@ -1042,7 +1806,10 @@ function showReservationErrorModal(message) {
     }
   }
 
-  const messageText = document.getElementById("manualReservationErrorText");
+  const messageText =
+    document.getElementById(
+      "manualReservationErrorText",
+    );
 
   if (messageText) {
     messageText.textContent =
@@ -1055,12 +1822,18 @@ function showReservationErrorModal(message) {
 }
 
 function ensureReservationErrorModalStyles() {
-  if (document.getElementById("manualReservationErrorModalStyle")) {
+  if (
+    document.getElementById(
+      "manualReservationErrorModalStyle",
+    )
+  ) {
     return;
   }
 
   const style = document.createElement("style");
-  style.id = "manualReservationErrorModalStyle";
+
+  style.id =
+    "manualReservationErrorModalStyle";
 
   style.textContent = `
     .manual-error-modal {
@@ -1092,7 +1865,8 @@ function ensureReservationErrorModalStyles() {
       border-radius: 26px;
       padding: 26px;
       text-align: center;
-      box-shadow: 0 24px 70px rgba(15, 23, 42, 0.3);
+      box-shadow:
+        0 24px 70px rgba(15, 23, 42, 0.3);
       border: 1px solid #fee2e2;
     }
 
@@ -1139,6 +1913,7 @@ function ensureReservationErrorModalStyles() {
       cursor: pointer;
       text-decoration: none;
       font-size: 0.9rem;
+      text-align: center;
     }
 
     #closeManualErrorBtn {
@@ -1147,8 +1922,13 @@ function ensureReservationErrorModalStyles() {
     }
 
     #editManualReservationBtn {
-      background: linear-gradient(135deg, #0f766e, #14b8a6);
-      color: white;
+      background:
+        linear-gradient(
+          135deg,
+          #0f766e,
+          #14b8a6
+        );
+      color: #ffffff;
     }
 
     @media (max-width: 520px) {
@@ -1162,27 +1942,27 @@ function ensureReservationErrorModalStyles() {
 }
 
 // ============================================================
-// SECTION 13: Payment method rule
-// Returns true if transaction reference/proof is required.
+// SECTION 14: Payment proof helpers
 // ============================================================
 
 function isProofRequired(method) {
-  const value = String(method || "").toLowerCase();
+  const value = String(
+    method || "",
+  ).toLowerCase();
+
   return ["gcash", "paymaya"].includes(value);
 }
 
-// ============================================================
-// SECTION 13: Proof screenshot preview
-// Shows selected proof image before submit.
-// ============================================================
-
 function previewProofImage() {
-  const input = document.getElementById("proofImage");
-  const preview = document.getElementById("proofPreview");
+  const input =
+    document.getElementById("proofImage");
+
+  const preview =
+    document.getElementById("proofPreview");
 
   if (!input || !preview) return;
 
-  const file = input.files[0];
+  const file = input.files?.[0];
 
   if (!file) {
     preview.style.display = "none";
@@ -1190,10 +1970,11 @@ function previewProofImage() {
     return;
   }
 
-  preview.src = URL.createObjectURL(file);
+  preview.src =
+    URL.createObjectURL(file);
+
   preview.style.display = "block";
 }
-
 
 function fileToBase64(file) {
   return new Promise((resolve, reject) => {
@@ -1204,44 +1985,246 @@ function fileToBase64(file) {
 
     const reader = new FileReader();
 
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(new Error("Failed to read proof image."));
+    reader.onload = () =>
+      resolve(reader.result);
+
+    reader.onerror = () =>
+      reject(
+        new Error(
+          "Failed to read proof image.",
+        ),
+      );
+
     reader.readAsDataURL(file);
   });
 }
 
 // ============================================================
-// SECTION 14: Compute totals
-// Computes accommodation total, downpayment, entrance fee.
+// SECTION 15: Accommodation / slot helpers
+//
+// IMPORTANT:
+// These slot values match admin-walkin.js and the backend:
+// - day_tour
+// - night
+// - day_extended
+// - night_extended
+// ============================================================
+
+function getAccommodationById(id) {
+  return (
+    availableAccommodations.find(
+      (item) =>
+        Number(item.id) === Number(id),
+    ) || null
+  );
+}
+
+function getSlotOptions(accommodation) {
+  if (!accommodation) return [];
+
+  const category = String(
+    accommodation.category_name || "",
+  ).toLowerCase();
+
+  const isRoom =
+    category.includes("room");
+
+  const isCottage =
+    category.includes("cottage") ||
+    category.includes("shade") ||
+    category.includes("hut");
+
+  const isFunction =
+    category.includes("function") ||
+    category.includes("pavilion");
+
+  let dayStart = "08:00:00";
+  let dayEnd = "18:00:00";
+
+  let nightStart = "20:00:00";
+  let nightEnd = "06:00:00";
+
+  let dayExtendedEnd = "06:00:00";
+  let nightExtendedEnd = "18:00:00";
+
+  let extendedLabel = "23 Hours";
+
+  if (isRoom) {
+    dayStart = "07:00:00";
+    dayEnd = "17:00:00";
+
+    nightStart = "19:00:00";
+    nightEnd = "05:00:00";
+
+    dayExtendedEnd = "05:00:00";
+    nightExtendedEnd = "17:00:00";
+
+    extendedLabel = "22 Hours";
+  } else if (isCottage) {
+    dayStart = "06:00:00";
+    dayEnd = "17:00:00";
+
+    nightStart = "18:00:00";
+    nightEnd = "05:00:00";
+
+    dayExtendedEnd = "05:00:00";
+    nightExtendedEnd = "17:00:00";
+
+    extendedLabel = "23 Hours";
+  } else if (isFunction) {
+    dayStart = "08:00:00";
+    dayEnd = "18:00:00";
+
+    nightStart = "20:00:00";
+    nightEnd = "06:00:00";
+
+    dayExtendedEnd = "06:00:00";
+    nightExtendedEnd = "18:00:00";
+
+    extendedLabel = "23 Hours";
+  }
+
+  return [
+    {
+      value: "day_tour",
+      label: "Day Tour",
+      price: Number(
+        accommodation.day_price || 0,
+      ),
+      start: dayStart,
+      end: dayEnd,
+    },
+    {
+      value: "night",
+      label: "Night",
+      price: Number(
+        accommodation.overnight_price ||
+          0,
+      ),
+      start: nightStart,
+      end: nightEnd,
+    },
+    {
+      value: "day_extended",
+      label: `Day ${extendedLabel}`,
+      price: Number(
+        accommodation.extended_price ||
+          0,
+      ),
+      start: dayStart,
+      end: dayExtendedEnd,
+    },
+    {
+      value: "night_extended",
+      label: `Night ${extendedLabel}`,
+      price: Number(
+        accommodation.extended_price ||
+          0,
+      ),
+      start: nightStart,
+      end: nightExtendedEnd,
+    },
+  ];
+}
+
+function getStayDuration(item) {
+  const slotType = String(
+    item?.slot_type || "",
+  ).toLowerCase();
+
+  if (
+    ![
+      "day_extended",
+      "night_extended",
+    ].includes(slotType)
+  ) {
+    return 1;
+  }
+
+  return Math.max(
+    1,
+    Math.min(
+      5,
+      Math.floor(
+        Number(
+          item?.stay_duration || 1,
+        ),
+      ),
+    ),
+  );
+}
+
+// ============================================================
+// SECTION 16: Payment total calculation
 // ============================================================
 
 function computeTotals() {
-  const items = Array.isArray(walkInDraft?.items) ? walkInDraft.items : [];
-  const guestCount = Number(walkInDraft?.guest_count || 0);
-  const entranceType = walkInDraft?.entrance_type || "pool_beach";
+  const items = Array.isArray(
+    walkInDraft?.items,
+  )
+    ? walkInDraft.items
+    : [];
+
+  const guestCount = Number(
+    walkInDraft?.guest_count || 0,
+  );
+
+  const entranceType =
+    walkInDraft?.entrance_type ||
+    "pool_beach";
 
   let accommodationTotal = 0;
   let hasOvernightStyle = false;
 
   items.forEach((item) => {
-    const accommodation = getAccommodationById(item.accommodation_id);
+    const accommodation =
+      getAccommodationById(
+        item.accommodation_id,
+      );
+
     if (!accommodation) return;
 
-    const slot = getSlotOptions(accommodation).find(
-      (slotItem) => slotItem.value === item.slot_type
+    const slot = getSlotOptions(
+      accommodation,
+    ).find(
+      (slotItem) =>
+        slotItem.value ===
+        item.slot_type,
     );
 
     if (!slot) return;
 
-    accommodationTotal += Number(slot.price || 0);
+    const stayDuration =
+      getStayDuration(item);
 
-    if (item.slot_type === "overnight" || item.slot_type === "extended") {
+    accommodationTotal +=
+      Number(slot.price || 0) *
+      stayDuration;
+
+    // Entrance rate follows the selected DAY/NIGHT schedule family.
+    // Day 22/23 Hours remains a DAY entrance rate even though the stay
+    // itself crosses midnight. Only Night / Night 22/23 Hours uses the
+    // overnight entrance rate.
+    if (
+      item.slot_type === "night" ||
+      item.slot_type ===
+        "night_extended"
+    ) {
       hasOvernightStyle = true;
     }
   });
 
-  const totalFreeEntrancePax = getTotalFreeEntrancePax(items, guestCount);
-  const chargeableGuests = Math.max(guestCount - totalFreeEntrancePax, 0);
+  const totalFreeEntrancePax =
+    getTotalFreeEntrancePax(
+      items,
+      guestCount,
+    );
+
+  const chargeableGuests = Math.max(
+    guestCount -
+      totalFreeEntrancePax,
+    0,
+  );
 
   const entranceRate =
     entranceType === "beach_only"
@@ -1252,114 +2235,153 @@ function computeTotals() {
         ? 300
         : 250;
 
-  const estimatedEntranceFee = chargeableGuests * entranceRate;
-  const requiredDownpayment = accommodationTotal * 0.5;
+  const estimatedEntranceFee =
+    chargeableGuests *
+    entranceRate;
+
+  const requiredDownpayment =
+    accommodationTotal * 0.5;
 
   return {
     accommodationTotal,
     requiredDownpayment,
     estimatedEntranceFee,
     paidAmount: 0,
-    remainingBalance: accommodationTotal,
+    remainingBalance:
+      accommodationTotal,
   };
 }
 
-// ============================================================
-// SECTION 15: Entrance fee free pax helper
-// Deducts free entrance pax from total guests.
-// ============================================================
-
-function getTotalFreeEntrancePax(items, guestCount) {
+function getTotalFreeEntrancePax(
+  items,
+  guestCount,
+) {
   let total = 0;
 
   items.forEach((item) => {
-    const accommodation = getAccommodationById(item.accommodation_id);
+    const accommodation =
+      getAccommodationById(
+        item.accommodation_id,
+      );
+
     if (!accommodation) return;
 
-    total += Number(accommodation.free_entrance_pax || 0);
+    total += Number(
+      accommodation.free_entrance_pax ||
+        0,
+    );
   });
 
-  return Math.min(total, Number(guestCount || 0));
-}
-
-// ============================================================
-// SECTION 16: Accommodation helpers
-// Gets accommodation data and slot options.
-// ============================================================
-
-function getAccommodationById(id) {
-  return (
-    availableAccommodations.find((item) => Number(item.id) === Number(id)) ||
-    null
+  return Math.min(
+    total,
+    Number(guestCount || 0),
   );
-}
-
-function getSlotOptions(accommodation) {
-  if (!accommodation) return [];
-
-  const category = String(accommodation.category_name || "").toLowerCase();
-  const isRoom = category === "room";
-
-  return [
-    {
-      value: "day_tour",
-      label: "Day Tour",
-      price: Number(accommodation.day_price || 0),
-      start: accommodation.day_start_time,
-      end: accommodation.day_end_time,
-    },
-    {
-      value: "overnight",
-      label: "Overnight",
-      price: Number(accommodation.overnight_price || 0),
-      start: accommodation.overnight_start_time,
-      end: accommodation.overnight_end_time,
-    },
-    {
-      value: "extended",
-      label: isRoom ? "22 Hours" : "23 Hours",
-      price: Number(accommodation.extended_price || 0),
-      start: accommodation.extended_start_time,
-      end: accommodation.extended_end_time,
-    },
-  ];
 }
 
 // ============================================================
 // SECTION 17: Checkout date helper
-// Handles overnight/extended schedules crossing midnight.
 // ============================================================
 
-function calculateCheckOutDate(checkInDate, startTime, endTime) {
-  if (!checkInDate || !startTime || !endTime) {
+function calculateCheckOutDate(
+  checkInDate,
+  startTime,
+  endTime,
+  stayDuration = 1,
+) {
+  if (
+    !checkInDate ||
+    !startTime ||
+    !endTime
+  ) {
     return checkInDate || "-";
   }
 
-  const startParts = String(startTime).split(":");
-  const endParts = String(endTime).split(":");
+  const startParts =
+    String(startTime).split(":");
 
-  if (startParts.length < 2 || endParts.length < 2) {
+  const endParts =
+    String(endTime).split(":");
+
+  if (
+    startParts.length < 2 ||
+    endParts.length < 2
+  ) {
     return checkInDate;
   }
 
-  const startMinutes = Number(startParts[0]) * 60 + Number(startParts[1]);
-  const endMinutes = Number(endParts[0]) * 60 + Number(endParts[1]);
+  const startMinutes =
+    Number(startParts[0]) * 60 +
+    Number(startParts[1]);
 
-  if (endMinutes <= startMinutes) {
-    const date = new Date(checkInDate);
-    date.setDate(date.getDate() + 1);
-    return date.toISOString().split("T")[0];
+  const endMinutes =
+    Number(endParts[0]) * 60 +
+    Number(endParts[1]);
+
+  const cleanDuration = Math.max(
+    1,
+    Math.min(
+      5,
+      Math.floor(
+        Number(stayDuration || 1),
+      ),
+    ),
+  );
+
+  const daysToAdd =
+    cleanDuration > 1
+      ? cleanDuration
+      : endMinutes <= startMinutes
+        ? 1
+        : 0;
+
+  if (daysToAdd > 0) {
+    const date = new Date(
+      `${checkInDate}T00:00:00`,
+    );
+
+    date.setDate(
+      date.getDate() + daysToAdd,
+    );
+
+    return toInputDateValue(date);
   }
 
   return checkInDate;
 }
 
+function toInputDateValue(date) {
+  const value =
+    date instanceof Date
+      ? date
+      : new Date(date);
+
+  if (
+    Number.isNaN(value.getTime())
+  ) {
+    return "";
+  }
+
+  const year = value.getFullYear();
+
+  const month = String(
+    value.getMonth() + 1,
+  ).padStart(2, "0");
+
+  const day = String(
+    value.getDate(),
+  ).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
 // ============================================================
-// SECTION 18: Combine notes
-// Combines guest note and admin payment note.
+// SECTION 18: Notes
 // ============================================================
 
-function combineNotes(originalNote, paymentNote) {
+function combineNotes(
+  originalNote,
+  paymentNote,
+) {
   const parts = [];
 
   if (originalNote) {
@@ -1367,46 +2389,39 @@ function combineNotes(originalNote, paymentNote) {
   }
 
   if (paymentNote) {
-    parts.push(`Admin Payment Note: ${paymentNote}`);
+    parts.push(
+      `Staff Payment Note: ${paymentNote}`,
+    );
   }
 
   return parts.join(" | ");
 }
 
 // ============================================================
-// SECTION 19: Text setter
-// Safely updates text content by ID.
+// SECTION 19: DOM / format helpers
 // ============================================================
 
 function setText(id, value) {
-  const element = document.getElementById(id);
+  const element =
+    document.getElementById(id);
 
   if (element) {
     element.textContent = value;
   }
 }
 
-// ============================================================
-// SECTION 20: Format helpers
-// Formats payment method, entrance type, money, time, date, text.
-// ============================================================
-
-function formatPaymentMethod(method) {
-  if (method === "gcash") return "GCash";
-  if (method === "paymaya") return "PayMaya";
-  if (method === "cash") return "Cash";
-
-
-  return capitalize(method);
-}
-
 function formatEntranceType(type) {
-  if (type === "beach_only") return "Beach Entrance Only";
+  if (type === "beach_only") {
+    return "Beach Entrance Only";
+  }
+
   return "Pool & Beach Entrance";
 }
 
 function formatMoney(value) {
-  return Number(value || 0).toLocaleString(undefined, {
+  return Number(
+    value || 0,
+  ).toLocaleString(undefined, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
@@ -1415,19 +2430,27 @@ function formatMoney(value) {
 function formatTimeDisplay(timeValue) {
   if (!timeValue) return "N/A";
 
-  const timeText = String(timeValue).trim();
-  const parts = timeText.split(":");
+  const timeText =
+    String(timeValue).trim();
 
-  if (parts.length < 2) return timeText;
+  const parts =
+    timeText.split(":");
+
+  if (parts.length < 2) {
+    return timeText;
+  }
 
   let hours = Number(parts[0]);
   const minutes = parts[1];
 
-  if (Number.isNaN(hours)) return timeText;
+  if (Number.isNaN(hours)) {
+    return timeText;
+  }
 
-  const suffix = hours >= 12 ? "PM" : "AM";
+  const suffix =
+    hours >= 12 ? "PM" : "AM";
 
-  hours = hours % 12;
+  hours %= 12;
 
   if (hours === 0) {
     hours = 12;
@@ -1439,31 +2462,40 @@ function formatTimeDisplay(timeValue) {
 function formatDateDisplay(dateValue) {
   if (!dateValue) return "N/A";
 
-  const date = new Date(dateValue);
+  const date = new Date(
+    `${dateValue}T00:00:00`,
+  );
 
-  if (Number.isNaN(date.getTime())) {
+  if (
+    Number.isNaN(date.getTime())
+  ) {
     return dateValue;
   }
 
   return date.toLocaleDateString();
 }
 
-function capitalize(text) {
-  if (!text) return "";
-
-  const value = String(text);
-  return value.charAt(0).toUpperCase() + value.slice(1);
-}
-
-function showMessage(message, type = "success") {
-  const messageEl = document.getElementById("adminPaymentMessage");
+function showMessage(
+  message,
+  type = "success",
+) {
+  const messageEl =
+    document.getElementById(
+      "adminPaymentMessage",
+    );
 
   if (messageEl) {
     messageEl.textContent = message;
-    messageEl.style.color = type === "error" ? "#dc2626" : "#047857";
+
+    messageEl.style.color =
+      type === "error"
+        ? "#dc2626"
+        : "#047857";
   }
 
-  if (typeof showToast === "function") {
+  if (
+    typeof showToast === "function"
+  ) {
     showToast(message, type);
   }
 }

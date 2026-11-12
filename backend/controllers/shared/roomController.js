@@ -1,0 +1,782 @@
+// Server controller for room Controller. Contains handlers for incoming requests and responses.
+// Note: Keep existing behavior unchanged when adding new features.
+﻿const db = require("../../config/db");
+
+function normalizeText(value) {
+  return String(value || "").trim();
+}
+
+function normalizeNullableText(value) {
+  const text = String(value || "").trim();
+  return text ? text : null;
+}
+
+function toNumber(value, fallback = 0) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : fallback;
+}
+
+// Convert image input into a clean list of gallery URLs, whether submitted as an array or text.
+function normalizeGalleryImages(value) {
+  if (!value) return [];
+
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item || "").trim()).filter(Boolean);
+  }
+
+  return String(value)
+    .split(/\r?\n|,/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+// Fetch related gallery images in one query and attach them to each accommodation response.
+// This avoids sending a separate database query for every room card.
+async function attachGalleryImages(rooms) {
+  if (!Array.isArray(rooms) || rooms.length === 0) return rooms;
+
+  const ids = rooms.map((room) => room.id).filter(Boolean);
+  if (!ids.length) return rooms;
+
+  const [galleryRows] = await db.promise().query(
+    `
+    SELECT room_id, image_url
+    FROM room_gallery
+    WHERE room_id IN (?)
+    ORDER BY id ASC
+    `,
+    [ids]
+  );
+
+  const galleryMap = {};
+
+  galleryRows.forEach((item) => {
+    if (!galleryMap[item.room_id]) {
+      galleryMap[item.room_id] = [];
+    }
+
+    galleryMap[item.room_id].push(item.image_url);
+  });
+
+  return rooms.map((room) => ({
+    ...room,
+    gallery_images: galleryMap[room.id] || [],
+  }));
+}
+
+// Replace the saved gallery list for this accommodation with the currently submitted images.
+// A missing/empty list removes all saved gallery images for that accommodation.
+async function replaceGalleryImages(roomId, galleryImages) {
+  await db.promise().query(`DELETE FROM room_gallery WHERE room_id = ?`, [
+    roomId,
+  ]);
+
+  const cleanedImages = normalizeGalleryImages(galleryImages);
+  if (!cleanedImages.length) return;
+
+  const values = cleanedImages.map((imageUrl) => [roomId, imageUrl]);
+
+  await db.promise().query(
+    `
+    INSERT INTO room_gallery (room_id, image_url)
+    VALUES ?
+    `,
+    [values]
+  );
+}
+
+async function getCategoryIdByName(categoryName) {
+  const [rows] = await db.promise().query(
+    `SELECT id FROM accommodation_categories WHERE name = ? LIMIT 1`,
+    [categoryName]
+  );
+  return rows.length ? rows[0].id : null;
+}
+
+// Return available accommodation category names and descriptions for forms and filters.
+exports.getAccommodationCategories = async (req, res) => {
+  try {
+    const [rows] = await db.promise().query(`
+      SELECT id, name, description, created_at
+      FROM accommodation_categories
+      ORDER BY name ASC
+    `);
+
+    return res.status(200).json({
+      success: true,
+      categories: rows,
+    });
+  } catch (error) {
+    console.error("getAccommodationCategories error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch accommodation categories.",
+      error: error.message,
+    });
+  }
+};
+
+// Validate the submitted category name and reject duplicates before inserting a category.
+exports.createAccommodationCategory = async (req, res) => {
+  try {
+    const name = normalizeText(req.body.name);
+    const description = normalizeNullableText(req.body.description);
+
+    if (!name) {
+      return res.status(400).json({
+        success: false,
+        message: "Category name is required.",
+      });
+    }
+
+    const [existingRows] = await db.promise().query(
+      `SELECT id FROM accommodation_categories WHERE name = ? LIMIT 1`,
+      [name]
+    );
+
+    if (existingRows.length) {
+      return res.status(400).json({
+        success: false,
+        message: "Category already exists.",
+      });
+    }
+
+    const [result] = await db.promise().query(
+      `
+      INSERT INTO accommodation_categories (name, description)
+      VALUES (?, ?)
+      `,
+      [name, description]
+    );
+
+    return res.status(201).json({
+      success: true,
+      message: "Accommodation category added successfully.",
+      categoryId: result.insertId,
+    });
+  } catch (error) {
+    console.error("createAccommodationCategory error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to create accommodation category.",
+      error: error.message,
+    });
+  }
+};
+
+// Load the accommodation catalog with category details, prices, time slots and gallery images.
+// This is the full listing; booking-date conflicts are checked elsewhere during reservations.
+exports.getAllRooms = async (req, res) => {
+  try {
+    const [rows] = await db.promise().query(`
+      SELECT
+        a.id,
+        a.category_id,
+        c.name AS category_name,
+        a.name,
+        a.description,
+        a.amenities,
+        a.max_capacity,
+        a.free_entrance_pax,
+        a.image,
+        a.map_label,
+        a.status,
+        a.day_price,
+        a.overnight_price,
+        a.extended_price,
+        a.day_start_time,
+        a.day_end_time,
+        a.overnight_start_time,
+        a.overnight_end_time,
+        a.extended_start_time,
+        a.extended_end_time,
+        a.created_at,
+        a.updated_at
+      FROM accommodations a
+      INNER JOIN accommodation_categories c ON a.category_id = c.id
+      ORDER BY a.id DESC
+    `);
+
+    const rooms = await attachGalleryImages(rows);
+
+    return res.status(200).json({
+      success: true,
+      rooms,
+    });
+  } catch (error) {
+    console.error("getAllRooms error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch accommodations.",
+      error: error.message,
+    });
+  }
+};
+
+// List accommodations whose saved inventory status is available.
+// This status alone is not a guarantee that a particular date/time is unbooked.
+exports.getAvailableRooms = async (req, res) => {
+  try {
+    const [rows] = await db.promise().query(`
+      SELECT
+        a.id,
+        a.category_id,
+        c.name AS category_name,
+        a.name,
+        a.description,
+        a.amenities,
+        a.max_capacity,
+        a.free_entrance_pax,
+        a.image,
+        a.map_label,
+        a.status,
+        a.day_price,
+        a.overnight_price,
+        a.extended_price,
+        a.day_start_time,
+        a.day_end_time,
+        a.overnight_start_time,
+        a.overnight_end_time,
+        a.extended_start_time,
+        a.extended_end_time,
+        a.created_at,
+        a.updated_at
+      FROM accommodations a
+      INNER JOIN accommodation_categories c ON a.category_id = c.id
+      WHERE a.status = 'available'
+      ORDER BY a.id DESC
+    `);
+
+    const rooms = await attachGalleryImages(rows);
+
+    return res.status(200).json({
+      success: true,
+      rooms,
+    });
+  } catch (error) {
+    console.error("getAvailableRooms error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch available accommodations.",
+      error: error.message,
+    });
+  }
+};
+
+// Read the selected accommodation and its gallery for a details or edit view.
+exports.getRoomById = async (req, res) => {
+  try {
+    const accommodationId = req.params.id;
+
+    const [rows] = await db.promise().query(
+      `
+      SELECT
+        a.id,
+        a.category_id,
+        c.name AS category_name,
+        a.name,
+        a.description,
+        a.amenities,
+        a.max_capacity,
+        a.free_entrance_pax,
+        a.image,
+        a.map_label,
+        a.status,
+        a.day_price,
+        a.overnight_price,
+        a.extended_price,
+        a.day_start_time,
+        a.day_end_time,
+        a.overnight_start_time,
+        a.overnight_end_time,
+        a.extended_start_time,
+        a.extended_end_time,
+        a.created_at,
+        a.updated_at
+      FROM accommodations a
+      INNER JOIN accommodation_categories c ON a.category_id = c.id
+      WHERE a.id = ?
+      LIMIT 1
+      `,
+      [accommodationId]
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({
+        success: false,
+        message: "Accommodation not found.",
+      });
+    }
+
+    const [roomWithGallery] = await attachGalleryImages(rows);
+
+    return res.status(200).json({
+      success: true,
+      room: roomWithGallery,
+    });
+  } catch (error) {
+    console.error("getRoomById error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch accommodation.",
+      error: error.message,
+    });
+  }
+};
+
+// Create an accommodation after reading category, capacity, status, pricing and optional gallery.
+// Validation belongs on this server endpoint; frontend form limits are only a convenience.
+exports.createRoom = async (req, res) => {
+  try {
+    const category_id = toNumber(req.body.category_id, 0);
+    const name = normalizeText(req.body.name);
+    const description = normalizeNullableText(req.body.description);
+    const amenities = normalizeNullableText(req.body.amenities);
+    const max_capacity = toNumber(req.body.max_capacity, 0);
+    const free_entrance_pax = toNumber(req.body.free_entrance_pax, 0);
+    const image = normalizeNullableText(req.body.image);
+    const map_label = normalizeNullableText(req.body.map_label);
+    const status = normalizeText(req.body.status || "available");
+    const gallery_images = normalizeGalleryImages(req.body.gallery_images);
+
+    const day_price = toNumber(req.body.day_price, 0);
+    const overnight_price = toNumber(req.body.overnight_price, 0);
+    const extended_price = toNumber(req.body.extended_price, 0);
+
+    const day_start_time = normalizeNullableText(req.body.day_start_time);
+    const day_end_time = normalizeNullableText(req.body.day_end_time);
+    const overnight_start_time = normalizeNullableText(
+      req.body.overnight_start_time
+    );
+    const overnight_end_time = normalizeNullableText(
+      req.body.overnight_end_time
+    );
+    const extended_start_time = normalizeNullableText(
+      req.body.extended_start_time
+    );
+    const extended_end_time = normalizeNullableText(req.body.extended_end_time);
+
+    if (!category_id || !name || !status) {
+      return res.status(400).json({
+        success: false,
+        message: "Category, accommodation name, and status are required.",
+      });
+    }
+
+    const [categoryRows] = await db.promise().query(
+      `SELECT id FROM accommodation_categories WHERE id = ? LIMIT 1`,
+      [category_id]
+    );
+
+    if (!categoryRows.length) {
+      return res.status(400).json({
+        success: false,
+        message: "Selected category does not exist.",
+      });
+    }
+
+    const [result] = await db.promise().query(
+      `
+      INSERT INTO accommodations (
+        category_id,
+        name,
+        description,
+        amenities,
+        max_capacity,
+        free_entrance_pax,
+        image,
+        map_label,
+        status,
+        day_price,
+        overnight_price,
+        extended_price,
+        day_start_time,
+        day_end_time,
+        overnight_start_time,
+        overnight_end_time,
+        extended_start_time,
+        extended_end_time
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+      [
+        category_id,
+        name,
+        description,
+        amenities,
+        max_capacity,
+        free_entrance_pax,
+        image,
+        map_label,
+        status,
+        day_price,
+        overnight_price,
+        extended_price,
+        day_start_time,
+        day_end_time,
+        overnight_start_time,
+        overnight_end_time,
+        extended_start_time,
+        extended_end_time,
+      ]
+    );
+
+    await replaceGalleryImages(result.insertId, gallery_images);
+
+    return res.status(201).json({
+      success: true,
+      message: "Accommodation added successfully.",
+      roomId: result.insertId,
+    });
+  } catch (error) {
+    console.error("createRoom error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to add accommodation.",
+      error: error.message,
+    });
+  }
+};
+
+// Update the saved accommodation details and related gallery items.
+// Keep reservation records separate from inventory editing to preserve booking history.
+exports.updateRoom = async (req, res) => {
+  try {
+    const accommodationId = req.params.id;
+
+    const category_id = toNumber(req.body.category_id, 0);
+    const name = normalizeText(req.body.name);
+    const description = normalizeNullableText(req.body.description);
+    const amenities = normalizeNullableText(req.body.amenities);
+    const max_capacity = toNumber(req.body.max_capacity, 0);
+    const free_entrance_pax = toNumber(req.body.free_entrance_pax, 0);
+    const image = normalizeNullableText(req.body.image);
+    const map_label = normalizeNullableText(req.body.map_label);
+    const status = normalizeText(req.body.status || "available");
+    const gallery_images = normalizeGalleryImages(req.body.gallery_images);
+
+    const day_price = toNumber(req.body.day_price, 0);
+    const overnight_price = toNumber(req.body.overnight_price, 0);
+    const extended_price = toNumber(req.body.extended_price, 0);
+
+    const day_start_time = normalizeNullableText(req.body.day_start_time);
+    const day_end_time = normalizeNullableText(req.body.day_end_time);
+    const overnight_start_time = normalizeNullableText(
+      req.body.overnight_start_time
+    );
+    const overnight_end_time = normalizeNullableText(
+      req.body.overnight_end_time
+    );
+    const extended_start_time = normalizeNullableText(
+      req.body.extended_start_time
+    );
+    const extended_end_time = normalizeNullableText(req.body.extended_end_time);
+
+    if (!category_id || !name || !status) {
+      return res.status(400).json({
+        success: false,
+        message: "Category, accommodation name, and status are required.",
+      });
+    }
+
+    const [existingRows] = await db.promise().query(
+      `SELECT id FROM accommodations WHERE id = ? LIMIT 1`,
+      [accommodationId]
+    );
+
+    if (!existingRows.length) {
+      return res.status(404).json({
+        success: false,
+        message: "Accommodation not found.",
+      });
+    }
+
+    const [categoryRows] = await db.promise().query(
+      `SELECT id FROM accommodation_categories WHERE id = ? LIMIT 1`,
+      [category_id]
+    );
+
+    if (!categoryRows.length) {
+      return res.status(400).json({
+        success: false,
+        message: "Selected category does not exist.",
+      });
+    }
+
+    await db.promise().query(
+      `
+      UPDATE accommodations
+      SET
+        category_id = ?,
+        name = ?,
+        description = ?,
+        amenities = ?,
+        max_capacity = ?,
+        free_entrance_pax = ?,
+        image = ?,
+        map_label = ?,
+        status = ?,
+        day_price = ?,
+        overnight_price = ?,
+        extended_price = ?,
+        day_start_time = ?,
+        day_end_time = ?,
+        overnight_start_time = ?,
+        overnight_end_time = ?,
+        extended_start_time = ?,
+        extended_end_time = ?
+      WHERE id = ?
+      `,
+      [
+        category_id,
+        name,
+        description,
+        amenities,
+        max_capacity,
+        free_entrance_pax,
+        image,
+        map_label,
+        status,
+        day_price,
+        overnight_price,
+        extended_price,
+        day_start_time,
+        day_end_time,
+        overnight_start_time,
+        overnight_end_time,
+        extended_start_time,
+        extended_end_time,
+        accommodationId,
+      ]
+    );
+
+    await replaceGalleryImages(accommodationId, gallery_images);
+
+    return res.status(200).json({
+      success: true,
+      message: "Accommodation updated successfully.",
+    });
+  } catch (error) {
+    console.error("updateRoom error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update accommodation.",
+      error: error.message,
+    });
+  }
+};
+
+// Check for existing reservation items before deleting an accommodation.
+// A referenced accommodation is marked unavailable instead of losing historic booking links.
+exports.deleteRoom = async (req, res) => {
+  try {
+    const accommodationId = req.params.id;
+
+    const [existingRows] = await db.promise().query(
+      `SELECT id FROM accommodations WHERE id = ? LIMIT 1`,
+      [accommodationId]
+    );
+
+    if (!existingRows.length) {
+      return res.status(404).json({
+        success: false,
+        message: "Accommodation not found.",
+      });
+    }
+
+    const [reservationItemRows] = await db.promise().query(
+      `SELECT id FROM reservation_items WHERE accommodation_id = ? LIMIT 1`,
+      [accommodationId]
+    );
+
+    if (reservationItemRows.length > 0) {
+      await db.promise().query(
+        `UPDATE accommodations SET status = 'unavailable' WHERE id = ?`,
+        [accommodationId]
+      );
+
+      return res.status(200).json({
+        success: true,
+        message:
+          "Accommodation has reservation history, so it was set to unavailable instead of deleting.",
+      });
+    }
+
+    await db
+      .promise()
+      .query(`DELETE FROM room_gallery WHERE room_id = ?`, [accommodationId]);
+
+    await db
+      .promise()
+      .query(`DELETE FROM accommodations WHERE id = ?`, [accommodationId]);
+
+    return res.status(200).json({
+      success: true,
+      message: "Accommodation deleted successfully.",
+    });
+  } catch (error) {
+    console.error("deleteRoom error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to delete accommodation.",
+      error: error.message,
+    });
+  }
+};
+
+// Insert default example accommodations after confirming the required categories exist.
+// This is a setup helper, not a routine booking or inventory update.
+exports.seedDefaultAccommodations = async (req, res) => {
+  try {
+    const cottageId = await getCategoryIdByName("Cottage");
+    const roomId = await getCategoryIdByName("Room");
+    const functionAreaId = await getCategoryIdByName("Function Area");
+
+    if (!cottageId || !roomId || !functionAreaId) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Default categories are missing. Please make sure the SQL inserts for categories were added.",
+      });
+    }
+
+    const defaults = [
+      {
+        category_id: cottageId,
+        name: "Small Nipa Hut",
+        description: "Default cottage accommodation",
+        amenities:
+          "Open cottage seating\nGood for 8-10 pax\nPool access available\nBeach access available\nDay tour, overnight, and 23-hour options",
+        max_capacity: 10,
+        free_entrance_pax: 0,
+        image: "",
+        map_label: "Cottage Area A",
+        status: "available",
+        day_price: 2500,
+        overnight_price: 3000,
+        extended_price: 4000,
+        day_start_time: "06:00:00",
+        day_end_time: "17:00:00",
+        overnight_start_time: "18:00:00",
+        overnight_end_time: "05:00:00",
+        extended_start_time: "06:00:00",
+        extended_end_time: "05:00:00",
+      },
+      {
+        category_id: roomId,
+        name: "Standard Room",
+        description: "Default room accommodation",
+        amenities:
+          "Airconditioned room\nBed/s included\nFree pool and beach entrance for 2 pax\nExtra bed available: â‚±200",
+        max_capacity: 4,
+        free_entrance_pax: 2,
+        image: "",
+        map_label: "Room Wing A",
+        status: "available",
+        day_price: 3500,
+        overnight_price: 4500,
+        extended_price: 5500,
+        day_start_time: "07:00:00",
+        day_end_time: "17:00:00",
+        overnight_start_time: "19:00:00",
+        overnight_end_time: "05:00:00",
+        extended_start_time: "07:00:00",
+        extended_end_time: "05:00:00",
+      },
+      {
+        category_id: functionAreaId,
+        name: "Pavillion A",
+        description: "Default function area accommodation",
+        amenities:
+          "Function area for events\nGood for large gatherings\nDay tour, overnight, and 23-hour options\nEntrance fee not included",
+        max_capacity: 30,
+        free_entrance_pax: 0,
+        image: "",
+        map_label: "Function Area Zone",
+        status: "available",
+        day_price: 5000,
+        overnight_price: 6500,
+        extended_price: 8000,
+        day_start_time: "06:00:00",
+        day_end_time: "17:00:00",
+        overnight_start_time: "18:00:00",
+        overnight_end_time: "05:00:00",
+        extended_start_time: "06:00:00",
+        extended_end_time: "05:00:00",
+      },
+    ];
+
+    let insertedCount = 0;
+
+    for (const item of defaults) {
+      const [existingRows] = await db.promise().query(
+        `SELECT id FROM accommodations WHERE name = ? LIMIT 1`,
+        [item.name]
+      );
+
+      if (existingRows.length) continue;
+
+      await db.promise().query(
+        `
+        INSERT INTO accommodations (
+          category_id,
+          name,
+          description,
+          amenities,
+          max_capacity,
+          free_entrance_pax,
+          image,
+          map_label,
+          status,
+          day_price,
+          overnight_price,
+          extended_price,
+          day_start_time,
+          day_end_time,
+          overnight_start_time,
+          overnight_end_time,
+          extended_start_time,
+          extended_end_time
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+        [
+          item.category_id,
+          item.name,
+          item.description,
+          item.amenities,
+          item.max_capacity,
+          item.free_entrance_pax,
+          item.image,
+          item.map_label,
+          item.status,
+          item.day_price,
+          item.overnight_price,
+          item.extended_price,
+          item.day_start_time,
+          item.day_end_time,
+          item.overnight_start_time,
+          item.overnight_end_time,
+          item.extended_start_time,
+          item.extended_end_time,
+        ]
+      );
+
+      insertedCount++;
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: insertedCount
+        ? `Default accommodations seeded successfully. Added ${insertedCount} item(s).`
+        : "Default accommodations already exist.",
+    });
+  } catch (error) {
+    console.error("seedDefaultAccommodations error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to seed default accommodations.",
+      error: error.message,
+    });
+  }
+};

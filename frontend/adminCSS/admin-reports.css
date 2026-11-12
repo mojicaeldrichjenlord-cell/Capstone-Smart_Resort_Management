@@ -249,6 +249,15 @@
     margin: 6mm;
   }
 
+  /* Global style.css adds decorative palm/wave emoji using body pseudo-
+     elements. Those screen-only symbols must never appear on printed
+     reservation reports (the wave was visible on the bottom of page 2). */
+  body:not(.auth-page)::before,
+  body:not(.auth-page)::after {
+    content: none !important;
+    display: none !important;
+  }
+
   html,
   body {
     width: 100% !important;
@@ -453,4 +462,43 @@
     min-height: 300px;
     height: 300px !important;
   }
+}
+
+/* Reporting transparency: estimates must not be mistaken for a reconciled
+   payment ledger. This note also remains visible on the printed report. */
+.revenue-report-disclaimer {
+  margin: -7px 0 22px;
+  padding: 12px 16px;
+  border: 1px solid #dbe7ef;
+  border-radius: 14px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+@media print {
+  .revenue-report-disclaimer {
+    margin: 0 0 7px !important;
+    padding: 5px 8px !important;
+    border-radius: 5px !important;
+    font-size: 0.66rem !important;
+    line-height: 1.2 !important;
+    break-inside: avoid;
+  }
+}
+
+/* Financial estimates: show onsite amounts and double-count deductions separately. */
+.report-charge-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; margin:-8px 0 22px; }
+.report-charge-card { background:#fff; border:1px solid #dbe7ef; border-radius:16px; padding:14px; }
+.report-charge-card h3 { margin:0 0 6px; font-size:.86rem; color:#334155; }
+.report-charge-card p { margin:0 0 6px; color:#0f766e; font-size:1.4rem; font-weight:800; }
+.report-charge-card small { color:#64748b; line-height:1.4; }
+@media (max-width:700px) { .report-charge-grid { grid-template-columns:1fr; } }
+@media print {
+  .report-charge-grid { grid-template-columns:repeat(3,1fr); gap:7px!important; margin:0 0 7px!important; }
+  .report-charge-card { padding:6px!important; border-radius:7px!important; break-inside:avoid; }
+  .report-charge-card h3 { font-size:.62rem!important; }
+  .report-charge-card p { font-size:.9rem!important; }
+  .report-charge-card small { font-size:.56rem!important; }
 }

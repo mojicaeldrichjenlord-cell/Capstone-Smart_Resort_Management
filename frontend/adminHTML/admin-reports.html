@@ -26,7 +26,10 @@
        Required for reports charts.
     ======================================================= -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  </head>
+    <!-- Resort favicon and accessible Admin mobile navigation. -->
+  <link rel="stylesheet" href="../adminCSS/admin-mobile-nav.css" />
+  <link rel="icon" type="image/png" href="../images/arvic-logo.png" />
+</head>
 
   <body class="has-fixed-navbar">
     <!-- ======================================================
@@ -37,11 +40,11 @@
 
       <nav>
         <a href="admin.html">Bookings</a>
-        <a href="admin-walkin.html">Manual Reservation</a>
-        <a href="admin-guests-inside.html">Guests Inside</a>
         <a href="admin-rooms.html">Accommodations</a>
         <a href="admin-map-editor.html">Map Editor</a>
         <a href="admin-reports.html" class="active-nav">Reports</a>
+        <!-- Administrator-only: staff directory, account status and secure password reset. -->
+        <a href="admin-staff.html">Staff Accounts</a>
         <a href="admin-profile.html">Profile</a>
         <a href="#" id="logoutBtn">Logout</a>
       </nav>
@@ -80,7 +83,7 @@
 
         <p>
           By default, this page loads today only. Select a start and end date
-          when admin/staff needs monthly, yearly, or custom analytics for
+          when administration needs monthly, yearly, or custom analytics for
           printing and meetings.
         </p>
 
@@ -97,15 +100,15 @@
         </div>
 
         <div class="report-filter-actions">
-          <button id="applyReportFilterBtn" class="btn-primary">
+          <button id="applyReportFilterBtn" class="btn-primary" type="button">
             View Report
           </button>
 
-          <button id="clearReportFilterBtn" class="btn-secondary">
+          <button id="clearReportFilterBtn" class="btn-secondary" type="button">
             Reset to Today
           </button>
 
-          <button id="printReportBtn" class="btn-primary">
+          <button id="printReportBtn" class="btn-primary" type="button">
             Print Report
           </button>
         </div>
@@ -148,10 +151,48 @@
         </div>
 
         <div class="stat-card">
-          <h3>Money Collected</h3>
+          <h3>Booking Collections Estimate</h3>
           <p id="totalRevenueAmount">₱0.00</p>
         </div>
       </section>
+
+      <!-- Show paid additional charges and possible overlapping extra-bed entries. -->
+      <section class="report-charge-grid" aria-label="Paid charge reconciliation">
+        <div class="report-charge-card">
+          <h3>Paid Additional Charges</h3>
+          <p id="paidBookingChargesAmount">Loading…</p>
+          <small>Charges paid within this date range, including extra beds.</small>
+        </div>
+        <div class="report-charge-card">
+          <h3>Extra Bed Already Counted</h3>
+          <p id="paidBedOverlapAmount">Loading…</p>
+          <small>Deducted from the combined estimate to avoid double-counting.</small>
+        </div>
+        <div class="report-charge-card">
+          <h3>Entrance Refunds</h3>
+          <p id="entranceRefundAmount">Loading…</p>
+          <small>Entrance fees returned to guests during this date range.</small>
+        </div>
+        <div class="report-charge-card">
+          <h3>Entrance Payment Corrections</h3>
+          <p id="entranceCorrectionAmount">Loading…</p>
+          <small>Erroneous entrance collections voided during this date range.</small>
+        </div>
+        <div class="report-charge-card">
+          <h3>Adjusted Collections Estimate</h3>
+          <p id="adjustedCollectionsEstimate">Loading…</p>
+          <small>Booking estimate + paid charges − counted extra beds − entrance refunds/corrections.</small>
+        </div>
+      </section>
+
+      <!-- This number is not the final payment ledger: onsite charges, refund
+           adjustments and date-of-payment differences need reconciliation. -->
+      <p class="revenue-report-disclaimer" role="note">
+        Collection figures are <strong>estimates from reservation payment snapshots</strong>,
+        not audited net revenue. Separately paid additional charges appear above. Entrance refunds and payment corrections are deducted above. Other refunds
+        and historical payment-date differences may still affect net totals. Check final receipts and the dated
+        payment records before using these totals for accounting.
+      </p>
 
       <!-- ======================================================
          REPORT CHARTS
@@ -175,7 +216,7 @@
           <div class="chart-header">
             <h2>Online vs Walk-in / Manual</h2>
             <p>
-              Compares customer online reservations and admin manual
+              Compares customer online reservations and Front Desk manual
               reservations.
             </p>
           </div>
@@ -198,10 +239,10 @@
 
         <div class="chart-box">
           <div class="chart-header">
-            <h2>Monthly Sales by Accommodation Category</h2>
+            <h2>Estimated Collections by Accommodation Category</h2>
             <p>
-              Shows which category earns more money: Rooms, Cottages, or
-              Function Areas.
+              Compares estimated booking collections by category. Excludes
+              separately recorded paid booking charges and refunds.
             </p>
           </div>
 
@@ -282,5 +323,6 @@
     <script src="../sharedJS/api-config.js"></script>
     <script src="../js/active-nav.js"></script>
     <script src="../adminJS/admin-reports.js"></script>
-  </body>
+    <script src="../adminJS/admin-mobile-nav.js"></script>
+</body>
 </html>

@@ -1,0 +1,393 @@
+/* ======================================================
+   FRONT DESK STAY / ACCOMMODATION OPERATIONS
+   File: frontend/frontdeskCSS/frontdeskStay.css
+
+   STEP 3F-F
+   - Add Accommodation
+   - Extend Stay
+====================================================== */
+
+/* ======================================================
+   ACTION BUTTONS
+====================================================== */
+
+.stay-add-action-btn,
+.stay-extend-action-btn {
+  padding: 10px 14px;
+
+  border: none;
+  border-radius: 999px;
+
+  color: #ffffff;
+
+  font-size: 0.84rem;
+  font-weight: 900;
+
+  cursor: pointer;
+
+  transition:
+    transform 0.18s ease,
+    filter 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.stay-add-action-btn {
+  background: linear-gradient(135deg, #0891b2, #0e7490);
+  box-shadow: 0 9px 20px rgba(8, 145, 178, 0.18);
+}
+
+.stay-extend-action-btn {
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  box-shadow: 0 9px 20px rgba(124, 58, 237, 0.18);
+}
+
+.stay-add-action-btn:hover,
+.stay-extend-action-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.03);
+}
+
+.stay-add-action-btn:active,
+.stay-extend-action-btn:active {
+  transform: translateY(0);
+}
+
+/* ======================================================
+   SHARED MODAL OVERLAY
+====================================================== */
+
+.stay-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 9075;
+
+  display: none;
+  align-items: center;
+  justify-content: center;
+
+  padding: 22px;
+
+  background: rgba(15, 23, 42, 0.74);
+
+  backdrop-filter: blur(5px);
+}
+
+.stay-modal.show {
+  display: flex;
+}
+
+.stay-modal-box {
+  width: min(100%, 760px);
+  max-height: 90vh;
+
+  overflow-y: auto;
+
+  padding: 26px;
+
+  background: #ffffff;
+
+  border: 1px solid #dbe7ef;
+  border-radius: 26px;
+
+  box-shadow: 0 30px 78px rgba(15, 23, 42, 0.34);
+}
+
+.stay-modal-header {
+  margin-bottom: 20px;
+
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.stay-modal-eyebrow {
+  margin: 0 0 5px;
+
+  color: #0f766e;
+
+  font-size: 0.75rem;
+  font-weight: 950;
+  letter-spacing: 0.1em;
+}
+
+.stay-modal-header h2 {
+  margin: 0 0 6px;
+
+  color: #0f172a;
+
+  font-size: 1.45rem;
+}
+
+.stay-modal-header p {
+  margin: 0;
+
+  color: #64748b;
+
+  line-height: 1.55;
+}
+
+.stay-modal-close-btn {
+  flex: 0 0 auto;
+
+  width: 42px;
+  height: 42px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  border: none;
+  border-radius: 999px;
+
+  background: #fee2e2;
+  color: #b91c1c;
+
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 1.35rem;
+  font-weight: 900;
+  line-height: 1;
+
+  cursor: pointer;
+}
+
+/* ======================================================
+   FORM
+====================================================== */
+
+.stay-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.stay-form-group {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stay-form-group.full {
+  grid-column: span 2;
+}
+
+.stay-form-group label {
+  color: #0f172a;
+
+  font-size: 0.9rem;
+  font-weight: 900;
+}
+
+.stay-form-group select,
+.stay-form-group input {
+  width: 100%;
+
+  padding: 12px 13px;
+
+  border: 1px solid #cbd5e1;
+  border-radius: 14px;
+
+  background: #ffffff;
+  color: #0f172a;
+
+  outline: none;
+
+  font-size: 0.94rem;
+}
+
+.stay-form-group select:focus,
+.stay-form-group input:focus {
+  border-color: #14b8a6;
+
+  box-shadow: 0 0 0 4px rgba(20, 184, 166, 0.12);
+}
+
+.stay-form-group select:disabled,
+.stay-form-group input:disabled {
+  background: #f1f5f9;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+.stay-form-group small {
+  color: #64748b;
+
+  line-height: 1.45;
+}
+
+/* ======================================================
+   PREVIEW
+====================================================== */
+
+.stay-preview {
+  margin-top: 18px;
+  padding: 16px 17px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+
+  border: 1px solid #bae6fd;
+  border-radius: 17px;
+
+  background: #f0f9ff;
+  color: #0c4a6e;
+
+  line-height: 1.5;
+}
+
+.stay-preview strong {
+  color: #0f172a;
+
+  font-size: 1rem;
+}
+
+.stay-preview b {
+  color: #0f766e;
+
+  font-size: 1.05rem;
+}
+
+.stay-preview small {
+  color: #475569;
+}
+
+/* ======================================================
+   AVAILABILITY STATUS
+====================================================== */
+
+.stay-availability-status {
+  margin-top: 14px;
+  padding: 13px 15px;
+
+  border-radius: 15px;
+
+  font-size: 0.88rem;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
+.stay-availability-status.muted {
+  border: 1px solid #dbe7ef;
+  background: #f8fafc;
+  color: #64748b;
+}
+
+.stay-availability-status.checking {
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.stay-availability-status.available {
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.stay-availability-status.unavailable {
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+/* ======================================================
+   FINANCIAL POLICY NOTE
+====================================================== */
+
+.stay-financial-note {
+  margin-top: 14px;
+  padding: 13px 15px;
+
+  border: 1px solid #fde68a;
+  border-radius: 15px;
+
+  background: #fffbeb;
+  color: #92400e;
+
+  line-height: 1.5;
+
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+/* ======================================================
+   ACTIONS
+====================================================== */
+
+.stay-modal-actions {
+  margin-top: 20px;
+
+  display: flex;
+  justify-content: flex-end;
+  gap: 11px;
+
+  flex-wrap: wrap;
+}
+
+.stay-primary-btn,
+.stay-cancel-btn {
+  padding: 12px 17px;
+
+  border: none;
+  border-radius: 999px;
+
+  font-weight: 900;
+
+  cursor: pointer;
+}
+
+.stay-primary-btn {
+  background: linear-gradient(135deg, #0f766e, #0d9488);
+  color: #ffffff;
+}
+
+.stay-cancel-btn {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.stay-primary-btn:disabled,
+.stay-primary-btn.disabled-by-availability {
+  opacity: 0.62;
+  cursor: not-allowed;
+}
+
+/* ======================================================
+   RESPONSIVE
+====================================================== */
+
+@media (max-width: 700px) {
+  .stay-add-action-btn,
+  .stay-extend-action-btn {
+    width: 100%;
+  }
+
+  .stay-modal {
+    padding: 12px;
+  }
+
+  .stay-modal-box {
+    padding: 20px;
+    border-radius: 20px;
+  }
+
+  .stay-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stay-form-group.full {
+    grid-column: span 1;
+  }
+
+  .stay-modal-actions {
+    flex-direction: column;
+  }
+
+  .stay-primary-btn,
+  .stay-cancel-btn {
+    width: 100%;
+  }
+}

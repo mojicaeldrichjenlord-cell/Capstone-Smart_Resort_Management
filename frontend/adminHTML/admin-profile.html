@@ -20,7 +20,10 @@
     <link rel="stylesheet" href="../sharedCSS/global.css" />
     <link rel="stylesheet" href="../css/style.css" />
     <link rel="stylesheet" href="../adminCSS/admin-profile.css" />
-  </head>
+    <!-- Resort favicon and accessible Admin mobile navigation. -->
+  <link rel="stylesheet" href="../adminCSS/admin-mobile-nav.css" />
+  <link rel="icon" type="image/png" href="../images/arvic-logo.png" />
+</head>
 
   <body class="has-fixed-navbar">
     <!-- ======================================================
@@ -32,11 +35,11 @@
 
       <nav>
         <a href="admin.html">Bookings</a>
-        <a href="admin-walkin.html">Manual Reservation</a>
-        <a href="admin-guests-inside.html">Guests Inside</a>
         <a href="admin-rooms.html">Accommodations</a>
         <a href="admin-map-editor.html">Map Editor</a>
         <a href="admin-reports.html">Reports</a>
+        <!-- Manage staff identity, status and password resets. -->
+        <a href="admin-staff.html">Staff Accounts</a>
         <a href="admin-profile.html" class="active-nav">Profile</a>
         <a href="#" id="logoutBtn">Logout</a>
       </nav>
@@ -158,5 +161,6 @@
     <script src="../js/password-toggle.js"></script>
     <script src="../js/active-nav.js"></script>
     <script src="../adminJS/admin-profile.js"></script>
-  </body>
+    <script src="../adminJS/admin-mobile-nav.js"></script>
+</body>
 </html>

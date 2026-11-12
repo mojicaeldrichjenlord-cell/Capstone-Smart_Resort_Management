@@ -1,14 +1,18 @@
-const AI_API_BASE = "http://127.0.0.1:5000/api";
+// Match the resort API selector: local development uses localhost, Vercel uses Render.
+const AI_API_BASE = typeof API_BASE === "string" ? API_BASE
+  : (["localhost", "127.0.0.1"].includes(window.location.hostname)
+    ? "http://127.0.0.1:5000/api"
+    : "https://smartresort-backend.onrender.com/api");
 const AI_CONTEXT_KEY = "smartresort_ai_context_v1";
 const AI_WINDOW_STATE_KEY = "smartresort_ai_window_state_v1";
 const AI_CHAT_HISTORY_KEY = "smartresort_ai_chat_history_v1";
+// Verified official Facebook page from the Customer Home page (refund support).
+const OFFICIAL_RESORT_FACEBOOK_URL = "https://www.facebook.com/share/1E1kZLtrV4/?mibextid=wwXIfr";
+// Keep these contact numbers consistent with the Customer Home contact card.
+const OFFICIAL_RESORT_PHONE_PRIMARY = "0956-912-5625";
+const OFFICIAL_RESORT_PHONE_ALTERNATIVE = "0967-817-0662";
 
-let aiRecognition = null;
-let aiIsListening = false;
-let aiShouldKeepListening = false;
-let aiFinalTranscript = "";
-let aiStoppedManually = false;  
-let aiSendAfterStop = false;
+let aiMessageInFlight = false;
 
 document.addEventListener("DOMContentLoaded", () => {
   setupAiChat();
@@ -29,7 +33,7 @@ function setupAiChat() {
 
   restoreWindowState();
   restoreChatHistory();
-  setupSpeechRecognition();
+  // Voice input and live conversation are initialized by ai-voice.js.
 
   toggleBtn.addEventListener("click", () => {
     chatWindow.classList.toggle("show");
@@ -57,12 +61,6 @@ function setupAiChat() {
     });
   }
 
-  if (micBtn) {
-    micBtn.addEventListener("click", () => {
-      toggleVoiceInput();
-    });
-  }
-
   sendBtn.addEventListener("click", sendAiMessage);
 
   input.addEventListener("keydown", (e) => {
@@ -77,150 +75,22 @@ function setupAiChat() {
   }
 }
 
-function setupSpeechRecognition() {
-  const SpeechRecognition =
-    window.SpeechRecognition || window.webkitSpeechRecognition;
-
-  if (!SpeechRecognition) {
-    const micBtn = document.getElementById("aiMicBtn");
-    if (micBtn) {
-      micBtn.disabled = true;
-      micBtn.textContent = "🚫";
-      micBtn.title = "Mic not supported";
-    }
-    return;
-  }
-
-  aiRecognition = new SpeechRecognition();
-  aiRecognition.lang = "en-PH";
-  aiRecognition.continuous = true;
-  aiRecognition.interimResults = true;
-
-  aiRecognition.onstart = () => {
-    aiIsListening = true;
-    updateMicButton();
-  };
-
-  aiRecognition.onend = () => {
-    aiIsListening = false;
-    updateMicButton();
-
-    if (aiShouldKeepListening) {
-      setTimeout(() => {
-        try {
-          aiRecognition.start();
-        } catch (error) {
-          console.error("Speech recognition restart error:", error);
-        }
-      }, 150);
-      return;
-    }
-
-    aiStoppedManually = false;
-    aiSendAfterStop = false;
-  };
-
-  aiRecognition.onerror = (event) => {
-    console.error("Speech recognition error:", event.error);
-
-    if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-      aiShouldKeepListening = false;
-      aiIsListening = false;
-      aiStoppedManually = false;
-      aiSendAfterStop = false;
-      updateMicButton();
-      appendAiSystemNote("Microphone permission was denied.");
-    }
-  };
-
-  aiRecognition.onresult = (event) => {
-    let interimTranscript = "";
-    let finalChunk = "";
-
-    for (let i = event.resultIndex; i < event.results.length; i++) {
-      const transcript = event.results[i][0].transcript;
-
-      if (event.results[i].isFinal) {
-        finalChunk += transcript + " ";
-      } else {
-        interimTranscript += transcript;
-      }
-    }
-
-    if (finalChunk) {
-      aiFinalTranscript += finalChunk;
-    }
-
-    const input = document.getElementById("aiChatInput");
-    if (input) {
-      input.value = `${aiFinalTranscript}${interimTranscript}`.trim();
-    }
-  };
-}
-
-function toggleVoiceInput() {
-  if (!aiRecognition) {
-    appendAiSystemNote("Voice input is not supported in this browser.");
-    return;
-  }
-
-  if (aiShouldKeepListening) {
-    stopVoiceInput(false);
-  } else {
-    startVoiceInput();
-  }
-}
-
-function startVoiceInput() {
-  aiFinalTranscript = "";
-  aiShouldKeepListening = true;
-  aiStoppedManually = false;
-  aiSendAfterStop = false;
-
-  try {
-    aiRecognition.start();
-  } catch (error) {
-    console.error("startVoiceInput error:", error);
-  }
-}
-
-function stopVoiceInput(autoSend = false) {
-  aiShouldKeepListening = false;
-  aiStoppedManually = true;
-  aiSendAfterStop = autoSend;
-
-  try {
-    aiRecognition.stop();
-  } catch (error) {
-    console.error("stopVoiceInput error:", error);
-  }
-
-  aiIsListening = false;
-  updateMicButton();
-}
-
-function updateMicButton() {
-  const micBtn = document.getElementById("aiMicBtn");
-  if (!micBtn) return;
-
-  const active = aiShouldKeepListening || aiIsListening;
-  micBtn.textContent = active ? "⏹" : "🎤";
-  micBtn.classList.toggle("active-voice-btn", active);
-  micBtn.title = active ? "Stop voice input" : "Voice input";
-}
-
-async function sendAiMessage() {
+async function sendAiMessage(options = {}) {
   const input = document.getElementById("aiChatInput");
   const sendBtn = document.getElementById("aiSendBtn");
 
-  if (!input || !sendBtn) return;
-
+  if (!input || !sendBtn || aiMessageInFlight) return null;
   const message = input.value.trim();
-  if (!message) return;
+  if (!message) return null;
 
+  // Manual messages must not race with an active voice conversation.
+  if (options.source !== "voice" && window.ArvicVoice?.isLiveActive?.()) {
+    window.ArvicVoice.stopConversation();
+  }
+
+  aiMessageInFlight = true;
   appendAiMessage("user", message);
   input.value = "";
-  aiFinalTranscript = "";
 
   const storedContext = getStoredAiContext();
   const pageContext = getAiPageContext();
@@ -229,6 +99,10 @@ async function sendAiMessage() {
     message,
     ...pageContext,
     context: storedContext,
+    // Voice sessions use a fixed selected language; typed chat stays adaptive.
+    ...(options.source === "voice"
+      ? { voice_language: window.ArvicVoice?.getLanguage?.() || "english" }
+      : {}),
   };
 
   try {
@@ -249,7 +123,10 @@ async function sendAiMessage() {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(data.message || "Failed to get AI response.");
+      const requestError = new Error(data.message || "Failed to get AI response.");
+      requestError.status = response.status;
+      requestError.code = data.code || null;
+      throw requestError;
     }
 
     if (data.extracted_context) {
@@ -262,7 +139,8 @@ async function sendAiMessage() {
       }
     }
 
-    appendAiMessage("assistant", data.reply || "No reply generated.");
+    const aiReply = data.reply || "No reply generated.";
+    appendAiMessage("assistant", aiReply);
 
     if (Array.isArray(data.alternative_dates) && data.alternative_dates.length > 0) {
       const altText = data.alternative_dates
@@ -274,9 +152,28 @@ async function sendAiMessage() {
     if (data.booking_preview) {
       appendBookingPreviewCard(data.booking_preview);
     }
+    return aiReply;
   } catch (error) {
-    console.error("AI chat error:", error);
+    console.warn("AI chat request failed:", error.code || error.message);
     removeTypingIndicator();
+
+    if (["GEMINI_BUSY", "GEMINI_RATE_LIMIT", "AI_LOCAL_BUDGET", "AI_RATE_LIMIT"].includes(error.code)) {
+      // Upstream demand/quota issues do not mean a room is unavailable.
+      // Keep booking context unchanged, and do not invent rates.
+      const voiceLanguage = options.source === "voice"
+        ? window.ArvicVoice?.getLanguage?.()
+        : null;
+      const messages = {
+        english: "Sorry, our AI assistant is busy right now. Please try again in a moment.",
+        taglish: "Pasensya na po, busy muna ang AI assistant. Pakisubukan ulit maya-maya.",
+        spanish: "Lo siento, el asistente está ocupado en este momento. Inténtelo de nuevo en unos instantes.",
+        mandarin: "抱歉，智能助手现在比较忙。请稍后再试。",
+      };
+      const busyReply = messages[voiceLanguage] || error.message ||
+        "The AI assistant is temporarily busy. Please try again shortly.";
+      appendAiMessage("assistant", busyReply);
+      return busyReply;
+    }
 
     const fallback = getOfflineFallbackReply(message, storedContext, pageContext);
     const mergedFallbackContext = mergeContext(storedContext, fallback.context || {});
@@ -289,8 +186,22 @@ async function sendAiMessage() {
       appendAiSystemNote(`Saved details: ${summary}`);
     }
 
-    appendAiMessage("assistant", fallback.reply);
+    // In Live Voice mode, preserve the selected spoken language even when
+    // Gemini is offline. Never make unverified availability promises.
+    const voiceFallbacks = {
+      english: "Sorry, the AI service is temporarily unavailable. Please try again or continue using the booking page.",
+      taglish: "Pasensya na po, temporarily unavailable ang AI service. Puwede po kayong mag-try ulit o magpatuloy sa booking page.",
+      spanish: "Lo siento, el servicio de inteligencia artificial no está disponible temporalmente. Puede intentarlo de nuevo o continuar en la página de reservas.",
+      mandarin: "抱歉，人工智能服务暂时无法使用。您可以稍后再试，或前往预订页面继续操作。",
+    };
+    const voiceLanguage = options.source === "voice"
+      ? window.ArvicVoice?.getLanguage?.()
+      : null;
+    const safeReply = voiceFallbacks[voiceLanguage] || fallback.reply;
+    appendAiMessage("assistant", safeReply);
+    return safeReply;
   } finally {
+    aiMessageInFlight = false;
     sendBtn.disabled = false;
     sendBtn.textContent = "Send";
   }
@@ -378,7 +289,7 @@ function restoreChatHistory() {
   if (!history.length) {
     appendAiMessage(
       "assistant",
-      "Hi! I’m your SmartResort assistant. This is a fresh new chat. You can ask about rooms, booking dates, check-in/check-out time, guests, or payment method.",
+      "Hi! I’m your ArvicSeaside assistant. This is a fresh new chat. You can ask about rooms, booking dates, check-in/check-out time, guests, or payment method.",
       false
     );
 
@@ -545,120 +456,84 @@ function appendReplyActions(wrapper, originalText) {
   speakBtn.textContent = "Read Aloud";
   speakBtn.style.cssText =
     "border:none;background:#e2e8f0;color:#0f172a;padding:6px 10px;border-radius:8px;font-size:0.82rem;font-weight:700;cursor:pointer;";
-  speakBtn.addEventListener("click", () => speakText(getCurrentBubbleText(wrapper, originalText)));
+  speakBtn.addEventListener("click", () =>
+    speakText(getCurrentBubbleText(wrapper, originalText)));
+
+  const translateEnglishBtn = document.createElement("button");
+  translateEnglishBtn.type = "button";
+  translateEnglishBtn.textContent = "Translate to English";
+  translateEnglishBtn.style.cssText = speakBtn.style.cssText;
 
   const translateTagalogBtn = document.createElement("button");
   translateTagalogBtn.type = "button";
   translateTagalogBtn.textContent = "Translate to Tagalog";
-  translateTagalogBtn.style.cssText =
-    "border:none;background:#e2e8f0;color:#0f172a;padding:6px 10px;border-radius:8px;font-size:0.82rem;font-weight:700;cursor:pointer;";
+  translateTagalogBtn.style.cssText = speakBtn.style.cssText;
 
-  const translateTaglishBtn = document.createElement("button");
-  translateTaglishBtn.type = "button";
-  translateTaglishBtn.textContent = "Translate to Taglish";
-  translateTaglishBtn.style.cssText =
-    "border:none;background:#e2e8f0;color:#0f172a;padding:6px 10px;border-radius:8px;font-size:0.82rem;font-weight:700;cursor:pointer;";
-
-  let currentMode = "original";
   const bubble = wrapper.querySelector(".ai-bubble");
+  let currentMode = "original";
+  let translating = false;
+  const translations = {};
+  const options = [
+    { mode: "english", button: translateEnglishBtn, url: "/ai/translate-english", label: "Translate to English" },
+    { mode: "tagalog", button: translateTagalogBtn, url: "/ai/translate", label: "Translate to Tagalog" },
+  ];
 
-  translateTagalogBtn.addEventListener("click", async () => {
-    if (!bubble) return;
+  function updateButtons() {
+    for (const option of options) {
+      option.button.textContent = currentMode === option.mode
+        ? "Show Original" : option.label;
+      option.button.disabled = translating;
+    }
+  }
 
-    if (currentMode === "tagalog") {
+  async function changeTranslation(option) {
+    if (!bubble || translating) return;
+    if (currentMode === option.mode) {
       bubble.innerHTML = formatAiReply(originalText);
       bubble.dataset.currentText = originalText;
       currentMode = "original";
-      translateTagalogBtn.textContent = "Translate to Tagalog";
-      translateTaglishBtn.textContent = "Translate to Taglish";
+      updateButtons();
       return;
     }
-
-    translateTagalogBtn.disabled = true;
-    translateTaglishBtn.disabled = true;
-    translateTagalogBtn.textContent = "Translating...";
-
-    try {
-      const response = await fetch(`${AI_API_BASE}/ai/translate`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ text: originalText }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Translation failed.");
+    if (!Object.prototype.hasOwnProperty.call(translations, option.mode)) {
+      translating = true;
+      updateButtons();
+      option.button.textContent = "Translating...";
+      try {
+        const response = await fetch(AI_API_BASE + option.url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: originalText }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.message || "Translation temporarily unavailable.");
+        }
+        if (!String(data.translated_text || "").trim()) {
+          throw new Error("No translation was returned.");
+        }
+        translations[option.mode] = data.translated_text;
+      } catch (error) {
+        console.error("AI translation error:", error);
+        appendAiSystemNote(error.message || "Translation temporarily unavailable.");
+        return;
+      } finally {
+        translating = false;
+        updateButtons();
       }
-
-      const translatedText = data.translated_text || originalText;
-      bubble.innerHTML = formatAiReply(translatedText);
-      bubble.dataset.currentText = translatedText;
-      currentMode = "tagalog";
-      translateTagalogBtn.textContent = "Show Original";
-      translateTaglishBtn.textContent = "Translate to Taglish";
-    } catch (error) {
-      console.error("Tagalog translate error:", error);
-      appendAiSystemNote("Tagalog translation is unavailable right now.");
-      translateTagalogBtn.textContent = "Translate to Tagalog";
-    } finally {
-      translateTagalogBtn.disabled = false;
-      translateTaglishBtn.disabled = false;
     }
-  });
+    currentMode = option.mode;
+    bubble.innerHTML = formatAiReply(translations[option.mode]);
+    bubble.dataset.currentText = translations[option.mode];
+    updateButtons();
+  }
 
-  translateTaglishBtn.addEventListener("click", async () => {
-    if (!bubble) return;
-
-    if (currentMode === "taglish") {
-      bubble.innerHTML = formatAiReply(originalText);
-      bubble.dataset.currentText = originalText;
-      currentMode = "original";
-      translateTaglishBtn.textContent = "Translate to Taglish";
-      translateTagalogBtn.textContent = "Translate to Tagalog";
-      return;
-    }
-
-    translateTagalogBtn.disabled = true;
-    translateTaglishBtn.disabled = true;
-    translateTaglishBtn.textContent = "Translating...";
-
-    try {
-      const response = await fetch(`${AI_API_BASE}/ai/translate-taglish`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ text: originalText }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Translation failed.");
-      }
-
-      const translatedText = data.translated_text || originalText;
-      bubble.innerHTML = formatAiReply(translatedText);
-      bubble.dataset.currentText = translatedText;
-      currentMode = "taglish";
-      translateTaglishBtn.textContent = "Show Original";
-      translateTagalogBtn.textContent = "Translate to Tagalog";
-    } catch (error) {
-      console.error("Taglish translate error:", error);
-      appendAiSystemNote("Taglish translation is unavailable right now.");
-      translateTaglishBtn.textContent = "Translate to Taglish";
-    } finally {
-      translateTagalogBtn.disabled = false;
-      translateTaglishBtn.disabled = false;
-    }
-  });
-
+  for (const option of options) {
+    option.button.addEventListener("click", () => changeTranslation(option));
+  }
   actions.appendChild(speakBtn);
+  actions.appendChild(translateEnglishBtn);
   actions.appendChild(translateTagalogBtn);
-  actions.appendChild(translateTaglishBtn);
   wrapper.appendChild(actions);
 }
 
@@ -709,11 +584,9 @@ function appendBookingPreviewCard(preview, save = true) {
   bubble.style.color = "#0f172a";
 
   const imagePath = preview.image ? escapeHtml(preview.image) : "images/no-image.jpg";
-  const paymentLabel = preview.payment_method === "paypal" ? "PayPal / Online Payment" : "Cash on Arrival";
-  const paymentStatusLabel = preview.payment_status === "pending" ? "Pending online payment" : "Unpaid";
 
   bubble.innerHTML = `
-    <div style="font-weight:800;margin-bottom:10px;font-size:1.05rem;">Booking Preview</div>
+    <div style="font-weight:800;margin-bottom:10px;font-size:1.05rem;">Accommodation Suggestion</div>
     <div style="margin-bottom:12px;">
       <img
         src="${imagePath}"
@@ -723,24 +596,23 @@ function appendBookingPreviewCard(preview, save = true) {
       />
     </div>
     <div style="font-size:0.94rem;line-height:1.7;">
-      <div><strong>Room:</strong> ${escapeHtml(preview.room_name)}</div>
+      <div><strong>Accommodation:</strong> ${escapeHtml(preview.room_name)}</div>
       <div><strong>Check-in Date:</strong> ${escapeHtml(preview.check_in)}</div>
       <div><strong>Check-in Time:</strong> ${escapeHtml(formatTime(preview.check_in_time))}</div>
       <div><strong>Check-out Date:</strong> ${escapeHtml(preview.check_out)}</div>
       <div><strong>Check-out Time:</strong> ${escapeHtml(formatTime(preview.check_out_time))}</div>
       <div><strong>Guests:</strong> ${preview.guests}</div>
-      <div><strong>Nights:</strong> ${preview.nights}</div>
-      <div><strong>Payment:</strong> ${escapeHtml(paymentLabel)}</div>
-      <div><strong>Status:</strong> ${escapeHtml(paymentStatusLabel)}</div>
-      <div><strong>Price/Night:</strong> ₱${formatMoney(preview.price_per_night)}</div>
-      <div><strong>Estimated Total:</strong> ₱${formatMoney(preview.estimated_total)}</div>
+      <div><strong>Day Tour:</strong> ${Number(preview.day_price || 0) > 0 ? "₱" + formatMoney(preview.day_price) : "Ask Front Desk"}</div>
+      <div><strong>Overnight:</strong> ${Number(preview.overnight_price || 0) > 0 ? "₱" + formatMoney(preview.overnight_price) : "Ask Front Desk"}</div>
+      <div><strong>Extended:</strong> ${Number(preview.extended_price || 0) > 0 ? "₱" + formatMoney(preview.extended_price) : "Ask Front Desk"}</div>
+      <div style="font-size:0.85rem;margin-top:8px;">Not reserved yet. Final slot availability and official amount are verified on the secure booking page.</div>
     </div>
     <button
       type="button"
       class="ai-confirm-booking-btn"
       style="margin-top:12px;width:100%;border:none;background:#14b8a6;color:white;padding:11px 12px;border-radius:10px;font-weight:700;cursor:pointer;"
     >
-      Confirm Booking
+      Continue to Booking
     </button>
   `;
 
@@ -750,7 +622,13 @@ function appendBookingPreviewCard(preview, save = true) {
 
   const confirmBtn = bubble.querySelector(".ai-confirm-booking-btn");
   if (confirmBtn) {
-    confirmBtn.addEventListener("click", () => createBookingFromPreview(preview, confirmBtn));
+    if (preview?.booking_schema !== "accommodations_v2") {
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = "Old suggestion — ask AI again";
+      confirmBtn.title = "Legacy AI room IDs are not compatible with current accommodations.";
+    } else {
+      confirmBtn.addEventListener("click", () => createBookingFromPreview(preview, confirmBtn));
+    }
   }
 
   if (save) {
@@ -761,53 +639,37 @@ function appendBookingPreviewCard(preview, save = true) {
   }
 }
 
-async function createBookingFromPreview(preview, button) {
-  const user = JSON.parse(localStorage.getItem("user"));
+function createBookingFromPreview(preview, button) {
+  // AI suggestions never create reservations directly. The Customer
+  // booking form owns final dates, slot pricing, payment and conflict checks.
+  const user = JSON.parse(localStorage.getItem("user") || "null");
+  const frontendPrefix = window.location.pathname.includes("/frontend/")
+    ? "/frontend"
+    : "";
 
-  if (!user) {
-    alert("Please login first.");
-    window.location.href = "login.html";
+  if (!user || String(user.role || "").toLowerCase() !== "customer") {
+    appendAiSystemNote("Please log in as a Customer before continuing to booking.");
+    window.location.href = frontendPrefix + "/authHTML/login.html";
     return;
   }
 
-  try {
-    button.disabled = true;
-    button.textContent = "Creating booking...";
-
-    const response = await fetch(`${AI_API_BASE}/ai/create-booking`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        user_id: user.id,
-        room_id: preview.room_id,
-        check_in: preview.check_in,
-        check_in_time: preview.check_in_time,
-        check_out: preview.check_out,
-        check_out_time: preview.check_out_time,
-        guests: preview.guests,
-        payment_method: preview.payment_method || "cash",
-      }),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to create booking.");
-    }
-
-    appendAiSystemNote("Booking created successfully. Redirecting to your receipt...");
-    localStorage.removeItem(AI_CONTEXT_KEY);
-    localStorage.removeItem(AI_CHAT_HISTORY_KEY);
-
-    setTimeout(() => {
-      window.location.href = `booking-receipt.html?id=${data.bookingId}`;
-    }, 1000);
-  } catch (error) {
-    console.error("createBookingFromPreview error:", error);
-    appendAiMessage("assistant", `Sorry, booking failed: ${error.message}`);
-    button.disabled = false;
-    button.textContent = "Confirm Booking";
+  if (preview?.booking_schema !== "accommodations_v2") {
+    appendAiSystemNote("This AI suggestion is outdated. Please ask for an updated accommodation recommendation.");
+    return;
   }
+
+  const accommodationId = Number(preview?.room_id);
+  if (!Number.isSafeInteger(accommodationId) || accommodationId <= 0) {
+    appendAiSystemNote("Please select an accommodation on the booking page.");
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = "Opening booking form...";
+  appendAiSystemNote("No reservation has been created yet. Confirm dates, slot, official price and payment on the secure booking form.");
+  window.location.href =
+    frontendPrefix + "/customerHTML/booking.html?room_id=" +
+    encodeURIComponent(String(accommodationId));
 }
 
 function getOfflineFallbackReply(message, storedContext = {}, pageContext = {}) {
@@ -834,7 +696,20 @@ function getOfflineFallbackReply(message, storedContext = {}, pageContext = {}) 
   return getEnglishFallbackReply(text, merged);
 }
 
+// Stage 85-D: Offline guidance mirrors the verified PayPal-only customer online flow.
+// It must not claim that cash checkout or an automatic booking is available.
 function getEnglishFallbackReply(text, merged) {
+  // Offline refund guidance mirrors the verified manual refund policy.
+  // Do not promise a refund or attempt any refund transaction here.
+  if (/refund|reimbursement|money back|return.*payment/i.test(text)) {
+    return {
+      modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.",
+      reply: "Refunds are not processed automatically. Resort management reviews refund requests manually based on resort policy and verified payments; cancellation does not guarantee a refund. For assistance, please message the resort's official Facebook page: " + OFFICIAL_RESORT_FACEBOOK_URL + "\n\nFront Desk: " +
+        OFFICIAL_RESORT_PHONE_PRIMARY + "\nAlternative: " +
+        OFFICIAL_RESORT_PHONE_ALTERNATIVE,
+      context: merged,
+    };
+  }
   if (text.includes("hello") || text.includes("hi") || text.includes("hey")) {
     return {
       modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.",
@@ -846,7 +721,7 @@ function getEnglishFallbackReply(text, merged) {
   if (text.includes("how to book") || text.includes("book room") || text.includes("booking process")) {
     return {
       modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.",
-      reply: "To book a room, open the Rooms page, choose a room, enter your check-in date, check-in time, check-out date, check-out time, number of guests, and payment method, then confirm the booking. After that, you can view the receipt in My Bookings.",
+      reply: "To book online, open the Rooms page and choose an accommodation. Enter your check-in and check-out dates and times and the number of guests, then review the secure booking and PayPal payment steps. Online reservations require a 50% accommodation downpayment through PayPal; entrance fees are settled onsite. You can view the reservation and receipt in My Bookings.",
       context: merged,
     };
   }
@@ -854,7 +729,7 @@ function getEnglishFallbackReply(text, merged) {
   if (text.includes("payment") || text.includes("paypal") || text.includes("cash")) {
     return {
       modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.",
-      reply: "Available payment methods are Cash on Arrival and PayPal. If you choose PayPal, the booking can be saved with pending online payment status until it is confirmed.",
+      reply: "Customer online reservations use PayPal for the required 50% accommodation downpayment; the remaining accommodation balance and entrance fees are paid onsite. Cash and other onsite payment methods apply to eligible staff-assisted manual reservations, not customer online checkout. Please verify the final amount on the secure booking page.",
       context: merged,
     };
   }
@@ -898,6 +773,16 @@ function getEnglishFallbackReply(text, merged) {
 }
 
 function getTagalogFallbackReply(text, merged) {
+  // Offline Tagalog refund assistance uses the same official contact.
+  if (/refund|marefund|ma-refund|ibalik.*(?:bayad|pera)|balik.*(?:bayad|pera)/i.test(text)) {
+    return {
+      modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
+      reply: "Hindi po automatic ang refund. Manual na sinusuri ng resort management ang requests batay sa policy at verified payment; hindi guaranteed ang refund kapag nag-cancel. Para po sa assistance, mag-message sa official Facebook page ng resort: " + OFFICIAL_RESORT_FACEBOOK_URL + "\n\nFront Desk: " +
+        OFFICIAL_RESORT_PHONE_PRIMARY + "\nAlternative: " +
+        OFFICIAL_RESORT_PHONE_ALTERNATIVE,
+      context: merged,
+    };
+  }
   if (text.includes("hello") || text.includes("hi") || text.includes("hey") || text.includes("kumusta")) {
     return {
       modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
@@ -909,7 +794,7 @@ function getTagalogFallbackReply(text, merged) {
   if (text.includes("paano mag book") || text.includes("paano mag-book") || text.includes("booking process") || text.includes("mag book")) {
     return {
       modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
-      reply: "Para mag-book ng room, buksan ang Rooms page, pumili ng room, ilagay ang check-in date, check-in time, check-out date, check-out time, bilang ng bisita, at payment method, pagkatapos ay i-confirm ang booking. Pagkatapos noon, makikita mo ang receipt sa My Bookings.",
+      reply: "Para po mag-book online, buksan ang Rooms page at pumili ng accommodation. Ilagay ang check-in at check-out dates, oras, at bilang ng bisita, saka sundin ang secure booking at PayPal payment steps. Ang downpayment ay 50% ng accommodation price; hiwalay ang entrance fee na babayaran onsite. Makikita po ang booking at receipt sa My Bookings.",
       context: merged,
     };
   }
@@ -917,7 +802,7 @@ function getTagalogFallbackReply(text, merged) {
   if (text.includes("bayad") || text.includes("payment") || text.includes("paypal") || text.includes("cash")) {
     return {
       modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
-      reply: "Ang available na payment methods ay Cash on Arrival at PayPal. Kapag PayPal ang pinili mo, puwedeng ma-save ang booking bilang pending online payment habang hindi pa nakukumpirma.",
+      reply: "Para po sa customer online booking, PayPal ang ginagamit para sa 50% accommodation downpayment. Ang natitirang accommodation balance at entrance fee ay babayaran onsite. Ang cash at ibang onsite payment methods ay para sa eligible manual reservations na inaasikaso ng staff, hindi sa online checkout. I-check po ang final amount sa secure booking page.",
       context: merged,
     };
   }
@@ -961,6 +846,16 @@ function getTagalogFallbackReply(text, merged) {
 }
 
 function getTaglishFallbackReply(text, merged) {
+  // Offline Taglish refund assistance uses the same official contact.
+  if (/refund|marefund|ma-refund|ibalik.*(?:bayad|pera)|balik.*(?:bayad|pera)/i.test(text)) {
+    return {
+      modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
+      reply: "Hindi po automatic ang refund. Resort management manually reviews requests based on policy at verified payments; hindi guaranteed ang refund dahil lang sa cancellation. For assistance po, message the official Facebook page ng resort: " + OFFICIAL_RESORT_FACEBOOK_URL + "\n\nFront Desk: " +
+        OFFICIAL_RESORT_PHONE_PRIMARY + "\nAlternative: " +
+        OFFICIAL_RESORT_PHONE_ALTERNATIVE,
+      context: merged,
+    };
+  }
   if (text.includes("hello") || text.includes("hi") || text.includes("hey") || text.includes("kumusta")) {
     return {
       modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
@@ -972,7 +867,7 @@ function getTaglishFallbackReply(text, merged) {
   if (text.includes("how to book") || text.includes("paano mag book") || text.includes("paano mag-book") || text.includes("booking process")) {
     return {
       modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
-      reply: "Para mag-book ng room, open mo ang Rooms page, pumili ng room, ilagay ang check-in date, check-in time, check-out date, check-out time, number of guests, at payment method, then confirm the booking. After that, makikita mo ang receipt sa My Bookings.",
+      reply: "Para po mag-book online, open ang Rooms page, select an accommodation, then ilagay ang check-in/check-out dates, times, at number of guests. Review the secure booking and PayPal payment steps; required ang 50% accommodation downpayment via PayPal, at separate ang onsite entrance fee. Makikita po ang booking at receipt sa My Bookings.",
       context: merged,
     };
   }
@@ -980,7 +875,7 @@ function getTaglishFallbackReply(text, merged) {
   if (text.includes("payment") || text.includes("bayad") || text.includes("paypal") || text.includes("cash")) {
     return {
       modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
-      reply: "Available na payment methods ay Cash on Arrival at PayPal. Kapag PayPal ang pinili mo, puwedeng ma-save ang booking as pending online payment habang hindi pa confirmed.",
+      reply: "For customer online reservations po, PayPal ang payment method para sa 50% accommodation downpayment. Onsite naman ang remaining accommodation balance at entrance fee. Cash at other onsite payment methods are for eligible staff-assisted manual reservations, hindi sa online checkout. Confirm the final amount po sa secure booking page.",
       context: merged,
     };
   }
@@ -1116,6 +1011,10 @@ function restoreWindowState() {
 }
 
 function speakText(text) {
+  if (window.ArvicVoice?.readAloud) {
+    window.ArvicVoice.readAloud(text);
+    return;
+  }
   if (!("speechSynthesis" in window)) {
     appendAiSystemNote("Text-to-speech is not supported in this browser.");
     return;
@@ -1135,6 +1034,25 @@ function formatAiReply(text) {
   let safe = escapeHtml(String(text || ""));
   safe = safe.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>");
   safe = safe.replace(/\*(.*?)\*/g, "<em>$1</em>");
+
+  // Only linkify this verified resort contact URL; never turn arbitrary
+  // AI-generated text/HTML into unsafe links. Open a new tab securely.
+  const officialUrl = escapeHtml(OFFICIAL_RESORT_FACEBOOK_URL);
+  safe = safe.split(officialUrl).join(
+    '<a href="' + officialUrl + '" target="_blank" rel="noopener noreferrer">' +
+    'Message resort on Facebook</a>'
+  );
+
+  // Linkify ONLY the exact verified phone numbers. The HTML was escaped
+  // above, and tel: destinations contain only trusted digits from Home.
+  for (const [display, phoneDigits] of [
+    [OFFICIAL_RESORT_PHONE_PRIMARY, "09569125625"],
+    [OFFICIAL_RESORT_PHONE_ALTERNATIVE, "09678170662"],
+  ]) {
+    safe = safe.split(display).join(
+      '<a href="tel:' + phoneDigits + '">' + display + '</a>'
+    );
+  }
 
   const lines = safe.split("\n");
   let html = "";

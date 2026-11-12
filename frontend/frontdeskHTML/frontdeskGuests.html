@@ -1,0 +1,999 @@
+﻿<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Guest Management | Arvic Seaside Front Desk</title>
+
+    <link rel="stylesheet" href="../sharedCSS/global.css" />
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../frontdeskCSS/frontdeskStay.css" />
+    <link rel="stylesheet" href="../frontdeskCSS/frontdeskAccommodationBalance.css" />
+    <link rel="stylesheet" href="../frontdeskCSS/frontdeskCheckout.css" />
+    <link rel="stylesheet" href="../frontdeskCSS/frontdeskExtraBed.css" />
+    <link rel="stylesheet" href="../frontdeskCSS/frontdeskAdditionalCharges.css" />
+    <link rel="stylesheet" href="../frontdeskCSS/frontdeskUnpaidCharges.css" />
+    <!-- Loaded last so this page can apply one consistent visual system
+         across all Front Desk action buttons without changing JS behavior. -->
+    <link rel="stylesheet" href="../frontdeskCSS/frontdeskGuests.css" />
+  </head>
+
+  <body class="has-fixed-navbar">
+    <header class="navbar">
+      <div class="logo">Arvic Seaside</div>
+
+      <nav>
+        <a href="frontdeskDashboard.html">Dashboard</a>
+        <a href="frontdeskReservations.html">Reservations</a>
+        <a href="frontdeskPayments.html">Payments</a>
+        <a href="frontdeskGuests.html" class="active-nav">Guests</a>
+        <a href="../adminHTML/admin-walkin.html">Manual Reservation</a>
+        <a href="#" id="logoutBtn">Logout</a>
+      </nav>
+    </header>
+
+    <main class="frontdesk-guests-wrapper">
+      <a href="frontdeskDashboard.html" class="back-btn">
+        ← Back to Dashboard
+      </a>
+
+      <section class="guests-hero">
+        <div>
+          <p class="hero-eyebrow">FRONT DESK STAFF</p>
+          <h1>Guest Management</h1>
+
+          <p>
+            Review today's arrivals, check confirmed guests into the resort,
+            and manage verified onsite guest counts for guests already inside.
+          </p>
+        </div>
+
+        <button type="button" class="btn-primary" id="refreshBtn">
+          Refresh
+        </button>
+      </section>
+
+      <section class="guests-summary-grid">
+        <article class="guest-summary-card ready">
+          <span>Ready Today</span>
+          <strong id="readyTodayCount">0</strong>
+        </article>
+
+        <article class="guest-summary-card">
+          <span>Already Inside</span>
+          <strong id="insideCount">0</strong>
+        </article>
+
+        <article class="guest-summary-card attention">
+          <span>Needs Payment</span>
+          <strong id="needsPaymentCount">0</strong>
+        </article>
+
+        <article class="guest-summary-card">
+          <span>Upcoming</span>
+          <strong id="upcomingCount">0</strong>
+        </article>
+      </section>
+
+      <section class="checkin-rule-note">
+        <strong>Front Desk Check-In Rule:</strong>
+
+        <span>
+          A reservation can be checked in when it is confirmed, the scheduled
+          check-in date is today, and the required downpayment has already been
+          verified. Guest Adjustment, Entrance Adjustment, and Extra Bed are
+          handled after the guest is already inside.
+        </span>
+      </section>
+
+      <section class="guests-panel">
+        <div class="panel-heading">
+          <div>
+            <h2>Search and Filter</h2>
+            <p>
+              The default view shows reservations that are ready for check-in
+              today.
+            </p>
+          </div>
+        </div>
+
+        <div class="guest-filter-grid">
+          <div class="filter-group filter-search">
+            <label for="searchInput">Search</label>
+
+            <input
+              id="searchInput"
+              type="text"
+              placeholder="Reservation code, guest, phone, accommodation..."
+            />
+          </div>
+
+          <div class="filter-group">
+            <label for="arrivalFilter">Guest View</label>
+
+            <select id="arrivalFilter">
+              <option value="ready" selected>Ready Today</option>
+              <option value="inside">Already Inside</option>
+              <option value="needs_payment">Needs Payment</option>
+              <option value="upcoming">Upcoming</option>
+              <option value="passed">Check-in Date Passed</option>
+              <option value="all">All Active Guest Records</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section class="guests-panel">
+        <div class="panel-heading">
+          <div>
+            <h2>Guest / Arrival Records</h2>
+
+            <p>
+              Check-in actions are only enabled when the reservation passes the
+              current Front Desk check-in rules.
+            </p>
+          </div>
+
+          <span id="recordCount" class="record-count">0 records</span>
+        </div>
+
+        <div id="guestRecords">
+          <div class="guest-state-box">
+            Loading guest records...
+          </div>
+        </div>
+      </section>
+
+      <section class="next-step-note">
+        <strong>Step 3F-D:</strong>
+
+        <span>
+          Front Desk can record Damage, Missing Item, Service, and Custom
+          Additional Charges for checked-in guests. New charges remain unpaid
+          until the next Collect Unpaid Charges step, and paid financial history
+          cannot be deleted.
+        </span>
+      </section>
+    </main>
+
+    <div class="guest-adjustment-modal" id="guestAdjustmentModal">
+      <div class="guest-adjustment-modal-box">
+        <div class="guest-adjustment-header">
+          <div>
+            <p class="guest-adjustment-eyebrow">FRONT DESK OPERATION</p>
+            <h2>Guest Adjustment</h2>
+
+            <p id="guestAdjustmentGuestText">
+              Verify the actual number of guests currently inside the resort.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="guest-adjustment-close-btn"
+            id="closeGuestAdjustmentBtn"
+            aria-label="Close guest adjustment modal"
+          >
+            ×
+          </button>
+        </div>
+
+        <div class="guest-adjustment-summary-grid">
+          <div class="guest-adjustment-summary-item">
+            <span>Booked Guests</span>
+            <strong id="bookedGuestCountText">0</strong>
+          </div>
+
+          <div class="guest-adjustment-summary-item">
+            <span>Extra Guests</span>
+            <strong id="extraGuestCountText">0</strong>
+          </div>
+        </div>
+
+        <div class="guest-adjustment-form-group">
+          <label for="actualGuestCountInput">Actual Guests Inside</label>
+
+          <input
+            type="number"
+            id="actualGuestCountInput"
+            min="1"
+            step="1"
+            value="1"
+          />
+
+          <small>
+            Enter the verified number of guests currently inside under this
+            reservation.
+          </small>
+        </div>
+
+        <div class="guest-adjustment-form-group">
+          <label for="extraGuestRateInput">Extra Guest Rate Per Pax</label>
+
+          <input
+            type="number"
+            id="extraGuestRateInput"
+            min="0"
+            step="0.01"
+            value="0"
+            placeholder="0.00"
+          />
+
+          <small>
+            Only guests above the originally booked guest count are charged
+            using this rate.
+          </small>
+        </div>
+
+        <div class="guest-adjustment-charge-preview">
+          <span>Calculated Extra Guest Total</span>
+          <strong id="extraGuestChargePreview">₱0.00</strong>
+        </div>
+
+        <div class="guest-adjustment-payment-summary">
+          <div class="guest-adjustment-payment-row">
+            <span>Previously Paid Extra Guest Charges</span>
+            <strong id="paidExtraGuestChargeText">₱0.00</strong>
+          </div>
+
+          <div class="guest-adjustment-payment-row due-row">
+            <span>Additional Amount to Collect</span>
+            <strong id="additionalExtraGuestDueText">₱0.00</strong>
+          </div>
+        </div>
+
+        <div class="guest-adjustment-note">
+          The original booked guest count stays unchanged. Already-paid
+          <strong>Extra Guest Charge</strong> records are preserved. If more
+          guests arrive later, the system creates or updates only the
+          additional unpaid amount that still needs to be collected.
+        </div>
+
+        <div class="guest-adjustment-modal-actions">
+          <button
+            type="button"
+            class="guest-adjustment-save-btn"
+            id="saveGuestAdjustmentBtn"
+          >
+            Apply Guest Adjustment
+          </button>
+
+          <button
+            type="button"
+            class="guest-adjustment-cancel-btn"
+            id="cancelGuestAdjustmentBtn"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="entrance-adjustment-modal" id="entranceAdjustmentModal">
+      <div class="entrance-adjustment-modal-box">
+        <div class="entrance-adjustment-header">
+          <div>
+            <p class="entrance-adjustment-eyebrow">FRONT DESK OPERATION</p>
+            <h2>Entrance Fee Adjustment</h2>
+
+            <p id="entranceAdjustmentGuestText">
+              Verify which chargeable guests qualify for the official
+              Kid/Senior/PWD special entrance rate.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="entrance-adjustment-close-btn"
+            id="closeEntranceAdjustmentBtn"
+            aria-label="Close entrance adjustment modal"
+          >
+            ×
+          </button>
+        </div>
+
+        <div
+          id="currentEntranceAdjustmentBox"
+          class="current-entrance-adjustment-box empty"
+        >
+          No entrance adjustment has been applied yet.
+        </div>
+
+        <div class="entrance-adjustment-meta-grid">
+          <div class="entrance-adjustment-meta-item">
+            <span>Booked Guests</span>
+            <strong id="entranceBookedGuestsText">0</strong>
+          </div>
+
+          <div class="entrance-adjustment-meta-item">
+            <span>Actual Guests</span>
+            <strong id="entranceActualGuestsText">0</strong>
+          </div>
+
+          <div class="entrance-adjustment-meta-item">
+            <span>Included Free Entrance</span>
+            <strong id="entranceIncludedFreeText">0 pax</strong>
+          </div>
+
+          <div class="entrance-adjustment-meta-item">
+            <span>Chargeable Entrance Guests</span>
+            <strong id="entranceChargeableGuestsText">0</strong>
+          </div>
+
+          <div class="entrance-adjustment-meta-item">
+            <span>Adult Entrance Rate Per Pax</span>
+            <strong id="entranceRateText">₱0.00</strong>
+          </div>
+
+          <div class="entrance-adjustment-meta-item">
+            <span>Kid / Senior / PWD Rate Per Pax</span>
+            <strong id="entranceSpecialRateText">₱0.00</strong>
+          </div>
+
+          <div class="entrance-adjustment-meta-item">
+            <span>Net Entrance Collected</span>
+            <strong id="entranceCollectedText">₱0.00</strong>
+          </div>
+
+          <div class="entrance-adjustment-meta-item wide">
+            <span>Gross Entrance Fee at Adult Rate</span>
+            <strong id="grossEntranceFeeText">₱0.00</strong>
+          </div>
+        </div>
+
+        <div class="entrance-adjustment-input-grid">
+          <div class="entrance-adjustment-form-group">
+            <label for="entranceSeniorPaxInput">Senior Citizen Pax</label>
+
+            <input
+              type="number"
+              id="entranceSeniorPaxInput"
+              min="0"
+              step="1"
+              value="0"
+            />
+
+            <small>Uses the official Kid/Senior/PWD fixed entrance rate.</small>
+          </div>
+
+          <div class="entrance-adjustment-form-group">
+            <label for="entrancePwdPaxInput">PWD Pax</label>
+
+            <input
+              type="number"
+              id="entrancePwdPaxInput"
+              min="0"
+              step="1"
+              value="0"
+            />
+
+            <small>Uses the official Kid/Senior/PWD fixed entrance rate.</small>
+          </div>
+
+          <div class="entrance-adjustment-form-group">
+            <label for="entranceKidFreePaxInput">Kid Special-Rate Pax</label>
+
+            <input
+              type="number"
+              id="entranceKidFreePaxInput"
+              min="0"
+              step="1"
+              value="0"
+            />
+
+            <small>
+              Uses the official Kid/Senior/PWD fixed entrance rate.
+            </small>
+          </div>
+        </div>
+
+        <div class="entrance-adjustment-form-group">
+          <label for="entranceAdjustmentNoteInput">Verification Note</label>
+
+          <textarea
+            id="entranceAdjustmentNoteInput"
+            placeholder="Example: 1 Senior ID verified, 1 PWD ID verified, 1 kid confirmed for special entrance rate."
+          ></textarea>
+
+          <small>
+            Required. Record how Front Desk verified each Senior/PWD/Kid
+            special-rate guest.
+          </small>
+        </div>
+
+        <div class="entrance-adjustment-breakdown">
+          <h3>Entrance Fee Breakdown</h3>
+
+          <div class="entrance-breakdown-row">
+            <span>Senior Citizen Rate Adjustment</span>
+            <strong id="entranceSeniorDiscountText">-₱0.00</strong>
+          </div>
+
+          <div class="entrance-breakdown-row">
+            <span>PWD Rate Adjustment</span>
+            <strong id="entrancePwdDiscountText">-₱0.00</strong>
+          </div>
+
+          <div class="entrance-breakdown-row">
+            <span>Kid Rate Adjustment</span>
+            <strong id="entranceKidDiscountText">-₱0.00</strong>
+          </div>
+
+          <div class="entrance-breakdown-row total-deduction">
+            <span>Total Special-Rate Adjustment</span>
+            <strong id="entranceTotalDeductionText">-₱0.00</strong>
+          </div>
+
+          <div class="entrance-breakdown-row final-fee">
+            <span>Final Entrance Fee</span>
+            <strong id="finalEntranceFeeText">₱0.00</strong>
+          </div>
+
+          <div class="entrance-breakdown-row remaining-fee">
+            <span>Remaining Entrance Fee</span>
+            <strong id="remainingEntranceFeeText">₱0.00</strong>
+          </div>
+
+          <div
+            class="entrance-breakdown-row overpaid-fee"
+            id="entranceOverpaidRow"
+          >
+            <span>Possible Entrance Overpayment</span>
+            <strong id="entranceOverpaidText">₱0.00</strong>
+          </div>
+        </div>
+
+        <div
+          class="entrance-adjustment-policy-note"
+          id="entranceAdjustmentPolicyNote"
+        >
+          Room free-entrance inclusions are applied first. Among the remaining
+          chargeable guests, Kid/Senior/PWD guests use the resort's official
+          fixed special entrance rate instead of a percentage discount. The
+          ₱100 subsequent-day fee is not automated in this phase. Apply or
+          update the special-rate counts before collecting the final entrance fee.
+        </div>
+
+        <div
+          class="entrance-adjustment-policy-note invalid"
+          id="entranceReconciliationPanel"
+          hidden
+        >
+          <strong>Entrance Overpayment Reconciliation</strong>
+
+          <p>
+            Preserve the original collection record and reconcile only the
+            current backend-calculated overpayment before checkout.
+          </p>
+
+          <p>
+            Originally Collected:
+            <strong id="entranceGrossCollectedText">₱0.00</strong>
+            &nbsp;|&nbsp;
+            Already Reconciled:
+            <strong id="entranceReconciledOutText">₱0.00</strong>
+            &nbsp;|&nbsp;
+            Current Overpayment:
+            <strong id="entranceReconciliationAmountText">₱0.00</strong>
+          </p>
+
+          <div class="entrance-adjustment-form-group">
+            <label for="entranceReconciliationType">
+              Reconciliation Type
+            </label>
+
+            <select id="entranceReconciliationType">
+              <option value="refund">Refunded to Guest</option>
+              <option value="correction">Payment Correction / Void</option>
+            </select>
+          </div>
+
+          <div class="entrance-adjustment-form-group">
+            <label for="entranceReconciliationNote">
+              Reconciliation Note
+            </label>
+
+            <textarea
+              id="entranceReconciliationNote"
+              maxlength="500"
+              placeholder="Example: ₱200 returned to guest after verified guest count decreased from 5 to 4."
+            ></textarea>
+
+            <small>
+              Required. Record what happened to the overpaid entrance money.
+            </small>
+          </div>
+
+          <button
+            type="button"
+            class="entrance-adjustment-save-btn"
+            id="reconcileEntranceOverpaymentBtn"
+          >
+            Confirm Overpayment Reconciliation
+          </button>
+        </div>
+
+        <div class="entrance-adjustment-actions">
+          <button
+            type="button"
+            class="entrance-adjustment-save-btn"
+            id="saveEntranceAdjustmentBtn"
+          >
+            Apply Entrance Adjustment
+          </button>
+
+          <button
+            type="button"
+            class="entrance-adjustment-save-btn"
+            id="collectEntranceFeeBtn"
+            disabled
+          >
+            Loading Entrance Balance...
+          </button>
+
+          <button
+            type="button"
+            class="entrance-adjustment-remove-btn"
+            id="removeEntranceAdjustmentBtn"
+          >
+            Remove Adjustment
+          </button>
+
+          <button
+            type="button"
+            class="entrance-adjustment-cancel-btn"
+            id="cancelEntranceAdjustmentBtn"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
+
+    <div class="stay-modal" id="addAccommodationModal">
+      <div class="stay-modal-box">
+        <div class="stay-modal-header">
+          <div>
+            <p class="stay-modal-eyebrow">FRONT DESK OPERATION</p>
+            <h2>Add Accommodation</h2>
+
+            <p id="addAccommodationReservationText">
+              Add another accommodation to this active reservation.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="stay-modal-close-btn"
+            id="closeAddAccommodationBtn"
+            aria-label="Close Add Accommodation modal"
+          >
+            ×
+          </button>
+        </div>
+
+        <div class="stay-form-grid">
+          <div class="stay-form-group full">
+            <label for="addAccommodationSelect">Accommodation</label>
+
+            <select id="addAccommodationSelect">
+              <option value="">Loading accommodations...</option>
+            </select>
+
+            <small>
+              Only accommodations currently marked available are listed here.
+              The selected schedule is still checked against reservation
+              conflicts before it can be saved.
+            </small>
+          </div>
+
+          <div class="stay-form-group">
+            <label for="addAccommodationSlot">Schedule Type</label>
+
+            <select id="addAccommodationSlot">
+              <option value="day_tour">Day Tour</option>
+              <option value="night">Night</option>
+              <option value="day_extended">Day 22/23 Hours</option>
+              <option value="night_extended">Night 22/23 Hours</option>
+            </select>
+          </div>
+
+          <div class="stay-form-group">
+            <label for="addAccommodationDate">Reservation Date</label>
+
+            <input
+              type="date"
+              id="addAccommodationDate"
+            />
+          </div>
+
+          <div class="stay-form-group">
+            <label for="addAccommodationStayDuration">Stay Duration</label>
+
+            <select id="addAccommodationStayDuration">
+              <option value="1">1 day</option>
+              <option value="2">2 days</option>
+              <option value="3">3 days</option>
+              <option value="4">4 days</option>
+              <option value="5">5 days</option>
+            </select>
+
+            <small>
+              Day Tour and Night are fixed to one schedule. Multi-day duration
+              is enabled only for Day/Night 22 or 23 Hours.
+            </small>
+          </div>
+        </div>
+
+        <div class="stay-preview" id="addAccommodationPreview">
+          <strong>Add Accommodation Preview</strong>
+          <span>Complete the form to preview the accommodation balance.</span>
+        </div>
+
+        <div
+          class="stay-availability-status muted"
+          id="addAccommodationAvailabilityStatus"
+        >
+          Select accommodation and schedule to check availability.
+        </div>
+
+        <div class="stay-financial-note">
+          <strong>Important:</strong>
+          Adding an accommodation does not automatically record payment. The
+          accommodation price is added to the reservation's unpaid
+          accommodation balance and will be collected in the accommodation /
+          final-balance workflow.
+        </div>
+
+        <div class="stay-modal-actions">
+          <button
+            type="button"
+            class="stay-primary-btn"
+            id="saveAddAccommodationBtn"
+            disabled
+          >
+            Add as Unpaid Accommodation Balance
+          </button>
+
+          <button
+            type="button"
+            class="stay-cancel-btn"
+            id="cancelAddAccommodationBtn"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="stay-modal" id="extendStayModal">
+      <div class="stay-modal-box">
+        <div class="stay-modal-header">
+          <div>
+            <p class="stay-modal-eyebrow">FRONT DESK OPERATION</p>
+            <h2>Extend Stay</h2>
+
+            <p id="extendStayReservationText">
+              Extend one of the guest's existing accommodation items.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="stay-modal-close-btn"
+            id="closeExtendStayBtn"
+            aria-label="Close Extend Stay modal"
+          >
+            ×
+          </button>
+        </div>
+
+        <div class="stay-form-grid">
+          <div class="stay-form-group full">
+            <label for="extendStayItemSelect">Accommodation to Extend</label>
+
+            <select id="extendStayItemSelect"></select>
+
+            <small>
+              The extension starts from the selected item's current checkout.
+              The backend checks for conflicts before the extension is saved.
+            </small>
+          </div>
+
+          <div class="stay-form-group">
+            <label for="extendStayDurationSelect">Extension Duration</label>
+
+            <select id="extendStayDurationSelect">
+              <option value="1">1 day</option>
+              <option value="2">2 days</option>
+              <option value="3">3 days</option>
+              <option value="4">4 days</option>
+              <option value="5">5 days</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="stay-preview" id="extendStayPreview">
+          <strong>Extend Stay Preview</strong>
+          <span>Select an accommodation item to continue.</span>
+        </div>
+
+        <div
+          class="stay-availability-status muted"
+          id="extendStayAvailabilityStatus"
+        >
+          Select an accommodation and extension duration.
+        </div>
+
+        <div class="stay-financial-note">
+          <strong>Important:</strong>
+          Extending a stay does not automatically record payment. The
+          extension fee is added to the unpaid accommodation balance and will
+          be collected separately.
+        </div>
+
+        <div class="stay-modal-actions">
+          <button
+            type="button"
+            class="stay-primary-btn"
+            id="saveExtendStayBtn"
+            disabled
+          >
+            Add Extension as Unpaid Balance
+          </button>
+
+          <button
+            type="button"
+            class="stay-cancel-btn"
+            id="cancelExtendStayBtn"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="extra-bed-modal" id="extraBedModal">
+      <div class="extra-bed-modal-box">
+        <div class="extra-bed-header">
+          <div>
+            <p class="extra-bed-eyebrow">FRONT DESK OPERATION</p>
+            <h2>Extra Bed</h2>
+
+            <p id="extraBedReservationText">
+              Manage Extra Bed quantity for this checked-in reservation.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="extra-bed-close-btn"
+            id="closeExtraBedBtn"
+            aria-label="Close Extra Bed modal"
+          >
+            ×
+          </button>
+        </div>
+
+        <div class="extra-bed-summary-grid">
+          <div class="extra-bed-summary-item">
+            <span>Official Rate Per Bed</span>
+            <strong id="extraBedRateText">₱200.00</strong>
+          </div>
+
+          <div class="extra-bed-summary-item">
+            <span>Previously Paid Extra Bed Charges</span>
+            <strong id="extraBedPaidTotalText">₱0.00</strong>
+          </div>
+        </div>
+
+        <div class="extra-bed-form-group">
+          <label for="extraBedCountInput">Extra Bed Quantity</label>
+
+          <input
+            type="number"
+            id="extraBedCountInput"
+            min="0"
+            step="1"
+            value="0"
+          />
+
+          <small>
+            Official resort rate is ₱200 per bed. If the quantity increases
+            after an earlier payment, only the new unpaid difference is due.
+          </small>
+        </div>
+
+        <div class="extra-bed-breakdown">
+          <h3>Extra Bed Breakdown</h3>
+
+          <div class="extra-bed-breakdown-row">
+            <span>Current Target Extra Bed Total</span>
+            <strong id="extraBedTargetTotalText">₱0.00</strong>
+          </div>
+
+          <div class="extra-bed-breakdown-row due">
+            <span>Remaining Extra Bed Fee</span>
+            <strong id="extraBedRemainingText">₱0.00</strong>
+          </div>
+
+          <div
+            class="extra-bed-breakdown-row overpaid"
+            id="extraBedOverpaidRow"
+          >
+            <span>Possible Extra Bed Overpayment</span>
+            <strong id="extraBedOverpaidText">₱0.00</strong>
+          </div>
+        </div>
+
+        <div class="extra-bed-status-note" id="extraBedStatusNote">
+          Loading current Extra Bed summary...
+        </div>
+
+        <div class="extra-bed-actions">
+          <button
+            type="button"
+            class="extra-bed-save-btn"
+            id="saveExtraBedBtn"
+          >
+            Apply Extra Bed Quantity
+          </button>
+
+          <button
+            type="button"
+            class="extra-bed-collect-btn"
+            id="collectExtraBedBtn"
+            disabled
+          >
+            Loading Extra Bed Balance...
+          </button>
+
+          <button
+            type="button"
+            class="extra-bed-cancel-btn"
+            id="cancelExtraBedBtn"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="additional-charges-modal" id="additionalChargesModal">
+      <div class="additional-charges-modal-box">
+        <div class="additional-charges-header">
+          <div>
+            <p class="additional-charges-eyebrow">FRONT DESK OPERATION</p>
+            <h2>Additional Charges</h2>
+
+            <p id="additionalChargesReservationText">
+              Manage manual charges for this checked-in reservation.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="additional-charges-close-btn"
+            id="closeAdditionalChargesBtn"
+            aria-label="Close Additional Charges modal"
+          >
+            ×
+          </button>
+        </div>
+
+        <div class="additional-charges-summary">
+          <div class="additional-charges-summary-item">
+            <span>Total Manual Additional Charges</span>
+            <strong id="additionalChargesTotalText">₱0.00</strong>
+          </div>
+
+          <div class="additional-charges-summary-item">
+            <span>Unpaid Manual Additional Charges</span>
+            <strong id="additionalChargesUnpaidText">₱0.00</strong>
+          </div>
+        </div>
+
+        <div class="additional-charges-list" id="additionalChargesList">
+          <div class="additional-charges-empty">
+            Loading Additional Charges...
+          </div>
+        </div>
+
+        <div class="additional-charges-form">
+          <h3>Add Additional Charge</h3>
+
+          <div class="additional-charges-form-grid">
+            <div class="additional-charges-form-group">
+              <label for="additionalChargeType">Charge Category</label>
+
+              <select id="additionalChargeType">
+                <option value="damage">Damage</option>
+                <option value="missing_item">Missing Item</option>
+                <option value="service">Service</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+
+            <div class="additional-charges-form-group">
+              <label for="additionalChargeAmount">Amount</label>
+
+              <input
+                type="number"
+                id="additionalChargeAmount"
+                min="0.01"
+                step="0.01"
+                placeholder="0.00"
+              />
+            </div>
+
+            <div
+              class="additional-charges-form-group full custom"
+              id="additionalCustomNameWrap"
+            >
+              <label for="additionalCustomName">Custom Charge Name</label>
+
+              <input
+                type="text"
+                id="additionalCustomName"
+                maxlength="70"
+                placeholder="Example: Special equipment cleaning"
+              />
+            </div>
+
+            <div class="additional-charges-form-group full">
+              <label for="additionalChargeNote">
+                Verification / Charge Note
+              </label>
+
+              <textarea
+                id="additionalChargeNote"
+                maxlength="500"
+                placeholder="Example: Broken glass table verified by Front Desk."
+              ></textarea>
+            </div>
+          </div>
+
+          <div class="additional-charges-policy-note">
+            New manual Additional Charges are saved as unpaid. Payment is not
+            collected in this modal. Step 3F-E — Collect Unpaid Charges will
+            combine the guest's outstanding onsite charges into one collection
+            workflow.
+          </div>
+
+          <div class="additional-charges-actions">
+            <button
+              type="button"
+              class="additional-charges-save-btn"
+              id="saveAdditionalChargeBtn"
+            >
+              Add Unpaid Charge
+            </button>
+
+            <button
+              type="button"
+              class="additional-charges-cancel-btn"
+              id="cancelAdditionalChargesBtn"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="../sharedJS/toast.js"></script>
+    <script src="../sharedJS/api-config.js"></script>
+    <script src="../frontdeskJS/frontdeskGuests.js"></script>
+    <script src="../frontdeskJS/frontdeskStay.js"></script>
+    <script src="../frontdeskJS/frontdeskAccommodationBalance.js"></script>
+    <script src="../frontdeskJS/frontdeskCheckout.js"></script>
+    <script src="../frontdeskJS/frontdeskEntranceCollection.js"></script>
+    <script src="../frontdeskJS/frontdeskExtraBed.js"></script>
+    <script src="../frontdeskJS/frontdeskAdditionalCharges.js"></script>
+    <script src="../frontdeskJS/frontdeskUnpaidCharges.js"></script>
+    <script src="../frontdeskJS/frontdeskGuestActionsUI.js"></script>
+  </body>
+</html>
+

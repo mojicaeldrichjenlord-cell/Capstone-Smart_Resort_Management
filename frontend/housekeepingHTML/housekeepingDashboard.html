@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Housekeeping Dashboard | ArvicSeaside</title>
+
+    <link rel="stylesheet" href="../sharedCSS/global.css" />
+    <link rel="stylesheet" href="../housekeepingCSS/housekeepingDashboard.css" />
+  </head>
+
+  <body>
+    <a class="hk-skip" href="#mainContent">Skip to main content</a>
+    <!-- Role header: identity is loaded from the signed /housekeeping/me API. -->
+    <header class="hk-navbar">
+      <div>
+        <strong>Arvic Seaside</strong>
+        <span>Housekeeping Staff</span>
+      </div>
+
+      <button type="button" id="logoutBtn">Logout</button>
+    </header>
+
+    <main class="hk-page" id="mainContent" tabindex="-1">
+      <!-- Profile summary: read-only name/email of the authenticated staff member. -->
+      <section class="hk-hero">
+        <div>
+          <p>HOUSEKEEPING STAFF</p>
+          <h1>Daily Accommodation Schedule</h1>
+          <span>
+            View today’s booked, occupied, arriving, and departing accommodations
+            so rooms and resort areas can be prepared.
+          </span>
+        </div>
+
+        <div class="hk-user-card">
+          <strong id="accountName">Verifying session…</strong>
+          <small id="accountEmail">-</small>
+          <span>Booking schedule & assigned cleaning tasks</span>
+        </div>
+      </section>
+
+      <!-- Phase 1: existing booking schedule, NOT a room cleaning-status source. -->
+      <section class="hk-panel" aria-labelledby="scheduleHeading">
+        <div class="hk-panel-header">
+          <div>
+            <h2 id="scheduleHeading">Daily Accommodation Schedule</h2>
+            <p>Select a date to review approved bookings and completed stays.</p>
+          </div>
+          <!-- Date filter reloads reservations from Aiven through authorized APIs. -->
+          <form id="hkScheduleFilters" class="hk-filters">
+            <label for="hkDate">Schedule date</label>
+            <input id="hkDate" name="date" type="date" required />
+            <button type="submit">Refresh Schedule</button>
+          </form>
+        </div>
+        <p class="hk-status" id="hkStatus" role="status" aria-live="polite">Verifying Housekeeping account…</p>
+        <!-- Summary cards count reservation items (not individual people). -->
+        <div class="hk-summary" aria-label="Accommodation schedule totals">
+          <article><span>Scheduled Items</span><strong id="hkScheduled">—</strong></article>
+          <article><span>Arrivals</span><strong id="hkArrivals">—</strong></article>
+          <article><span>Departures</span><strong id="hkDepartures">—</strong></article>
+          <article><span>Checked-In Items</span><strong id="hkCheckedIn">—</strong></article>
+          <article><span>Completed Stays</span><strong id="hkCompleted">—</strong></article>
+        </div>
+        <!-- JS inserts sanitized rows into this table with textContent. -->
+        <!-- On mobile the detailed schedule scrolls horizontally, not the whole page. -->
+        <p class="hk-mobile-table-hint">Swipe sideways in the table to see all schedule columns &harr;</p>
+        <div class="hk-table-region" role="region" aria-label="Scrollable Housekeeping schedule" tabindex="0">
+          <table aria-label="Housekeeping booking schedule">
+            <thead>
+              <tr><th>Accommodation</th><th>Category</th><th>Reservation</th><th>Stay Type</th><th>Check-In</th><th>Check-Out</th><th>Schedule</th><th>Booking Status</th></tr>
+            </thead>
+            <tbody id="hkScheduleBody">
+              <tr><td colspan="8">Loading schedule…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="permission-note">
+          This is a <strong>read-only booking schedule</strong>, not proof of room readiness.
+          Assigned cleaning tasks are tracked independently. Housekeeping cannot modify
+          reservations, collect payments, or change accommodation availability.
+        </p>
+      </section>
+      <!-- Phase 2: separate turnover tasks assigned by Manager after checkout. -->
+      <section class="hk-panel" aria-labelledby="hkTaskHeading">
+        <div class="hk-panel-header">
+          <div>
+            <h2 id="hkTaskHeading">My Cleaning Tasks</h2>
+            <p>Manager-assigned turnover cleaning tasks, including older unfinished assignments.</p>
+          </div>
+          <button type="button" id="hkRefreshTasks" class="hk-action">Refresh My Tasks</button>
+        </div>
+        <p id="hkTaskStatus" role="status" aria-live="polite" class="hk-status">Checking cleaning-task availability…</p>
+        <!-- Only the assigned Housekeeping user can start or mark a task cleaned. -->
+        <!-- Keep the cleaning status and action discoverable on narrow screens. -->
+        <p class="hk-mobile-table-hint">Swipe sideways in the table to see task status and actions &harr;</p>
+        <div class="hk-table-region" role="region" aria-label="Scrollable assigned cleaning tasks" tabindex="0">
+          <table aria-label="Assigned housekeeping cleaning tasks">
+            <thead><tr><th>Accommodation</th><th>Reservation</th><th>Checkout Date</th><th>Cleaning Status</th><th>Next Action</th></tr></thead>
+            <tbody id="hkTaskRows"><tr><td colspan="5">Loading…</td></tr></tbody>
+          </table>
+        </div>
+        <p class="permission-note">
+          Workflow: Needs Cleaning → In Progress → Cleaned → Manager Verified Ready.
+          Only your assigned tasks can be started or marked cleaned.
+          <strong>Verified Ready is not the same as accommodation booking availability.</strong>
+        </p>
+      </section>
+    </main>
+
+    <script src="../sharedJS/toast.js"></script>
+    <script src="../sharedJS/api-config.js"></script>
+    <!-- Schedule and cleaning tasks use separate scripts and protected endpoints. -->
+    <script src="../housekeepingJS/housekeepingDashboard.js"></script>
+    <script src="../housekeepingJS/housekeepingTasks.js"></script>
+  </body>
+</html>

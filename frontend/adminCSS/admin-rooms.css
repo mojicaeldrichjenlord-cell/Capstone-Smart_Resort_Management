@@ -618,3 +618,53 @@
   color: #64748b !important;
   font-style: italic;
 }
+
+
+/* =====================================================
+   ADMIN PHOTO PICKER
+   Clear file selection, preview and gallery removal UI.
+   The browser displays filenames; never ask admins for file paths.
+===================================================== */
+.room-form-group input[type="file"] {
+  cursor: pointer;
+  min-height: 52px;
+  background: #f8fafc;
+}
+.room-form-group input[type="file"]::file-selector-button {
+  border: 0;
+  border-radius: 10px;
+  background: #0f766e;
+  color: #fff;
+  padding: 9px 13px;
+  margin-right: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.remove-photo-btn {
+  align-self: flex-start;
+  padding: 8px 13px;
+  border: 1px solid #fca5a5;
+  color: #991b1b;
+  background: #fff5f5;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.gallery-preview-item button {
+  border: 0;
+  background: #fff1f2;
+  color: #991b1b;
+  cursor: pointer;
+  width: 100%;
+  padding: 9px;
+  font-weight: 800;
+}
+.gallery-preview-item span {
+  overflow-wrap: anywhere;
+}
+#photoUploadStatus:not(:empty) {
+  padding: 12px 16px;
+  background: #e6fffb;
+  border: 1px solid #99f6e4;
+  border-radius: 12px;
+}

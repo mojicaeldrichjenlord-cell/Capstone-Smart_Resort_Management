@@ -1,0 +1,316 @@
+/* ============================================================
+   STEP 3F-E: FRONT DESK — COLLECT UNPAID CHARGES
+   File: frontend/frontdeskCSS/frontdeskUnpaidCharges.css
+============================================================ */
+
+.collect-unpaid-action-btn {
+  border: 0;
+  border-radius: 999px;
+  padding: 12px 18px;
+  background: linear-gradient(135deg, #0f766e, #0d9488);
+  color: #fff;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(15, 118, 110, 0.2);
+}
+
+.unpaid-charges-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(4px);
+}
+
+.unpaid-charges-modal.show {
+  display: flex;
+}
+
+.unpaid-charges-modal-box {
+  width: min(760px, 100%);
+  max-height: 88vh;
+  overflow-y: auto;
+  border-radius: 24px;
+  padding: 24px;
+  background: #fff;
+  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.3);
+}
+
+.unpaid-charges-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+
+.unpaid-charges-eyebrow {
+  margin: 0;
+  color: #0f766e;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.unpaid-charges-header h2 {
+  margin: 3px 0 6px;
+  color: #0f172a;
+}
+
+.unpaid-charges-header p:not(.unpaid-charges-eyebrow) {
+  margin: 0;
+  color: #64748b;
+}
+
+.unpaid-charges-close-btn {
+  flex: 0 0 auto;
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 50%;
+  background: #fee2e2;
+  color: #b91c1c;
+  font-size: 1.35rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.unpaid-charges-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.unpaid-summary-item {
+  padding: 16px;
+  border: 1px solid #dbe5ef;
+  border-radius: 16px;
+  background: #f8fafc;
+}
+
+.unpaid-summary-item span {
+  display: block;
+  margin-bottom: 7px;
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.unpaid-summary-item strong {
+  color: #0f172a;
+  font-size: 1.12rem;
+}
+
+.unpaid-summary-item.paid {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.unpaid-summary-item.paid strong {
+  color: #166534;
+}
+
+.unpaid-summary-item.due {
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+
+.unpaid-summary-item.due strong {
+  color: #b45309;
+}
+
+.unpaid-charges-list {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.unpaid-charges-state {
+  padding: 20px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 15px;
+  background: #f8fafc;
+  color: #64748b;
+  text-align: center;
+  font-weight: 700;
+}
+
+.unpaid-charges-state.settled {
+  border-color: #86efac;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.unpaid-charges-state.error {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.unpaid-charge-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 15px;
+  border: 1px solid #fde68a;
+  border-radius: 15px;
+  background: #fffbeb;
+}
+
+.unpaid-charge-title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.unpaid-charge-title span {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #b45309;
+  font-size: 0.72rem;
+  font-weight: 900;
+}
+
+.unpaid-charge-row p {
+  margin: 6px 0 4px;
+  color: #475569;
+}
+
+.unpaid-charge-row small {
+  color: #94a3b8;
+}
+
+.unpaid-charge-amount {
+  flex: 0 0 auto;
+  color: #b45309;
+}
+
+.unpaid-category-box {
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border-radius: 15px;
+  background: #f1f5f9;
+}
+
+.unpaid-category-box h3 {
+  margin: 0 0 8px;
+  color: #0f172a;
+  font-size: 1rem;
+}
+
+.unpaid-category-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  color: #475569;
+}
+
+.unpaid-category-row + .unpaid-category-row {
+  border-top: 1px solid #dbe5ef;
+}
+
+.unpaid-charges-policy-note,
+.unpaid-charges-status-note {
+  margin-bottom: 14px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  line-height: 1.5;
+}
+
+.unpaid-charges-policy-note {
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1e40af;
+  font-weight: 700;
+}
+
+.unpaid-charges-status-note {
+  background: #f8fafc;
+  color: #475569;
+}
+
+.unpaid-charges-status-note.due {
+  border: 1px solid #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.unpaid-charges-status-note.settled {
+  border: 1px solid #86efac;
+  background: #f0fdf4;
+  color: #166534;
+  font-weight: 700;
+}
+
+.unpaid-charges-status-note.error {
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.unpaid-charges-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.unpaid-charges-collect-btn,
+.unpaid-charges-cancel-btn {
+  border: 0;
+  border-radius: 999px;
+  padding: 12px 18px;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.unpaid-charges-collect-btn {
+  background: #0f766e;
+  color: #fff;
+}
+
+.unpaid-charges-collect-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.unpaid-charges-cancel-btn {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+@media (max-width: 720px) {
+  .unpaid-charges-modal {
+    padding: 12px;
+  }
+
+  .unpaid-charges-modal-box {
+    padding: 18px;
+  }
+
+  .unpaid-charges-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .unpaid-charge-row {
+    flex-direction: column;
+  }
+
+  .unpaid-charges-actions {
+    flex-direction: column;
+  }
+
+  .unpaid-charges-collect-btn,
+  .unpaid-charges-cancel-btn {
+    width: 100%;
+  }
+}

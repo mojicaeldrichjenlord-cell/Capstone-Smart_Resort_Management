@@ -1,5 +1,5 @@
 // ============================================================
-// SMARTRESORT ADMIN MAP EDITOR SCRIPT
+// ARVICSEASIDE ADMIN MAP EDITOR SCRIPT
 // Purpose:
 // - Check admin access
 // - Load accommodations for marker linking
@@ -13,6 +13,16 @@ let accommodations = [];
 let selectedMarkerId = null;
 let isAddMode = false;
 let draggedMarkerId = null;
+
+// The signed Admin token stays in tab-scoped sessionStorage.
+function adminMapHeaders(includeJson = true) {
+  const token = sessionStorage.getItem("adminToken");
+  if (!token) throw new Error("Admin session expired. Please log in again.");
+  return {
+    ...(includeJson ? { "Content-Type": "application/json" } : {}),
+    Authorization: "Bearer " + token,
+  };
+}
 
 const DEFAULT_MARKERS = [
   { name: "Family Room-B", type: "room", color: "#0ea5e9", info: "Family room area.", x: 31, y: 7, room_id: null },
@@ -36,7 +46,7 @@ const DEFAULT_MARKERS = [
 // ============================================================
 
 document.addEventListener("DOMContentLoaded", () => {
-  checkAdminAccess();
+  if (!checkAdminAccess()) return;
   setupLogout();
   setupEvents();
   initMapEditor();
@@ -48,18 +58,34 @@ document.addEventListener("DOMContentLoaded", () => {
 // ============================================================
 
 function checkAdminAccess() {
-  const user = JSON.parse(localStorage.getItem("user"));
+  let user = null;
+  try {
+    user = JSON.parse(localStorage.getItem("user") || "null");
+  } catch (error) {
+    console.error("Invalid stored account data:", error);
+  }
 
   if (!user) {
     alert("Please login first.");
     window.location.href = "../authHTML/login.html";
-    return;
+    return false;
   }
 
-  if (user.role !== "admin") {
-    alert("Access denied. Admin only.");
-    window.location.href = "../index.html";
+  const role = String(user.role || "").trim().toLowerCase();
+  if (role !== "admin") {
+    const destinations = {
+      customer: "../customerHTML/index.html",
+      frontdesk: "../frontdeskHTML/frontdeskDashboard.html",
+      staff: "../frontdeskHTML/frontdeskDashboard.html",
+      manager: "../managerHTML/managerDashboard.html",
+      housekeeping: "../housekeepingHTML/housekeepingDashboard.html",
+    };
+    alert("Access denied. Administrator account required.");
+    window.location.href = destinations[role] || "../authHTML/login.html";
+    return false;
   }
+
+  return true;
 }
 
 // ============================================================
@@ -76,6 +102,7 @@ function setupLogout() {
     e.preventDefault();
 
     localStorage.removeItem("user");
+    sessionStorage.removeItem("adminToken");
 
     if (typeof showToast === "function") {
       showToast("Logged out successfully.", "success");
@@ -127,7 +154,13 @@ function setupEvents() {
     .addEventListener("click", async () => {
       if (!confirm("Clear all markers from database?")) return;
 
-      await deleteAllMarkers();
+      try {
+        await deleteAllMarkers();
+      } catch (error) {
+        console.error("deleteAllMarkers error:", error);
+        alert(error.message || "Failed to clear map markers.");
+        return;
+      }
 
       markers = [];
       selectedMarkerId = null;
@@ -297,9 +330,7 @@ async function saveMarkersToDB() {
       if (marker.isNew || String(marker.id).startsWith("temp_")) {
         const response = await fetch(`${API_BASE}/map-markers`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: adminMapHeaders(),
           body: JSON.stringify(payload),
         });
 
@@ -311,9 +342,7 @@ async function saveMarkersToDB() {
       } else {
         const response = await fetch(`${API_BASE}/map-markers/${marker.id}`, {
           method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: adminMapHeaders(),
           body: JSON.stringify(payload),
         });
 
@@ -358,9 +387,14 @@ function buildMarkerPayload(marker) {
 async function deleteAllMarkers() {
   for (const marker of markers) {
     if (!marker.isNew && !String(marker.id).startsWith("temp_")) {
-      await fetch(`${API_BASE}/map-markers/${marker.id}`, {
+      const response = await fetch(`${API_BASE}/map-markers/${marker.id}`, {
         method: "DELETE",
+        headers: adminMapHeaders(false),
       });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.message || "Failed to delete saved marker.");
+      }
     }
   }
 }
@@ -599,6 +633,7 @@ async function deleteSelectedMarker() {
     if (!marker.isNew && !String(marker.id).startsWith("temp_")) {
       const response = await fetch(`${API_BASE}/map-markers/${marker.id}`, {
         method: "DELETE",
+        headers: adminMapHeaders(false),
       });
 
       const data = await response.json();

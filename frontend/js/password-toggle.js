@@ -1,3 +1,5 @@
+// Browser behavior for password toggle. Handles clicks, reads API results and updates the page.
+// Note: Keep existing behavior unchanged when adding new features.
 document.addEventListener("DOMContentLoaded", () => {
   const passwordGroups = document.querySelectorAll(".password-group");
 

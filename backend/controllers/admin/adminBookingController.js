@@ -1,0 +1,689 @@
+﻿const db = require("../../config/db");
+
+const VALID_BOOKING_STATUSES = [
+  "pending",
+  "approved",
+  "rejected",
+  "cancelled",
+];
+
+const EXTRA_BED_RATE = 200;
+
+function normalizeValue(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function toInteger(value, fallback = 0) {
+  const num = Number(value);
+  return Number.isInteger(num) ? num : fallback;
+}
+
+// ============================================================
+// GET ADMIN BOOKINGS
+// Uses the current reservations/reservation_items/accommodations tables.
+// This replaces the old query that still used the old bookings/rooms table.
+// ============================================================
+// Read reservations with their related accommodation information for the Admin dashboard.
+// This query uses the current reservations and reservation_items data model.
+exports.getAllAdminBookings = async (req, res) => {
+  try {
+    const [rows] = await db.promise().query(
+      `
+      SELECT
+        r.id,
+        r.reservation_code,
+        r.user_id,
+        r.booking_source,
+        r.first_name,
+        r.middle_name,
+        r.last_name,
+        r.contact_no,
+        r.guest_count,
+        r.actual_guest_count,
+        r.estimated_entrance_fee,
+        r.accommodation_total,
+        r.required_downpayment,
+        r.paid_amount,
+        r.remaining_balance,
+        r.note,
+        r.payment_method,
+        r.payment_status,
+        r.reservation_status AS status,
+        r.proof_of_payment,
+        r.proof_image_data,
+        r.reserved_at,
+        r.created_at,
+
+        COALESCE(r.extra_bed_count, 0) AS extra_bed_count,
+        COALESCE(r.extra_bed_fee, 0) AS extra_bed_fee,
+        COALESCE(r.extra_bed_paid, 0) AS extra_bed_paid,
+        r.extra_bed_paid_at,
+        COALESCE(r.is_checked_in, 0) AS is_checked_in,
+        r.checked_in_at,
+        COALESCE(r.entrance_fee_paid, 0) AS entrance_fee_paid,
+        COALESCE(r.entrance_fee_collected, 0) AS entrance_fee_collected,
+
+        u.email,
+
+        first_item.slot_label,
+        first_item.check_in_date,
+        first_item.check_in_time,
+        first_item.check_out_date,
+        first_item.check_out_time,
+
+        a.name AS room_name,
+        a.image,
+
+        item_counts.total_items,
+        acc_list.accommodation_list
+      FROM reservations r
+      LEFT JOIN users u ON r.user_id = u.id
+      LEFT JOIN (
+        SELECT reservation_id, MIN(id) AS first_item_id
+        FROM reservation_items
+        GROUP BY reservation_id
+      ) first_ref ON r.id = first_ref.reservation_id
+      LEFT JOIN reservation_items first_item ON first_ref.first_item_id = first_item.id
+      LEFT JOIN accommodations a ON first_item.accommodation_id = a.id
+      LEFT JOIN (
+        SELECT reservation_id, COUNT(*) AS total_items
+        FROM reservation_items
+        GROUP BY reservation_id
+      ) item_counts ON r.id = item_counts.reservation_id
+      LEFT JOIN (
+        SELECT
+          ri.reservation_id,
+          GROUP_CONCAT(a2.name ORDER BY ri.id ASC SEPARATOR ', ') AS accommodation_list
+        FROM reservation_items ri
+        INNER JOIN accommodations a2 ON ri.accommodation_id = a2.id
+        GROUP BY ri.reservation_id
+      ) acc_list ON r.id = acc_list.reservation_id
+      ORDER BY r.created_at DESC
+      `,
+    );
+
+    const bookings = rows.map((row) => ({
+      ...row,
+      fullname: [row.first_name, row.middle_name, row.last_name]
+        .filter(Boolean)
+        .join(" "),
+      phone: row.contact_no || "-",
+      check_in: row.check_in_date,
+      check_out: row.check_out_date,
+      check_in_time: row.check_in_time,
+      check_out_time: row.check_out_time,
+      guests: Number(row.actual_guest_count ?? row.guest_count ?? 0),
+      booked_guests: Number(row.guest_count || 0),
+      actual_guests: Number(row.actual_guest_count ?? row.guest_count ?? 0),
+      room_name: row.accommodation_list || row.room_name || "N/A",
+    }));
+
+    return res.status(200).json({
+      success: true,
+      bookings,
+    });
+  } catch (error) {
+    console.error("getAllAdminBookings error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch admin reservations.",
+      error: error.message,
+    });
+  }
+};
+
+// ============================================================
+// UPDATE RESERVATION STATUS
+// Uses reservations.reservation_status.
+// ============================================================
+// Handle permitted Admin reservation status changes.
+// Completion must go through the Front Desk checkout validator rather than this status endpoint.
+exports.updateAdminBookingStatus = async (req, res) => {
+  try {
+    const reservationId = Number(req.params.id);
+    const status = normalizeValue(req.body?.status);
+
+    // Completion must run the Front Desk checkout controller, which checks
+    // accommodation, entrance, extra-bed, and additional-charge balances.
+    if (status === "completed") {
+      return res.status(403).json({
+        success: false,
+        code: "FRONT_DESK_CHECKOUT_REQUIRED",
+        message: "Only Front Desk can complete a reservation through final checkout.",
+      });
+    }
+
+    if (!Number.isSafeInteger(reservationId) || reservationId <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid reservation ID.",
+      });
+    }
+
+    if (!VALID_BOOKING_STATUSES.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Invalid reservation status. Allowed values: pending, approved, rejected, cancelled.",
+      });
+    }
+
+    const [existingRows] = await db.promise().query(
+      `SELECT id, reservation_status, COALESCE(is_checked_in, 0) AS is_checked_in
+       FROM reservations WHERE id = ? LIMIT 1`,
+      [reservationId],
+    );
+
+    if (!existingRows.length) {
+      return res.status(404).json({
+        success: false,
+        message: "Reservation not found.",
+      });
+    }
+
+    const reservation = existingRows[0];
+    const currentStatus = normalizeValue(reservation.reservation_status);
+
+    // Match the Admin dashboard: cancellation/status management is only
+    // available before check-in. Never reopen terminal reservation history.
+    if (Number(reservation.is_checked_in) !== 0) {
+      return res.status(409).json({
+        success: false,
+        code: "RESERVATION_ALREADY_CHECKED_IN",
+        message: "This guest is already checked in. Use Front Desk operations.",
+      });
+    }
+    if (["completed", "cancelled", "rejected"].includes(currentStatus)) {
+      return res.status(409).json({
+        success: false,
+        code: "RESERVATION_STATUS_LOCKED",
+        message: "A completed, cancelled, or rejected reservation cannot be changed here.",
+      });
+    }
+
+    if (status !== currentStatus) {
+      // Recheck check-in and the original status in the UPDATE itself. This
+      // prevents a concurrent check-in/status change from being overwritten.
+      const [result] = await db.promise().query(
+        `UPDATE reservations SET reservation_status = ?
+         WHERE id = ? AND COALESCE(is_checked_in, 0) = 0
+           AND reservation_status = ?`,
+        [status, reservationId, reservation.reservation_status],
+      );
+      if (result.affectedRows !== 1) {
+        return res.status(409).json({
+          success: false,
+          code: "RESERVATION_CHANGED",
+          message: "Reservation changed while processing. Refresh and try again.",
+        });
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Reservation status updated successfully.",
+    });
+  } catch (error) {
+    console.error("updateAdminBookingStatus error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update reservation status.",
+      error: error.message,
+    });
+  }
+};
+
+
+
+// ============================================================
+// UPDATE GUEST ADJUSTMENT
+// Purpose:
+// - Keeps reservations.guest_count as the originally booked guest count.
+// - Saves the verified onsite count in reservations.actual_guest_count.
+// - Creates or updates one unpaid "Extra Guest Charge" row.
+// - Prevents duplicate extra guest charge rows from repeated saves.
+// - Protects already-paid extra guest charges from accidental recalculation.
+//
+// Endpoint:
+// PUT /api/admin/bookings/:id/guest-adjustment
+// ============================================================
+// Legacy Admin guest-adjustment handler: review alongside the dedicated Front Desk controller.
+// Guest changes must preserve original counts and already-collected charge history.
+exports.updateGuestAdjustment = async (req, res) => {
+  const connection = await db.promise().getConnection();
+
+  try {
+    const reservationId = Number(req.params.id);
+    const actualGuestCount = toInteger(req.body.actual_guest_count, -1);
+    const extraGuestRate = Number(req.body.extra_guest_rate || 0);
+
+    if (!reservationId || Number.isNaN(reservationId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid reservation ID.",
+      });
+    }
+
+    if (actualGuestCount < 1) {
+      return res.status(400).json({
+        success: false,
+        message: "Actual guest count must be at least 1.",
+      });
+    }
+
+    if (
+      !Number.isFinite(extraGuestRate) ||
+      extraGuestRate < 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Extra guest rate cannot be negative.",
+      });
+    }
+
+    await connection.beginTransaction();
+
+    const [reservationRows] = await connection.query(
+      `
+      SELECT
+        id,
+        guest_count,
+        actual_guest_count,
+        reservation_status,
+        is_checked_in
+      FROM reservations
+      WHERE id = ?
+      LIMIT 1
+      FOR UPDATE
+      `,
+      [reservationId],
+    );
+
+    if (!reservationRows.length) {
+      await connection.rollback();
+
+      return res.status(404).json({
+        success: false,
+        message: "Reservation not found.",
+      });
+    }
+
+    const reservation = reservationRows[0];
+    const reservationStatus = normalizeValue(
+      reservation.reservation_status,
+    );
+
+    if (["cancelled", "rejected", "completed"].includes(reservationStatus)) {
+      await connection.rollback();
+
+      return res.status(400).json({
+        success: false,
+        message:
+          "Guest adjustment is not allowed for cancelled, rejected, or completed reservations.",
+      });
+    }
+
+    if (Number(reservation.is_checked_in || 0) !== 1) {
+      await connection.rollback();
+
+      return res.status(400).json({
+        success: false,
+        message:
+          "Guest adjustment is only available after the guest is checked in.",
+      });
+    }
+
+    const bookedGuestCount = Number(reservation.guest_count || 0);
+    const extraGuestCount = Math.max(
+      actualGuestCount - bookedGuestCount,
+      0,
+    );
+    const extraGuestCharge = extraGuestCount * extraGuestRate;
+
+    const [existingChargeRows] = await connection.query(
+      `
+      SELECT
+        id,
+        charge_amount,
+        COALESCE(is_paid, 0) AS is_paid
+      FROM booking_charges
+      WHERE booking_id = ?
+        AND LOWER(TRIM(charge_name)) = 'extra guest charge'
+      ORDER BY id ASC
+      LIMIT 1
+      FOR UPDATE
+      `,
+      [reservationId],
+    );
+
+    const existingCharge = existingChargeRows[0] || null;
+
+    /*
+      Safety rule:
+      Once the structured Extra Guest Charge has already been paid,
+      do not silently replace its amount. This prevents staff from
+      accidentally collecting the full recalculated total twice.
+    */
+    if (
+      existingCharge &&
+      Number(existingCharge.is_paid || 0) === 1 &&
+      Number(existingCharge.charge_amount || 0) !==
+        Number(extraGuestCharge || 0)
+    ) {
+      await connection.rollback();
+
+      return res.status(400).json({
+        success: false,
+        message:
+          "The Extra Guest Charge is already marked as paid. Delete or handle the later difference through Additional Charges before changing this guest adjustment.",
+      });
+    }
+
+    await connection.query(
+      `
+      UPDATE reservations
+      SET actual_guest_count = ?
+      WHERE id = ?
+      `,
+      [actualGuestCount, reservationId],
+    );
+
+    if (extraGuestCount > 0 && extraGuestCharge > 0) {
+      const chargeNote =
+        `${extraGuestCount} additional guest${extraGuestCount === 1 ? "" : "s"} ` +
+        `above the booked guest count of ${bookedGuestCount}. ` +
+        `Rate: â‚±${extraGuestRate.toFixed(2)} per extra guest.`;
+
+      if (existingCharge) {
+        await connection.query(
+          `
+          UPDATE booking_charges
+          SET
+            charge_amount = ?,
+            charge_note = ?,
+            is_paid = 0,
+            paid_at = NULL
+          WHERE id = ?
+          `,
+          [
+            extraGuestCharge,
+            chargeNote,
+            Number(existingCharge.id),
+          ],
+        );
+      } else {
+        await connection.query(
+          `
+          INSERT INTO booking_charges (
+            booking_id,
+            charge_name,
+            charge_amount,
+            charge_note,
+            is_paid,
+            paid_at
+          )
+          VALUES (?, 'Extra Guest Charge', ?, ?, 0, NULL)
+          `,
+          [reservationId, extraGuestCharge, chargeNote],
+        );
+      }
+    } else if (
+      existingCharge &&
+      Number(existingCharge.is_paid || 0) === 0
+    ) {
+      await connection.query(
+        `
+        DELETE FROM booking_charges
+        WHERE id = ?
+        `,
+        [Number(existingCharge.id)],
+      );
+    }
+
+    await connection.commit();
+
+    return res.status(200).json({
+      success: true,
+      message:
+        extraGuestCount > 0 && extraGuestCharge > 0
+          ? "Guest adjustment saved and Extra Guest Charge updated successfully."
+          : "Guest adjustment saved successfully. No extra guest charge is required.",
+      booked_guest_count: bookedGuestCount,
+      actual_guest_count: actualGuestCount,
+      extra_guest_count: extraGuestCount,
+      extra_guest_rate: extraGuestRate,
+      extra_guest_charge: extraGuestCharge,
+    });
+  } catch (error) {
+    try {
+      await connection.rollback();
+    } catch (rollbackError) {
+      console.error("updateGuestAdjustment rollback error:", rollbackError);
+    }
+
+    console.error("updateGuestAdjustment error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update guest adjustment.",
+      error: error.message,
+    });
+  } finally {
+    connection.release();
+  }
+};
+
+// ============================================================
+// UPDATE EXTRA BED
+// Uses reservations.extra_bed_count and reservations.extra_bed_fee.
+// This is the endpoint used by Guests Inside:
+// PUT /api/admin/bookings/:id/extra-bed
+// ============================================================
+// Legacy Admin extra-bed handler: adjust beds without losing earlier collected amounts.
+// Confirm current route usage before modifying this older implementation.
+exports.updateExtraBed = async (req, res) => {
+  try {
+    const reservationId = Number(req.params.id);
+    const extraBedCount = toInteger(req.body.extra_bed_count, -1);
+
+    if (!reservationId || Number.isNaN(reservationId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid reservation ID.",
+      });
+    }
+
+    if (extraBedCount < 0) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Extra bed count must be a whole number and cannot be negative.",
+      });
+    }
+
+    const [existingRows] = await db.promise().query(
+      `SELECT id FROM reservations WHERE id = ? LIMIT 1`,
+      [reservationId],
+    );
+
+    if (!existingRows.length) {
+      return res.status(404).json({
+        success: false,
+        message: "Reservation not found.",
+      });
+    }
+
+    const extraBedFee = extraBedCount * EXTRA_BED_RATE;
+
+    await db.promise().query(
+      `
+      UPDATE reservations
+      SET
+        extra_bed_count = ?,
+        extra_bed_fee = ?,
+        extra_bed_paid = 0,
+        extra_bed_paid_at = NULL
+      WHERE id = ?
+      `,
+      [extraBedCount, extraBedFee, reservationId],
+    );
+
+    return res.status(200).json({
+      success: true,
+      message:
+        extraBedFee > 0
+          ? "Extra bed updated successfully. Please collect extra bed payment."
+          : "Extra bed updated successfully.",
+      extra_bed_count: extraBedCount,
+      extra_bed_fee: extraBedFee,
+      extra_bed_paid: 0,
+      extra_bed_paid_at: null,
+      extra_bed_rate: EXTRA_BED_RATE,
+    });
+  } catch (error) {
+    console.error("updateExtraBed error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to update extra bed.",
+      error: error.message,
+    });
+  }
+};
+
+
+// ============================================================
+// MARK EXTRA BED AS PAID
+// Used by Guests Inside after front desk collects extra bed fee.
+// Endpoint: PUT /api/admin/bookings/:id/extra-bed-paid
+// ============================================================
+exports.markExtraBedPaid = async (req, res) => {
+  try {
+    const reservationId = Number(req.params.id);
+
+    if (!reservationId || Number.isNaN(reservationId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid reservation ID.",
+      });
+    }
+
+    const [existingRows] = await db.promise().query(
+      `
+      SELECT
+        id,
+        COALESCE(extra_bed_count, 0) AS extra_bed_count,
+        COALESCE(extra_bed_fee, 0) AS extra_bed_fee,
+        COALESCE(extra_bed_paid, 0) AS extra_bed_paid
+      FROM reservations
+      WHERE id = ?
+      LIMIT 1
+      `,
+      [reservationId],
+    );
+
+    if (!existingRows.length) {
+      return res.status(404).json({
+        success: false,
+        message: "Reservation not found.",
+      });
+    }
+
+    const booking = existingRows[0];
+    const extraBedFee = Number(booking.extra_bed_fee || 0);
+
+    if (extraBedFee <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "There is no extra bed fee to mark as paid.",
+      });
+    }
+
+    await db.promise().query(
+      `
+      UPDATE reservations
+      SET
+        extra_bed_paid = 1,
+        extra_bed_paid_at = NOW()
+      WHERE id = ?
+      `,
+      [reservationId],
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Extra bed fee marked as paid.",
+      extra_bed_count: Number(booking.extra_bed_count || 0),
+      extra_bed_fee: extraBedFee,
+      extra_bed_paid: 1,
+      extra_bed_paid_at: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("markExtraBedPaid error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to mark extra bed as paid.",
+      error: error.message,
+    });
+  }
+};
+
+// ============================================================
+// MARK BOOKING AS COMPLETED
+// Kept for backward compatibility if another route still calls it.
+// ============================================================
+// LEGACY CAUTION: This function directly sets a reservation to completed and clears check-in.
+// It does not perform the full financial checkout validation shown in the Front Desk controller.
+// Do not expose it as a current checkout route; review route usage separately.
+exports.markBookingAsCompleted = async (req, res) => {
+  try {
+    const reservationId = Number(req.params.id || req.params.booking_id);
+
+    if (!reservationId || Number.isNaN(reservationId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid reservation ID.",
+      });
+    }
+
+    const [existingRows] = await db.promise().query(
+      `SELECT id FROM reservations WHERE id = ? LIMIT 1`,
+      [reservationId],
+    );
+
+    if (!existingRows.length) {
+      return res.status(404).json({
+        success: false,
+        message: "Reservation not found.",
+      });
+    }
+
+    await db.promise().query(
+      `
+      UPDATE reservations
+      SET
+        reservation_status = 'completed',
+        is_checked_in = 0
+      WHERE id = ?
+      `,
+      [reservationId],
+    );
+
+    return res.status(200).json({
+      success: true,
+      message: "Guest checked out successfully.",
+    });
+  } catch (error) {
+    console.error("markBookingAsCompleted error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Failed to check out guest.",
+      error: error.message,
+    });
+  }
+};
+

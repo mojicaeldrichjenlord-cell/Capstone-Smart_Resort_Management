@@ -54,6 +54,7 @@ function setupLogout() {
       e.preventDefault();
 
       localStorage.removeItem("user");
+      sessionStorage.removeItem("customerToken");
 
       if (typeof showToast === "function") {
         showToast("Logged out successfully.", "success");
@@ -72,6 +73,8 @@ function setupLogout() {
 // SECTION 3: Load bookings
 // ============================================================
 
+// Fetch the signed-in Customer's reservations using their authenticated session token.
+// A browser-supplied user ID alone must never grant access to someone else's reservations.
 async function loadMyBookings(userId) {
   const container = document.getElementById("myBookingsContainer");
   if (!container) return;
@@ -79,7 +82,16 @@ async function loadMyBookings(userId) {
   try {
     container.innerHTML = getLoadingBox();
 
-    const response = await fetch(`${API_BASE}/bookings/user/${userId}`);
+    const customerToken = sessionStorage.getItem("customerToken");
+    if (!customerToken) {
+      alert("Please log in again to access your bookings securely.");
+      window.location.href = "../authHTML/login.html";
+      return;
+    }
+
+    const response = await fetch(`${API_BASE}/bookings/user/${userId}`, {
+      headers: { Authorization: "Bearer " + customerToken },
+    });
     const data = await response.json();
 
     if (!response.ok) {
@@ -257,9 +269,20 @@ function renderBookingCard(booking) {
 // SECTION 7: Cancel booking
 // ============================================================
 
+// Ask for confirmation before requesting Customer cancellation of an eligible reservation.
+// The server must check ownership and cancellation timing even if the UI displays a Cancel button.
 async function cancelBooking(bookingId) {
   if (!currentUser) {
     alert("Please login first.");
+    window.location.href = "../authHTML/login.html";
+    return;
+  }
+
+  // Only the real signed Customer session authorizes cancellation.
+  // A user object in localStorage is NOT an authentication credential.
+  const customerToken = sessionStorage.getItem("customerToken");
+  if (!customerToken) {
+    alert("Your Customer session needs to be refreshed. Please log in again.");
     window.location.href = "../authHTML/login.html";
     return;
   }
@@ -272,6 +295,7 @@ async function cancelBooking(bookingId) {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
+        Authorization: "Bearer " + customerToken,
       },
     });
 
@@ -303,6 +327,8 @@ async function cancelBooking(bookingId) {
 // SECTION 8: Booking rules
 // ============================================================
 
+// Decide whether to display cancellation controls based on status and check-in date.
+// This is a UI convenience check; the server remains the final authority.
 function isCancellationAllowed(booking) {
   const status = String(booking.status || "").toLowerCase();
 

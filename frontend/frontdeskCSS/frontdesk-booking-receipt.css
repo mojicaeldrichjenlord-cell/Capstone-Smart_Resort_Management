@@ -1,0 +1,467 @@
+/* ======================================================
+   FRONT DESK FINAL BOOKING RECEIPT
+   File: frontend/frontdeskCSS/frontdesk-booking-receipt.css
+   Purpose: Front Desk thermal receipt after final checkout
+====================================================== */
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at top left, rgba(20, 184, 166, 0.08), transparent 30%),
+    linear-gradient(180deg, #eef8f7 0%, #f8fbfc 100%);
+  font-family: Arial, sans-serif;
+  color: #0f172a;
+}
+
+.receipt-page {
+  width: 92%;
+  max-width: 900px;
+  margin: 120px auto 50px;
+}
+
+.top-actions {
+  position: relative;
+  z-index: 2;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+
+  margin-bottom: 18px;
+}
+
+.back-btn,
+.print-btn {
+  min-height: 42px;
+  padding: 10px 16px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 10px;
+
+  font-size: 0.92rem;
+  font-weight: 800;
+  text-decoration: none;
+
+  cursor: pointer;
+}
+
+.back-btn {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #334155;
+}
+
+.back-btn:hover {
+  border-color: #94b8b4;
+  background: #f0fdfa;
+  color: #0f766e;
+}
+
+.print-btn {
+  border: 1px solid #0f766e;
+  background: #0f766e;
+  color: #ffffff;
+
+  box-shadow: 0 6px 16px rgba(15, 118, 110, 0.14);
+}
+
+.print-btn:hover {
+  border-color: #115e59;
+  background: #115e59;
+}
+
+.receipt-preview-card {
+  padding: 24px;
+
+  border: 1px solid #dbe7ef;
+  border-radius: 24px;
+
+  background: rgba(255, 255, 255, 0.98);
+
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.08);
+}
+
+.preview-header {
+  margin-bottom: 22px;
+  text-align: center;
+}
+
+.receipt-eyebrow {
+  margin: 0 0 6px;
+
+  color: #0f766e;
+
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.preview-header h1 {
+  margin: 0 0 8px;
+
+  color: #0f172a;
+
+  font-size: 1.9rem;
+  letter-spacing: -0.03em;
+}
+
+.preview-header p:not(.receipt-eyebrow) {
+  max-width: 590px;
+  margin: 0 auto;
+
+  color: #64748b;
+
+  line-height: 1.6;
+}
+
+.thermal-receipt-shell {
+  width: 80mm;
+  max-width: 100%;
+  margin: 0 auto;
+
+  border: 1px solid #d1d5db;
+
+  background: #ffffff;
+  color: #000000;
+
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.12);
+}
+
+.thermal-inner {
+  padding: 10px;
+
+  font-family: Arial, sans-serif;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.thermal-center {
+  text-align: center;
+}
+
+.thermal-title {
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+.thermal-sub {
+  margin-top: 2px;
+  font-size: 11px;
+}
+
+.thermal-code {
+  margin-top: 6px;
+
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.thermal-divider {
+  margin: 8px 0;
+  border-top: 1px dashed #000000;
+}
+
+.thermal-section-title {
+  margin-bottom: 5px;
+
+  font-weight: 900;
+
+  text-transform: uppercase;
+}
+
+.thermal-row {
+  margin: 2px 0;
+
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.thermal-row span:first-child {
+  flex: 0 0 auto;
+}
+
+.thermal-row span:last-child {
+  text-align: right;
+  word-break: break-word;
+}
+
+.thermal-bold {
+  font-weight: 900;
+}
+
+.thermal-small {
+  font-size: 10px;
+}
+
+.thermal-item {
+  margin-bottom: 8px;
+}
+
+.thermal-total-box {
+  margin: 8px 0;
+  padding: 8px 6px;
+
+  border: 1px solid #000000;
+
+  text-align: center;
+}
+
+.thermal-total-label {
+  font-size: 10px;
+  font-weight: 900;
+}
+
+.thermal-total-amount {
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.thermal-note {
+  font-size: 10px;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.receipt-state {
+  padding: 18px;
+
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+
+  background: #f8fafc;
+  color: #64748b;
+
+  text-align: center;
+  line-height: 1.5;
+}
+
+.receipt-state.error {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+@media (max-width: 768px) {
+  .receipt-page {
+    width: 94%;
+    margin-top: 112px;
+  }
+
+  .top-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .back-btn,
+  .print-btn {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .receipt-preview-card {
+    padding: 16px;
+    border-radius: 20px;
+  }
+}
+
+@media print {
+  body {
+    background: #ffffff !important;
+  }
+
+  .navbar,
+  .top-actions,
+  .preview-header {
+    display: none !important;
+  }
+
+  .receipt-page {
+    width: 80mm !important;
+    max-width: 80mm !important;
+    margin: 0 auto !important;
+  }
+
+  .receipt-preview-card {
+    padding: 0 !important;
+
+    border: none !important;
+    border-radius: 0 !important;
+
+    box-shadow: none !important;
+  }
+
+  .thermal-receipt-shell {
+    display: block !important;
+
+    width: 80mm !important;
+    max-width: 80mm !important;
+    margin: 0 auto !important;
+
+    border: none !important;
+
+    box-shadow: none !important;
+  }
+
+  .thermal-inner {
+    padding: 8px !important;
+
+    font-size: 11px !important;
+    line-height: 1.45 !important;
+  }
+
+  @page {
+    size: 80mm auto;
+    margin: 4mm;
+  }
+}
+
+/* Remove decorative global page icons from receipt view/print. */
+body::before,
+body::after {
+  display: none !important;
+  content: none !important;
+}
+
+
+/* ======================================================
+   FRONT DESK RECEIPT PREVIEW V2
+   - Thermal receipt is always visible on screen.
+   - Print remains optional.
+   - The preview remains 80mm so screen and printed output match.
+====================================================== */
+
+.receipt-page {
+  max-width: 1040px;
+}
+
+.receipt-preview-card {
+  padding: 22px 24px 30px;
+}
+
+.preview-header {
+  margin-bottom: 18px;
+
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+
+  text-align: left;
+}
+
+.preview-header > div {
+  min-width: 0;
+}
+
+.preview-header h1 {
+  margin-bottom: 0;
+}
+
+.preview-helper {
+  max-width: 320px;
+  margin: 0 !important;
+
+  color: #64748b;
+
+  font-size: 0.88rem;
+  line-height: 1.45;
+  text-align: right;
+}
+
+.receipt-preview-stage {
+  width: 100%;
+  min-height: 420px;
+  padding: 28px 18px;
+
+  display: flex !important;
+  align-items: flex-start;
+  justify-content: center;
+
+  box-sizing: border-box;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+
+  background:
+    linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+/* Explicitly force the thermal preview to be visible on screen.
+   This protects it from any older/global CSS rule that hides
+   receipt shells outside print mode. */
+.thermal-receipt-shell {
+  display: block !important;
+  visibility: visible !important;
+
+  width: 80mm !important;
+  max-width: 80mm !important;
+  min-height: 180px;
+
+  margin: 0 auto !important;
+
+  opacity: 1 !important;
+
+  border: 1px solid #cbd5e1;
+
+  background: #ffffff !important;
+  color: #000000 !important;
+
+  box-shadow:
+    0 18px 42px rgba(15, 23, 42, 0.14),
+    0 2px 8px rgba(15, 23, 42, 0.05);
+}
+
+.thermal-inner {
+  display: block !important;
+  visibility: visible !important;
+}
+
+@media (max-width: 768px) {
+  .preview-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .preview-helper {
+    max-width: none;
+    text-align: left;
+  }
+
+  .receipt-preview-stage {
+    padding: 18px 10px;
+  }
+}
+
+@media print {
+  .receipt-preview-stage {
+    min-height: 0 !important;
+    padding: 0 !important;
+
+    border: none !important;
+    border-radius: 0 !important;
+
+    background: #ffffff !important;
+  }
+
+  .thermal-receipt-shell {
+    display: block !important;
+    visibility: visible !important;
+
+    width: 80mm !important;
+    max-width: 80mm !important;
+    min-height: 0 !important;
+
+    margin: 0 auto !important;
+
+    border: none !important;
+
+    box-shadow: none !important;
+  }
+}

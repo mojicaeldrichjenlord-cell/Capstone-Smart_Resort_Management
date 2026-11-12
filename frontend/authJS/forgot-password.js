@@ -1,5 +1,5 @@
 // ============================================================
-// SMARTRESORT FORGOT PASSWORD SCRIPT
+// ARVICSEASIDE FORGOT PASSWORD SCRIPT
 // Purpose:
 // - Send email OTP
 // - Show OTP reset form

@@ -1,15 +1,13 @@
 // ============================================================
-// SMARTRESORT LOGIN SCRIPT
-// Purpose:
-// - Handles login form submission
-// - Saves logged-in user to localStorage
-// - Redirects admin/staff/customer to correct page
-// - Adds show/hide password toggle
-// ============================================================
-
-
-// ============================================================
-// SECTION 1: Get login page elements
+// ARVICSEASIDE LOGIN SCRIPT - FULL REPLACEMENT
+// Replace: frontend/authJS/login.js
+//
+// Final roles:
+// customer, admin, frontdesk, manager, housekeeping
+//
+// Front Desk receives a signed, short-lived bearer token from the
+// backend after successful authentication. The token is stored in
+// sessionStorage, not in the user profile / localStorage.
 // ============================================================
 
 const loginForm = document.getElementById("loginForm");
@@ -18,11 +16,7 @@ const emailInput = document.getElementById("email");
 const passwordInput = document.getElementById("password");
 
 // ============================================================
-// SECTION 2: Setup show/hide password
-// Supports button with:
-// - id="togglePassword"
-// OR
-// - class="toggle-password" data-target="password"
+// SECTION 1: Password visibility
 // ============================================================
 
 setupPasswordToggle();
@@ -50,7 +44,7 @@ function setupPasswordToggle() {
 }
 
 // ============================================================
-// SECTION 3: Auto-fill email after registration or password reset
+// SECTION 2: Saved email helpers
 // ============================================================
 
 const savedRegisteredEmail = localStorage.getItem("registeredEmail");
@@ -67,32 +61,37 @@ if (savedResetEmail && emailInput) {
 }
 
 // ============================================================
-// SECTION 4: Login form submit event
-// Sends email and password to backend /api/auth/login.
+// SECTION 3: Login
 // ============================================================
 
 if (loginForm) {
-  loginForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
+  loginForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
 
     const email = emailInput ? emailInput.value.trim() : "";
     const password = passwordInput ? passwordInput.value.trim() : "";
 
-    if (loginMessage) {
-      loginMessage.textContent = "";
-      loginMessage.className = "";
-    }
+    clearMessage();
 
     if (!email || !password) {
       showMessage("Please enter your email and password.", "error");
       return;
     }
 
+    const submitButton = loginForm.querySelector('button[type="submit"]');
+    const originalButtonText = submitButton?.textContent || "Login";
+
     try {
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = "Logging in...";
+      }
+
       const response = await fetch(`${API_BASE}/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          Accept: "application/json",
         },
         body: JSON.stringify({ email, password }),
       });
@@ -103,51 +102,192 @@ if (loginForm) {
         throw new Error(data.message || "Invalid email or password.");
       }
 
-      if (data.user?.account_status === "disabled") {
-        showMessage(
-          "Your account has been disabled. Please contact the resort administrator.",
-          "error",
-        );
-        return;
+      if (!data.user) {
+        throw new Error("Login response did not include a user account.");
       }
 
-      localStorage.setItem("user", JSON.stringify(data.user));
+      if (
+        String(data.user.account_status || "active").toLowerCase() ===
+        "disabled"
+      ) {
+        throw new Error(
+          "Your account has been disabled. Please contact the resort administrator.",
+        );
+      }
+
+      const role = normalizeRole(data.user.role);
+      const destination = getRoleRedirect(role);
+
+      if (!destination) {
+        throw new Error(
+          "Your account role is not recognized. Please contact the resort administrator.",
+        );
+      }
+
+      // The server only issues a Front Desk token after checking the
+      // employee's password, role, and active/verified account status.
+      // Never use the ID or role from localStorage as API authentication.
+      if (role === "frontdesk") {
+        const frontDeskToken = data.frontDeskToken;
+
+        if (
+          typeof frontDeskToken !== "string" ||
+          !/^fd1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(frontDeskToken)
+        ) {
+          throw new Error(
+            "Secure Front Desk login token was not returned. Check backend authentication configuration and log in again.",
+          );
+        }
+
+        sessionStorage.setItem("frontDeskToken", frontDeskToken);
+        sessionStorage.removeItem("adminToken");
+        sessionStorage.removeItem("customerToken");
+        sessionStorage.removeItem("managerToken");
+        sessionStorage.removeItem("housekeepingToken");
+      } else if (role === "admin") {
+        const adminToken = data.adminToken;
+        if (
+          typeof adminToken !== "string" ||
+          !/^adm1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(adminToken)
+        ) {
+          throw new Error(
+            "Secure Administrator login token was not returned. Check backend authentication configuration and log in again.",
+          );
+        }
+        sessionStorage.setItem("adminToken", adminToken);
+        sessionStorage.removeItem("frontDeskToken");
+        sessionStorage.removeItem("customerToken");
+        sessionStorage.removeItem("managerToken");
+        sessionStorage.removeItem("housekeepingToken");
+      } else if (role === "manager") {
+        const managerToken = data.managerToken;
+        if (typeof managerToken !== "string" ||
+            !/^mgr1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(managerToken)) {
+          throw new Error("Secure Manager token not returned. Contact support.");
+        }
+        sessionStorage.setItem("managerToken", managerToken);
+        sessionStorage.removeItem("adminToken");
+        sessionStorage.removeItem("frontDeskToken");
+        sessionStorage.removeItem("customerToken");
+      // Housekeeping receives its own signed token; never reuse Manager/Admin auth.
+      } else if (role === "housekeeping") {
+        const housekeepingToken = data.housekeepingToken;
+        if (typeof housekeepingToken !== "string" ||
+            !/^hk1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(housekeepingToken)) {
+          throw new Error("Secure Housekeeping token was not returned. Contact support.");
+        }
+        // Persist only this role's signed session for the next dashboard page.
+        sessionStorage.setItem("housekeepingToken", housekeepingToken);
+        sessionStorage.removeItem("adminToken");
+        sessionStorage.removeItem("frontDeskToken");
+        sessionStorage.removeItem("customerToken");
+        sessionStorage.removeItem("managerToken");
+      } else if (role === "customer") {
+        const customerToken = data.customerToken;
+        if (
+          typeof customerToken !== "string" ||
+          !/^cus1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(customerToken)
+        ) {
+          throw new Error("Secure Customer login token was not returned. Please try again.");
+        }
+        sessionStorage.setItem("customerToken", customerToken);
+        sessionStorage.removeItem("frontDeskToken");
+        sessionStorage.removeItem("adminToken");
+        sessionStorage.removeItem("managerToken");
+        sessionStorage.removeItem("housekeepingToken");
+      } else {
+        // Prevent stale signed sessions when switching user roles.
+        sessionStorage.removeItem("frontDeskToken");
+        sessionStorage.removeItem("adminToken");
+        sessionStorage.removeItem("customerToken");
+        sessionStorage.removeItem("managerToken");
+        sessionStorage.removeItem("housekeepingToken");
+      }
+
+      localStorage.setItem(
+        "user",
+        JSON.stringify({
+          ...data.user,
+          role,
+        }),
+      );
+
       showMessage("Login successful!", "success");
 
       setTimeout(() => {
-        const role = String(data.user.role || "").toLowerCase();
-
-        if (role === "admin" || role === "staff") {
-          window.location.href = "../adminHTML/admin.html";
-        } else {
-          window.location.href = "../customerHTML/index.html";
-        }
-      }, 900);
+        window.location.href = destination;
+      }, 600);
     } catch (error) {
       console.error("login error:", error);
+
       showMessage(
         error.message || "Something went wrong. Please try again.",
         "error",
       );
+    } finally {
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = originalButtonText;
+      }
     }
   });
 }
 
 // ============================================================
-// SECTION 5: Message helper
-// Uses toast notification if available.
-// Falls back to loginMessage without moving layout too much.
+// SECTION 4: Role routing
 // ============================================================
 
+function normalizeRole(role) {
+  const value = String(role || "")
+    .trim()
+    .toLowerCase();
+
+  // Legacy compatibility only.
+  if (value === "staff") {
+    return "frontdesk";
+  }
+
+  return value;
+}
+
+function getRoleRedirect(role) {
+  const routes = {
+    customer: "../customerHTML/index.html",
+    admin: "../adminHTML/admin.html",
+    frontdesk: "../frontdeskHTML/frontdeskDashboard.html",
+    manager: "../managerHTML/managerDashboard.html",
+    housekeeping: "../housekeepingHTML/housekeepingDashboard.html",
+  };
+
+  return routes[role] || null;
+}
+
+// ============================================================
+// SECTION 5: Message helpers
+// ============================================================
+
+// Clear the old fallback message before each request.
+function clearMessage() {
+  if (!loginMessage) return;
+
+  loginMessage.textContent = "";
+  loginMessage.className = "message";
+  loginMessage.hidden = true;
+}
+
+// Show one centered toast rather than duplicating the error on the page.
+// Retain an inline fallback for cases where toast.js fails to load.
 function showMessage(message, type = "success") {
   if (typeof showToast === "function") {
     showToast(message, type);
+    clearMessage();
     return;
   }
 
   if (loginMessage) {
     loginMessage.textContent = message;
     loginMessage.className = `login-message ${type}`;
+    loginMessage.hidden = false;
     return;
   }
 

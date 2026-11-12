@@ -20,7 +20,10 @@
     <link rel="stylesheet" href="../sharedCSS/global.css" />
     <link rel="stylesheet" href="../css/style.css" />
     <link rel="stylesheet" href="../adminCSS/admin-rooms.css" />
-  </head>
+    <!-- Resort favicon and accessible Admin mobile navigation. -->
+  <link rel="stylesheet" href="../adminCSS/admin-mobile-nav.css" />
+  <link rel="icon" type="image/png" href="../images/arvic-logo.png" />
+</head>
 
   <body class="has-fixed-navbar">
     <!-- ======================================================
@@ -31,11 +34,11 @@
 
       <nav>
         <a href="admin.html">Bookings</a>
-        <a href="admin-walkin.html">Manual Reservation</a>
-        <a href="admin-guests-inside.html">Guests Inside</a>
         <a href="admin-rooms.html" class="active-nav">Accommodations</a>
         <a href="admin-map-editor.html">Map Editor</a>
         <a href="admin-reports.html">Reports</a>
+        <!-- Administrator-only: staff directory, account status and secure password reset. -->
+        <a href="admin-staff.html">Staff Accounts</a>
         <a href="admin-profile.html">Profile</a>
         <a href="#" id="logoutBtn">Logout</a>
       </nav>
@@ -208,16 +211,19 @@ Extra bed available: ₱200"
               </small>
             </div>
 
+            <!-- Admin chooses an actual photo. Existing saved URLs stay in hidden
+                 inputs so editing without a replacement retains the old image. -->
             <div class="room-form-group full-width">
-              <label for="roomImage">Cover Image</label>
-              <input
-                type="text"
-                id="roomImage"
-                placeholder="Example: images/cottage-a.jpg or https://..."
-              />
+              <label for="coverPhotoFile">Cover Image — Choose Photo</label>
+              <input type="file" id="coverPhotoFile" accept="image/jpeg,image/png,image/webp" />
+              <input type="hidden" id="roomImage" />
               <small class="field-help">
-                This is the main photo shown first on accommodation cards.
+                Choose JPG, PNG, or WebP (up to 12 MB); large photos are
+                optimized automatically. Leave empty on Edit to keep the cover.
               </small>
+              <button type="button" class="remove-photo-btn" id="removeCoverPhotoBtn" hidden>
+                Remove cover photo
+              </button>
             </div>
 
             <div class="room-form-group full-width">
@@ -235,19 +241,16 @@ Extra bed available: ₱200"
               </div>
             </div>
 
+            <!-- A multiple file picker replaces the old manual gallery path textarea.
+                 Stored paths are maintained in a hidden input by admin-rooms.js. -->
             <div class="room-form-group full-width">
-              <label for="galleryImages">Gallery Images</label>
-
-              <textarea
-                id="galleryImages"
-                placeholder="Paste one image link per line. Example:
-images/family-room-a-1.jpg
-images/family-room-a-2.jpg
-images/family-room-a-3.jpg"
-              ></textarea>
-
+              <label for="galleryPhotoFiles">Gallery Images — Choose Photos</label>
+              <input type="file" id="galleryPhotoFiles"
+                accept="image/jpeg,image/png,image/webp" multiple />
+              <input type="hidden" id="galleryImages" />
               <small class="field-help">
-                Add multiple photos here. Use one image path or URL per line.
+                Choose up to 10 gallery photos (up to 12 MB each; large photos
+                auto-optimized). Select more to add, or Remove to exclude.
               </small>
             </div>
 
@@ -260,6 +263,8 @@ images/family-room-a-3.jpg"
               </div>
             </div>
           </div>
+
+          <p id="photoUploadStatus" class="field-help" role="status" aria-live="polite"></p>
 
           <div class="room-form-actions">
             <button type="submit" class="btn-main" id="saveRoomBtn">
@@ -349,5 +354,6 @@ images/family-room-a-3.jpg"
     <script src="../sharedJS/api-config.js"></script>
     <script src="../js/active-nav.js"></script>
     <script src="../adminJS/admin-rooms.js"></script>
-  </body>
+    <script src="../adminJS/admin-mobile-nav.js"></script>
+</body>
 </html>

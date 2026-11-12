@@ -1,5 +1,5 @@
 // ============================================================
-// SMARTRESORT ADMIN PROFILE SCRIPT
+// ARVICSEASIDE ADMIN PROFILE SCRIPT
 // Purpose:
 // - Check admin access
 // - Load admin profile details
@@ -15,24 +15,46 @@
 // ============================================================
 
 document.addEventListener("DOMContentLoaded", () => {
-  const user = JSON.parse(localStorage.getItem("user"));
-
-  if (!user) {
-    alert("Please login first.");
-    window.location.href = "../authHTML/login.html";
-    return;
-  }
-
-  if (user.role !== "admin") {
-    alert("Access denied. Admin only.");
-    window.location.href = "../index.html";
-    return;
-  }
+  const user = getAuthorizedAdminProfileUser();
+  if (!user) return;
 
   setupLogout();
   loadProfile(user.id);
   setupPasswordForm(user.id);
 });
+
+function getAuthorizedAdminProfileUser() {
+  let user = null;
+
+  try {
+    user = JSON.parse(localStorage.getItem("user") || "null");
+  } catch (error) {
+    console.error("Invalid stored account data:", error);
+  }
+
+  if (!user) {
+    alert("Please login first.");
+    window.location.href = "../authHTML/login.html";
+    return null;
+  }
+
+  const role = String(user.role || "").trim().toLowerCase();
+  if (role !== "admin") {
+    const destinations = {
+      customer: "../customerHTML/index.html",
+      frontdesk: "../frontdeskHTML/frontdeskDashboard.html",
+      staff: "../frontdeskHTML/frontdeskDashboard.html",
+      manager: "../managerHTML/managerDashboard.html",
+      housekeeping: "../housekeepingHTML/housekeepingDashboard.html",
+    };
+
+    alert("Access denied. Admin only.");
+    window.location.href = destinations[role] || "../authHTML/login.html";
+    return null;
+  }
+
+  return user;
+}
 
 // ============================================================
 // SECTION 2: Logout
@@ -47,6 +69,7 @@ function setupLogout() {
       e.preventDefault();
 
       localStorage.removeItem("user");
+      sessionStorage.removeItem("adminToken");
       showMessage("Logged out successfully.", "success");
 
       setTimeout(() => {
@@ -63,7 +86,11 @@ function setupLogout() {
 
 async function loadProfile(userId) {
   try {
-    const response = await fetch(`${API_BASE}/auth/profile/${userId}`);
+    const token = sessionStorage.getItem("adminToken");
+    if (!token) throw new Error("Your profile session has expired. Please log in again.");
+    const response = await fetch(`${API_BASE}/auth/profile/${userId}`, {
+      headers: { Authorization: "Bearer " + token },
+    });
     const data = await response.json();
 
     if (!response.ok) {
@@ -139,10 +166,13 @@ function setupPasswordForm(userId) {
         submitBtn.style.cursor = "not-allowed";
       }
 
+      const token = sessionStorage.getItem("adminToken");
+      if (!token) throw new Error("Your profile session has expired. Please log in again.");
       const response = await fetch(`${API_BASE}/auth/change-password/${userId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          Authorization: "Bearer " + token,
         },
         body: JSON.stringify({
           currentPassword,

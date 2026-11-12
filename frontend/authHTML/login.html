@@ -9,7 +9,7 @@
     ======================================================= -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <title>Login | SmartResort</title>
+    <title>Login | ArvicSeaside</title>
 
     <!-- ======================================================
        PAGE CSS FILES
@@ -65,7 +65,7 @@
         <h2>Login</h2>
 
         <p class="auth-subtext">
-          Enter your account details to continue to your SmartResort dashboard.
+          Enter your account details to continue to your ArvicSeaside dashboard.
         </p>
 
         <form id="loginForm">
@@ -108,7 +108,8 @@
           <button type="submit" class="auth-submit">Login</button>
         </form>
 
-        <p id="loginMessage" class="message"></p>
+        <!-- Accessible fallback is hidden while the shared floating toast is active. -->
+        <p id="loginMessage" class="message" role="status" aria-live="polite" hidden></p>
 
         <div class="auth-link">
           Don’t have an account yet?

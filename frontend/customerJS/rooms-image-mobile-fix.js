@@ -193,7 +193,24 @@
     const cleanPath = normalizeStaticImagePath(original);
 
     // --------------------------------------------------------
-    // Backend-uploaded images
+    // Photos uploaded by Admin are stored in MySQL and served by Node.
+    // The normalized path starts without "/", e.g. api/rooms/media/25.
+    // Do not treat this as a frontend/static filename: doing so would
+    // send customer images to Vercel or Live Server (port 5500).
+    // --------------------------------------------------------
+    if (/^api\/rooms\/media\/[1-9]\d*$/.test(cleanPath)) {
+      const backendBase =
+        typeof API_BASE === "string"
+          ? API_BASE.replace(/\/api\/?$/, "")
+          : "";
+
+      return [backendBase
+        ? `${backendBase}/${cleanPath}`
+        : `/${cleanPath}`];
+    }
+
+    // --------------------------------------------------------
+    // Legacy backend-uploaded images
     // --------------------------------------------------------
 
     if (cleanPath.startsWith("uploads/")) {

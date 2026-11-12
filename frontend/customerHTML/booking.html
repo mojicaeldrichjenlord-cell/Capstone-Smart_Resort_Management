@@ -231,8 +231,13 @@
             </p>
           </section>
 
+          <!-- Stage 95-J: live availability must be confirmed before payment. -->
+          <p id="bookingAvailabilitySummary" class="booking-availability-summary"
+             role="status" aria-live="polite" data-state="pending">
+            Select accommodation, date, and time slot to check availability.
+          </p>
           <div class="booking-form-actions">
-            <button type="submit" class="btn-primary full-btn">
+            <button type="submit" class="btn-primary full-btn" id="nextToPaymentBtn" disabled>
               Next to Payment
             </button>
 

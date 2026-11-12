@@ -1,5 +1,5 @@
 // ============================================================
-// SMARTRESORT ADMIN REPORTS SCRIPT
+// ARVICSEASIDE ADMIN REPORTS SCRIPT
 // Purpose:
 // - Check admin/staff access
 // - Load today-only reports by default
@@ -10,6 +10,11 @@
 // ============================================================
 
 let allBookings = [];
+// Paid charge aggregates are read independently of reservation creation dates.
+let paidChargeRows = [];
+// Read-only refunds/corrections must be loaded before displaying a net estimate.
+let entranceReconciliationTotals = null;
+let paidChargesLoaded = false;
 let bookingStatusChart = null;
 let bookingSourceChart = null;
 let popularRoomsChart = null;
@@ -92,7 +97,7 @@ Chart.defaults.plugins.tooltip.cornerRadius = 10;
 // ============================================================
 
 document.addEventListener("DOMContentLoaded", () => {
-  checkAdminAccess();
+  if (!checkAdminAccess()) return;
   setupLogout();
   setupReportEvents();
   setDateInputsToToday();
@@ -105,18 +110,34 @@ document.addEventListener("DOMContentLoaded", () => {
 // ============================================================
 
 function checkAdminAccess() {
-  const user = JSON.parse(localStorage.getItem("user"));
+  let user = null;
+  try {
+    user = JSON.parse(localStorage.getItem("user") || "null");
+  } catch (error) {
+    console.error("Invalid stored account data:", error);
+  }
 
   if (!user) {
     alert("Please login first.");
     window.location.href = "../authHTML/login.html";
-    return;
+    return false;
   }
 
-  if (user.role !== "admin" && user.role !== "staff") {
-    alert("Access denied. Admin or staff only.");
-    window.location.href = "../index.html";
+  const role = String(user.role || "").trim().toLowerCase();
+  if (role !== "admin") {
+    const destinations = {
+      customer: "../customerHTML/index.html",
+      frontdesk: "../frontdeskHTML/frontdeskDashboard.html",
+      staff: "../frontdeskHTML/frontdeskDashboard.html",
+      manager: "../managerHTML/managerDashboard.html",
+      housekeeping: "../housekeepingHTML/housekeepingDashboard.html",
+    };
+    alert("Access denied. Administrator account required.");
+    window.location.href = destinations[role] || "../authHTML/login.html";
+    return false;
   }
+
+  return true;
 }
 
 // ============================================================
@@ -188,6 +209,7 @@ function setupReportEvents() {
 // Default reads current date only. Filters read selected date range.
 // ============================================================
 
+// Display report data for the currently selected today-only view.
 async function loadTodayReports() {
   activeReportMode = "today";
   activeStartDate = getTodayDateString();
@@ -196,6 +218,7 @@ async function loadTodayReports() {
   await fetchReports(`${API_BASE}/bookings?scope=today`);
 }
 
+// Build a custom date-range query and request matching reservation data.
 async function loadFilteredReports(startDate, endDate) {
   activeReportMode = "custom";
   activeStartDate = startDate;
@@ -209,11 +232,17 @@ async function loadFilteredReports(startDate, endDate) {
   await fetchReports(`${API_BASE}/bookings?${query.toString()}`);
 }
 
+// Fetch reporting inputs using the signed Admin token, then refresh all report components.
+// A failed request displays an error rather than outdated report figures.
 async function fetchReports(url) {
   try {
     hideReportError();
 
-    const response = await fetch(url);
+    const adminToken = sessionStorage.getItem("adminToken");
+    if (!adminToken) throw new Error("Admin session expired. Please log in again.");
+    const response = await fetch(url, {
+      headers: { Authorization: "Bearer " + adminToken },
+    });
     const data = await response.json();
 
     if (!response.ok) {
@@ -221,6 +250,35 @@ async function fetchReports(url) {
     }
 
     allBookings = Array.isArray(data) ? data : data.bookings || [];
+    paidChargeRows = [];
+    entranceReconciliationTotals = null;
+    paidChargesLoaded = false;
+    try {
+      const chargeQuery = new URLSearchParams({ from: activeStartDate, to: activeEndDate });
+      const chargeResponse = await fetch(
+        `${API_BASE}/bookings/admin-report/paid-charges?${chargeQuery}`,
+        { headers: { Authorization: "Bearer " + adminToken } },
+      );
+      const chargeData = await chargeResponse.json();
+      if (!chargeResponse.ok || !Array.isArray(chargeData.charges)) {
+        throw new Error(chargeData.message || "Paid charges could not be verified.");
+      }
+      // Never silently assume a refund is zero when the server did not verify it.
+      const refunds = Number(chargeData.entrance_reconciliations?.refunds);
+      const corrections = Number(chargeData.entrance_reconciliations?.corrections);
+      if (chargeData.entrance_reconciliations?.refunds == null ||
+          chargeData.entrance_reconciliations?.corrections == null ||
+          ![refunds, corrections].every(value => Number.isFinite(value) && value >= 0)) {
+        throw new Error("Entrance refund/correction totals are unavailable.");
+      }
+      paidChargeRows = chargeData.charges;
+      entranceReconciliationTotals = { refunds, corrections };
+      paidChargesLoaded = true;
+    } catch (chargeError) {
+      // Missing charge records must never turn into a fabricated 0 total.
+      showReportError("Reservation statistics loaded, but paid charges are unavailable: " +
+        chargeError.message);
+    }
     renderReports(allBookings);
     updatePrintReportMeta();
   } catch (error) {
@@ -228,6 +286,9 @@ async function fetchReports(url) {
 
     showReportError(error.message || "Something went wrong while loading reports.");
     allBookings = [];
+    paidChargeRows = [];
+    entranceReconciliationTotals = null;
+    paidChargesLoaded = false;
     renderReports([]);
     updatePrintReportMeta();
   }
@@ -238,6 +299,7 @@ async function fetchReports(url) {
 // Uses backend date filtering instead of loading all records.
 // ============================================================
 
+// Normalize the start/end dates and stop requests with an invalid backwards date range.
 function applyReportFilters() {
   let startDate = document.getElementById("reportStartDate")?.value || "";
   let endDate = document.getElementById("reportEndDate")?.value || "";
@@ -273,6 +335,7 @@ function applyReportFilters() {
 // Updates cards and charts.
 // ============================================================
 
+// Refresh the summary cards and each report chart using the same filtered booking list.
 function renderReports(bookings) {
   updateStats(bookings);
   renderBookingStatusChart(bookings);
@@ -327,6 +390,29 @@ function updateStats(bookings) {
   setText("approvedBookingsCount", approvedBookings);
   setText("completedBookingsCount", completedBookings);
   setText("totalRevenueAmount", `₱${formatMoney(moneyCollected)}`);
+
+  if (paidChargesLoaded) {
+    const summary = summarizePaidAdditionalCharges(bookings, paidChargeRows);
+    setText("paidBookingChargesAmount", `₱${formatMoney(summary.totalPaid)}`);
+    setText("paidBedOverlapAmount", `₱${formatMoney(summary.alreadyCountedBed)}`);
+    setText("entranceRefundAmount",
+      `₱${formatMoney(entranceReconciliationTotals.refunds)}`);
+    setText("entranceCorrectionAmount",
+      `₱${formatMoney(entranceReconciliationTotals.corrections)}`);
+    // A correction voids a recorded entrance collection; a refund returns cash.
+    // Both reduce the estimate, but this is still not an audited payment ledger.
+    setText("adjustedCollectionsEstimate",
+      `₱${formatMoney(moneyCollected + summary.totalPaid -
+        summary.alreadyCountedBed - entranceReconciliationTotals.refunds -
+        entranceReconciliationTotals.corrections)}`);
+  } else {
+    // Do not display a combined estimate without the verified charge read.
+    setText("paidBookingChargesAmount", "Unavailable");
+    setText("paidBedOverlapAmount", "Unavailable");
+    setText("entranceRefundAmount", "Unavailable");
+    setText("entranceCorrectionAmount", "Unavailable");
+    setText("adjustedCollectionsEstimate", "Unavailable");
+  }
 }
 
 // ============================================================
@@ -476,7 +562,13 @@ function renderPopularRoomsChart(bookings) {
         x: {
           beginAtZero: true,
           grid: getGridStyle(),
-          ticks: getTickStyle(),
+          // Reservation counts are whole numbers; avoid 0.2 / 0.4 ticks.
+          ticks: {
+            ...getTickStyle(),
+            precision: 0,
+            stepSize: 1,
+            maxTicksLimit: 8,
+          },
         },
         y: {
           grid: {
@@ -500,6 +592,8 @@ function renderPopularRoomsChart(bookings) {
 // Replaces the old Payment Method Summary.
 // ============================================================
 
+// Group the report's calculated collection estimates by accommodation category.
+// This chart is not a substitute for a transaction-ledger reconciliation.
 function renderSalesByCategoryChart(bookings) {
   const categorySales = {
     Rooms: 0,
@@ -863,7 +957,9 @@ function getBarChartOptions() {
     },
     plugins: {
       legend: {
-        display: true,
+        // Each bar is already identified by an axis label. A single-color
+        // legend is misleading when individual statuses use different colors.
+        display: false,
         position: "bottom",
         labels: getLegendStyle(),
       },
@@ -1210,6 +1306,8 @@ function isExtraBedPaid(booking) {
   );
 }
 
+// Estimate revenue contribution for the active report range using stored booking snapshots and payment dates.
+// Treat this UI-derived estimate separately from audited net payment reports.
 function calculateCollectedRevenueForReport(booking) {
   const createdInRange = isDateWithinActiveRange(booking.created_at);
   const checkedInInRange = isDateWithinActiveRange(booking.checked_in_at);
@@ -1218,10 +1316,12 @@ function calculateCollectedRevenueForReport(booking) {
   let amount = 0;
 
   if (checkedInInRange) {
-    amount += Number(booking.accommodation_total || booking.paid_amount || 0);
+    // Only use an amount explicitly recorded as paid. Booking price is not cash.
+    amount += Number(booking.paid_amount || 0);
     amount += Number(booking.entrance_fee_collected || 0);
   } else if (createdInRange) {
-    amount += Number(booking.paid_amount || booking.required_downpayment || 0);
+    // Required downpayment is an obligation, NOT proof of payment.
+    amount += Number(booking.paid_amount || 0);
   }
 
   if (isExtraBedPaid(booking) && extraBedPaidInRange) {
@@ -1229,6 +1329,33 @@ function calculateCollectedRevenueForReport(booking) {
   }
 
   return amount;
+}
+
+
+// Compare paid additional charges with the legacy extra-bed field.
+// Deduct an overlap ONLY for the same booking and the same report period.
+function summarizePaidAdditionalCharges(bookings, rows) {
+  const byId = new Map(bookings.map(booking => [Number(booking.id), booking]));
+  const bedsById = new Map();
+  let totalPaid = 0;
+  for (const row of rows) {
+    const amount = Number(row.amount);
+    if (!Number.isFinite(amount) || amount <= 0) continue;
+    totalPaid += amount;
+    const type = String(row.charge_name || "").trim().toLowerCase();
+    if (type === "extra bed charge" || type === "extra bed") {
+      const id = Number(row.booking_id);
+      bedsById.set(id, (bedsById.get(id) || 0) + amount);
+    }
+  }
+  let alreadyCountedBed = 0;
+  for (const [id, amount] of bedsById) {
+    const booking = byId.get(id);
+    if (!booking || !isExtraBedPaid(booking) ||
+        !isDateWithinActiveRange(booking.extra_bed_paid_at)) continue;
+    alreadyCountedBed += Math.min(amount, Math.max(0, Number(booking.extra_bed_fee || 0)));
+  }
+  return { totalPaid, alreadyCountedBed };
 }
 
 // ============================================================
