@@ -468,11 +468,11 @@ function getGuestState(booking) {
       return "ready";
     }
 
-    if (dateState === "future") {
+    if (dateState === "future" || dateState === "not_started") {
       return "upcoming";
     }
 
-    if (dateState === "past") {
+    if (dateState === "past" || dateState === "expired") {
       return "passed";
     }
   }
@@ -516,7 +516,8 @@ function getCheckInDateState(
     getPhilippineTodayDateKey();
 
   if (checkInDate === today) {
-    return "today";
+    // Date-only eligibility is unsafe for stays whose checkout has passed.
+    return checkInWindowStatus(booking);
   }
 
   return checkInDate > today
@@ -535,6 +536,63 @@ function getCheckInDateOnly(
     "";
 
   return normalizeDateKey(value);
+}
+
+// ------------------------------------------------------------
+// Stage 95-I: Manila-time check-in window (UI safety guard).
+// All reservation items are checked; backend independently enforces
+// the same window before updating attendance or financial records.
+// ------------------------------------------------------------
+function normalizeScheduleTime(value) {
+  const text = String(value || "").trim();
+  const match = /^(\d{1,2}):([0-5]\d)(?::([0-5]\d))?$/.exec(text);
+  if (!match || Number(match[1]) > 23) return "";
+  return `${String(Number(match[1])).padStart(2, "0")}:${match[2]}:${match[3] || "00"}`;
+}
+
+function getCheckInScheduleWindow(booking) {
+  const items = Array.isArray(booking.items) && booking.items.length
+    ? booking.items
+    : [booking];
+  const windows = [];
+
+  for (const item of items) {
+    const startDate = normalizeDateKey(item.check_in_date || item.check_in);
+    const endDate = normalizeDateKey(item.check_out_date || item.check_out);
+    const startTime = normalizeScheduleTime(item.check_in_time);
+    const endTime = normalizeScheduleTime(item.check_out_time);
+    if (!startDate || !endDate || !startTime || !endTime) return null;
+    const start = `${startDate} ${startTime}`;
+    const end = `${endDate} ${endTime}`;
+    if (end <= start) return null;
+    windows.push({ start, end });
+  }
+
+  if (!windows.length) return null;
+  return {
+    start: windows.map((window) => window.start).sort()[0],
+    end: windows.map((window) => window.end).sort().at(-1),
+  };
+}
+
+function getPhilippineNowDateTimeKey(now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Manila",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(now);
+  const fields = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${fields.year}-${fields.month}-${fields.day} ${fields.hour}:${fields.minute}:${fields.second}`;
+}
+
+function checkInWindowStatus(booking) {
+  const window = getCheckInScheduleWindow(booking);
+  if (!window) return "missing";
+  const nowKey = getPhilippineNowDateTimeKey();
+  if (nowKey < window.start) return "not_started";
+  if (nowKey >= window.end) return "expired";
+  return "today";
 }
 
 function getPhilippineTodayDateKey() {
@@ -1197,7 +1255,7 @@ function renderGuestAction(
         class="guest-action-disabled"
         disabled
       >
-        Not Yet Check-in Date
+        ${getCheckInDateState(booking) === "not_started" ? "Check-in Time Not Started" : "Not Yet Check-in Date"}
       </button>
     `;
   }
@@ -1211,7 +1269,7 @@ function renderGuestAction(
         class="guest-action-disabled warning"
         disabled
       >
-        Check-in Date Passed
+        ${getCheckInDateState(booking) === "expired" ? "Check-in Window Closed" : "Check-in Date Passed"}
       </button>
     `;
   }
@@ -3743,6 +3801,9 @@ function getGuestStateMessage(
   if (
     state === "upcoming"
   ) {
+    if (getCheckInDateState(booking) === "not_started") {
+      return "Scheduled check-in time has not started yet. Entry is not allowed.";
+    }
     return `Scheduled check-in: ${formatDate(
       getCheckInDateOnly(
         booking,
@@ -3751,6 +3812,9 @@ function getGuestStateMessage(
   }
 
   if (state === "passed") {
+    if (getCheckInDateState(booking) === "expired") {
+      return "Scheduled checkout time has already passed. Check-in is no longer allowed.";
+    }
     return "Scheduled check-in date has already passed. Review this reservation manually.";
   }
 
