@@ -1084,6 +1084,7 @@ function renderReservationCard(
             ${renderProofButton(
               proofSource,
               booking.proof_of_payment,
+              bookingId,
             )}
           </div>
         </div>
@@ -1561,6 +1562,7 @@ function getProofUrl(proofPath) {
 function renderProofButton(
   proofUrl,
   rawProofPath = "",
+  bookingId,
 ) {
   if (!proofUrl) {
     const rawValue =
@@ -1587,16 +1589,26 @@ function renderProofButton(
     <button
       type="button"
       class="proof-link-btn"
-      onclick="openProofModal(
-        '${escapeForInline(proofUrl)}'
-      )"
+      onclick="openProofModal(${Number(bookingId)})"
     >
       View Proof
     </button>
   `;
 }
 
-function openProofModal(imageUrl) {
+// Keep object URLs private to this page and free memory on modal close.
+let adminProofRequest = null;
+let adminProofObjectUrl = null;
+
+function clearAdminProofImage() {
+  if (adminProofRequest) adminProofRequest.abort();
+  adminProofRequest = null;
+  if (adminProofObjectUrl) URL.revokeObjectURL(adminProofObjectUrl);
+  adminProofObjectUrl = null;
+}
+
+async function openProofModal(bookingId) {
+  clearAdminProofImage();
   let modal =
     document.getElementById(
       "proofImageModal",
@@ -1638,9 +1650,12 @@ function openProofModal(imageUrl) {
 
         <img
           id="proofModalImage"
-          src=""
           alt="Proof of payment screenshot"
         />
+
+        <p id="proofModalLoading" class="proof-modal-loading" role="status">
+          Loading payment screenshot...
+        </p>
 
         <p
           id="proofModalError"
@@ -1749,6 +1764,13 @@ function openProofModal(imageUrl) {
           border: 1px solid #e2e8f0;
         }
 
+        .proof-modal-loading {
+          text-align: center;
+          color: #475569;
+          font-weight: 700;
+          padding: 12px 0;
+        }
+
         .proof-modal-error {
           margin: 14px 0 0;
           padding: 14px 16px;
@@ -1795,9 +1817,9 @@ function openProofModal(imageUrl) {
 
   if (image) {
     image.style.display =
-      "block";
+      "none";
 
-    image.src = "";
+    image.removeAttribute("src");
 
     image.onerror = () => {
       image.style.display =
@@ -1819,15 +1841,64 @@ function openProofModal(imageUrl) {
         "block";
     };
 
-    image.src = imageUrl;
+    // The image is loaded below with a signed staff token, not a public URL.
   }
 
   modal.classList.add("show");
   document.body.style.overflow =
     "hidden";
+
+  const loading = document.getElementById("proofModalLoading");
+  if (loading) loading.style.display = "block";
+
+  const id = Number(bookingId);
+  const token = sessionStorage.getItem("adminToken");
+  if (!Number.isSafeInteger(id) || id <= 0 || !token) {
+    if (loading) loading.style.display = "none";
+    if (errorText) {
+      errorText.textContent = "Please sign in with an Administrator account to view this proof.";
+      errorText.style.display = "block";
+    }
+    return;
+  }
+
+  const controller = new AbortController();
+  adminProofRequest = controller;
+  try {
+    // Authenticated GET prevents unauthenticated visitors from requesting
+    // confidential payment screenshots through static /uploads URLs.
+    const response = await fetch(
+      `${API_BASE}/bookings/${id}/payment-proof-image`,
+      {
+        headers: { Authorization: "Bearer " + token },
+        cache: "no-store",
+        signal: controller.signal,
+      },
+    );
+    if (!response.ok) throw new Error("Payment screenshot unavailable.");
+    const blob = await response.blob();
+    if (!blob.type.startsWith("image/") || !blob.size) {
+      throw new Error("Invalid payment screenshot.");
+    }
+    if (controller.signal.aborted) return;
+    adminProofObjectUrl = URL.createObjectURL(blob);
+    if (image) image.src = adminProofObjectUrl;
+    if (loading) loading.style.display = "none";
+  } catch (error) {
+    if (controller.signal.aborted) return;
+    if (loading) loading.style.display = "none";
+    if (image) image.style.display = "none";
+    if (errorText) {
+      errorText.textContent = "Screenshot cannot be loaded. Verify the stored proof before approving payment.";
+      errorText.style.display = "block";
+    }
+    console.error("Authorized payment-proof request failed:", error.message);
+  }
 }
 
 function closeProofModal() {
+  clearAdminProofImage();
+  document.getElementById("proofModalImage")?.removeAttribute("src");
   const modal =
     document.getElementById(
       "proofImageModal",
