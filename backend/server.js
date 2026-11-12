@@ -26,7 +26,16 @@ const paypalRoutes = require("./routes/paypalRoutes");
 
 const app = express();
 
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+// Stage 95-G: never serve confidential payment screenshots as public assets.
+// Authorized staff now use GET /api/bookings/:id/payment-proof-image.
+// Keep other uploaded assets working exactly as before.
+const { isSensitiveUploadPath } = require("./utils/paymentProofAccess");
+app.use("/uploads", (req, res, next) => {
+  if (isSensitiveUploadPath(req.path)) {
+    return res.status(403).json({ message: "Payment proofs require staff authorization." });
+  }
+  return next();
+}, express.static(path.join(__dirname, "uploads")));
 
 app.use(cors());
 app.use(express.json({ limit: "50mb" }));
