@@ -878,3 +878,48 @@
     box-shadow: none;
   }
 }
+
+/* ======================================================
+   STAGE 95-J: RESERVATION AVAILABILITY FEEDBACK
+   Status is shown at each accommodation card and above Next to Payment.
+   Works on desktop and mobile; do not shift the form layout with popups.
+====================================================== */
+.booking-availability-note,
+.booking-availability-summary {
+  margin: 10px 0 0;
+  padding: 11px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 0.9rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.booking-availability-note[data-state="available"],
+.booking-availability-summary[data-state="available"] {
+  border-color: #a7f3d0;
+  background: #ecfdf5;
+  color: #065f46;
+}
+
+.booking-availability-note[data-state="unavailable"],
+.booking-availability-note[data-state="error"] {
+  border-color: #fca5a5;
+  background: #fff1f2;
+  color: #991b1b;
+}
+
+.booking-availability-note[data-state="checking"] {
+  border-color: #bae6fd;
+  background: #f0f9ff;
+  color: #075985;
+}
+
+#nextToPaymentBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  box-shadow: none;
+  transform: none;
+}
