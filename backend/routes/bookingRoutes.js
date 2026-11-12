@@ -50,6 +50,7 @@ const { requireAdminAuth } = require("../middleware/adminAuth");
 const { requireCustomerAuth } = require("../middleware/customerAuth");
 const { requireReceiptAuth } = require("../middleware/receiptAuth");
 const { requireOperationalBookingRead } = require("../middleware/operationalBookingReadAuth");
+const { getPaymentProofImage } = require("../controllers/shared/paymentProofController");
 const { getAdminReportPaidCharges } = require("../controllers/admin/adminReportPaidChargesController");
 
 function bindAuthenticatedFrontDeskCreator(req, res, next) {
@@ -215,6 +216,14 @@ router.post(
 /* ======================================================
    GENERAL BOOKING ROUTES
 ====================================================== */
+
+// Stage 95-G: View a stored payment screenshot ONLY after a signed
+// Admin or Front Desk session has been validated by the existing middleware.
+router.get(
+  "/:id/payment-proof-image",
+  requireOperationalBookingRead,
+  getPaymentProofImage,
+);
 
 router.get("/", requireOperationalBookingRead, getAllBookings);
 
