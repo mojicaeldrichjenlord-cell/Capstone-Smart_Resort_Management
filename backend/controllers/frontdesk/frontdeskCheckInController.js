@@ -1,4 +1,5 @@
 const db = require("../../config/db");
+const { getManilaDateTimeKey, checkCheckInWindow } = require("../../utils/checkInWindow");
 
 /* ======================================================
    FRONT DESK CHECK-IN CONTROLLER
@@ -247,32 +248,44 @@ const checkInBooking = async (req, res) => {
     }
 
     // --------------------------------------------------
-    // Server-side date validation.
+    // Server-side schedule validation.
     //
-    // Frontend already hides the Check In button when the
-    // date is not today. We still validate again here because
-    // backend validation is the actual source of truth.
+    // The check-in DATE alone is insufficient for same-day bookings.
+    // Enforce the earliest scheduled arrival and final scheduled
+    // checkout across all reservation items, in Manila local time.
+    // Frontend guards are informational; this is the authoritative
+    // security and business-rule check.
     // --------------------------------------------------
     const [dateRows] = await connection.query(
       `
       SELECT
         DATE_FORMAT(
-          MIN(check_in_date),
-          '%Y-%m-%d'
-        ) AS check_in_date
+          MIN(TIMESTAMP(check_in_date, check_in_time)),
+          '%Y-%m-%d %H:%i:%s'
+        ) AS check_in_at,
+        DATE_FORMAT(
+          MAX(TIMESTAMP(check_out_date, check_out_time)),
+          '%Y-%m-%d %H:%i:%s'
+        ) AS check_out_at,
+        COUNT(*) AS item_count,
+        SUM(
+          CASE WHEN check_in_date IS NULL OR check_in_time IS NULL
+                 OR check_out_date IS NULL OR check_out_time IS NULL
+            THEN 1 ELSE 0 END
+        ) AS invalid_items
       FROM reservation_items
       WHERE reservation_id = ?
       `,
       [bookingId],
     );
 
-    const scheduledCheckInDate =
-      String(
-        dateRows?.[0]
-          ?.check_in_date || "",
-      ).trim();
+    const scheduledCheckInAt = String(dateRows?.[0]?.check_in_at || "").trim();
+    const scheduledCheckOutAt = String(dateRows?.[0]?.check_out_at || "").trim();
+    const scheduledCheckInDate = scheduledCheckInAt.slice(0, 10);
 
-    if (!scheduledCheckInDate) {
+    if (!scheduledCheckInAt || !scheduledCheckOutAt ||
+        Number(dateRows?.[0]?.item_count || 0) === 0 ||
+        Number(dateRows?.[0]?.invalid_items || 0) > 0) {
       await connection.rollback();
 
       return res.status(400).json({
@@ -299,6 +312,25 @@ const checkInBooking = async (req, res) => {
             ? "This reservation is not yet scheduled for check-in today."
             : "The scheduled check-in date has already passed. Review this reservation manually.",
       });
+    }
+
+    // --------------------------------------------------
+    // Prevent entry before the booked start or at/after the
+    // final checkout time. This blocks a 7 AM–5 PM booking
+    // from entering at 6:55 PM on the same date.
+    // --------------------------------------------------
+    const windowStatus = checkCheckInWindow(
+      scheduledCheckInAt, scheduledCheckOutAt, getManilaDateTimeKey(),
+    );
+
+    if (windowStatus !== "open") {
+      await connection.rollback();
+      const message = windowStatus === "not_started"
+        ? "Check-in is not yet open for the scheduled accommodation time."
+        : windowStatus === "expired"
+          ? "The scheduled accommodation checkout time has passed. Check-in is no longer allowed."
+          : "This reservation has an invalid check-in schedule.";
+      return res.status(400).json({ success: false, message });
     }
 
     // --------------------------------------------------
