@@ -17,6 +17,12 @@ const CUSTOMER_MIN_BOOKING_DAYS_AHEAD = 0;
 let availableAccommodations = [];
 let bookingItemCounter = 0;
 
+// Stage 95-J: each accommodation card receives an availability status and
+// its own cancellable, debounced server request. Never trust a cached result
+// as a reservation guarantee: the server rechecks during booking creation.
+const customerAvailabilityRequests = new WeakMap();
+let customerBookingSubmissionChecking = false;
+
 const bookingForm = document.getElementById("bookingForm");
 const bookingMessage = document.getElementById("bookingMessage");
 const bookingItemsWrap = document.getElementById("bookingItemsWrap");
@@ -477,6 +483,9 @@ function addBookingItem(preselectedId = null) {
     <div class="slot-preview" id="slotPreview-${itemId}">
       Select an accommodation and slot to preview its schedule and price.
     </div>
+    <p class="booking-availability-note" role="status" aria-live="polite" data-state="incomplete">
+      Select accommodation, date, and slot to check availability.
+    </p>
   `;
 
   bookingItemsWrap.appendChild(card);
@@ -490,9 +499,11 @@ function addBookingItem(preselectedId = null) {
 
   if (removeBtn) {
     removeBtn.addEventListener("click", () => {
+      cancelCustomerAvailabilityRequest(card);
       card.remove();
       updateSummary();
       refreshTitles();
+      scheduleAllCustomerAvailabilityChecks();
     });
   }
 
@@ -500,12 +511,14 @@ function addBookingItem(preselectedId = null) {
     populateStayDurationOptions(itemId);
     updateItemPreview(itemId);
     updateSummary();
+    scheduleAllCustomerAvailabilityChecks();
   });
 
   if (stayDurationSelect) {
     stayDurationSelect.addEventListener("change", () => {
       updateItemPreview(itemId);
       updateSummary();
+      scheduleAllCustomerAvailabilityChecks();
     });
   }
 
@@ -513,12 +526,14 @@ function addBookingItem(preselectedId = null) {
     enforceDateInputMinimum(dateInput);
     updateItemPreview(itemId);
     updateSummary();
+    scheduleAllCustomerAvailabilityChecks();
   });
 
   dateInput.addEventListener("change", () => {
     enforceDateInputMinimum(dateInput);
     updateItemPreview(itemId);
     updateSummary();
+    scheduleAllCustomerAvailabilityChecks();
   });
 
   if (preselectedId) {
@@ -529,6 +544,7 @@ function addBookingItem(preselectedId = null) {
   populateStayDurationOptions(itemId);
   updateItemPreview(itemId);
   refreshTitles();
+  scheduleAllCustomerAvailabilityChecks();
 }
 
 
@@ -691,6 +707,7 @@ function setAccommodationSelection(card, itemId, accommodationId) {
   populateSlotOptions(itemId);
   updateItemPreview(itemId);
   updateSummary();
+  scheduleAllCustomerAvailabilityChecks();
 }
 
 function closeAllAccommodationPickers() {
@@ -761,6 +778,7 @@ function restoreDraftIfAny() {
     }
 
     updateSummary();
+    scheduleAllCustomerAvailabilityChecks();
   } catch (error) {
     console.error("restoreDraftIfAny error:", error);
   }
