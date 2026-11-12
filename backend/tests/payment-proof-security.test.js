@@ -45,6 +45,7 @@ test("only approved uploaded payment-proof basenames are accepted", () => {
     "/uploads/payment-proofs/shell.svg",
     "/uploads/payment-proofs/image.png/extra",
     "/uploads/accommodations/example.png",
+    "https://evil.example/uploads/payment-proofs/17300000-receipt_1.png",
     "/etc/passwd",
     "",
   ]) {
