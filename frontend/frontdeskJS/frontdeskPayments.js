@@ -466,7 +466,7 @@ function renderPaymentCard(booking) {
                   type="button"
                   class="proof-btn"
                   onclick="openProofModal(
-                    '${escapeForInline(proof)}',
+                    ${id},
                     '${escapeForInline(
                       booking.reservation_code || `#${booking.id || "-"}`,
                     )}'
@@ -623,41 +623,95 @@ async function verifyPayment(bookingId, button) {
 // SECTION 10: Proof modal
 // ============================================================
 
-function openProofModal(imageUrl, reservationCode) {
+// Keep the signed-image request and temporary blob URL confined to this page.
+let frontDeskProofRequest = null;
+let frontDeskProofObjectUrl = null;
+
+function clearFrontDeskProofImage() {
+  if (frontDeskProofRequest) frontDeskProofRequest.abort();
+  frontDeskProofRequest = null;
+  if (frontDeskProofObjectUrl) URL.revokeObjectURL(frontDeskProofObjectUrl);
+  frontDeskProofObjectUrl = null;
+}
+
+async function openProofModal(bookingId, reservationCode) {
+  clearFrontDeskProofImage();
+
   const modal = document.getElementById("proofModal");
   const image = document.getElementById("proofModalImage");
   const label = document.getElementById("proofModalReservation");
+  const status = document.getElementById("proofModalStatus");
+  if (!modal || !image) return;
 
-  if (!modal || !image) {
-    return;
+  image.removeAttribute("src");
+  image.style.display = "none";
+  if (status) {
+    status.textContent = "Loading payment screenshot...";
+    status.style.display = "block";
   }
-
-  image.src = imageUrl;
-
-  if (label) {
-    label.textContent = reservationCode || "-";
-  }
-
+  if (label) label.textContent = reservationCode || "-";
   modal.classList.add("open");
   modal.setAttribute("aria-hidden", "false");
   document.body.classList.add("proof-modal-open");
-}
 
-function closeProofModal() {
-  const modal = document.getElementById("proofModal");
-  const image = document.getElementById("proofModalImage");
-
-  if (!modal) {
+  const id = Number(bookingId);
+  const token = sessionStorage.getItem("frontDeskToken");
+  if (!Number.isSafeInteger(id) || id <= 0 || !token) {
+    if (status) status.textContent = "Front Desk login required to view this screenshot.";
     return;
   }
 
+  const controller = new AbortController();
+  frontDeskProofRequest = controller;
+
+  try {
+    // Send the staff bearer token as a HEADER, never in an image URL.
+    const response = await fetch(
+      `${API_BASE}/bookings/${id}/payment-proof-image`,
+      {
+        headers: { Authorization: "Bearer " + token },
+        cache: "no-store",
+        signal: controller.signal,
+      },
+    );
+    if (!response.ok) throw new Error("Payment screenshot unavailable.");
+    const blob = await response.blob();
+    if (!blob.type.startsWith("image/") || !blob.size) {
+      throw new Error("Invalid payment screenshot.");
+    }
+    if (controller.signal.aborted) return;
+    frontDeskProofObjectUrl = URL.createObjectURL(blob);
+    image.onload = () => {
+      if (status) status.style.display = "none";
+      image.style.display = "block";
+    };
+    image.onerror = () => {
+      image.style.display = "none";
+      if (status) {
+        status.textContent = "Unable to display the stored screenshot.";
+        status.style.display = "block";
+      }
+    };
+    image.src = frontDeskProofObjectUrl;
+  } catch (error) {
+    if (controller.signal.aborted) return;
+    if (status) {
+      status.textContent = "Screenshot unavailable. Do not verify payment without checking the proof.";
+      status.style.display = "block";
+    }
+    console.error("Authorized payment-proof request failed:", error.message);
+  }
+}
+
+function closeProofModal() {
+  clearFrontDeskProofImage();
+  const modal = document.getElementById("proofModal");
+  const image = document.getElementById("proofModalImage");
+  if (!modal) return;
   modal.classList.remove("open");
   modal.setAttribute("aria-hidden", "true");
   document.body.classList.remove("proof-modal-open");
-
-  if (image) {
-    image.removeAttribute("src");
-  }
+  if (image) image.removeAttribute("src");
 }
 
 // ============================================================
