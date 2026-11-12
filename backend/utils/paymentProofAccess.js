@@ -35,7 +35,13 @@ function getStoredProofFilename(value) {
   let raw = String(value || "").trim();
   if (/^https?:\/\//i.test(raw)) {
     try {
-      raw = new URL(raw).pathname;
+      const url = new URL(raw);
+      // Preserve older trusted-backend URLs; never interpret an untrusted
+      // external URL as a filename in this server's private upload folder.
+      if (!["smartresort-backend.onrender.com", "localhost", "127.0.0.1"].includes(url.hostname.toLowerCase())) {
+        return null;
+      }
+      raw = url.pathname;
     } catch {
       return null;
     }
