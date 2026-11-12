@@ -1,3 +1,4 @@
+const { findOverlappingDraftItems } = require("../../utils/reservationOverlap");
 ﻿// ============================================================
 // COMMENTED VERSION
 // This copy keeps the same logic and adds block comments so groupmates can follow the code easier.
@@ -618,6 +619,16 @@ async function checkReservationConflicts(
   ignoreReservationId = null,
   lockForWrite = true,
 ) {
+  // The database has not stored the new items yet, so a SQL lookup cannot
+  // detect two conflicting rooms in the same submitted booking draft.
+  const selfConflict = findOverlappingDraftItems(reservationItems);
+  if (selfConflict) {
+    throw {
+      status: 409,
+      message: "The same accommodation has overlapping date/time selections in this reservation. Please remove or change one of them.",
+    };
+  }
+
   if (lockForWrite) {
     // Serialize all writers for the same accommodation BEFORE checking overlap.
     // Always lock IDs in ascending order to reduce multi-room deadlock risk.
