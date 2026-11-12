@@ -301,6 +301,24 @@ function setupBookingForm(user) {
       return;
     }
 
+    // Stage 95-J: block the payment page until every selected accommodation
+    // has been rechecked with the real backend (no mock availability).
+    if (customerBookingSubmissionChecking) return;
+    customerBookingSubmissionChecking = true;
+    updateCustomerPaymentNavigationState();
+    let schedulesAvailable = false;
+    try {
+      schedulesAvailable = await verifyCustomerAvailabilityBeforePayment();
+    } catch (error) {
+      console.error("Final customer availability verification failed:", error);
+      showMessage("Unable to verify selected schedules. Please retry.", "error");
+    } finally {
+      customerBookingSubmissionChecking = false;
+      updateCustomerPaymentNavigationState();
+    }
+
+    if (!schedulesAvailable) return;
+
     const draft = {
       user_id: user.id,
       first_name,
