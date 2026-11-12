@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="description" content="Read-only capstone survey preview of the Arvic Seaside resort booking system.">
+  <title>Survey Preview | Arvic Seaside</title>
+  <link rel="icon" type="image/png" href="../images/arvic-logo.png">
+  <link rel="stylesheet" href="../surveyCSS/preview.css">
+  <!-- This survey preview loads NO API keys, backend scripts, or payment SDKs. -->
+  <script src="../surveyJS/preview.js" defer></script>
+</head>
+<body>
+  <!-- Standalone, read-only survey view. Production booking pages are untouched. -->
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header">
+    <a class="brand" href="#home" aria-label="Arvic Seaside survey preview home">
+      <img src="../images/arvic-logo.png" alt="" width="43" height="43">
+      <span>Arvic Seaside<small>Capstone Survey Preview</small></span>
+    </a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="primaryNav">☰ <span>Menu</span></button>
+    <nav class="primary-nav" id="primaryNav" aria-label="Preview sections">
+      <a href="#home">Overview</a>
+      <a href="#accommodations">Accommodations</a>
+      <a href="#booking-preview">Booking Journey</a>
+      <a href="#ai-preview">AI Assistant</a>
+      <a href="#roles">Staff Roles</a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="home">
+      <div class="hero-content">
+        <p class="eyebrow"><span class="dot"></span> RESEARCH &amp; EVALUATION PREVIEW</p>
+        <h1>Explore the Arvic Seaside Booking System.</h1>
+        <p class="hero-description">A guided, read-only look at the website's key features—accommodations, the reservation journey, AI assistance, and staff workflows.</p>
+        <div class="actions">
+          <a class="btn btn-primary" href="#accommodations">Start Exploring <span aria-hidden="true">→</span></a>
+          <a class="btn btn-light" href="#booking-preview">See How Booking Works</a>
+        </div>
+        <p class="hero-note"><strong>Demo only:</strong> No account required. No real bookings, payments, or Gemini requests.</p>
+      </div>
+      <div class="hero-visual" aria-label="Arvic Seaside resort photo">
+        <img src="../images/landing/pool-landing.jpg" alt="Resort pool area at Arvic Seaside" loading="eager">
+        <div class="visual-tag"><span class="pulse"></span> Read-only experience</div>
+      </div>
+    </section>
+
+    <section class="section intro" aria-labelledby="preview-heading">
+      <div class="section-heading">
+        <p class="eyebrow accent">WHAT YOU CAN EXPLORE</p>
+        <h2 id="preview-heading">A preview designed for respondents.</h2>
+        <p>The live system has separate Customer, Front Desk, Admin, Manager, and Housekeeping roles. This preview demonstrates the experience without opening those real accounts.</p>
+      </div>
+      <div class="intro-grid">
+        <article class="info-card"><span class="feature-icon" aria-hidden="true">🏖️</span><h3>Browse</h3><p>See real resort photo assets and sample accommodation categories.</p></article>
+        <article class="info-card"><span class="feature-icon" aria-hidden="true">📅</span><h3>Understand booking</h3><p>Walk through a simulated reservation flow without saving information.</p></article>
+        <article class="info-card"><span class="feature-icon" aria-hidden="true">💬</span><h3>Preview AI replies</h3><p>Read fixed resort-policy examples without spending Gemini credits.</p></article>
+      </div>
+    </section>
+
+    <section class="section section-soft" id="accommodations" aria-labelledby="accommodation-heading">
+      <div class="section-heading">
+        <p class="eyebrow accent">ACCOMMODATION EXPLORATION</p>
+        <h2 id="accommodation-heading">Find your seaside space.</h2>
+        <p>These are accommodation examples using images from the resort project. Prices, availability, and capacities are intentionally omitted; they must be verified in the official booking process.</p>
+      </div>
+      <div class="accommodation-grid">
+        <article class="accommodation-card"><img src="../images/accommodations/Family-Room-A/family-room-a-cover.jpg" alt="Family Room A" loading="lazy"><div class="card-content"><span class="category">Room</span><h3>Family Room A</h3><p>Explore the family-room category.</p><button type="button" data-select-room="Family Room A">Preview reservation <span aria-hidden="true">→</span></button></div></article>
+        <article class="accommodation-card"><img src="../images/accommodations/Double-Room/Double-Room-Cover.jpg" alt="Double Room" loading="lazy"><div class="card-content"><span class="category">Room</span><h3>Double Room</h3><p>View the room selection journey.</p><button type="button" data-select-room="Double Room">Preview reservation <span aria-hidden="true">→</span></button></div></article>
+        <article class="accommodation-card"><img src="../images/accommodations/Big-Nipa-Hut/Big-Nipa-Hut-2.jpg" alt="Big Nipa Hut" loading="lazy"><div class="card-content"><span class="category">Cottage</span><h3>Big Nipa Hut</h3><p>See an outdoor accommodation example.</p><button type="button" data-select-room="Big Nipa Hut">Preview reservation <span aria-hidden="true">→</span></button></div></article>
+        <article class="accommodation-card"><img src="../images/accommodations/Pool-Shade/Pool-Shade-A.jpg" alt="Pool Shade" loading="lazy"><div class="card-content"><span class="category">Shade</span><h3>Pool Shade</h3><p>Browse the poolside shade category.</p><button type="button" data-select-room="Pool Shade">Preview reservation <span aria-hidden="true">→</span></button></div></article>
+        <article class="accommodation-card"><img src="../images/accommodations/Function-Area/Beach-Pavillion.jpg" alt="Beach Pavilion" loading="lazy"><div class="card-content"><span class="category">Function Area</span><h3>Beach Pavilion</h3><p>Explore function-area choices.</p><button type="button" data-select-room="Beach Pavilion">Preview reservation <span aria-hidden="true">→</span></button></div></article>
+        <article class="accommodation-card"><img src="../images/accommodations/Single-Room-Poolside/Single-Room-Poolside-Cover.jpg" alt="Single Room Poolside" loading="lazy"><div class="card-content"><span class="category">Room</span><h3>Single Room Poolside</h3><p>Explore another guest room option.</p><button type="button" data-select-room="Single Room Poolside">Preview reservation <span aria-hidden="true">→</span></button></div></article>
+      </div>
+    </section>
+
+    <section class="section" id="booking-preview" aria-labelledby="booking-heading">
+      <div class="section-heading">
+        <p class="eyebrow accent">BOOKING JOURNEY — SIMULATION</p>
+        <h2 id="booking-heading">Understand the reservation process.</h2>
+        <p>Select any sample accommodation above. The preview updates locally in your browser; it never creates a reservation or opens a payment page.</p>
+      </div>
+      <div class="booking-grid">
+        <div class="steps" aria-label="Example reservation process">
+          <div class="step"><span>01</span><div><h3>Choose an accommodation</h3><p>Customers view room details, photos, amenities, and listed rates in the real system.</p></div></div>
+          <div class="step"><span>02</span><div><h3>Select dates and guests</h3><p>The real booking form collects schedule and guest information for validation.</p></div></div>
+          <div class="step"><span>03</span><div><h3>Review the payment breakdown</h3><p>Online booking requires a 50% downpayment on the accommodation price; entrance fees are separate and finalized onsite.</p></div></div>
+          <div class="step"><span>04</span><div><h3>Staff verification and receipt</h3><p>Authorized staff manage reservations and guests through their role-based dashboards.</p></div></div>
+        </div>
+        <aside class="booking-sample">
+          <span class="sample-flag">SIMULATION • NO DATA SAVED</span>
+          <h3>Reservation Preview</h3>
+          <p class="sample-label">Sample accommodation</p>
+          <strong id="selectedRoom" aria-live="polite">Family Room A</strong>
+          <div class="sample-row"><span>Availability</span><b>Not checked</b></div>
+          <div class="sample-row"><span>Price</span><b>Not quoted</b></div>
+          <div class="sample-row"><span>Payment</span><b>Disabled in preview</b></div>
+          <p class="sample-warning">This preview is not a confirmed booking. It does not connect to the database or payment provider.</p>
+          <a class="btn btn-secondary" href="#ai-preview">Explore AI Policy Examples</a>
+        </aside>
+      </div>
+    </section>
+
+    <section class="section section-soft" id="ai-preview" aria-labelledby="ai-heading">
+      <div class="section-heading">
+        <p class="eyebrow accent">AI ASSISTANT — STATIC EXAMPLES</p>
+        <h2 id="ai-heading">Preview typical resort questions.</h2>
+        <p>Select a topic to read a prepared policy answer. This is not a live conversation and does not call Gemini or access reservations.</p>
+      </div>
+      <div class="ai-preview">
+        <div class="faq-choices" role="group" aria-label="Choose an AI example">
+          <button type="button" class="faq-option active" data-faq="downpayment" aria-pressed="true">How much is the downpayment?</button>
+          <button type="button" class="faq-option" data-faq="entrance" aria-pressed="false">Is entrance included?</button>
+          <button type="button" class="faq-option" data-faq="refund" aria-pressed="false">How do refunds work?</button>
+          <button type="button" class="faq-option" data-faq="confirmation" aria-pressed="false">Can AI confirm my booking?</button>
+        </div>
+        <div class="chat-example" aria-live="polite" aria-atomic="true">
+          <span class="chat-label">EXAMPLE ASSISTANT RESPONSE</span>
+          <p id="faqAnswer">For online reservations, the required downpayment is 50% of the accommodation price. The remaining accommodation balance and entrance fees are handled onsite according to resort policy.</p>
+          <small>Prepared examples only • No real-time rates or booking data</small>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="roles" aria-labelledby="roles-heading">
+      <div class="section-heading">
+        <p class="eyebrow accent">ROLE-BASED MANAGEMENT</p>
+        <h2 id="roles-heading">One system. Five roles.</h2>
+        <p>Explore what each role is designed to do. Real staff dashboards contain operational information and are not accessible through this public survey preview.</p>
+      </div>
+      <div class="roles-grid">
+        <article class="role-card"><div class="role-icon">👤</div><h3>Customer</h3><p>Explore accommodations, make reservations, review bookings, and use the AI assistant.</p></article>
+        <article class="role-card"><div class="role-icon">🧾</div><h3>Front Desk</h3><p>Handle assisted reservations, check-in/check-out, and onsite guest charges.</p></article>
+        <article class="role-card"><div class="role-icon">⚙️</div><h3>Admin</h3><p>Oversee bookings, accommodations, payments, map management, and reports.</p></article>
+        <article class="role-card"><div class="role-icon">📊</div><h3>Manager</h3><p>Monitor operations, staff, reports, and housekeeping progress.</p></article>
+        <article class="role-card"><div class="role-icon">🧹</div><h3>Housekeeping</h3><p>Review assigned cleaning tasks and update room readiness workflow.</p></article>
+      </div>
+    </section>
+
+    <section class="section participation" id="survey">
+      <div>
+        <p class="eyebrow">THANK YOU FOR EXPLORING</p>
+        <h2>Ready to evaluate the system?</h2>
+        <p>This preview is for academic evaluation. Please complete the survey provided separately by the research team. No responses or personal information are collected on this page.</p>
+      </div>
+      <a class="btn btn-light" href="#home">Return to Top ↑</a>
+    </section>
+  </main>
+  <footer class="footer"><span>© 2026 Arvic Seaside • Academic Capstone Survey Preview</span><span>Read-only • No account or transactions</span></footer>
+</body>
+</html>
