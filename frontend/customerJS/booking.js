@@ -1076,6 +1076,223 @@ function collectBookingItems() {
 }
 
 // ============================================================
+// STAGE 95-J: CUSTOMER LIVE AVAILABILITY BEFORE PAYMENT
+// ============================================================
+// The existing server availability API returns only available/message, not
+// other guests' identities. Checks are debounced and cancelled when customers
+// change their choices. Payment page navigation remains blocked on conflicts.
+let lastCustomerAvailabilityWarning = "";
+
+function getCustomerCardSelection(card) {
+  const accommodationId = Number(card.querySelector(".accommodation-value")?.value || 0);
+  const date = String(card.querySelector(".date-input")?.value || "");
+  const slotType = String(card.querySelector(".slot-select")?.value || "");
+  const accommodation = getAccommodationById(accommodationId);
+  const slot = getSlotOptions(accommodation).find((choice) => choice.value === slotType);
+  if (!accommodation || !slot || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  const stayDuration = ["day_extended", "night_extended"].includes(slotType)
+    ? getStayDuration({ stay_duration: card.querySelector(".stay-duration-select")?.value })
+    : 1;
+  const checkOutDate = calculateCheckOutDate(date, slot.start, slot.end, stayDuration);
+  return {
+    accommodation_id: accommodationId,
+    accommodation_name: accommodation.name,
+    slot_type: slotType,
+    check_in_date: date,
+    stay_duration: stayDuration,
+    start: `${date} ${slot.start}`,
+    end: `${checkOutDate} ${slot.end}`,
+  };
+}
+
+function getCustomerLocalConflict(card, selection) {
+  if (!selection) return "";
+  for (const other of document.querySelectorAll(".booking-item-card")) {
+    if (other === card) continue;
+    const otherSelection = getCustomerCardSelection(other);
+    if (otherSelection &&
+        otherSelection.accommodation_id === selection.accommodation_id &&
+        selection.start < otherSelection.end &&
+        otherSelection.start < selection.end) {
+      return `${selection.accommodation_name} has overlapping schedules in your selected accommodation items. Please change one date, slot, or accommodation.`;
+    }
+  }
+  return "";
+}
+
+function setCustomerCardAvailability(card, state, message, selectionKey = "") {
+  if (!card.isConnected) return;
+  card.dataset.availabilityStatus = state;
+  const note = card.querySelector(".booking-availability-note");
+  if (note) {
+    note.dataset.state = state;
+    note.textContent = message;
+  }
+  if (state === "unavailable" && selectionKey &&
+      lastCustomerAvailabilityWarning !== selectionKey) {
+    lastCustomerAvailabilityWarning = selectionKey;
+    // Existing centered toast is visible beside the specific card message.
+    if (typeof showToast === "function") showToast(message, "error");
+  }
+  updateCustomerPaymentNavigationState();
+}
+
+function updateCustomerPaymentNavigationState() {
+  const cards = [...document.querySelectorAll(".booking-item-card")];
+  const statuses = cards.map((card) => card.dataset.availabilityStatus || "incomplete");
+  const ready = cards.length > 0 && statuses.every((status) => status === "available");
+  const nextBtn = document.getElementById("nextToPaymentBtn");
+  const statusText = document.getElementById("bookingAvailabilitySummary");
+  const disabled = !ready || customerBookingSubmissionChecking;
+  if (nextBtn) {
+    nextBtn.disabled = disabled;
+    nextBtn.title = disabled ? "Complete and verify all accommodation schedules first." : "";
+  }
+  if (statusText) {
+    statusText.textContent = customerBookingSubmissionChecking
+      ? "Rechecking the selected schedules before payment..."
+      : statuses.includes("unavailable")
+        ? "Unavailable: change the highlighted accommodation schedule before payment."
+        : statuses.includes("error")
+          ? "Availability could not be verified. Retry or change the selection."
+          : ready
+            ? "All selected schedules are currently available. Final availability is checked again when the reservation is submitted."
+            : "Select accommodation, date and time slot for every item to check availability.";
+    statusText.dataset.state = ready ? "available" : "pending";
+  }
+}
+
+function cancelCustomerAvailabilityRequest(card) {
+  const request = customerAvailabilityRequests.get(card);
+  if (request?.timer) clearTimeout(request.timer);
+  if (request?.controller) request.controller.abort();
+  customerAvailabilityRequests.delete(card);
+}
+
+async function requestCustomerItemAvailability(selection, signal) {
+  const response = await fetch(`${API_BASE}/bookings/check-item-availability`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({
+      mode: "add",
+      accommodation_id: selection.accommodation_id,
+      slot_type: selection.slot_type,
+      check_in_date: selection.check_in_date,
+      stay_duration: selection.stay_duration,
+    }),
+    cache: "no-store",
+    signal,
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?.message || "Could not verify accommodation availability.");
+  }
+  return {
+    available: data.available === true,
+    message: String(data.message || "This schedule is not available."),
+  };
+}
+
+function scheduleAllCustomerAvailabilityChecks() {
+  for (const card of document.querySelectorAll(".booking-item-card")) {
+    cancelCustomerAvailabilityRequest(card);
+    const selection = getCustomerCardSelection(card);
+    if (!selection) {
+      setCustomerCardAvailability(card, "incomplete", "Select an accommodation, date, and time slot.");
+      continue;
+    }
+    const key = JSON.stringify(selection);
+    const conflict = getCustomerLocalConflict(card, selection);
+    if (conflict) {
+      setCustomerCardAvailability(card, "unavailable", conflict, key + ":local");
+      continue;
+    }
+
+    setCustomerCardAvailability(card, "checking", "Checking this date and time...");
+    const controller = new AbortController();
+    const request = { controller, timer: null };
+    customerAvailabilityRequests.set(card, request);
+    request.timer = setTimeout(async () => {
+      try {
+        const result = await requestCustomerItemAvailability(selection, controller.signal);
+        if (controller.signal.aborted || !card.isConnected ||
+            customerAvailabilityRequests.get(card) !== request ||
+            JSON.stringify(getCustomerCardSelection(card)) !== key) return;
+        setCustomerCardAvailability(
+          card,
+          result.available ? "available" : "unavailable",
+          result.message,
+          result.available ? "" : key,
+        );
+      } catch (error) {
+        if (controller.signal.aborted || !card.isConnected) return;
+        if (customerAvailabilityRequests.get(card) !== request) return;
+        setCustomerCardAvailability(card, "error",
+          "Unable to check availability right now. Change the selection to retry.");
+        console.error("Customer availability check failed:", error.message);
+      }
+    }, 280);
+  }
+}
+
+// Recheck EVERY item on Next to Payment; earlier green availability badges
+// cannot guarantee the dates are still open after another guest books.
+async function verifyCustomerAvailabilityBeforePayment() {
+  const cards = [...document.querySelectorAll(".booking-item-card")];
+  const selections = cards.map(getCustomerCardSelection);
+  if (!cards.length || selections.some((item) => !item)) {
+    showMessage("Please complete the accommodation, slot, and date for every item.", "error");
+    return false;
+  }
+
+  for (let index = 0; index < cards.length; index += 1) {
+    const conflict = getCustomerLocalConflict(cards[index], selections[index]);
+    if (conflict) {
+      setCustomerCardAvailability(cards[index], "unavailable", conflict,
+        JSON.stringify(selections[index]) + ":local");
+      showMessage(conflict, "error");
+      return false;
+    }
+  }
+
+  // Prevent stale debounced responses from replacing our final recheck result.
+  cards.forEach(cancelCustomerAvailabilityRequest);
+  cards.forEach((card) => setCustomerCardAvailability(card, "checking",
+    "Final availability check before payment..."));
+
+  const expectedSelections = JSON.stringify(selections);
+  const results = await Promise.allSettled(
+    selections.map((selection) => requestCustomerItemAvailability(selection)),
+  );
+  if (expectedSelections !== JSON.stringify(cards.map(getCustomerCardSelection))) {
+    showMessage("Your accommodation selection changed. Please check again.", "error");
+    scheduleAllCustomerAvailabilityChecks();
+    return false;
+  }
+
+  let allAvailable = true;
+  results.forEach((result, index) => {
+    const selected = selections[index];
+    const key = JSON.stringify(selected);
+    if (result.status === "rejected") {
+      allAvailable = false;
+      setCustomerCardAvailability(cards[index], "error",
+        "Could not verify availability. Please retry before proceeding.");
+      return;
+    }
+    const reply = result.value;
+    setCustomerCardAvailability(cards[index], reply.available ? "available" : "unavailable",
+      reply.message, reply.available ? "" : key);
+    if (!reply.available) allAvailable = false;
+  });
+
+  if (!allAvailable) {
+    showMessage("One or more schedules are unavailable or could not be verified. Please review the accommodation items.", "error");
+  }
+  return allAvailable;
+}
+
+// ============================================================
 // SECTION 11: Date and entrance fee calculations
 // ============================================================
 
