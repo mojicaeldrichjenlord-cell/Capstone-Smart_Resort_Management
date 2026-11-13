@@ -68,8 +68,10 @@ async function checkGeminiKey() {
     output("Gemini API connection", "PASS (key accepted for model list)");
     const data = await response.json();
     const models = Array.isArray(data.models) ? data.models : [];
-    const hasModel = models.some(item => item.name === "models/gemini-2.5-flash");
-    output("Gemini 2.5 Flash", hasModel ? "LISTED" : "NOT LISTED (check API model access)");
+    // Match the current backend model configuration; never log any credentials.
+    const configuredModel = process.env.GEMINI_MODEL?.trim() || "gemini-3.5-flash-lite";
+    const hasModel = models.some(item => item.name === `models/${configuredModel}`);
+    output(`Gemini model ${configuredModel}`, hasModel ? "LISTED" : "NOT LISTED (check API model access)");
   } catch (error) {
     output("Gemini API connection", error.name === "TimeoutError" ? "TIMEOUT" : "NETWORK ERROR");
   }
