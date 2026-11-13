@@ -1,8 +1,8 @@
-// STAGE 85-A: Gemini request cost guard (single Node process).
-// IMPORTANT: This is a conservative session allowance, NOT a billing cap.
-// It resets on process restart and does not coordinate multiple instances.
-// Google AI Studio billing is authoritative; no guest text or keys are stored.
-const DEFAULT_CAP_USD = 1.50; // Protect part of the $5 demo credit.
+// Stage 98: Monitor Gemini cost without blocking by default. An optional local
+// cap can be explicitly re-enabled; Google AI Studio owns real billing/quota.
+// Process-local estimates reset on restart and are NOT a billing limit.
+// No customer prompts, secrets, or payment records are collected.
+const DEFAULT_CAP_USD = 1.50; // Used ONLY with AI_GEMINI_LOCAL_BUDGET_MODE=enforce.
 const DEFAULT_RESERVE_USD = 0.03; // Conservative allowance per API attempt.
 const INPUT_USD_PER_MILLION = 0.30; // Gemini 3.5 Flash-Lite standard text pricing (2026).
 const OUTPUT_USD_PER_MILLION = 2.50; // Includes thinking tokens.
@@ -34,8 +34,11 @@ function budgetError() {
   return error;
 }
 
-function createGeminiBudgetGuard(capUsd, reserveUsd) {
-  if (!Number.isFinite(capUsd) || capUsd <= 0 ||
+function createGeminiBudgetGuard(capUsd, reserveUsd, { enforceCap = true } = {}) {
+  // Existing tests and explicit callers still get a protective cap by default.
+  // The production singleton below opts into monitor-only mode.
+  if (typeof enforceCap !== "boolean" ||
+      (enforceCap && (!Number.isFinite(capUsd) || capUsd <= 0)) ||
       !Number.isFinite(reserveUsd) || reserveUsd <= 0) {
     throw new Error("Invalid Gemini budget guard configuration");
   }
@@ -44,7 +47,7 @@ function createGeminiBudgetGuard(capUsd, reserveUsd) {
   function acquire() {
     // JS executes this synchronously; concurrent requests cannot both
     // reserve the same remaining local budget before an await.
-    if (allocatedUsd + inFlightUsd + reserveUsd > capUsd + 1e-10) {
+    if (enforceCap && allocatedUsd + inFlightUsd + reserveUsd > capUsd + 1e-10) {
       blockedCalls++;
       throw budgetError();
     }
@@ -64,7 +67,9 @@ function createGeminiBudgetGuard(capUsd, reserveUsd) {
   }
   function snapshot() {
     return {
-      capUsd, reservedPerAttemptUsd: reserveUsd, allocatedUsd,
+      mode: enforceCap ? "enforced" : "monitor-only",
+      capUsd: enforceCap ? capUsd : null,
+      reservedPerAttemptUsd: reserveUsd, allocatedUsd,
       estimatedSpendUsd, inFlightUsd, blockedCalls, callsWithoutMetadata,
       approximate: true, resetsOnRestart: true, distributed: false,
     };
@@ -72,11 +77,19 @@ function createGeminiBudgetGuard(capUsd, reserveUsd) {
   return { acquire, snapshot };
 }
 
+// Monitor-only is the default even when a legacy 1.50 cap ENV var exists.
+// To restore blocking, the operator must explicitly set mode to "enforce".
+const localMode = String(process.env.AI_GEMINI_LOCAL_BUDGET_MODE || "monitor")
+  .trim().toLowerCase();
+const modeValid = localMode === "monitor" || localMode === "enforce";
+const enforceCap = localMode === "enforce";
 const capUsd = configuredNumber("AI_GEMINI_SESSION_CAP_USD", DEFAULT_CAP_USD);
 const reserveUsd = configuredNumber("AI_GEMINI_RESERVE_USD", DEFAULT_RESERVE_USD,
   { min: 0.000001, max: 5 });
-const configuredGuard = capUsd === null || reserveUsd === null
-  ? null : createGeminiBudgetGuard(capUsd, reserveUsd);
+const configuredGuard = modeValid && reserveUsd !== null &&
+  (!enforceCap || capUsd !== null)
+  ? createGeminiBudgetGuard(capUsd, reserveUsd, { enforceCap })
+  : null;
 const localGuard = configuredGuard || {
   acquire() { throw budgetError(); },
   snapshot() { return { blocked: true, configurationError: true }; },
