@@ -46,6 +46,35 @@ async function testDatabase() {
   }
 }
 
+// Read-only model discovery confirms the configured key can reach Google's API.
+// No prompts or generateContent calls are sent, so this does not spend generation tokens.
+// A successful list response does NOT prove that generation quotas remain available.
+async function checkGeminiKey() {
+  if (!present("GEMINI_API_KEY")) {
+    output("Gemini API connection", "SKIPPED (missing key)");
+    return;
+  }
+  try {
+    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000", {
+      method: "GET",
+      headers: { "x-goog-api-key": process.env.GEMINI_API_KEY, Accept: "application/json" },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!response.ok) {
+      // Only the HTTP code is displayed; never include Google's response body or the API key.
+      output("Gemini API connection", `HTTP ${response.status}`);
+      return;
+    }
+    output("Gemini API connection", "PASS (key accepted for model list)");
+    const data = await response.json();
+    const models = Array.isArray(data.models) ? data.models : [];
+    const hasModel = models.some(item => item.name === "models/gemini-2.5-flash");
+    output("Gemini 2.5 Flash", hasModel ? "LISTED" : "NOT LISTED (check API model access)");
+  } catch (error) {
+    output("Gemini API connection", error.name === "TimeoutError" ? "TIMEOUT" : "NETWORK ERROR");
+  }
+}
+
 async function checkBrevo() {
   output("Brevo API key", present("BREVO_API_KEY") ? "CONFIGURED" : "MISSING");
   output("Brevo sender", present("EMAIL_FROM") || present("EMAIL_USER") ? "CONFIGURED" : "MISSING");
@@ -82,11 +111,12 @@ async function checkBrevo() {
 }
 
 async function main() {
-  console.log("Smart Resort Stage 96-A diagnostics — read-only; values are never printed");
+  console.log("Smart Resort Stage 96-C diagnostics — read-only; values are never printed");
   output("Gemini API key", present("GEMINI_API_KEY") ? "CONFIGURED (quota NOT checked)" : "MISSING");
   output("Azure voice", present("AZURE_SPEECH_KEY") && present("AZURE_SPEECH_REGION") ? "CONFIGURED (availability NOT checked)" : "NOT CONFIGURED (browser voice fallback)");
   output("Front Desk token secret", present("FRONTDESK_TOKEN_SECRET") && process.env.FRONTDESK_TOKEN_SECRET.length >= 32 ? "CONFIGURED" : "MISSING OR TOO SHORT");
   await testDatabase();
+  await checkGeminiKey();
   await checkBrevo();
   console.log("No AI tokens or email credits consumed. No database changes.");
 }
