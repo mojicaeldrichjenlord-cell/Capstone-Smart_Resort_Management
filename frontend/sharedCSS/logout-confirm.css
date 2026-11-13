@@ -1,0 +1,74 @@
+/* Shared fixed overlay: no page resizing when log-out confirmation appears. */
+.logout-confirm-overlay[hidden] { display: none !important; }
+.logout-confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  box-sizing: border-box;
+  background: rgba(12, 26, 39, 0.62);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  overscroll-behavior: contain;
+}
+.logout-confirm-dialog {
+  box-sizing: border-box;
+  width: min(100%, 420px);
+  padding: 28px 26px 24px;
+  border: 1px solid rgba(210, 230, 233, 0.9);
+  border-radius: 20px;
+  background: #fff;
+  color: #152638;
+  box-shadow: 0 22px 65px rgba(0, 25, 38, 0.27);
+  font-family: inherit;
+  text-align: center;
+}
+.logout-confirm-icon {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 14px;
+  border-radius: 16px;
+  background: #e7f7f5;
+  color: #087e77;
+  font: 700 28px/1 system-ui, sans-serif;
+}
+.logout-confirm-dialog h2 {
+  margin: 0 0 9px;
+  color: #16243a;
+  font: 750 clamp(19px, 3.5vw, 23px)/1.25 system-ui, sans-serif;
+}
+.logout-confirm-dialog p {
+  margin: 0 0 24px;
+  color: #536679;
+  font: 400 14px/1.6 system-ui, sans-serif;
+}
+.logout-confirm-actions { display: flex; gap: 10px; }
+.logout-confirm-actions button {
+  flex: 1;
+  min-height: 46px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #b7cad1;
+  font: 700 14px/1.25 system-ui, sans-serif;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.logout-confirm-cancel { background: #f5f9fa; color: #223447; }
+.logout-confirm-cancel:hover { background: #e8f1f3; }
+.logout-confirm-accept { background: #0f968d; border-color: #0f968d !important; color: #fff; }
+.logout-confirm-accept:hover { background: #087b75; }
+.logout-confirm-actions button:focus-visible {
+  outline: 3px solid #67d5ca;
+  outline-offset: 2px;
+}
+@media (max-width: 420px) {
+  .logout-confirm-dialog { padding: 24px 18px 20px; border-radius: 17px; }
+  .logout-confirm-actions { flex-direction: column-reverse; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .logout-confirm-actions button { transition: none; }
+}
