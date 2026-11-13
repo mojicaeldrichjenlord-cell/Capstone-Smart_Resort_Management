@@ -1,4 +1,4 @@
-// Stage 85-A: zero-cost AI rate-limit and session-budget regression suite.
+// Stage 98: zero-cost AI rate-limit, optional cap, and monitoring regression suite.
 // No Gemini, Azure, PayPal or database call; no payment data is read.
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
@@ -119,4 +119,35 @@ test("Price estimation counts thinking tokens but does not invent missing usage"
 test("No real Gemini API calls are used by the budget and rate tests", () => {
   assert.equal(typeof createGeminiBudgetGuard, "function");
   assert.equal(typeof createAiRateLimiter, "function");
+});
+
+
+test("Monitor-only mode tracks costs without a local spending cutoff", () => {
+  const meter = createGeminiBudgetGuard(0.03, 0.03, { enforceCap: false });
+  for (let index = 0; index < 100; index++) {
+    meter.acquire()({ usageMetadata: { promptTokenCount: 100, candidatesTokenCount: 10 } });
+  }
+  const snapshot = meter.snapshot();
+  assert.equal(snapshot.mode, "monitor-only");
+  assert.equal(snapshot.capUsd, null);
+  assert.equal(snapshot.blockedCalls, 0);
+  assert.ok(snapshot.allocatedUsd > 0.03);
+  assert.ok(snapshot.estimatedSpendUsd > 0);
+  assert.equal(snapshot.inFlightUsd, 0);
+});
+
+test("Default local guard is monitor-only unless deliberately enabled by ENV", () => {
+  const { localGuard } = require("../controllers/ai/geminiBudgetGuard");
+  if (process.env.AI_GEMINI_LOCAL_BUDGET_MODE) return;
+  const snapshot = localGuard.snapshot();
+  assert.equal(snapshot.mode, "monitor-only");
+  assert.equal(snapshot.capUsd, null);
+});
+
+test("Explicit spending enforcement still rejects above the configured cap", () => {
+  const guard = createGeminiBudgetGuard(0.06, 0.03, { enforceCap: true });
+  guard.acquire()();
+  guard.acquire()();
+  assert.throws(() => guard.acquire(), err => err.code === "AI_LOCAL_BUDGET");
+  assert.equal(guard.snapshot().mode, "enforced");
 });

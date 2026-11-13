@@ -1,5 +1,5 @@
-// Local budget protection applies to each paid Gemini attempt, including
-// translations and the second call used for booking-intent extraction.
+// Track estimated Gemini usage per attempt (chat, translations, intent extraction).
+// Default mode is monitor-only; a local cap is optional via explicit ENV.
 const { localGuard } = require("./geminiBudgetGuard");
 
 // Current default follows Google's newer-model recommendation for projects without
@@ -71,21 +71,19 @@ async function generateGemini(ai, contents, sleep = ms => new Promise(
   resolve => setTimeout(resolve, ms),
 )) {
   for (let attempt = 0; attempt <= MAX_BUSY_RETRIES; attempt++) {
-    // Synchronous allowance reservation prevents concurrent requests from
-    // bypassing the process-local cost guard. A denied call is never sent.
+    // Track each attempt; only explicitly enforced caps can deny a call.
     const finalize = localGuard.acquire();
     geminiUsage.attempts++;
     try {
       const response = await ai.models.generateContent({
         model: GEMINI_MODEL, contents,
       });
-      finalize(response); // Record conservative metered estimate.
+      finalize(response); // Record estimated usage, not the actual Google bill.
       geminiUsage.successfulCalls++;
       recordGeminiResponseUsage(response);
       return response;
     } catch (error) {
-      // Preserve an allowance even for failed/unmetered calls: partial errors
-      // can have uncertain billing; no automatic retry except a single 503.
+      // Record conservative estimate even for unmetered failures; only one 503 retry.
       finalize();
       geminiUsage.failedCalls++;
       const status = geminiErrorStatus(error);
