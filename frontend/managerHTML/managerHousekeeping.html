@@ -5,7 +5,9 @@
 <title>Housekeeping Tasks | Resort Manager</title>
 <link rel="stylesheet" href="../sharedCSS/global.css" />
 <link rel="stylesheet" href="../managerCSS/managerDashboard.css" />
-</head>
+    <!-- Consistent, centered confirmation for accidental logout clicks. -->
+    <link rel="stylesheet" href="../sharedCSS/logout-confirm.css" />
+  </head>
 <body>
 <a href="#mainContent" class="manager-skip-link">Skip to main content</a>
 <header class="manager-navbar">
@@ -69,4 +71,5 @@
 <script src="../sharedJS/api-config.js"></script>
 <!-- The script calls only signed Manager housekeeping endpoints. -->
 <script src="../managerJS/managerHousekeeping.js"></script>
-</body></html>
+    <script src="../sharedJS/logout-confirm.js"></script>
+  </body></html>
