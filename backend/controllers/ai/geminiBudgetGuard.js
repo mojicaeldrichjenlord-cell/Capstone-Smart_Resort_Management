@@ -4,7 +4,7 @@
 // Google AI Studio billing is authoritative; no guest text or keys are stored.
 const DEFAULT_CAP_USD = 1.50; // Protect part of the $5 demo credit.
 const DEFAULT_RESERVE_USD = 0.03; // Conservative allowance per API attempt.
-const INPUT_USD_PER_MILLION = 0.30; // Gemini 2.5 Flash standard text pricing.
+const INPUT_USD_PER_MILLION = 0.30; // Gemini 3.5 Flash-Lite standard text pricing (2026).
 const OUTPUT_USD_PER_MILLION = 2.50; // Includes thinking tokens.
 
 function configuredNumber(name, fallback, { min = 0, max = 100 } = {}) {
