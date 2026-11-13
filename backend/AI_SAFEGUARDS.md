@@ -1,6 +1,6 @@
 # Stage 85-A — AI Security & Budget Safeguards
 
-**Scope:** Gemini 2.5 Flash chat/translation, using the existing customer AI Assistant.
+**Scope:** Gemini 3.5 Flash-Lite chat/translation (default; `GEMINI_MODEL` server override supported), using the existing customer AI Assistant. Legacy Gemini 2.5 generation access may return HTTP 404 for newer projects.
 **Status:** Development implementation; local integration and live acceptance QA pending.
 **Safety:** No payment settings changed, no credentials committed, no database migration, and no real Gemini test calls were made for this change.
 
@@ -43,7 +43,7 @@ Never set a zero or invalid cap to bypass protection; invalid settings fail clos
 7. Keep Auto-reload **OFF**, verify the actual prepaid balance in AI Studio, and avoid repetitive live tests.
 
 Rates used for **approximate** model cost at the time of implementation:
-Gemini 2.5 Flash Standard, USD 0.30 per million text input tokens and
+Gemini 3.5 Flash-Lite Standard, USD 0.30 per million text input tokens and
 USD 2.50 per million output tokens (including thinking).
 Source: https://ai.google.dev/gemini-api/docs/pricing
 Rates may change; the billing provider is authoritative.
