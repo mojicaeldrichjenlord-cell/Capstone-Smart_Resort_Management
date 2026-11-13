@@ -2,9 +2,11 @@
 // translations and the second call used for booking-intent extraction.
 const { localGuard } = require("./geminiBudgetGuard");
 
-// Isolated Gemini high-demand handling. Do not change models, API keys,
-// billing settings or request real database/payment operations here.
-const GEMINI_MODEL = "gemini-2.5-flash";
+// Current default follows Google's newer-model recommendation for projects without
+// legacy Gemini 2.5 generation access (which can return HTTP 404).
+// Override GEMINI_MODEL in the server environment only after validating access.
+// Keep credentials and per-request content out of logs and diagnostics.
+const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || "gemini-3.5-flash-lite";
 const RETRY_DELAY_MS = 700;
 const MAX_BUSY_RETRIES = 1;
 
@@ -24,7 +26,7 @@ function usableTokenCount(value) {
 }
 
 function getGeminiUsageSnapshot() {
-  return { ...geminiUsage, sessionBudget: localGuard.snapshot() };
+  return { model: GEMINI_MODEL, ...geminiUsage, sessionBudget: localGuard.snapshot() };
 }
 
 // Accumulate optional token metadata returned by Gemini after successful responses.

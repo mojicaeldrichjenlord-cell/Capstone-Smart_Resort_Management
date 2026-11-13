@@ -19,9 +19,9 @@ function pretendAI(responder) {
   };
 }
 
-test("Gemini success uses the existing 2.5 Flash model without retries", async () => {
+test("Gemini success uses the supported 3.5 Flash-Lite model without retries", async () => {
   const ai = pretendAI((_n, request) => {
-    assert.equal(request.model, "gemini-2.5-flash");
+    assert.equal(request.model, "gemini-3.5-flash-lite");
     assert.equal(request.contents, "safe guest question");
     return { text: "Hello!" };
   });
@@ -50,6 +50,16 @@ test("Persistent 503 stops after at most two attempts (no retry storm)", async (
   await assert.rejects(() => generateGemini(ai, "prompt", async () => {}),
     error => geminiErrorStatus(error) === 503);
   assert.equal(ai.calls, 2);
+});
+
+test("Gemini 404 model-inaccessible error is not retried", async () => {
+  const ai = pretendAI(() => {
+    throw Object.assign(new Error("Model not available for this project"), { status: 404 });
+  });
+  await assert.rejects(() => generateGemini(ai, "prompt", async () => {
+    throw new Error("Gemini 404 must never retry");
+  }), error => geminiErrorStatus(error) === 404);
+  assert.equal(ai.calls, 1);
 });
 
 test("Rate-limit 429 is not retried to protect the free tier", async () => {
@@ -95,6 +105,7 @@ test("Unknown Gemini faults hide internal SDK and API details", () => {
 
 test("Gemini usage tracking collects SDK token counts without exposing user data", async () => {
   const before = getGeminiUsageSnapshot();
+  assert.equal(before.model, "gemini-3.5-flash-lite");
   const ai = pretendAI(() => ({
     text: "Private reply",
     usageMetadata: {
