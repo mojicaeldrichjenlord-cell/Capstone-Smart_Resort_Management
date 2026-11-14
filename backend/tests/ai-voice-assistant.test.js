@@ -441,7 +441,7 @@ test("iOS Safari records PCM WAV and reviews transcript without auto-sending", a
   h.fire("aiMicBtn"); await h.settle();
   assert.equal(h.recognitionInstances.length, 0);
   assert.equal(h.audioProcessors.length, 1);
-  h.audioProcessors[0].feed(0.1);
+  for (let n = 0; n < 3; n++) h.audioProcessors[0].feed(0.1);
   h.fire("aiMicBtn"); await h.settle();
   assert.equal(h.transcriptionRequests.length, 1);
   assert.equal(h.transcriptionRequests[0].opts.body.type, "audio/wav");
@@ -470,7 +470,7 @@ test("Firefox-like browser without SpeechRecognition can use secure audio captur
   assert.equal(h.nodes.aiMicBtn.disabled, false);
   assert.equal(h.nodes.aiVoiceLive.disabled, false);
   h.fire("aiMicBtn"); await h.settle();
-  h.audioProcessors[0].feed(0.1);
+  for (let n = 0; n < 3; n++) h.audioProcessors[0].feed(0.1);
   h.fire("aiMicBtn"); await h.settle();
   assert.equal(h.transcriptionRequests.length, 1);
 });
