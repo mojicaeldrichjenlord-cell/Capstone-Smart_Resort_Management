@@ -7,6 +7,7 @@ const { getGeminiUsageSnapshot } = require("../controllers/ai/geminiResilience")
 const { aiRateGuard } = require("../middleware/aiRateLimit");
 const { voiceStatus, speakBlessica } =
   require("../controllers/ai/azureSpeechController");
+const { transcribeVoice } = require("../controllers/ai/geminiSpeechController");
 
 const {
   chatWithGemini,
@@ -42,6 +43,10 @@ router.post("/chat", limitAiPayload("chat"), aiRateGuard.middleware, chatWithGem
 // signed-in customer token, so anonymous requests cannot consume Azure credits.
 router.get("/voice/status", voiceStatus);
 router.post("/voice", requireCustomerAuth, speakBlessica);
+// Signed, rate-limited, raw short WAV upload, not the unbounded JSON parser.
+router.post("/transcribe", requireCustomerAuth, aiRateGuard.middleware,
+  express.raw({ type: ["audio/wav", "audio/x-wav"], limit: "500kb" }),
+  transcribeVoice);
 // Legacy endpoint used an obsolete bookings table and trusted user_id from
 // the request. Disable direct AI writes: customer reservations must use the
 // signed /api/bookings flow with final price/slot/conflict validation.

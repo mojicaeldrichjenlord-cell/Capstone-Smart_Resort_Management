@@ -10,13 +10,16 @@ const script = fs.readFileSync(
   path.resolve(__dirname, "../../frontend/js/ai-voice.js"), "utf8",
 );
 
-function mount({ recognizerAvailable = true, savedLanguage = null, voices = [], customerToken = null, cloudStatus = 503 } = {}) {
+function mount({ recognizerAvailable = true, savedLanguage = null, voices = [], customerToken = null,
+  cloudStatus = 503, audioAvailable = false, ios = false } = {}) {
   const nodes = {};
   const recognitionInstances = [];
   const speechUtterances = [];
   const requests = [];
   const cloudRequests = [];
   const cloudAudio = [];
+  const audioProcessors = [];
+  const transcriptionRequests = [];
   const pendingTimers = new Map();
   const stored = new Map();
   const documentHandlers = {};
@@ -91,6 +94,20 @@ function mount({ recognizerAvailable = true, savedLanguage = null, voices = [], 
     removeAttribute() {}
     load() {}
   }
+  class FakeAudioContext {
+    constructor() { this.sampleRate = 48000; this.destination = {}; }
+    createMediaStreamSource() { return { connect() {}, disconnect() {} }; }
+    createScriptProcessor() {
+      const p = { connect() {}, disconnect() {}, feed(value, count = 2048) {
+        const samples = new Float32Array(count).fill(value);
+        this.onaudioprocess?.({ inputBuffer: { getChannelData: () => samples } });
+      } };
+      audioProcessors.push(p); return p;
+    }
+    createGain() { return { gain: { value: 1 }, connect() {}, disconnect() {} }; }
+    async resume() {}
+    async close() {}
+  }
   class FakeAbortController {
     constructor() { this.signal = { aborted: false }; }
     abort() { this.signal.aborted = true; }
@@ -105,6 +122,12 @@ function mount({ recognizerAvailable = true, savedLanguage = null, voices = [], 
       speak(utterance) { speechUtterances.push(utterance); },
     },
     SpeechSynthesisUtterance: FakeUtterance,
+    navigator: { userAgent: ios ? "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0)" : "Chrome",
+      ...(audioAvailable ? { mediaDevices: { async getUserMedia() {
+        return { getTracks() { return [{ stop() {} }]; } };
+      } } } : {}),
+    },
+    ...(audioAvailable ? { AudioContext: FakeAudioContext } : {}),
     ...(recognizerAvailable ? { SpeechRecognition: FakeRecognizer } : {}),
   };
   const context = {
@@ -126,12 +149,18 @@ function mount({ recognizerAvailable = true, savedLanguage = null, voices = [], 
       getItem(key) { return key === "customerToken" ? customerToken : null; },
     },
     AbortController: FakeAbortController,
+    Blob,
     Audio: FakeCloudAudio,
     URL: {
       createObjectURL() { return "blob:mock-blessica-mp3"; },
       revokeObjectURL() {},
     },
     fetch: async (url, opts) => {
+      if (String(url).endsWith("/ai/transcribe")) {
+        transcriptionRequests.push({ url, opts });
+        return { ok: true, async json() { return { success: true,
+          transcript: "How do I book a room?" }; } };
+      }
       cloudRequests.push({ url, opts });
       return {
         ok: cloudStatus === 200, status: cloudStatus,
@@ -165,7 +194,7 @@ function mount({ recognizerAvailable = true, savedLanguage = null, voices = [], 
   }
   return {
     nodes, fire, runScheduled, settle, recognitionInstances, speechUtterances,
-    requests, cloudRequests, cloudAudio, fakeWindow, stored, windowHandlers,
+    requests, cloudRequests, cloudAudio, audioProcessors, transcriptionRequests, fakeWindow, stored, windowHandlers,
     get voice() { return fakeWindow.ArvicVoice; },
     get speechCancelCount() { return speechCancelCount; },
     changeVoices(newVoices) {
@@ -286,9 +315,10 @@ test("Unsupported speech browser keeps text chat available and disables voice", 
   assert.equal(h.requests.length, 0);
 });
 
-test("Speech recognition stays browser-native; optional Azure speech requires customer auth", () => {
-  // Microphone stays in browser STT; only Taglish reply TEXT may go to Azure.
-  assert.doesNotMatch(script, /MediaRecorder|\/api\/paypal|\/api\/bookings/);
+test("Native recognition and authenticated recording fallback never access payment routes", () => {
+  // PCM audio is sent only to signed /ai/transcribe endpoint.
+  assert.doesNotMatch(script, /\/api\/paypal|\/api\/bookings/);
+  assert.match(script, /\/ai\/transcribe/);
   assert.match(script, /webkitSpeechRecognition/);
   assert.match(script, /SpeechSynthesisUtterance/);
   assert.match(script, /sessionStorage\.getItem\("customerToken"\)/);
@@ -404,4 +434,43 @@ test("Voice picker is removed while language and live controls remain", () => {
   assert.match(script, /aiVoiceLanguage/);
   assert.match(script, /aiVoiceLive/);
   assert.equal(h.recognitionInstances.length, 0);
+});
+
+test("iOS Safari records PCM WAV and reviews transcript without auto-sending", async () => {
+  const h = mount({ ios: true, audioAvailable: true, customerToken: "fake-customer-token" });
+  h.fire("aiMicBtn"); await h.settle();
+  assert.equal(h.recognitionInstances.length, 0);
+  assert.equal(h.audioProcessors.length, 1);
+  h.audioProcessors[0].feed(0.1);
+  h.fire("aiMicBtn"); await h.settle();
+  assert.equal(h.transcriptionRequests.length, 1);
+  assert.equal(h.transcriptionRequests[0].opts.body.type, "audio/wav");
+  assert.equal(h.transcriptionRequests[0].opts.headers.Authorization, "Bearer fake-customer-token");
+  assert.equal(h.nodes.aiChatInput.value, "How do I book a room?");
+  assert.equal(h.requests.length, 0);
+});
+
+test("iOS hands-free turn transcribes after silence and resumes listening", async () => {
+  const h = mount({ ios: true, audioAvailable: true, customerToken: "fake-customer-token" });
+  h.fire("aiVoiceLive"); await h.settle();
+  for (let i = 0; i < 22; i++) h.audioProcessors[0].feed(0.1);
+  for (let i = 0; i < 32; i++) h.audioProcessors[0].feed(0);
+  await h.settle();
+  assert.equal(h.requests.length, 1);
+  assert.equal(h.requests[0].message, "How do I book a room?");
+  h.speechUtterances[0].onend();
+  h.runScheduled(); await h.settle();
+  assert.equal(h.audioProcessors.length, 2);
+  h.fire("aiVoiceLive");
+});
+
+test("Firefox-like browser without SpeechRecognition can use secure audio capture", async () => {
+  const h = mount({ recognizerAvailable: false, audioAvailable: true,
+    customerToken: "fake-customer-token" });
+  assert.equal(h.nodes.aiMicBtn.disabled, false);
+  assert.equal(h.nodes.aiVoiceLive.disabled, false);
+  h.fire("aiMicBtn"); await h.settle();
+  h.audioProcessors[0].feed(0.1);
+  h.fire("aiMicBtn"); await h.settle();
+  assert.equal(h.transcriptionRequests.length, 1);
 });
