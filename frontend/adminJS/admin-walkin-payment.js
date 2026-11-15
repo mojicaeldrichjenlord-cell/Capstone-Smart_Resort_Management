@@ -2005,6 +2005,12 @@ function previewProofImage() {
   const input = document.getElementById("proofImage");
   const preview = document.getElementById("proofPreview");
   if (!input || !preview) return;
+  // Release the prior preview URL even when the new selection is cancelled
+  // or rejected. Never retain unnecessary proof-image browser references.
+  if (preview.dataset.objectUrl) {
+    URL.revokeObjectURL(preview.dataset.objectUrl);
+    delete preview.dataset.objectUrl;
+  }
   const file = input.files?.[0];
   if (!file) {
     preview.style.display = "none";
@@ -2019,8 +2025,6 @@ function previewProofImage() {
     showMessage(invalidProofMessage, "error");
     return;
   }
-  // Revoke the old object URL so repeated proof selections don't leak memory.
-  if (preview.dataset.objectUrl) URL.revokeObjectURL(preview.dataset.objectUrl);
   const objectUrl = URL.createObjectURL(file);
   preview.dataset.objectUrl = objectUrl;
   preview.src = objectUrl;
