@@ -622,9 +622,3 @@
 .login-preferences > a:focus-visible {
   text-decoration: underline;
 }
-.auth-card .remember-me-help {
-  margin: -5px 0 0;
-  font-size: .76rem;
-  line-height: 1.5;
-  color: #64748b;
-}
