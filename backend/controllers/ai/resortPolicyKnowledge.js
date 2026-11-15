@@ -15,7 +15,8 @@ const POLICY_FACTS = Object.freeze({
   refund: `Automated refunds and dispute decisions are outside the current system scope. Management handles refund requests manually and determines eligibility according to resort policy and verified payment records. Do not promise a refund or quote an amount. After explaining the manual process, suggest contacting the resort using its official Facebook page (${OFFICIAL_RESORT_FACEBOOK_URL}), Front Desk (${OFFICIAL_RESORT_PHONE_PRIMARY}), or alternative number (${OFFICIAL_RESORT_PHONE_ALTERNATIVE}).`,
   entrance: "Entrance fees are separate from the 50% online accommodation downpayment. The booking page may show an estimate; actual entrance fees, guest adjustments and applicable verified discounts are finalized and collected onsite by Front Desk. Do not quote a fixed entrance price.",
   walkin: "Front Desk can create same-day manual walk-in reservations. Full accommodation payment is handled onsite for walk-ins. Actual slots and charges must be checked before confirming.",
-  booking: "The AI provides information and preliminary suggestions only. A confirmed booking requires the Customer booking page, schedule validation and the applicable payment process.",
+  booking: "The AI provides information and preliminary suggestions only. A confirmed booking requires the Customer booking page, fixed slot validation and the applicable payment process.",
+  schedule: "Customer booking uses preset Day Tour and Night slots rather than custom check-in or checkout times. Rooms: Day 7 AM-5 PM, Night 7 PM-5 AM; cottages/huts/shades: Day 6 AM-5 PM, Night 6 PM-5 AM; pavilions/function areas: Day 8 AM-6 PM, Night 8 PM-6 AM. Day/Night 22- or 23-hour extended slots are separate fixed options by category. The secure booking page shows final times and availability.",
 });
 
 const ANSWERS = Object.freeze({
@@ -61,6 +62,13 @@ const ANSWERS = Object.freeze({
     spanish: "Puedo orientar sobre alojamientos y disponibilidad preliminar, pero el chat no confirma ni paga reservas. Utilice la página segura de reservas.",
     mandarin: "我可以提供住宿建议和初步可用性信息，但不能在聊天中确认预订或付款。请通过客户预订页面完成。",
   },
+  schedule: {
+    english: "Arvic Seaside Resort uses fixed booking slots, not custom check-in or check-out times. Choose Day Tour (morning/daytime) or Night (evening/overnight). Rooms: Day 7 AM-5 PM, Night 7 PM-5 AM; cottages/huts/shades: Day 6 AM-5 PM, Night 6 PM-5 AM; pavilions/function areas: Day 8 AM-6 PM, Night 8 PM-6 AM. Extended slots depend on the accommodation. The booking page shows exact times and availability. Do you prefer Day Tour or Night?",
+    tagalog: "Fixed schedule po ang booking sa Arvic Seaside Resort; hindi puwedeng custom na oras. Piliin po ang Day Tour (umaga) o Night (gabi). Rooms: 7 AM-5 PM o 7 PM-5 AM; cottages/huts: 6 AM-5 PM o 6 PM-5 AM; pavilions/function areas: 8 AM-6 PM o 8 PM-6 AM. May hiwalay na extended slots. Ang eksaktong oras at availability ay nasa booking page. Day Tour po ba o Night ang gusto ninyo?",
+    taglish: "Fixed slots po ang booking sa Arvic Seaside Resort, hindi customizable ang check-in/check-out time. Day Tour (umaga) o Night (gabi) po ang pipiliin ninyo. Rooms: 7 AM-5 PM o 7 PM-5 AM; cottages/huts: 6 AM-5 PM o 6 PM-5 AM; pavilions/function areas: 8 AM-6 PM o 8 PM-6 AM. May separate extended slots. Exact schedule and availability po sa booking page. Day Tour po ba o Night?",
+    spanish: "Arvic Seaside Resort usa turnos fijos, no horarios personalizados. Elija estancia de día o de noche. Habitaciones: 7:00-17:00 o 19:00-05:00; cabañas: 6:00-17:00 o 18:00-05:00; pabellones: 8:00-18:00 o 20:00-06:00. Los turnos prolongados son diferentes. Consulte el horario exacto al reservar.",
+    mandarin: "Arvic Seaside Resort 采用固定日间或夜间预订时段，不能自行选择入住或退房时间。客房：日间7点至17点、夜间19点至次日5点；小屋：日间6点至17点、夜间18点至次日5点；活动场地：日间8点至18点、夜间20点至次日6点。延长时段另有规定，请以预订页面为准。",
+  },
 });
 
 // Fixed-policy language correction: a prior English conversation preference
@@ -70,7 +78,7 @@ function inferPolicyLanguage(message) {
   if (/[\u3400-\u9fff]/u.test(t)) return "mandarin";
   if (/\b(?:reembolso|reembolsos|cancelar|cancelaci[oó]n|entrada|reserva|reservaci[oó]n|alojamiento|puedo|c[oó]mo)\b/iu.test(t) &&
       /[¿áéíóúñ]|\b(?:reembolso|cancelar|cancelaci[oó]n)\b/iu.test(t)) return "spanish";
-  const filipino = /\b(?:magkano|paano|pwede|puwede|maaari|kansela|kanselahin|bayad|po|opo|ninyo|tumatanggap|paki|bakit)\b/i.test(t);
+  const filipino = /\b(?:magkano|paano|pwede|puwede|maaari|kansela|kanselahin|bayad|po|opo|ninyo|tumatanggap|paki|bakit|anong|oras|umaga|gabi)\b/i.test(t);
   if (!filipino) return null;
   const englishMix = /\b(?:entrance|fee|booking|cancel|refund|walk[\s-]?in|online|check[\s-]?in|downpayment|payment)\b/i.test(t);
   return englishMix ? "taglish" : "tagalog";
@@ -121,13 +129,16 @@ function matchGeneralPolicyQuestion(message) {
   const cancel = /\b(?:cancel|cancellation|cancelled|canceled|cancelling|cancelar|cancelaci[oó]n)\b|(?:i|mag|pa)?kansela|mag-?cancel|取消|退订/i.test(t);
   const entrance = /\bentrance(?:\s+fees?|\s+payment|\s+charges?)?\b|bayad.*(?:entrance|pasok)|\b(?:tarifa\s+de\s+entrada|precio\s+de\s+entrada)\b|入场费|门票/i.test(t);
   const walkin = /\bwalk[\s-]?ins?\b|\b(?:sin\s+reserva|sin\s+reservaci[oó]n)\b|现场预订|到店预订/i.test(t);
-  const question = /[?？¿]|吗|可以|多少|怎么|\b(?:how|what|where|when|can|may|do|does|is|are|allowed|policy|paano|pwede|puwede|maaari|magkano|kailangan|saan|ilan|ano|tumatanggap|may|puedo|c[oó]mo|cu[aá]nto)\b/i.test(t);
+  const question = /[?？¿]|吗|可以|多少|怎么|\b(?:how|what|where|when|can|may|do|does|is|are|allowed|policy|paano|pwede|puwede|maaari|magkano|kailangan|saan|ilan|ano|anong|tumatanggap|may|puedo|c[oó]mo|cu[aá]nto)\b/i.test(t);
   if (!question) return null;
   if (refund && cancel) return "cancellationRefund";
   if (refund) return "refund";
   if (cancel) return "cancellation";
   if (walkin && !entrance) return "walkin";
   if (entrance && !/\b(?:downpayments?|deposits?|advance)\b|paunang\s+bayad/i.test(t)) return "entrance";
+  // Timing questions are fixed resort FAQs, not suggestions of custom hours.
+  const asksFixedSchedule = /\b(?:check[\s-]?in|check[\s-]?out)\s+(?:times?|hours?|schedules?|slots?)\b|\b(?:times?|hours?|schedules?|slots?)\s+(?:for\s+)?(?:check[\s-]?in|check[\s-]?out)\b|\b(?:what\s+time|anong\s+oras)\b.*\b(?:check[\s-]?in|check[\s-]?out)\b|\b(?:fixed|custom)\s+(?:times?|hours?|schedules?|slots?|check[\s-]?in|check[\s-]?out)\b|\b(?:booking|reservation)\s+(?:times?|schedules?|slots?)\b|\b(?:oras|schedule)\s+(?:ng\s+)?(?:check[\s-]?in|check[\s-]?out|booking)\b|\b(?:can|may|pwede|puwede)\b.*\bcheck[\s-]?in\s+(?:at|ng)\b/i.test(t);
+  if (asksFixedSchedule) return "schedule";
   // Avoid a broad 'how do I book' match: such questions may contain
   // accommodation names/dates that need live DB verification.
   if (/^(?:can|may)\s+(?:you|the\s+ai)\s+(?:book|reserve|confirm)\s+(?:for\s+me|my\s+reservation)|^(?:pwede|puwede)\s+(?:ka|ba\s+ang\s+ai)\s+mag-?book/i.test(t)) return "booking";
