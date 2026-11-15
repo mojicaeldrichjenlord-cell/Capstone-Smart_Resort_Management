@@ -558,6 +558,24 @@ function getExtensionUnitText(extensionType, amount = 1) {
 // BLOCK: Philippine "now" helper for schedule validation
 // Purpose: Blocks add-on bookings whose selected start date/time is already in the past.
 // ============================================================
+// QA-012: Use Manila calendar dates, not Render/localhost machine timezone,
+// when enforcing the two-day customer online booking policy.
+function getEarliestCustomerCheckInDateKey() {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const values = {};
+  for (const part of parts) values[part.type] = part.value;
+  return new Date(Date.UTC(
+    Number(values.year),
+    Number(values.month) - 1,
+    Number(values.day) + 2,
+  )).toISOString().slice(0, 10);
+}
+
 function getPhilippineNow() {
   return new Date(
     new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" }),
@@ -1098,11 +1116,24 @@ async function createReservation({
   const reservationItems = [];
   let accommodationTotal = 0;
   let hasOvernightStyle = false;
+  // Never trust only the browser's date input: enforce before any DB write.
+  const earliestCustomerCheckIn = isManualReservation
+    ? null
+    : getEarliestCustomerCheckInDateKey();
 
   for (const rawItem of items) {
     const accommodationId = Number(rawItem.accommodation_id);
     const slotType = normalizeText(rawItem.slot_type || "day_tour");
     const checkInDate = normalizeText(rawItem.check_in_date);
+    if (earliestCustomerCheckIn && (
+      !/^\d{4}-\d{2}-\d{2}$/.test(checkInDate) ||
+      checkInDate < earliestCustomerCheckIn
+    )) {
+      throw {
+        status: 400,
+        message: `Customer reservations must be booked at least 2 days ahead. Earliest check-in date is ${earliestCustomerCheckIn}.`,
+      };
+    }
     const requestedStayDuration = Math.max(
       1,
       Math.min(5, Math.floor(toNumber(rawItem.stay_duration, 1))),
