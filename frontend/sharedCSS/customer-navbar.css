@@ -6,9 +6,15 @@
 ====================================================== */
 
 .navbar {
-  position: sticky;
+  /* Fixed keeps this header available at any page scroll position.
+     customer-scroll-nav.js hides/reveals it based on scroll direction. */
+  position: fixed !important;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 2000;
+  transform: translate3d(0, 0, 0);
+  transition: transform 190ms ease-in-out;
   width: 100%;
   min-height: 86px;
   padding: 0 52px;
@@ -79,9 +85,8 @@
 
 @media (max-width: 900px) {
   .navbar {
-    /* style.css sets position: relative !important on mobile.
-       Override it here so the Customer menu stays visible while scrolling. */
-    position: sticky !important;
+    /* Override style.css's legacy mobile position:relative !important. */
+    position: fixed !important;
     top: 0;
     min-height: auto;
     padding: 10px 14px;
@@ -133,5 +138,26 @@
 
   .navbar .logo {
     font-size: 1.25rem;
+  }
+}
+
+/* Reserve the navbar's compact height in normal document flow, so its
+   fixed position does not cover hero headings or booking page content. */
+.customer-navbar-spacer {
+  display: block;
+  width: 100%;
+  flex: 0 0 auto;
+}
+
+/* Sliding the actual fixed header offscreen is more reliable than changing
+   sticky/relative positions while the customer scrolls on mobile Safari. */
+.navbar.is-scroll-hidden {
+  transform: translate3d(0, -110%, 0);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .navbar {
+    transition: none;
   }
 }
