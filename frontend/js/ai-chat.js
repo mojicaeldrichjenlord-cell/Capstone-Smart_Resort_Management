@@ -340,6 +340,10 @@ function mergeContext(oldContext = {}, newContext = {}) {
     check_in_time: newContext.check_in_time ?? oldContext.check_in_time ?? null,
     check_out: newContext.check_out ?? oldContext.check_out ?? null,
     check_out_time: newContext.check_out_time ?? oldContext.check_out_time ?? null,
+    // Preserve chosen preset slot between turns without changing booking fields.
+    ...((newContext.slot_preference || oldContext.slot_preference)
+      ? { slot_preference: newContext.slot_preference || oldContext.slot_preference }
+      : {}),
     guests: newContext.guests ?? oldContext.guests ?? null,
     bed_count: newContext.bed_count ?? oldContext.bed_count ?? null,
     view_type: newContext.view_type ?? oldContext.view_type ?? null,
@@ -746,11 +750,11 @@ function getEnglishFallbackReply(text, merged) {
     };
   }
 
-  if (merged.check_in || merged.check_out || merged.guests || merged.check_in_time || merged.check_out_time) {
+  if (merged.check_in || merged.check_out || merged.guests || merged.check_in_time || merged.check_out_time || merged.slot_preference) {
     const missing = [];
     if (!merged.check_in) missing.push("check-in date");
     if (!merged.check_out) missing.push("check-out date");
-    if (!merged.check_in_time || !merged.check_out_time) missing.push("fixed Day Tour (morning) or Night (evening) slot on the booking page");
+    if ((!merged.check_in_time || !merged.check_out_time) && !merged.slot_preference) missing.push("fixed Day Tour (morning) or Night (evening) slot on the booking page");
     if (!merged.guests) missing.push("number of guests");
 
     if (missing.length) {
@@ -822,11 +826,11 @@ function getTagalogFallbackReply(text, merged) {
     };
   }
 
-  if (merged.check_in || merged.check_out || merged.guests || merged.check_in_time || merged.check_out_time) {
+  if (merged.check_in || merged.check_out || merged.guests || merged.check_in_time || merged.check_out_time || merged.slot_preference) {
     const missing = [];
     if (!merged.check_in) missing.push("check-in date");
     if (!merged.check_out) missing.push("check-out date");
-    if (!merged.check_in_time || !merged.check_out_time) missing.push("fixed Day Tour (morning) or Night (evening) slot on the booking page");
+    if ((!merged.check_in_time || !merged.check_out_time) && !merged.slot_preference) missing.push("fixed Day Tour (morning) or Night (evening) slot on the booking page");
     if (!merged.guests) missing.push("bilang ng bisita");
 
     if (missing.length) {
@@ -898,11 +902,11 @@ function getTaglishFallbackReply(text, merged) {
     };
   }
 
-  if (merged.check_in || merged.check_out || merged.guests || merged.check_in_time || merged.check_out_time) {
+  if (merged.check_in || merged.check_out || merged.guests || merged.check_in_time || merged.check_out_time || merged.slot_preference) {
     const missing = [];
     if (!merged.check_in) missing.push("check-in date");
     if (!merged.check_out) missing.push("check-out date");
-    if (!merged.check_in_time || !merged.check_out_time) missing.push("fixed Day Tour (morning) or Night (evening) slot on the booking page");
+    if ((!merged.check_in_time || !merged.check_out_time) && !merged.slot_preference) missing.push("fixed Day Tour (morning) or Night (evening) slot on the booking page");
     if (!merged.guests) missing.push("number of guests");
 
     if (missing.length) {
@@ -934,11 +938,16 @@ function extractOfflineDetails(message) {
     check_out: null,
     check_out_time: null,
     guests: null,
+    slot_preference: null,
     payment_method: null,
     language_style: null,
   };
 
   const text = String(message || "");
+
+  // Accept only explicit preset slot words, never free-form check-in hours.
+  if (/\b(?:day\s*tour|morning|umaga)\b/i.test(text)) result.slot_preference = "day_tour";
+  if (/\b(?:night|overnight|evening|gabi)\b/i.test(text)) result.slot_preference = "night";
 
   const guestMatch = text.match(/(\d+)\s*(guest|guests|bisita)/i);
   if (guestMatch) {
