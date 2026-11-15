@@ -380,6 +380,8 @@ function summarizeContext(context = {}) {
 
 function detectOfflineLanguage(message, context = {}) {
   const text = String(message || "").toLowerCase();
+  // Short Filipino slot replies must not suddenly switch to English offline.
+  if (/^(?:umaga|gabi|day tour po|night po)$/.test(text.trim())) return "tagalog";
 
   const tagalogHints = [
     "gusto", "kuwarto", "kwarto", "bisita", "mula", "hanggang", "petsa",
