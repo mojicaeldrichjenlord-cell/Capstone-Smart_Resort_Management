@@ -1578,6 +1578,17 @@ async function submitManualReservation(event) {
     return;
   }
 
+  // QA-007: Reject invalid files before making a reservation API request.
+  if (proofImage) {
+    const invalidProofMessage = validateManualProofFile(proofImage);
+    if (invalidProofMessage) {
+      showMessage(invalidProofMessage, "error");
+      showReservationErrorModal(invalidProofMessage);
+      proofImageInput?.focus();
+      return;
+    }
+  }
+
   const payload = {
     ...walkInDraft,
     created_by: createdBy,
@@ -1974,26 +1985,45 @@ function isProofRequired(method) {
   return ["gcash", "paymaya"].includes(value);
 }
 
+// QA-007: Frontend feedback mirrors the server's 8 MB payment-proof limit.
+// The backend also inspects the actual file signature; browser MIME alone
+// cannot prove that a file is a real screenshot.
+function validateManualProofFile(file) {
+  if (!file) return "Please select a payment proof image.";
+  const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "image/heif"];
+  const allowedExtension = /\.(jpe?g|png|webp|heic|heif)$/i.test(String(file.name || ""));
+  if (!allowedTypes.includes(String(file.type || "").toLowerCase()) || !allowedExtension) {
+    return "Invalid payment proof. Select a JPG, PNG, WEBP, HEIC, or HEIF image.";
+  }
+  if (file.size <= 0 || file.size > 8 * 1024 * 1024) {
+    return "Payment proof must be a non-empty image smaller than 8 MB.";
+  }
+  return "";
+}
+
 function previewProofImage() {
-  const input =
-    document.getElementById("proofImage");
-
-  const preview =
-    document.getElementById("proofPreview");
-
+  const input = document.getElementById("proofImage");
+  const preview = document.getElementById("proofPreview");
   if (!input || !preview) return;
-
   const file = input.files?.[0];
-
   if (!file) {
     preview.style.display = "none";
-    preview.src = "";
+    preview.removeAttribute("src");
     return;
   }
-
-  preview.src =
-    URL.createObjectURL(file);
-
+  const invalidProofMessage = validateManualProofFile(file);
+  if (invalidProofMessage) {
+    input.value = "";
+    preview.style.display = "none";
+    preview.removeAttribute("src");
+    showMessage(invalidProofMessage, "error");
+    return;
+  }
+  // Revoke the old object URL so repeated proof selections don't leak memory.
+  if (preview.dataset.objectUrl) URL.revokeObjectURL(preview.dataset.objectUrl);
+  const objectUrl = URL.createObjectURL(file);
+  preview.dataset.objectUrl = objectUrl;
+  preview.src = objectUrl;
   preview.style.display = "block";
 }
 
