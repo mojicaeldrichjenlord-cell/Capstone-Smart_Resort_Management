@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const { getVerifiedImageMime } = require("../utils/paymentProofAccess");
 
 const {
   createBooking,
@@ -189,6 +190,49 @@ const upload = multer({
   },
 });
 
+// Stage QA-007: Always return JSON for invalid payment-proof uploads.
+// Multer's default error handler returns HTML, which the Front Desk JSON
+// response parser previously reported as a generic "invalid response".
+function parsePaymentProofUpload(req, res, next) {
+  upload.single("proof_image")(req, res, (error) => {
+    if (!error) return next();
+    if (req.file?.path) fs.promises.unlink(req.file.path).catch(() => {});
+
+    const fileTooLarge = error.code === "LIMIT_FILE_SIZE";
+    const unexpectedFile = error.code === "LIMIT_UNEXPECTED_FILE";
+    return res.status(400).json({
+      message: fileTooLarge
+        ? "Payment proof must not exceed 8 MB."
+        : unexpectedFile
+          ? "Please upload only one payment proof image."
+          : error.message || "Invalid payment proof image.",
+    });
+  });
+}
+
+// Stage QA-007: Validate real file bytes, not just the browser MIME header.
+// A spoofed image MIME with a .txt extension must not create a reservation.
+async function validatePaymentProofImage(req, res, next) {
+  if (!req.file) return next();
+  try {
+    const bytes = await fs.promises.readFile(req.file.path);
+    const verifiedMime = getVerifiedImageMime(bytes);
+    const extension = path.extname(req.file.originalname || "").toLowerCase();
+    const allowedExtensions = [".jpg", ".jpeg", ".png", ".webp", ".heic", ".heif"];
+    if (!verifiedMime || !allowedExtensions.includes(extension)) {
+      await fs.promises.unlink(req.file.path).catch(() => {});
+      return res.status(400).json({
+        message: "Invalid payment proof. Upload a genuine JPG, PNG, WEBP, HEIC, or HEIF image.",
+      });
+    }
+    return next();
+  } catch (error) {
+    if (req.file?.path) await fs.promises.unlink(req.file.path).catch(() => {});
+    console.error("Payment proof validation failed:", error.message);
+    return res.status(500).json({ message: "Unable to validate payment proof. Please retry." });
+  }
+}
+
 /* ======================================================
    BOOKING CREATE ROUTES
 ====================================================== */
@@ -198,7 +242,8 @@ router.post(
   "/",
   // Authenticate before storing any uploaded payment proof.
   requireCustomerAuth,
-  upload.single("proof_image"),
+  parsePaymentProofUpload,
+  validatePaymentProofImage,
   createBooking,
 );
 
@@ -207,7 +252,8 @@ router.post(
 router.post(
   "/walk-in",
   requireFrontDeskAuth,
-  upload.single("proof_image"),
+  parsePaymentProofUpload,
+  validatePaymentProofImage,
   bindAuthenticatedFrontDeskCreator,
   validateManualReservationDate,
   createWalkInBooking,
