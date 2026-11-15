@@ -474,3 +474,22 @@ test("Firefox-like browser without SpeechRecognition can use secure audio captur
   h.fire("aiMicBtn"); await h.settle();
   assert.equal(h.transcriptionRequests.length, 1);
 });
+
+test("iOS Safari chooses enhanced English voice instead of compact/default", () => {
+  const h = mount({ ios: true, voices: [
+    { name: "English (Compact)", lang: "en-US", voiceURI: "compact" },
+    { name: "English Philippines", lang: "en-PH", voiceURI: "base" },
+    { name: "Samantha (Enhanced)", lang: "en-US", voiceURI: "enhanced" },
+  ] });
+  h.voice.readAloud("Welcome to Arvic Seaside Resort!");
+  assert.equal(h.speechUtterances[0].voice.name, "Samantha (Enhanced)");
+  assert.equal(h.speechUtterances[0].lang, "en-US");
+  assert.equal(h.speechUtterances[0].rate, 1);
+  assert.equal(h.cloudRequests.length, 0);
+});
+
+test("Mobile English fallback uses en-US before speech voices load", () => {
+  const h = mount({ ios: true, voices: [] });
+  h.voice.readAloud("Welcome!");
+  assert.equal(h.speechUtterances[0].lang, "en-US");
+});
