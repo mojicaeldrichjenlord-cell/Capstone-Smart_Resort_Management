@@ -98,7 +98,7 @@ async function speakBlessica(req, res) {
       headers: {
         "Ocp-Apim-Subscription-Key": process.env.AZURE_SPEECH_KEY,
         "Content-Type": "application/ssml+xml; charset=utf-8",
-        "X-Microsoft-OutputFormat": "audio-16khz-32kbitrate-mono-mp3",
+        "X-Microsoft-OutputFormat": "audio-24khz-96kbitrate-mono-mp3", // Supported higher-fidelity MP3 for mobile/Safari
         "User-Agent": "ArvicSeaside-SmartResort"
       },
       body: ssml,
