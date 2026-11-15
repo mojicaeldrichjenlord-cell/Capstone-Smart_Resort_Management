@@ -152,6 +152,15 @@ function normalizeTimeValue(value) {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
+// Conversational day/night preference is NOT a custom booking time.
+// Preserve it across turns; the secure booking page owns real slot hours.
+function normalizeSlotPreference(value) {
+  const text = String(value || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (["day", "day_tour", "morning", "umaga"].includes(text)) return "day_tour";
+  if (["night", "overnight", "evening", "gabi"].includes(text)) return "night";
+  return null;
+}
+
 function detectLanguageFromMessage(message) {
   const text = normalizeText(message);
   if (!text) return null;
@@ -204,7 +213,11 @@ function detectLanguageFromMessage(message) {
 // Combine details from the current question with useful context from earlier chat turns.
 // An explicit new detail takes priority; otherwise a prior date, guest count or preference is retained.
 function mergeContext(existing = {}, extracted = {}) {
+  const slotPreference = normalizeSlotPreference(extracted.slot_preference) ||
+    normalizeSlotPreference(existing.slot_preference);
   return {
+    // Add the field only when it is known: keep older context shapes compatible.
+    ...(slotPreference ? { slot_preference: slotPreference } : {}),
     check_in: cleanContextValue(extracted.check_in) ?? cleanContextValue(existing.check_in),
     check_out: cleanContextValue(extracted.check_out) ?? cleanContextValue(existing.check_out),
     check_in_time:
@@ -241,7 +254,7 @@ function getMissingCoreDetails(context = {}) {
   if (!context.check_in) missing.push("check-in date");
   if (!context.check_out) missing.push("check-out date");
   // Exact hours belong to fixed accommodation slots, not custom time requests.
-  if (!context.check_in_time || !context.check_out_time)
+  if ((!context.check_in_time || !context.check_out_time) && !context.slot_preference)
     missing.push("fixed Day Tour (morning) or Night (evening) slot");
   if (!context.guests) missing.push("number of guests");
   return missing;
@@ -593,6 +606,7 @@ Use this exact JSON shape:
   "check_in_time": null,
   "check_out": null,
   "check_out_time": null,
+  "slot_preference": null,
   "guests": null,
   "bed_count": null,
   "view_type": null,
@@ -617,6 +631,7 @@ Important date rules:
 Time rules:
 - Return time in HH:MM:SS only if the guest explicitly gives a clock time.
 - Morning/day tour or evening/night preferences are NOT exact clock times: leave time fields null because each accommodation category has its own fixed hours.
+- Set slot_preference to "day_tour" for a clearly stated Day Tour/morning/umaga preference, "night" for Night/overnight/evening/gabi, otherwise null. If the message changes an earlier preference, use the new choice.
 - Never invent a clock time or treat a custom time as an officially bookable slot.
 - If time is not mentioned, return null.
 - Examples:
@@ -1036,6 +1051,10 @@ exports.chatWithGemini = async (req, res) => {
       ? {}
       : await extractStructuredIntent(message, requestContext);
     const mergedContext = mergeContext(requestContext, extractedContext);
+    // Store the clearly stated choice even if model extraction missed it.
+    // A short "Day Tour"/"Night"/"umaga"/"gabi" turn is unambiguous.
+    const directSlot = normalizeSlotPreference(message);
+    if (directSlot) mergedContext.slot_preference = directSlot;
 
     const detectedLanguage = detectLanguageFromMessage(message);
     // Only the live voice mode locks response language. Normal text chat
@@ -1260,6 +1279,7 @@ ${policyPromptLines()}
 - Online guests do NOT choose arbitrary check-in or check-out hours: the resort uses preset Day Tour and Night booking slots.
 - When a guest wants to book, ask whether they prefer Day Tour (umaga/morning) or Night (gabi/evening), never ask "What exact time would you like to check in or check out?"
 - The booking page automatically determines the exact check-in and check-out times for the selected accommodation and slot. Do not offer a custom 2 PM check-in or 12 PM checkout.
+- If saved booking details already contain slot_preference (day_tour or night), acknowledge the selected slot and DO NOT ask for it again; ask only for remaining missing details or direct the guest to the booking page.
 - Verified preset Day Tour/Night hours vary by category: Rooms: 7 AM-5 PM / 7 PM-5 AM next day; Cottages/Shades/Huts: 6 AM-5 PM / 6 PM-5 AM next day; Pavilions/Function Areas: 8 AM-6 PM / 8 PM-6 AM next day.
 - Day/Night 22-hour or 23-hour extended schedules are separate preset slots, based on category; refer to the booking page for their exact times, availability and prices.
 - If the guest has not selected an accommodation and fixed slot, do not imply a specific clock time is available. Direct them to the secure booking page for final slot validation.
