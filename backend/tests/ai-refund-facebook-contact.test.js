@@ -94,3 +94,15 @@ test("AI renderer escapes untrusted HTML and does not make arbitrary links", () 
   assert.doesNotMatch(html, /href="https:\/\/example\.com/);
   assert.doesNotMatch(html, /href="tel:/);
 });
+
+test("Fixed resort schedule FAQ avoids custom check-in hours", () => {
+  assert.equal(matchGeneralPolicyQuestion("What are your check-in times?"), "schedule");
+  assert.equal(matchGeneralPolicyQuestion("Anong oras ng check-out?"), "schedule");
+  const reply = getPolicyReply("schedule", "english");
+  assert.match(reply, /fixed/i);
+  assert.match(reply, /Day Tour/i);
+  assert.match(reply, /Night/i);
+  assert.match(reply, /7 AM-5 PM/);
+  assert.match(reply, /not custom/i);
+  assert.doesNotMatch(reply, /2 PM.*12 PM/i);
+});

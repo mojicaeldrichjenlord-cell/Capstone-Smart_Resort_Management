@@ -152,9 +152,20 @@ function normalizeTimeValue(value) {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
+// Conversational day/night preference is NOT a custom booking time.
+// Preserve it across turns; the secure booking page owns real slot hours.
+function normalizeSlotPreference(value) {
+  const text = String(value || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (["day", "day_tour", "morning", "umaga"].includes(text)) return "day_tour";
+  if (["night", "overnight", "evening", "gabi"].includes(text)) return "night";
+  return null;
+}
+
 function detectLanguageFromMessage(message) {
   const text = normalizeText(message);
   if (!text) return null;
+  // A bare Filipino slot answer should use Filipino rather than default English.
+  if (/^(?:umaga|gabi|day tour po|night po)$/.test(text)) return "tagalog";
 
   // Mandarin characters are a reliable signal even after an English turn.
   if (/[\u3400-\u9FFF]/u.test(text)) return "mandarin";
@@ -204,7 +215,11 @@ function detectLanguageFromMessage(message) {
 // Combine details from the current question with useful context from earlier chat turns.
 // An explicit new detail takes priority; otherwise a prior date, guest count or preference is retained.
 function mergeContext(existing = {}, extracted = {}) {
+  const slotPreference = normalizeSlotPreference(extracted.slot_preference) ||
+    normalizeSlotPreference(existing.slot_preference);
   return {
+    // Add the field only when it is known: keep older context shapes compatible.
+    ...(slotPreference ? { slot_preference: slotPreference } : {}),
     check_in: cleanContextValue(extracted.check_in) ?? cleanContextValue(existing.check_in),
     check_out: cleanContextValue(extracted.check_out) ?? cleanContextValue(existing.check_out),
     check_in_time:
@@ -239,9 +254,10 @@ function mergeContext(existing = {}, extracted = {}) {
 function getMissingCoreDetails(context = {}) {
   const missing = [];
   if (!context.check_in) missing.push("check-in date");
-  if (!context.check_in_time) missing.push("check-in time");
   if (!context.check_out) missing.push("check-out date");
-  if (!context.check_out_time) missing.push("check-out time");
+  // Exact hours belong to fixed accommodation slots, not custom time requests.
+  if ((!context.check_in_time || !context.check_out_time) && !context.slot_preference)
+    missing.push("fixed Day Tour (morning) or Night (evening) slot");
   if (!context.guests) missing.push("number of guests");
   return missing;
 }
@@ -592,6 +608,7 @@ Use this exact JSON shape:
   "check_in_time": null,
   "check_out": null,
   "check_out_time": null,
+  "slot_preference": null,
   "guests": null,
   "bed_count": null,
   "view_type": null,
@@ -614,7 +631,10 @@ Important date rules:
 - If the month/day this year is already past, use next year.
 
 Time rules:
-- Return time in HH:MM:SS 24-hour format if the user gives a specific time.
+- Return time in HH:MM:SS only if the guest explicitly gives a clock time.
+- Morning/day tour or evening/night preferences are NOT exact clock times: leave time fields null because each accommodation category has its own fixed hours.
+- Set slot_preference to "day_tour" for a clearly stated Day Tour/morning/umaga preference, "night" for Night/overnight/evening/gabi, otherwise null. If the message changes an earlier preference, use the new choice.
+- Never invent a clock time or treat a custom time as an officially bookable slot.
 - If time is not mentioned, return null.
 - Examples:
   - 2 PM => 14:00:00
@@ -698,9 +718,9 @@ function findCatalogNameMention(catalog, message) {
 // booking/payment is always completed on the secure Customer booking page.
 function getQuotaBookingGuidance(language) {
   return {
-    english: "For online reservations, choose an accommodation and stay schedule on the booking page. The required PayPal downpayment is 50% of the final accommodation price. Pay the remaining 50%, entrance fee, and applicable onsite charges at the resort. The secure payment page shows the exact amount before payment; a booking is not confirmed by this chat.",
-    tagalog: "Para po sa online reservation, pumili kayo ng accommodation at schedule sa booking page. Ang kinakailangang downpayment sa PayPal ay 50% ng final accommodation price. Ang natitirang 50%, entrance fee, at iba pang applicable charges ay babayaran sa resort. Makikita ninyo ang eksaktong halaga sa secure payment page bago magbayad. Hindi po nakukumpirma ang booking sa chat.",
-    taglish: "Para po mag-book online, piliin ninyo ang accommodation at schedule sa booking page. Ang required PayPal downpayment ay 50% ng final accommodation price. Ang remaining 50%, entrance fee, at applicable onsite charges ay babayaran sa resort. Makikita ninyo ang exact amount sa secure payment page bago magbayad. Hindi po confirmed ang booking sa chat.",
+    english: "For online reservations, choose an accommodation and a fixed Day Tour (morning) or Night (evening) slot on the booking page; check-in/check-out times are not customizable. The required PayPal downpayment is 50% of the final accommodation price. Pay the remaining 50%, entrance fee, and applicable onsite charges at the resort. The secure payment page shows the exact amount before payment; a booking is not confirmed by this chat.",
+    tagalog: "Para po sa online reservation, pumili kayo ng accommodation at fixed Day Tour (umaga) o Night (gabi) slot sa booking page; hindi custom ang check-in at check-out times. Ang kinakailangang downpayment sa PayPal ay 50% ng final accommodation price. Ang natitirang 50%, entrance fee, at iba pang applicable charges ay babayaran sa resort. Makikita ninyo ang eksaktong halaga sa secure payment page bago magbayad. Hindi po nakukumpirma ang booking sa chat.",
+    taglish: "Para po mag-book online, piliin ninyo ang accommodation at fixed Day Tour (umaga) o Night (gabi) slot sa booking page; hindi puwedeng custom ang oras. Ang required PayPal downpayment ay 50% ng final accommodation price. Ang remaining 50%, entrance fee, at applicable onsite charges ay babayaran sa resort. Makikita ninyo ang exact amount sa secure payment page bago magbayad. Hindi po confirmed ang booking sa chat.",
     spanish: "Para reservar en línea, elija alojamiento y horario en la página de reservas. El anticipo obligatorio por PayPal es el 50 % del precio final del alojamiento. El 50 % restante, la entrada y otros cargos se pagan en el resort. Confirme el importe exacto en la página de pago; el chat no confirma reservas.",
     mandarin: "在线预订时，请在预订页面选择住宿和时段。须通过 PayPal 支付最终住宿价格的 50% 作为订金。剩余 50%、入场费及其他现场费用在度假村支付。准确金额以安全付款页面为准；聊天不会确认预订。",
   }[language] || "For online reservations, pay 50% of the final accommodation price through PayPal on the secure booking page. Pay the balance and entrance fees onsite.";
@@ -814,27 +834,27 @@ async function buildQuotaLimitedAccommodationReply(payload, requestCatalog = nul
   const labels = {
     english: { cap: "Maximum guests", day: "Day tour", night: "Overnight",
       none: "No matching listed accommodation is currently available.",
-      dates: "Please provide check-in/out dates and times to check actual reservation slots.",
+      dates: "Please choose dates and a fixed Day Tour (morning) or Night (evening) slot on the booking page; hours are not customizable.",
       preview: "These are preliminary matches for your requested time window; confirm availability and prices in the secure booking form.",
       invalid: "Please correct the check-in and check-out dates and times before checking availability." },
     tagalog: { cap: "Pinakamaraming bisita", day: "Day tour", night: "Overnight",
       none: "Walang tugmang accommodation na kasalukuyang nakalista bilang available.",
-      dates: "Ibigay ang petsa at oras ng check-in at check-out para masuri ang booking schedule.",
+      dates: "Piliin po ang petsa at fixed Day Tour (umaga) o Night (gabi) slot sa booking page. Hindi custom ang oras.",
       preview: "Paunang resulta lamang ito. I-confirm ang availability at presyo sa secure booking form.",
       invalid: "Pakisuri ang petsa at oras ng check-in at check-out." },
     taglish: { cap: "Maximum guests", day: "Day tour", night: "Overnight",
       none: "Walang currently listed na available accommodation na tugma.",
-      dates: "Pakibigay ang check-in at check-out dates at times para ma-check ang booking slots.",
+      dates: "Piliin po ang dates at fixed Day Tour (umaga) o Night (gabi) slot sa booking page. Hindi custom ang times.",
       preview: "Preliminary matches lang ito. I-confirm ang slot at final price sa booking page.",
       invalid: "Pakicorrect ang check-in at check-out dates at times." },
     spanish: { cap: "Capacidad máxima", day: "Visita de día", night: "Pernoctación",
       none: "No hay alojamientos disponibles que coincidan con los criterios.",
-      dates: "Indique las fechas y horas de entrada y salida para comprobar la disponibilidad.",
+      dates: "Seleccione las fechas y el turno fijo de día o noche en la página de reservas; no se permiten horas personalizadas.",
       preview: "Estos son resultados preliminares; confirme la disponibilidad y el precio en la página de reservas.",
       invalid: "Corrija las fechas y horas de entrada y salida." },
     mandarin: { cap: "最多入住人数", day: "日间游览", night: "过夜",
       none: "目前没有符合条件且标记为可用的住宿。",
-      dates: "请提供入住和退房日期及时间，以核查预订时段。",
+      dates: "请在预订页面选择日期以及固定的白天或夜间时段，不能自行指定入住或退房时间。",
       preview: "这些只是初步匹配结果，请在安全预订页面确认时段和最终价格。",
       invalid: "请先更正入住和退房日期及时间。" },
   };
@@ -1033,6 +1053,10 @@ exports.chatWithGemini = async (req, res) => {
       ? {}
       : await extractStructuredIntent(message, requestContext);
     const mergedContext = mergeContext(requestContext, extractedContext);
+    // Store the clearly stated choice even if model extraction missed it.
+    // A short "Day Tour"/"Night"/"umaga"/"gabi" turn is unambiguous.
+    const directSlot = normalizeSlotPreference(message);
+    if (directSlot) mergedContext.slot_preference = directSlot;
 
     const detectedLanguage = detectLanguageFromMessage(message);
     // Only the live voice mode locks response language. Normal text chat
@@ -1050,7 +1074,7 @@ exports.chatWithGemini = async (req, res) => {
     let nights = 0;
     let matchedRooms = [];
     let availableRooms = [];
-    let roomSummary = "No availability has been verified. Please provide valid check-in/out dates and times.";
+    let roomSummary = "No availability has been verified. Choose a fixed Day Tour or Night slot on the booking page to confirm its exact hours.";
     let topRecommendationSummary = "No strong recommendation available.";
     let alternativeDates = [];
     let alternativeSummary = "No alternative dates were checked.";
@@ -1194,7 +1218,8 @@ exports.chatWithGemini = async (req, res) => {
     const resortToday = getResortTodayText();
 
     const finalPrompt = `
-You are SmartResort's friendly booking assistant.
+You are the Arvic Seaside Resort AI Assistant for Arvic Seaside Beach Resort and Hotel.
+If asked your name, introduce yourself as "Arvic Seaside Resort AI Assistant". Never refer to yourself as SmartResort or Smart Resort AI Assistant.
 Be friendly, casual, and helpful like a resort staff assistant.
 
 ${replyLanguage}
@@ -1253,7 +1278,13 @@ ${policyPromptLines()}
 - If there are no exact matches, say that clearly and mention alternative dates if provided.
 - A booking suggestion is NOT a reservation. Tell the user to press Continue to Booking, then confirm dates, slot price, and payment on the secure reservation page.
 - Explain that online downpayments use PayPal; the secure Customer booking/payment page verifies the final amount. Do not promise cash on arrival for online reservations.
-- If the user wants to book but check-in time or check-out time is missing, ask for the missing time.
+- Online guests do NOT choose arbitrary check-in or check-out hours: the resort uses preset Day Tour and Night booking slots.
+- When a guest wants to book, ask whether they prefer Day Tour (umaga/morning) or Night (gabi/evening), never ask "What exact time would you like to check in or check out?"
+- The booking page automatically determines the exact check-in and check-out times for the selected accommodation and slot. Do not offer a custom 2 PM check-in or 12 PM checkout.
+- If saved booking details already contain slot_preference (day_tour or night), acknowledge the selected slot and DO NOT ask for it again; ask only for remaining missing details or direct the guest to the booking page.
+- Verified preset Day Tour/Night hours vary by category: Rooms: 7 AM-5 PM / 7 PM-5 AM next day; Cottages/Shades/Huts: 6 AM-5 PM / 6 PM-5 AM next day; Pavilions/Function Areas: 8 AM-6 PM / 8 PM-6 AM next day.
+- Day/Night 22-hour or 23-hour extended schedules are separate preset slots, based on category; refer to the booking page for their exact times, availability and prices.
+- If the guest has not selected an accommodation and fixed slot, do not imply a specific clock time is available. Direct them to the secure booking page for final slot validation.
 - Online payments are finalized only on the secure Customer booking/payment page. Never imply an AI chat creates a reservation.
 - If the date/time range is invalid, ask the user to correct both dates and times. Same-day day tours may be valid if checkout is later than check-in.
 - Prefer concise answers over long answers.
@@ -1326,7 +1357,7 @@ exports.translateReplyToEnglish = async (req, res) => {
       });
     }
     const prompt = [
-      "Translate the following SmartResort AI assistant reply into fluent, natural English.",
+      "Translate the following Arvic Seaside Resort AI Assistant reply into fluent, natural English.",
       "Preserve accommodation names, dates, times, prices, rates, numbers,",
       "and all important booking or payment details exactly. Do not invent facts.",
       "Use a friendly and clear resort receptionist tone.",
@@ -1366,7 +1397,7 @@ exports.translateReplyToTagalog = async (req, res) => {
     }
 
     const prompt = `
-Translate the following SmartResort AI assistant reply into natural, easy-to-understand Tagalog.
+Translate the following Arvic Seaside Resort AI Assistant reply into natural, easy-to-understand Tagalog.
 
 Rules:
 - Keep the meaning exactly the same.
@@ -1416,7 +1447,7 @@ exports.translateReplyToTaglish = async (req, res) => {
     }
 
     const prompt = `
-Translate the following SmartResort AI assistant reply into natural Taglish.
+Translate the following Arvic Seaside Resort AI Assistant reply into natural Taglish.
 
 Rules:
 - Keep the meaning exactly the same.

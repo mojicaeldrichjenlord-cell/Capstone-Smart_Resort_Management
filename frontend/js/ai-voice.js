@@ -8,7 +8,7 @@
   "use strict";
 
   const LOCALES = Object.freeze({
-    english: { stt: "en-PH", tts: "en-PH", label: "English" },
+    english: { stt: "en-PH", tts: "en-US", label: "English" },
     taglish: { stt: "fil-PH", tts: "fil-PH", label: "Taglish" },
     spanish: { stt: "es-ES", tts: "es-ES", label: "Español" },
     mandarin: { stt: "zh-CN", tts: "zh-CN", label: "中文 (Mandarin)" },
@@ -134,17 +134,18 @@
 
   function qualityScore(voice) {
     const name = String(voice.name || "").toLowerCase();
+    const uri = String(voice.voiceURI || "").toLowerCase();
     const lang = String(voice.lang || "").toLowerCase();
     const target = getLocale().tts.toLowerCase();
-    let score = lang === target ? 18 : 0;
-    // Filipino voices should outrank English voices when Taglish is chosen,
-    // even if a polished English voice is also installed.
-    if (state.language === "taglish" && /^(fil|tl)(-|$)/.test(lang)) score += 105;
-    if (/natural|neural/.test(name)) score += 85;
-    else if (/enhanced|premium/.test(name)) score += 35;
+    let score = lang === target ? 25 : 0;
+    // Taglish must prefer a Filipino voice over even a polished English one.
+    if (state.language === "taglish" && /^(fil|tl)(-|$)/.test(lang)) score += 180;
+    // Mobile Safari often exposes compact and enhanced versions of a voice.
+    // Prefer higher-quality local voices without requiring a paid API.
+    if (/natural|neural|enhanced|premium|siri/.test(name)) score += 95;
+    else if (/samantha|ava|allison|serena|aria|jenny/.test(name)) score += 45;
     if (/google|microsoft/.test(name)) score += 8;
-    // Keep cloud voices available as a user choice, not a guarantee
-    // of free or offline service.
+    if (/compact|low.quality|e?speak/.test(name + " " + uri)) score -= 180;
     return score;
   }
 
@@ -254,7 +255,7 @@
       }
       const utterance = new SpeechSynthesisUtterance(content);
       selectSpeechVoice(utterance);
-      utterance.rate = 0.98;
+      utterance.rate = isIOS ? 1 : 0.98;
       utterance.pitch = 1;
       utterance.onend = finish;
       utterance.onerror = finish;
