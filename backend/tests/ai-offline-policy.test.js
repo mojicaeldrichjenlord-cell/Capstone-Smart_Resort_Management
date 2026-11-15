@@ -49,3 +49,23 @@ for (const [locale, fn, query] of [
     assert.match(result.reply, /my bookings/i);
   });
 }
+
+test("Offline booking instructions guide to fixed Day Tour or Night slots", () => {
+  for (const [fn, query] of [
+    ["getEnglishFallbackReply", "how to book"],
+    ["getTagalogFallbackReply", "paano mag-book"],
+    ["getTaglishFallbackReply", "how to book"],
+  ]) {
+    const reply = context[fn](query, {}).reply;
+    assert.match(reply, /Day Tour/i);
+    assert.match(reply, /Night/i);
+    assert.doesNotMatch(reply, /enter.*dates and times/i);
+  }
+});
+
+test("Offline check-in FAQ does not invent a generic 2 PM/12 PM schedule", () => {
+  const reply = context.getEnglishFallbackReply("What is the check-in time?", {}).reply;
+  assert.match(reply, /fixed/i);
+  assert.match(reply, /7 AM-5 PM/);
+  assert.doesNotMatch(reply, /2 PM.*12 PM/i);
+});
