@@ -12,7 +12,9 @@
 // ============================================================
 
 const BOOKING_DRAFT_KEY = "smartresort_booking_draft_v2";
-const CUSTOMER_MIN_BOOKING_DAYS_AHEAD = 0;
+// Release policy: customers must reserve at least two calendar days ahead.
+// Front Desk walk-ins and Facebook/Messenger bookings have separate rules.
+const CUSTOMER_MIN_BOOKING_DAYS_AHEAD = 2;
 
 let availableAccommodations = [];
 let bookingItemCounter = 0;
