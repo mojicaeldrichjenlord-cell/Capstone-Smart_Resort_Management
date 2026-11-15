@@ -74,6 +74,24 @@
     if (controls?.status) controls.status.textContent = message;
   }
 
+  // Show which browser voice was really selected so mobile QA can distinguish
+  // an unavailable enhanced voice from a playback bug. No audio is uploaded.
+  function reportBrowserVoice(voice) {
+    if (!controls?.info) return;
+    if (!voice) {
+      controls.info.textContent =
+        "Voice output: browser default (no selectable voice reported by this device).";
+      return;
+    }
+    const name = String(voice.name || "Unnamed voice");
+    const lang = String(voice.lang || "unknown language");
+    const limited = /compact|low.quality|e?speak/i.test(
+      name + " " + String(voice.voiceURI || "")
+    );
+    controls.info.textContent = "Voice output: " + name + " (" + lang + ")" +
+      (limited ? " — basic/compact voice; an Enhanced voice may sound better." : ".");
+  }
+
   function clearRestart() {
     if (state.restartTimer !== null) {
       clearTimeout(state.restartTimer);
@@ -161,9 +179,14 @@
     let chosen = null;
 
     if (state.language === "english") {
-      // User-approved English choice. Uses the named browser voice if available.
-      chosen = voices.find(v =>
+      // Keep Google US English as the familiar fallback, but do not force it
+      // over a clearly higher-quality Enhanced/Neural voice on mobile or desktop.
+      const googleVoice = voices.find(v =>
         /^google us english(?:\b|$)/i.test(String(v.name || "")));
+      const bestVoice = voices[0];
+      chosen = googleVoice && bestVoice &&
+        qualityScore(bestVoice) <= qualityScore(googleVoice) + 30
+        ? googleVoice : bestVoice;
     } else if (state.language === "taglish") {
       // User-approved Filipino/Taglish voice, available in Edge on some devices.
       chosen = voices.find(v =>
@@ -177,6 +200,7 @@
     chosen ||= voices[0];
     if (chosen) utterance.voice = chosen;
     utterance.lang = chosen?.lang || getLocale().tts;
+    return chosen;
   }
 
   async function playBlessicaCloud(content, serial, onFinish, useBrowser) {
@@ -220,6 +244,8 @@
         useBrowser();
       };
       await audio.play();
+      if (controls?.info) controls.info.textContent =
+        "Voice output: Microsoft Blessica Neural (cloud audio).";
       status("Speaking with Microsoft Blessica (Filipino).");
       return true;
     } catch (error) {
@@ -254,7 +280,8 @@
         return;
       }
       const utterance = new SpeechSynthesisUtterance(content);
-      selectSpeechVoice(utterance);
+      const chosenVoice = selectSpeechVoice(utterance);
+      reportBrowserVoice(chosenVoice);
       utterance.rate = isIOS ? 1 : 0.98;
       utterance.pitch = 1;
       utterance.onend = finish;
@@ -695,6 +722,8 @@
       '</div>',
       '<p id="aiVoiceStatus" role="status" aria-live="polite">',
       '🎤 Dictate with the mic, or start hands-free conversation.</p>',
+      '<p id="aiVoiceInfo" class="ai-voice-info" aria-live="polite">',
+      'Voice output: waiting for device voices. Quality depends on installed voices.</p>',
     ].join("");
     messages.parentNode.insertBefore(panel, messages);
 
@@ -705,12 +734,16 @@
       live: panel.querySelector("#aiVoiceLive"),
       interrupt: panel.querySelector("#aiVoiceInterrupt"),
       status: panel.querySelector("#aiVoiceStatus"),
+      info: panel.querySelector("#aiVoiceInfo"),
     };
     const saved = (() => {
       try { return localStorage.getItem(KEY); } catch (_) { return null; }
     })();
     state.language = Object.hasOwn(LOCALES, saved) ? saved : "english";
     controls.lang.value = state.language;
+    // Safari/Android may populate voices lazily; warm the list before Read Aloud.
+    // Still synthesize synchronously when the user taps to preserve iOS gestures.
+    window.speechSynthesis?.getVoices?.();
     microphone.addEventListener("click", toggleDictation);
     controls.live.addEventListener("click", () => {
       if (state.live) stopConversation();
