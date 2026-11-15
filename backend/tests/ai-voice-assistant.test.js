@@ -348,16 +348,35 @@ test("Voice language is passed only by voice-origin requests, not ordinary text 
 });
 
 
-test("English automatically uses user-approved Google US English voice", () => {
+test("English prefers an available Natural/Neural voice over basic Google TTS", () => {
   const h = mount({ voices: [
     { name: "Microsoft Jenny Online (Natural)", lang: "en-US", voiceURI: "jenny" },
     { name: "Google US English", lang: "en-US", voiceURI: "google-us" },
     { name: "Standard English", lang: "en-PH", voiceURI: "base" },
   ] });
   h.voice.readAloud("Welcome to Arvic Seaside!");
-  assert.equal(h.speechUtterances[0].voice.name, "Google US English");
+  assert.equal(h.speechUtterances[0].voice.name, "Microsoft Jenny Online (Natural)");
+  assert.match(h.nodes.aiVoiceInfo.textContent, /Microsoft Jenny Online \(Natural\)/);
   assert.equal(h.speechUtterances[0].rate, 0.98);
   assert.equal(h.requests.length, 0);
+  assert.equal(h.cloudRequests.length, 0);
+});
+
+test("English retains Google US English when no enhanced voice exists", () => {
+  const h = mount({ voices: [
+    { name: "Standard English", lang: "en-PH", voiceURI: "base" },
+    { name: "Google US English", lang: "en-US", voiceURI: "google-us" },
+  ] });
+  h.voice.readAloud("Welcome!");
+  assert.equal(h.speechUtterances[0].voice.name, "Google US English");
+});
+
+test("Compact browser voice is identified in visible voice diagnostic", () => {
+  const h = mount({ voices: [
+    { name: "English (Compact)", lang: "en-US", voiceURI: "compact" },
+  ] });
+  h.voice.readAloud("Hello!");
+  assert.match(h.nodes.aiVoiceInfo.textContent, /Compact.*basic\/compact/i);
 });
 
 test("Taglish prefers locally installed Microsoft Blessica without Azure credentials", async () => {
@@ -434,6 +453,7 @@ test("Voice picker is removed while language and live controls remain", () => {
   assert.match(script, /aiVoiceLanguage/);
   assert.match(script, /aiVoiceLive/);
   assert.equal(h.recognitionInstances.length, 0);
+  assert.match(script, /id="aiVoiceInfo"/);
 });
 
 test("iOS Safari records PCM WAV and reviews transcript without auto-sending", async () => {
