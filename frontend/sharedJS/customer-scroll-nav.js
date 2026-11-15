@@ -19,6 +19,9 @@
   const MIN_UP_DISTANCE = 2; // A tiny upward movement reveals the navigation.
   const MIN_DOWN_DISTANCE = 8; // Suppress shaking from small touch movements.
   let lastY = Math.max(0, window.scrollY || window.pageYOffset || 0);
+  // Mobile Safari resizes the visual viewport as its URL bar collapses.
+  // Only real width/orientation changes should reset navbar visibility.
+  let lastWidth = window.innerWidth;
   let direction = 0;
   let accumulated = 0;
   let pendingFrame = false;
@@ -80,6 +83,10 @@
   }, { passive: true });
 
   window.addEventListener("resize", () => {
+    // Ignore Safari address-bar height changes during vertical scrolling.
+    // Otherwise the navbar would repeatedly flash back into view.
+    if (window.innerWidth === lastWidth) return;
+    lastWidth = window.innerWidth;
     syncSpacerHeight();
     showNavbar();
     lastY = Math.max(0, window.scrollY || window.pageYOffset || 0);
