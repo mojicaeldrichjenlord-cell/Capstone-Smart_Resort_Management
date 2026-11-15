@@ -39,7 +39,10 @@ function setupLogout() {
     btn.addEventListener("click", (e) => {
       e.preventDefault();
 
+      // Confirmed Customer logout must invalidate the browser's active bearer
+      // session even when Remember Me keeps only the email for next login.
       localStorage.removeItem("user");
+      sessionStorage.removeItem("customerToken");
 
       if (typeof showToast === "function") {
         showToast("Logged out successfully.", "success");

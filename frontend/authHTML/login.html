@@ -74,6 +74,8 @@
             <input
               type="email"
               id="email"
+              name="username"
+              autocomplete="username"
               placeholder="Enter your email"
               required
             />
@@ -86,6 +88,8 @@
               <input
                 type="password"
                 id="password"
+                name="password"
+                autocomplete="current-password"
                 placeholder="Enter your password"
                 required
               />
@@ -101,9 +105,18 @@
             </div>
           </div>
 
-          <div class="forgot-link">
+          <!-- Remember Me saves only a Customer email, never a password or bearer token.
+               iPhone/Chrome password autofill is controlled by the browser itself. -->
+          <div class="login-preferences">
+            <label class="remember-me-option" for="rememberMe">
+              <input type="checkbox" id="rememberMe" name="rememberMe" />
+              <span>Remember me</span>
+            </label>
             <a href="forgot-password.html">Forgot password?</a>
           </div>
+          <p class="remember-me-help">
+            Remembers your Customer email on this device. Use your browser's password manager to autofill your password.
+          </p>
 
           <button type="submit" class="auth-submit">Login</button>
         </form>
@@ -125,6 +138,6 @@
     ======================================================= -->
     <script src="../sharedJS/toast.js"></script>
     <script src="../sharedJS/api-config.js"></script>
-    <script src="../authJS/login.js"></script>
+    <script src="../authJS/login.js?v=20261115-remember1"></script>
   </body>
 </html>

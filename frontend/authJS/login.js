@@ -14,6 +14,10 @@ const loginForm = document.getElementById("loginForm");
 const loginMessage = document.getElementById("loginMessage");
 const emailInput = document.getElementById("email");
 const passwordInput = document.getElementById("password");
+const rememberMeInput = document.getElementById("rememberMe");
+// Only a Customer email may be remembered. Passwords and signed tokens are
+// never written to persistent web storage by this feature.
+const CUSTOMER_REMEMBER_EMAIL_KEY = "arvic_customer_remembered_email_v1";
 
 // ============================================================
 // SECTION 1: Password visibility
@@ -59,6 +63,40 @@ if (savedResetEmail && emailInput) {
   emailInput.value = savedResetEmail;
   localStorage.removeItem("resetEmail");
 }
+
+// Initialize from the opt-in preference without overriding registration/reset
+// email handoffs. Browsers control whether a saved password is autofilled.
+function loadRememberedCustomerEmail() {
+  try {
+    const rememberedEmail = localStorage.getItem(CUSTOMER_REMEMBER_EMAIL_KEY);
+    if (rememberedEmail && rememberMeInput) rememberMeInput.checked = true;
+    if (rememberedEmail && !savedRegisteredEmail && !savedResetEmail && emailInput) {
+      emailInput.value = rememberedEmail;
+    }
+  } catch (_) {
+    // Storage can be unavailable in some private-browsing settings.
+  }
+}
+
+function updateRememberedCustomerEmail(email) {
+  try {
+    if (rememberMeInput?.checked) {
+      localStorage.setItem(CUSTOMER_REMEMBER_EMAIL_KEY, email);
+    } else {
+      localStorage.removeItem(CUSTOMER_REMEMBER_EMAIL_KEY);
+    }
+  } catch (_) {
+    // A storage restriction must never block successful authentication.
+  }
+}
+
+loadRememberedCustomerEmail();
+rememberMeInput?.addEventListener("change", () => {
+  // Unchecking must immediately forget a previously remembered Customer email.
+  if (!rememberMeInput.checked) {
+    try { localStorage.removeItem(CUSTOMER_REMEMBER_EMAIL_KEY); } catch (_) {}
+  }
+});
 
 // ============================================================
 // SECTION 3: Login
@@ -211,6 +249,10 @@ if (loginForm) {
           role,
         }),
       );
+
+      // The login page is shared by all roles. Only successful Customer
+      // authentication may save the opted-in email; never store passwords.
+      if (role === "customer") updateRememberedCustomerEmail(email);
 
       showMessage("Login successful!", "success");
 
