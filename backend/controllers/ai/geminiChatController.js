@@ -164,6 +164,8 @@ function normalizeSlotPreference(value) {
 function detectLanguageFromMessage(message) {
   const text = normalizeText(message);
   if (!text) return null;
+  // A bare Filipino slot answer should use Filipino rather than default English.
+  if (/^(?:umaga|gabi|day tour po|night po)$/.test(text)) return "tagalog";
 
   // Mandarin characters are a reliable signal even after an English turn.
   if (/[\u3400-\u9FFF]/u.test(text)) return "mandarin";
