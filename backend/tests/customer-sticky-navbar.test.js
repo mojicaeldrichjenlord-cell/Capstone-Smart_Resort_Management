@@ -63,7 +63,7 @@ function mount() {
     addEventListener(k, fn) { navbarListeners[k] = fn; },
   };
   const window = {
-    scrollY: 0, pageYOffset: 0,
+    scrollY: 0, pageYOffset: 0, innerWidth: 390,
     matchMedia() { return { matches: true }; },
     addEventListener(k, fn) { listeners[k] = fn; },
     requestAnimationFrame(fn) { fn(); },
@@ -74,7 +74,7 @@ function mount() {
   };
   vm.runInNewContext(source, { document, window }, { filename: "customer-scroll-nav.js" });
   return {
-    navbar, spacer, menuClasses, listeners, navbarListeners, toggleListeners,
+    navbar, spacer, menuClasses, listeners, navbarListeners, toggleListeners, window,
     scrollTo(y) { window.scrollY = y; listeners.scroll(); },
     hidden() { return classes.has("is-scroll-hidden"); },
   };
@@ -121,8 +121,12 @@ test("Safari pageshow, resizing, and menu actions reset hidden navigation", () =
   h.listeners.pageshow();
   assert.equal(h.hidden(), false);
   h.scrollTo(400);
+  assert.equal(h.hidden(), true);
+  h.listeners.resize(); // Safari browser toolbar changed HEIGHT, not WIDTH.
+  assert.equal(h.hidden(), true, "height-only resize must not reveal");
+  h.window.innerWidth = 440; // A real orientation/layout width change.
   h.listeners.resize();
-  assert.equal(h.hidden(), false);
+  assert.equal(h.hidden(), false, "width change reveals and remeasures");
   h.scrollTo(500);
   h.toggleListeners.click();
   assert.equal(h.hidden(), false);
