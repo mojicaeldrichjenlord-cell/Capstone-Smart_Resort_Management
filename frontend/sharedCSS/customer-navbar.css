@@ -79,7 +79,10 @@
 
 @media (max-width: 900px) {
   .navbar {
-    position: relative;
+    /* style.css sets position: relative !important on mobile.
+       Override it here so the Customer menu stays visible while scrolling. */
+    position: sticky !important;
+    top: 0;
     min-height: auto;
     padding: 10px 14px;
     display: grid;
