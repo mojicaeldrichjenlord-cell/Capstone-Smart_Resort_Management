@@ -78,6 +78,7 @@ function setupLogout() {
       e.preventDefault();
 
       localStorage.removeItem("user");
+      sessionStorage.removeItem("customerToken"); // Clear signed session on confirmed logout.
 
       if (typeof showToast === "function") {
         showToast("Logged out successfully.", "success");
