@@ -112,9 +112,12 @@ test("Register/forgot-password email handoff overrides an older remembered email
   assert.equal(h.storage.has("registeredEmail"), false);
 });
 
-test("Confirmed Customer logout clears the bearer token but not remembered email", () => {
-  const source = fs.readFileSync(path.join(root, "customerJS/index.js"), "utf8");
-  assert.match(source, /localStorage\.removeItem\("user"\)/);
-  assert.match(source, /sessionStorage\.removeItem\("customerToken"\)/);
-  assert.doesNotMatch(source, /removeItem\("arvic_customer_remembered_email_v1"\)/);
+test("All Customer logout buttons clear signed sessions but keep opted-in email", () => {
+  for (const page of ["index", "rooms", "booking", "booking-payment",
+    "booking-receipt", "my-bookings", "profile", "resort-map"]) {
+    const source = fs.readFileSync(path.join(root, "customerJS", page + ".js"), "utf8");
+    assert.match(source, /localStorage\.removeItem\("user"\)/, page);
+    assert.match(source, /sessionStorage\.removeItem\("customerToken"\)/, page);
+    assert.doesNotMatch(source, /removeItem\("arvic_customer_remembered_email_v1"\)/, page);
+  }
 });
