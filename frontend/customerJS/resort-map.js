@@ -57,6 +57,7 @@ function setupLogout() {
   logoutBtn.addEventListener("click", (e) => {
     e.preventDefault();
     localStorage.removeItem("user");
+      sessionStorage.removeItem("customerToken"); // Clear signed session on confirmed logout.
     window.location.href = "../authHTML/login.html";
   });
 }
