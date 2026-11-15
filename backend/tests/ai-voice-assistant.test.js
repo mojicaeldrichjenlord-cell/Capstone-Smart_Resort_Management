@@ -332,7 +332,7 @@ test("Customer pages load AI chat before interactive voice and include voice sty
     const html = fs.readFileSync(path.resolve(
       __dirname, "../../frontend/customerHTML", page), "utf8");
     const chatIndex = html.indexOf('src="../js/ai-chat.js"');
-    const voiceIndex = html.indexOf('src="../js/ai-voice.js"');
+    const voiceIndex = html.indexOf('src="../js/ai-voice.js?v=20261115-voiceqa2"');
     assert.ok(chatIndex > 0 && voiceIndex > chatIndex);
     assert.match(html, /sharedCSS\/ai-voice\.css/);
   }
