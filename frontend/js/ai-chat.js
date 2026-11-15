@@ -765,6 +765,16 @@ function getEnglishFallbackReply(text, merged) {
       };
     }
 
+    // The slot preference is conversational, not an exact verified stay window.
+    // Never show N/A check-in hours as a completed booking summary.
+    if (!merged.check_in_time || !merged.check_out_time) {
+      return {
+        modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.",
+        reply: `I saved your dates, guest count, and preferred fixed ${merged.slot_preference === "night" ? "Night (evening)" : "Day Tour (morning)"} slot. The secure booking page sets the actual check-in and check-out times based on your accommodation and checks availability. No reservation has been created.`,
+        context: merged,
+      };
+    }
+
     return {
       modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.",
       reply: `I saved your booking details: check-in ${merged.check_in} at ${formatTime(merged.check_in_time)}, check-out ${merged.check_out} at ${formatTime(merged.check_out_time)}, and ${merged.guests} guest(s). Offline mode cannot check live room availability right now, but you can go to the Rooms page and choose the best room manually.`,
@@ -841,6 +851,16 @@ function getTagalogFallbackReply(text, merged) {
       };
     }
 
+    // The slot preference is conversational, not an exact verified stay window.
+    // Never show N/A check-in hours as a completed booking summary.
+    if (!merged.check_in_time || !merged.check_out_time) {
+      return {
+        modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
+        reply: `Na-save po ang dates, bilang ng bisita, at napiling fixed ${merged.slot_preference === "night" ? "Night (gabi)" : "Day Tour (umaga)"} slot. Sa booking page po makikita ang eksaktong check-in/check-out times ayon sa accommodation at availability. Wala pang nakumpirmang reservation.`,
+        context: merged,
+      };
+    }
+
     return {
       modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
       reply: `Na-save ko ang booking details mo: check-in ${merged.check_in} nang ${formatTime(merged.check_in_time)}, check-out ${merged.check_out} nang ${formatTime(merged.check_out_time)}, at ${merged.guests} bisita. Hindi makakapag-check ng live room availability ang offline mode ngayon, pero maaari kang pumunta sa Rooms page at manual na pumili ng pinakamagandang room.`,
@@ -913,6 +933,16 @@ function getTaglishFallbackReply(text, merged) {
       return {
         modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
         reply: `Na-save ko na ang part ng booking details mo. Kailangan ko pa ang ${missing.join(", ")}. After that, pwede ka nang magpatuloy sa Rooms page or Booking page.`,
+        context: merged,
+      };
+    }
+
+    // The slot preference is conversational, not an exact verified stay window.
+    // Never show N/A check-in hours as a completed booking summary.
+    if (!merged.check_in_time || !merged.check_out_time) {
+      return {
+        modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
+        reply: `Saved na po ang dates, guest count at fixed ${merged.slot_preference === "night" ? "Night (gabi)" : "Day Tour (umaga)"} slot. Booking page po ang magse-set ng exact check-in/check-out hours based on accommodation at magche-check ng availability. Hindi pa confirmed ang booking.`,
         context: merged,
       };
     }
