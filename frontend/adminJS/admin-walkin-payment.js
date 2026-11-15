@@ -93,6 +93,13 @@ document.addEventListener("DOMContentLoaded", async () => {
   renderReservationSummary();
   updatePaymentRequirementUI();
   updatePaymentBreakdown();
+
+  // Show immediately when a previously valid draft expires between pages.
+  // submitManualReservation performs the same check again on click.
+  const scheduleValidation = validateManualReservationDraftDates();
+  if (!scheduleValidation.valid) {
+    showMessage(scheduleValidation.message, "error");
+  }
 });
 
 // ============================================================
@@ -703,6 +710,20 @@ function validateManualReservationDraftDates() {
           "Facebook/Messenger reservations cannot use a past reservation date. Please go back and review the reservation.",
       };
     }
+  }
+
+  // Bug #006: a draft can age out while staff are on this payment page.
+  // Check the complete fixed checkout window in Manila time once more,
+  // before submitting proof or recording a payment.
+  const scheduleValidation = ManualScheduleGuard.validateItems(
+    items, availableAccommodations, getSlotOptions,
+  );
+
+  if (!scheduleValidation.valid) {
+    return {
+      valid: false,
+      message: `${scheduleValidation.message} Please go back and select a valid schedule.`,
+    };
   }
 
   return {
