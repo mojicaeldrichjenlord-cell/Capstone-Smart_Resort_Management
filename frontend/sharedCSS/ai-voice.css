@@ -82,3 +82,12 @@
     flex-basis: 100%;
   }
 }
+
+/* Keep the selected voice/source visible after playback for mobile QA. */
+.ai-voice-info {
+  margin: 5px 0 0;
+  color: #64748b;
+  font-size: .73rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
