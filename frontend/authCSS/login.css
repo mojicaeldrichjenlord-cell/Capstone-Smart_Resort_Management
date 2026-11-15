@@ -579,3 +579,52 @@
     margin-inline: auto;
   }
 }
+
+
+/* ======================================================
+   CUSTOMER REMEMBER ME — optional email memory only
+   Clear, keyboard-accessible checkbox; browser manages password autofill.
+====================================================== */
+.login-preferences {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 14px;
+  margin-top: -2px;
+}
+.auth-card .remember-me-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0;
+  font-weight: 700;
+  font-size: .9rem;
+  color: #334155;
+  cursor: pointer;
+}
+.auth-card .remember-me-option input[type="checkbox"] {
+  width: 17px;
+  height: 17px;
+  min-width: 17px;
+  padding: 0;
+  margin: 0;
+  accent-color: #0f9488;
+  cursor: pointer;
+}
+.login-preferences > a {
+  color: #0f766e;
+  text-decoration: none;
+  font-size: .9rem;
+  font-weight: 800;
+}
+.login-preferences > a:hover,
+.login-preferences > a:focus-visible {
+  text-decoration: underline;
+}
+.auth-card .remember-me-help {
+  margin: -5px 0 0;
+  font-size: .76rem;
+  line-height: 1.5;
+  color: #64748b;
+}
