@@ -7,6 +7,7 @@ const { findOverlappingDraftItems } = require("../../utils/reservationOverlap");
 const db = require("../../config/db");
 const { updateAdminBookingStatus } = require("../admin/adminBookingController");
 const fs = require("fs");
+const { getVerifiedImageMime, MAX_PROOF_BYTES } = require("../../utils/paymentProofAccess");
 
 // ============================================================
 // BLOCK: Normalize text
@@ -884,6 +885,8 @@ async function createReservation({
   created_by = null,
   body,
   autoApprove = false,
+  // Server-derived upload bytes; never accept these from untrusted JSON fields.
+  paymentProofUpload = null,
 }) {
   const {
     first_name,
@@ -1463,6 +1466,21 @@ async function createReservation({
 
     const reservationId = reservationResult.insertId;
 
+    // QA-008: Keep valid Front Desk payment-proof bytes in durable, private
+    // MySQL storage in the SAME transaction as the reservation creation.
+    // Render's ephemeral uploads folder must not be the only copy.
+    if (paymentProofUpload) {
+      if (!Buffer.isBuffer(paymentProofUpload.buffer) ||
+          !paymentProofUpload.buffer.length ||
+          paymentProofUpload.buffer.length > MAX_PROOF_BYTES ||
+          !getVerifiedImageMime(paymentProofUpload.buffer)) {
+        throw { status: 415, message: "Invalid payment proof image." };
+      }
+      await connection.query(
+        "INSERT INTO reservation_payment_proofs (reservation_id, mime_type, image_data) VALUES (?, ?, ?)",
+        [reservationId, getVerifiedImageMime(paymentProofUpload.buffer), paymentProofUpload.buffer],
+      );
+    }
 
     for (const item of reservationItems) {
       await connection.query(
@@ -1579,6 +1597,11 @@ exports.createBooking = async (req, res) => {
 exports.createWalkInBooking = async (req, res) => {
   try {
     const parsedBody = parseRequestReservationBody(req);
+    // Read the already-validated upload from the private temporary file.
+    // The binary is stored in Aiven/MySQL before the booking is committed.
+    const uploadedBytes = req.file?.path
+      ? await fs.promises.readFile(req.file.path)
+      : null;
     const created_by = Number(parsedBody.created_by);
 
     if (!created_by) {
@@ -1594,6 +1617,7 @@ exports.createWalkInBooking = async (req, res) => {
       created_by,
       body: parsedBody,
       autoApprove: true,
+      paymentProofUpload: uploadedBytes ? { buffer: uploadedBytes } : null,
     });
 
     return res.status(201).json({
@@ -1602,16 +1626,25 @@ exports.createWalkInBooking = async (req, res) => {
       reservationCode: result.reservationCode,
       createdBy: result.createdBy,
       proofPath: parsedBody.proof_of_payment || null,
-      proofImageDataSaved: Boolean(parsedBody.proof_image_data),
+      proofImageDataSaved: Boolean(uploadedBytes || parsedBody.proof_image_data),
       isCheckedIn: Boolean(result.isCheckedIn),
     });
   } catch (error) {
     console.error("createWalkInBooking error:", error);
-
+    if (error.code === "ER_NO_SUCH_TABLE") {
+      return res.status(503).json({
+        message: "Secure payment proof storage is not initialized. Apply reservation_payment_proofs.sql before accepting e-wallet reservations.",
+      });
+    }
     return res.status(error.status || 500).json({
       message: error.message || "Failed to create manual reservation.",
-      error: error.message,
     });
+  } finally {
+    // The permanent copy is in MySQL. Remove the temporary upload on BOTH
+    // success and failure; never leave confidential payment files in Render.
+    if (req.file?.path) {
+      await fs.promises.unlink(req.file.path).catch(() => {});
+    }
   }
 };
 
