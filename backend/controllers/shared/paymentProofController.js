@@ -37,6 +37,28 @@ async function getPaymentProofImage(req, res) {
   res.set("Content-Security-Policy", "sandbox");
 
   try {
+    // QA-008: Read durable, private binary storage first. Uploaded proofs
+    // survive Render restarts and deployments, unlike temporary disk files.
+    // If the migration hasn't been applied, legacy previews still work.
+    let durableRows = [];
+    try {
+      [durableRows] = await db.promise().query(
+        "SELECT image_data FROM reservation_payment_proofs WHERE reservation_id = ? LIMIT 1",
+        [id],
+      );
+    } catch (storageError) {
+      if (storageError.code !== "ER_NO_SUCH_TABLE") throw storageError;
+    }
+    if (durableRows.length) {
+      const bytes = durableRows[0].image_data;
+      const mime = Buffer.isBuffer(bytes) && bytes.length <= MAX_PROOF_BYTES
+        ? getVerifiedImageMime(bytes)
+        : null;
+      if (!mime) return unavailable(res);
+      res.type(mime);
+      return res.send(bytes);
+    }
+
     const [rows] = await db.promise().query(
       "SELECT proof_of_payment, proof_image_data FROM reservations WHERE id = ? LIMIT 1",
       [id],
