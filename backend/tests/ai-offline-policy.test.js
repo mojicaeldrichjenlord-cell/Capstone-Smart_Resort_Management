@@ -97,3 +97,13 @@ test("Gemini prompt names the correct resort and refuses free-form booking times
   assert.match(source, /PRESET accommodation slots|preset Day Tour and Night booking slots/i);
   assert.match(source, /do not offer a custom 2 PM check-in/i);
 });
+
+
+test("Offline slot preference never appears as a confirmed custom-time window", () => {
+  const selected = context.getOfflineFallbackReply("Night",
+    { check_in: "2099-02-01", check_out: "2099-02-02", guests: 3 }, {});
+  assert.equal(selected.context.slot_preference, "night");
+  assert.match(selected.reply, /booking page/i);
+  assert.doesNotMatch(selected.reply, /N\/A/);
+  assert.doesNotMatch(selected.reply, /confirmed.*reservation/i);
+});
