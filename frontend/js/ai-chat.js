@@ -289,7 +289,7 @@ function restoreChatHistory() {
   if (!history.length) {
     appendAiMessage(
       "assistant",
-      "Hi! I’m your ArvicSeaside assistant. This is a fresh new chat. You can ask about rooms, booking dates, check-in/check-out time, guests, or payment method.",
+      "Hi! I’m your Arvic Seaside Resort AI Assistant. This is a fresh new chat. You can ask about rooms, booking dates, check-in/check-out time, guests, or payment method.",
       false
     );
 
@@ -699,6 +699,10 @@ function getOfflineFallbackReply(message, storedContext = {}, pageContext = {}) 
 // Stage 85-D: Offline guidance mirrors the verified PayPal-only customer online flow.
 // It must not claim that cash checkout or an automatic booking is available.
 function getEnglishFallbackReply(text, merged) {
+  // Offline timing FAQ uses verified preset slots, not invented custom hours.
+  if (/\b(?:check[ -]?in|check[ -]?out)\b.*\b(?:times?|hours?|oras|schedule|slot)\b|\b(?:times?|hours?|oras|schedule|slot)\b.*\b(?:check[ -]?in|check[ -]?out)\b/i.test(text)) {
+    return { modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.", reply: "Arvic Seaside Resort uses fixed Day Tour (morning) and Night (evening) slots, not custom check-in or check-out times. Rooms: 7 AM-5 PM or 7 PM-5 AM; cottages/huts: 6 AM-5 PM or 6 PM-5 AM; pavilions/function areas: 8 AM-6 PM or 8 PM-6 AM. Extended slots are separate. Choose your exact schedule on the booking page.", context: merged };
+  }
   // Offline refund guidance mirrors the verified manual refund policy.
   // Do not promise a refund or attempt any refund transaction here.
   if (/refund|reimbursement|money back|return.*payment/i.test(text)) {
@@ -713,7 +717,7 @@ function getEnglishFallbackReply(text, merged) {
   if (text.includes("hello") || text.includes("hi") || text.includes("hey")) {
     return {
       modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.",
-      reply: "Hello! I can still help in offline mode. You can ask about booking steps, payment methods, your bookings page, or tell me your dates, time, and number of guests.",
+      reply: "Hello! I can still help in offline mode. You can ask about booking steps, payment methods, your bookings page, or tell me your dates, preferred Day Tour or Night slot, and number of guests.",
       context: merged,
     };
   }
@@ -721,7 +725,7 @@ function getEnglishFallbackReply(text, merged) {
   if (text.includes("how to book") || text.includes("book room") || text.includes("booking process")) {
     return {
       modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.",
-      reply: "To book online, open the Rooms page and choose an accommodation. Enter your check-in and check-out dates and times and the number of guests, then review the secure booking and PayPal payment steps. Online reservations require a 50% accommodation downpayment through PayPal; entrance fees are settled onsite. You can view the reservation and receipt in My Bookings.",
+      reply: "To book online, open the Rooms page and choose an accommodation. Choose the check-in date, a fixed Day Tour (morning) or Night (evening) slot, and the number of guests, then review the secure booking and PayPal payment steps. Online reservations require a 50% accommodation downpayment through PayPal; entrance fees are settled onsite. You can view the reservation and receipt in My Bookings.",
       context: merged,
     };
   }
@@ -745,9 +749,8 @@ function getEnglishFallbackReply(text, merged) {
   if (merged.check_in || merged.check_out || merged.guests || merged.check_in_time || merged.check_out_time) {
     const missing = [];
     if (!merged.check_in) missing.push("check-in date");
-    if (!merged.check_in_time) missing.push("check-in time");
     if (!merged.check_out) missing.push("check-out date");
-    if (!merged.check_out_time) missing.push("check-out time");
+    if (!merged.check_in_time || !merged.check_out_time) missing.push("fixed Day Tour (morning) or Night (evening) slot on the booking page");
     if (!merged.guests) missing.push("number of guests");
 
     if (missing.length) {
@@ -767,12 +770,16 @@ function getEnglishFallbackReply(text, merged) {
 
   return {
     modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.",
-    reply: "AI is temporarily unavailable, but I can still help with offline guidance. You can ask about booking steps, payment methods, receipts, My Bookings, or tell me your dates, time, and number of guests.",
+    reply: "AI is temporarily unavailable, but I can still help with offline guidance. You can ask about booking steps, payment methods, receipts, My Bookings, or tell me your dates, preferred Day Tour or Night slot, and number of guests.",
     context: merged,
   };
 }
 
 function getTagalogFallbackReply(text, merged) {
+  // Offline timing FAQ uses verified preset slots, not invented custom hours.
+  if (/\b(?:check[ -]?in|check[ -]?out)\b.*\b(?:times?|hours?|oras|schedule|slot)\b|\b(?:times?|hours?|oras|schedule|slot)\b.*\b(?:check[ -]?in|check[ -]?out)\b/i.test(text)) {
+    return { modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.", reply: "Fixed slot po ang booking sa Arvic Seaside Resort, hindi custom na check-in/check-out oras. Day Tour (umaga) o Night (gabi) po ang pipiliin. Rooms: 7 AM-5 PM o 7 PM-5 AM; cottages/huts: 6 AM-5 PM o 6 PM-5 AM; pavilions/function areas: 8 AM-6 PM o 8 PM-6 AM. May hiwalay na extended slots. Piliin po ang exact schedule sa booking page.", context: merged };
+  }
   // Offline Tagalog refund assistance uses the same official contact.
   if (/refund|marefund|ma-refund|ibalik.*(?:bayad|pera)|balik.*(?:bayad|pera)/i.test(text)) {
     return {
@@ -786,7 +793,7 @@ function getTagalogFallbackReply(text, merged) {
   if (text.includes("hello") || text.includes("hi") || text.includes("hey") || text.includes("kumusta")) {
     return {
       modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
-      reply: "Hello! Makakatulong pa rin ako sa offline mode. Maaari kang magtanong tungkol sa booking steps, payment methods, My Bookings page, o ibigay ang iyong dates, oras, at bilang ng bisita.",
+      reply: "Hello! Makakatulong pa rin ako sa offline mode. Maaari kang magtanong tungkol sa booking steps, payment methods, My Bookings page, o sabihin ang dates, preferred Day Tour (umaga) o Night (gabi), at bilang ng bisita.",
       context: merged,
     };
   }
@@ -794,7 +801,7 @@ function getTagalogFallbackReply(text, merged) {
   if (text.includes("paano mag book") || text.includes("paano mag-book") || text.includes("booking process") || text.includes("mag book")) {
     return {
       modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
-      reply: "Para po mag-book online, buksan ang Rooms page at pumili ng accommodation. Ilagay ang check-in at check-out dates, oras, at bilang ng bisita, saka sundin ang secure booking at PayPal payment steps. Ang downpayment ay 50% ng accommodation price; hiwalay ang entrance fee na babayaran onsite. Makikita po ang booking at receipt sa My Bookings.",
+      reply: "Para po mag-book online, buksan ang Rooms page at pumili ng accommodation. Piliin ang check-in date, fixed Day Tour (umaga) o Night (gabi) slot, at bilang ng bisita, saka sundin ang secure booking at PayPal payment steps. Ang downpayment ay 50% ng accommodation price; hiwalay ang entrance fee na babayaran onsite. Makikita po ang booking at receipt sa My Bookings.",
       context: merged,
     };
   }
@@ -818,9 +825,8 @@ function getTagalogFallbackReply(text, merged) {
   if (merged.check_in || merged.check_out || merged.guests || merged.check_in_time || merged.check_out_time) {
     const missing = [];
     if (!merged.check_in) missing.push("check-in date");
-    if (!merged.check_in_time) missing.push("check-in time");
     if (!merged.check_out) missing.push("check-out date");
-    if (!merged.check_out_time) missing.push("check-out time");
+    if (!merged.check_in_time || !merged.check_out_time) missing.push("fixed Day Tour (morning) or Night (evening) slot on the booking page");
     if (!merged.guests) missing.push("bilang ng bisita");
 
     if (missing.length) {
@@ -840,12 +846,16 @@ function getTagalogFallbackReply(text, merged) {
 
   return {
     modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
-    reply: "Pansamantalang hindi available ang AI, pero makakatulong pa rin ako gamit ang offline guidance. Maaari kang magtanong tungkol sa booking steps, payment methods, resibo, My Bookings, o sabihin ang iyong dates, oras, at bilang ng bisita.",
+    reply: "Pansamantalang hindi available ang AI, pero makakatulong pa rin ako gamit ang offline guidance. Maaari kang magtanong tungkol sa booking steps, payment methods, resibo, My Bookings, o sabihin ang dates, fixed Day Tour (umaga) o Night (gabi) slot, at bilang ng bisita.",
     context: merged,
   };
 }
 
 function getTaglishFallbackReply(text, merged) {
+  // Offline timing FAQ uses verified preset slots, not invented custom hours.
+  if (/\b(?:check[ -]?in|check[ -]?out)\b.*\b(?:times?|hours?|oras|schedule|slot)\b|\b(?:times?|hours?|oras|schedule|slot)\b.*\b(?:check[ -]?in|check[ -]?out)\b/i.test(text)) {
+    return { modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.", reply: "Fixed Day Tour (umaga) at Night (gabi) slots po ang Arvic Seaside Resort, hindi custom ang check-in/check-out times. Rooms: 7 AM-5 PM o 7 PM-5 AM; cottages/huts: 6 AM-5 PM o 6 PM-5 AM; pavilions/function areas: 8 AM-6 PM o 8 PM-6 AM. May hiwalay na extended slots. Piliin po ang exact schedule sa booking page.", context: merged };
+  }
   // Offline Taglish refund assistance uses the same official contact.
   if (/refund|marefund|ma-refund|ibalik.*(?:bayad|pera)|balik.*(?:bayad|pera)/i.test(text)) {
     return {
@@ -859,7 +869,7 @@ function getTaglishFallbackReply(text, merged) {
   if (text.includes("hello") || text.includes("hi") || text.includes("hey") || text.includes("kumusta")) {
     return {
       modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
-      reply: "Hello! Makakatulong pa rin ako sa offline mode. Pwede kang magtanong tungkol sa booking steps, payment methods, My Bookings page, o ibigay ang dates, time, at number of guests mo.",
+      reply: "Hello! Makakatulong pa rin ako sa offline mode. Pwede kang magtanong tungkol sa booking steps, payment methods, My Bookings page, o sabihin ang dates, Day Tour (umaga) o Night (gabi) slot, at number of guests mo.",
       context: merged,
     };
   }
@@ -867,7 +877,7 @@ function getTaglishFallbackReply(text, merged) {
   if (text.includes("how to book") || text.includes("paano mag book") || text.includes("paano mag-book") || text.includes("booking process")) {
     return {
       modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
-      reply: "Para po mag-book online, open ang Rooms page, select an accommodation, then ilagay ang check-in/check-out dates, times, at number of guests. Review the secure booking and PayPal payment steps; required ang 50% accommodation downpayment via PayPal, at separate ang onsite entrance fee. Makikita po ang booking at receipt sa My Bookings.",
+      reply: "Para po mag-book online, open ang Rooms page, select an accommodation, then piliin ang check-in date, fixed Day Tour (umaga) o Night (gabi) slot, at number of guests. Review the secure booking and PayPal payment steps; required ang 50% accommodation downpayment via PayPal, at separate ang onsite entrance fee. Makikita po ang booking at receipt sa My Bookings.",
       context: merged,
     };
   }
@@ -891,9 +901,8 @@ function getTaglishFallbackReply(text, merged) {
   if (merged.check_in || merged.check_out || merged.guests || merged.check_in_time || merged.check_out_time) {
     const missing = [];
     if (!merged.check_in) missing.push("check-in date");
-    if (!merged.check_in_time) missing.push("check-in time");
     if (!merged.check_out) missing.push("check-out date");
-    if (!merged.check_out_time) missing.push("check-out time");
+    if (!merged.check_in_time || !merged.check_out_time) missing.push("fixed Day Tour (morning) or Night (evening) slot on the booking page");
     if (!merged.guests) missing.push("number of guests");
 
     if (missing.length) {
@@ -913,7 +922,7 @@ function getTaglishFallbackReply(text, merged) {
 
   return {
     modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
-    reply: "Temporarily unavailable ang AI, pero makakatulong pa rin ako gamit ang offline guidance. Pwede kang magtanong tungkol sa booking steps, payment methods, receipt, My Bookings, o sabihin ang dates, time, at number of guests mo.",
+    reply: "Temporarily unavailable ang AI, pero makakatulong pa rin ako gamit ang offline guidance. Pwede kang magtanong tungkol sa booking steps, payment methods, receipt, My Bookings, o sabihin ang dates, Day Tour (umaga) o Night (gabi) slot, at number of guests mo.",
     context: merged,
   };
 }
