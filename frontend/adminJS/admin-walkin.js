@@ -298,6 +298,39 @@ function applyManualReservationDateRules() {
   });
 }
 
+// Bug #006: evaluate FIXED checkout date/time in Philippine time, not only
+// the selected calendar date. A late walk-in remains valid until checkout.
+function validateManualReservationSchedules(items) {
+  return ManualScheduleGuard.validateItems(
+    items, availableAccommodations, getSlotOptions,
+  );
+}
+
+function validateSelectedItemSchedule(itemId) {
+  const card = document.querySelector(
+    `.booking-item-card[data-item-id="${itemId}"]`,
+  );
+  if (!card) return { valid: true };
+
+  const accommodationId = Number(card.querySelector(".accommodation-value")?.value);
+  const slotType = card.querySelector(".slot-select")?.value;
+  const checkInDate = card.querySelector(".date-input")?.value;
+  if (!accommodationId || !slotType || !checkInDate) return { valid: true };
+
+  const stayDuration = Number(card.querySelector(".stay-duration-select")?.value || 1);
+  return validateManualReservationSchedules([{
+    accommodation_id: accommodationId,
+    slot_type: slotType,
+    check_in_date: checkInDate,
+    stay_duration: stayDuration,
+  }]);
+}
+
+function warnIfSelectedScheduleEnded(itemId) {
+  const result = validateSelectedItemSchedule(itemId);
+  if (!result.valid) showMessage(result.message, "error");
+}
+
 function validateManualReservationDates(items, reservationType) {
   const today = getPhilippineTodayInputDate();
 
@@ -389,6 +422,20 @@ function goToPaymentScreen(e) {
   if (!reservationDateValidation.valid) {
     showMessage(reservationDateValidation.message, "error");
     applyManualReservationDateRules();
+    return;
+  }
+
+  // Do not write a payment-page draft when ANY selected slot has fully ended.
+  // Re-check at submit time because a valid window can expire while the form
+  // is open. The backend independently rejects expired schedules as well.
+  const scheduleValidation = validateManualReservationSchedules(items);
+
+  if (!scheduleValidation.valid) {
+    showMessage(scheduleValidation.message, "error");
+    const invalidCard = document.querySelectorAll(".booking-item-card")[
+      scheduleValidation.itemIndex
+    ];
+    invalidCard?.querySelector(".slot-select")?.focus();
     return;
   }
 
@@ -538,12 +585,14 @@ function addBookingItem(preselectedId = null) {
     populateStayDurationOptions(itemId);
     updateItemPreview(itemId);
     updateSummary();
+    warnIfSelectedScheduleEnded(itemId);
   });
 
   if (stayDurationSelect) {
     stayDurationSelect.addEventListener("change", () => {
       updateItemPreview(itemId);
       updateSummary();
+      warnIfSelectedScheduleEnded(itemId);
     });
   }
 
@@ -555,6 +604,7 @@ function addBookingItem(preselectedId = null) {
   dateInput.addEventListener("change", () => {
     updateItemPreview(itemId);
     updateSummary();
+    warnIfSelectedScheduleEnded(itemId);
   });
 
   if (preselectedId) {
@@ -1098,6 +1148,15 @@ function updateItemPreview(itemId) {
     Check-out Date: ${formatDateDisplay(checkOutDate)}<br>
     Price: ₱${formatMoney(slot.price)}${isLongStaySlot ? ` × ${stayDuration} = ₱${formatMoney(totalPrice)}` : ""}
   `;
+
+  // Inline, persistent warning complements the existing centered toast.
+  // Do not disable the whole form: staff can still select a valid slot.
+  const scheduleCheck = validateSelectedItemSchedule(itemId);
+  if (!scheduleCheck.valid) {
+    preview.innerHTML += `<p role="alert" style="color:#b91c1c;font-weight:600;margin-top:10px;">
+      ${escapeHtml(scheduleCheck.message)}
+    </p>`;
+  }
 }
 
 function collectBookingItems() {
