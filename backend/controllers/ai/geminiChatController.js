@@ -1066,7 +1066,12 @@ exports.chatWithGemini = async (req, res) => {
         const namesMatch = !namedMention ||
           String(message).toLowerCase().includes(String(record.room_name).toLowerCase());
         if (namesMatch) {
+          // Text messages with Filipino cues should not be classified as
+          // English only because they include room names or "aircon".
+          // An explicitly selected live voice language still takes priority.
           const language = normalizeLanguageStyle(req.body.voice_language) ||
+            (/\b(?:may|meron|ba|bang|yung|sarili(?:ng)?|po|kasama)\b/i.test(String(message))
+              ? "taglish" : null) ||
             detectLanguageFromMessage(message) ||
             normalizeLanguageStyle(req.body.language_style) ||
             normalizeLanguageStyle(req.body.context?.language_style) || "english";
