@@ -6,7 +6,7 @@ const db = require("../../config/db");
 const SEARCH_MAX_LENGTH = 80;
 const RESULT_LIMIT = 200;
 const VALID_FILTERS = new Set([
-  "all", "pending", "approved", "rejected", "cancelled", "completed",
+  "all", "pending", "approved", "rejected", "cancelled", "completed", "no_show",
 ]);
 
 // Manager may search and review a bounded booking list without full Admin powers.
