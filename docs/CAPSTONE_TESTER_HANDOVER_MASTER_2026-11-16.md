@@ -114,3 +114,11 @@ Additional checks/migrations require separate documented scope; do not run produ
 - Targeted `testing` frontend fix in `frontend/customerJS/booking.js`: preview targets its own card's `.slot-preview` instead of a global ID; slot/date/duration listeners pass the actual booking card. This avoids mismatches after card additions/removals or renumbering. Existing booking/payment computations, API and role authorization unchanged.
 - `backend/tests/customer-booking-early-slots.test.js` now has **10/10 isolated/mock PASS** including a selected Item 2 Day Tour preview case. **Actual localhost browser retest PENDING.**
 - Tester next: `git pull --ff-only origin testing` from repo root (check status before pull if new local changes), hard refresh Customer Booking, use two Big Shade 2 cards for Nov 19/20 with Day Tour, and confirm each card's schedule/price preview has date and ₱1,500.00, with the two-item totals intact. Do not submit a reservation/payment.
+
+
+### QA-16I — Schedule/price preview localhost retest (November 17, 2026)
+- Tester pulled the `testing` changes successfully (latest pulled short SHA `bf6935a` from screenshot; this QA documentation update will be a later commit).
+- Screenshot confirms Customer Booking Big Shade 2 Item 2 date 2026-11-20, Day Tour 6 AM–5 PM, check-out 2026-11-20, and **₱1,500.00** item price in the formerly broken schedule preview. Availability confirmation remains green.
+- Reservation Preview shows 2 accommodation items, **₱3,000.00** accommodation total, **₱1,500.00** 50% downpayment now, **₱1,500.00** remaining onsite, and **₱2,750.00** estimated entrance fee. These shown totals match the two ₱1,500 day-tour accommodation prices; entrance fee estimate not separately audited against guest inputs.
+- **QA-16I preview retest PASS**, including price totals. Confirmed no need for another code change to this UI symptom. **Server-side occupied-booking conflict test remains PENDING** because the tester's `smart_resort_test.bookings` was empty at the time of read-only inspection; do not mark that distinct test PASS.
+- Next QA: verify Customer Payment minimal UI with the existing safe booking draft by clicking Next to Payment (this only saves a draft and navigates; do not click any actual PayPal or payment/confirm controls).
