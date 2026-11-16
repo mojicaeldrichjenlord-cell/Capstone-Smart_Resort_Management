@@ -61,6 +61,7 @@ const STATUS_COLORS = {
   rejected: REPORT_COLORS.red,
   cancelled: REPORT_COLORS.gray,
   completed: REPORT_COLORS.blue,
+  no_show: REPORT_COLORS.purple,
 };
 
 const MINIMAL_PALETTE = [
@@ -424,6 +425,7 @@ function renderBookingStatusChart(bookings) {
     approved: 0,
     completed: 0,
     cancelled: 0,
+    no_show: 0,
   };
 
   bookings.forEach((booking) => {
@@ -444,15 +446,16 @@ function renderBookingStatusChart(bookings) {
   bookingStatusChart = new Chart(canvas, {
     type: "bar",
     data: {
-      labels: ["Approved", "Completed", "Cancelled"],
+      labels: ["Approved", "Completed", "Cancelled", "No-Show"],
       datasets: [
         {
           label: "Reservations",
-          data: [counts.approved, counts.completed, counts.cancelled],
+          data: [counts.approved, counts.completed, counts.cancelled, counts.no_show],
           backgroundColor: [
             STATUS_COLORS.approved,
             STATUS_COLORS.completed,
             STATUS_COLORS.cancelled,
+            STATUS_COLORS.no_show,
           ],
           borderRadius: 12,
           borderSkipped: false,
@@ -874,6 +877,7 @@ function renderMonthlyCancellationChart(bookings) {
   const counts = {
     Successful: 0,
     Cancelled: 0,
+    "No-Show": 0,
   };
 
   bookings.forEach((booking) => {
@@ -883,6 +887,8 @@ function renderMonthlyCancellationChart(bookings) {
       counts.Successful += 1;
     } else if (status === "cancelled") {
       counts.Cancelled += 1;
+    } else if (status === "no_show") {
+      counts["No-Show"] += 1;
     }
   });
 
@@ -907,6 +913,7 @@ function renderMonthlyCancellationChart(bookings) {
           backgroundColor: finalLabels.map((label) => {
             if (label === "Successful") return REPORT_COLORS.green;
             if (label === "Cancelled") return REPORT_COLORS.gray;
+            if (label === "No-Show") return REPORT_COLORS.purple;
             return REPORT_COLORS.blue;
           }),
           borderColor: "#FFFFFF",
