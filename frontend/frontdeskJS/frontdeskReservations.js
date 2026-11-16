@@ -459,6 +459,7 @@ function formatReservationStatus(status) {
     completed: "Completed",
     cancelled: "Cancelled",
     rejected: "Rejected",
+    no_show: "No-Show",
   };
 
   return labels[status] || titleCase(status);
