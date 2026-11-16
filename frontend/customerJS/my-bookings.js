@@ -332,7 +332,7 @@ async function cancelBooking(bookingId) {
 function isCancellationAllowed(booking) {
   const status = String(booking.status || "").toLowerCase();
 
-  if (["cancelled", "rejected", "completed"].includes(status)) {
+  if (["cancelled", "rejected", "completed", "no_show"].includes(status)) {
     return false;
   }
 
