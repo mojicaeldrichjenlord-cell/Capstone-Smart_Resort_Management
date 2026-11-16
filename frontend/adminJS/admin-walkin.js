@@ -5,6 +5,9 @@ const ADMIN_WALKIN_SUCCESS_RESET_KEY = "smartresort_admin_walkin_success_reset";
 
 let availableAccommodations = [];
 let bookingItemCounter = 0;
+// Preview-only slot lookups are cancellable and do not create reservations.
+const manualSlotRequests = new WeakMap();
+let manualPaymentChecking = false;
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!checkAdminAccess()) {
@@ -242,6 +245,7 @@ function setupManualReservationDateRules() {
     reservationType.addEventListener("change", () => {
       applyManualReservationDateRules();
       updateSummary();
+      scheduleAllManualSlotChecks();
     });
   }
 
@@ -296,6 +300,7 @@ function applyManualReservationDateRules() {
       updateItemPreview(itemId);
     }
   });
+  scheduleAllManualSlotChecks();
 }
 
 // Bug #006: evaluate FIXED checkout date/time in Philippine time, not only
@@ -519,11 +524,26 @@ function addBookingItem(preselectedId = null) {
       </div>
 
       <div class="walkin-group">
-        <label>Time Slot</label>
+        <label>Reservation Date</label>
+        <input
+          type="date"
+          class="date-input"
+          data-item-id="${itemId}"
+          min="${today}"
+          value="${today}"
+        />
+      </div>
 
-        <select class="slot-select" data-item-id="${itemId}">
+      <div class="walkin-group">
+        <label for="manualSlot-${itemId}">Time Slot</label>
+        <select id="manualSlot-${itemId}" class="slot-select" data-item-id="${itemId}"
+          aria-describedby="manualSlotStatus-${itemId}">
           <option value="">Select time slot</option>
         </select>
+        <small class="manual-slot-status" id="manualSlotStatus-${itemId}"
+          role="status" aria-live="polite" data-state="incomplete">
+          Select an accommodation and date to check available slots.
+        </small>
       </div>
 
       <div class="walkin-group">
@@ -534,17 +554,6 @@ function addBookingItem(preselectedId = null) {
         <small class="field-help">
           Day Tour and Night are fixed schedules. Day/Night 22 Hours or 23 Hours can be 1 to 5 days depending on category.
         </small>
-      </div>
-
-      <div class="walkin-group">
-        <label>Reservation Date</label>
-        <input
-          type="date"
-          class="date-input"
-          data-item-id="${itemId}"
-          min="${today}"
-          value="${today}"
-        />
       </div>
 
       <div class="walkin-group">
@@ -562,6 +571,8 @@ function addBookingItem(preselectedId = null) {
     <div class="slot-preview" id="slotPreview-${itemId}">
       Select an accommodation and slot to preview its schedule and price.
     </div>
+    <p class="manual-item-availability" role="status" aria-live="polite"
+      data-state="incomplete">Choose a time slot to verify availability.</p>
   `;
 
   wrap.appendChild(card);
@@ -575,9 +586,11 @@ function addBookingItem(preselectedId = null) {
 
   if (removeBtn) {
     removeBtn.addEventListener("click", () => {
+      cancelManualSlotRequest(card);
       card.remove();
       updateSummary();
       refreshTitles();
+      scheduleAllManualSlotChecks();
     });
   }
 
@@ -586,6 +599,7 @@ function addBookingItem(preselectedId = null) {
     updateItemPreview(itemId);
     updateSummary();
     warnIfSelectedScheduleEnded(itemId);
+    scheduleAllManualSlotChecks();
   });
 
   if (stayDurationSelect) {
@@ -593,18 +607,21 @@ function addBookingItem(preselectedId = null) {
       updateItemPreview(itemId);
       updateSummary();
       warnIfSelectedScheduleEnded(itemId);
+      scheduleAllManualSlotChecks();
     });
   }
 
   dateInput.addEventListener("input", () => {
     updateItemPreview(itemId);
     updateSummary();
+    scheduleAllManualSlotChecks();
   });
 
   dateInput.addEventListener("change", () => {
     updateItemPreview(itemId);
     updateSummary();
     warnIfSelectedScheduleEnded(itemId);
+    scheduleAllManualSlotChecks();
   });
 
   if (preselectedId) {
@@ -616,6 +633,7 @@ function addBookingItem(preselectedId = null) {
   updateItemPreview(itemId);
   refreshTitles();
   applyManualReservationDateRules();
+  scheduleAllManualSlotChecks();
 }
 
 function bindAccommodationPicker(card, itemId) {
@@ -730,6 +748,7 @@ function setAccommodationSelection(card, itemId, accommodationId) {
   populateSlotOptions(itemId);
   updateItemPreview(itemId);
   updateSummary();
+  scheduleAllManualSlotChecks();
 }
 
 function closeAllAccommodationPickers() {
