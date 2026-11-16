@@ -1,0 +1,496 @@
+/*
+ * STAGE REPORTS-20 — COMPACT ADMIN REPORTS + READER-FRIENDLY PRINT
+ * Scoped to reports-minimal-page and loaded LAST. Never adjusts API data,
+ * financial math, report date selection or staff authorization.
+ *
+ * Screen: compact graphs, restrained teal/slate cards, clear empty states.
+ * Print: A4 portrait, black-and-white metrics and text tables, no canvas.
+ */
+.reports-minimal-page {
+  --report-page: #f8fafc;
+  --report-card: #fff;
+  --report-border: #e2e8f0;
+  --report-text: #0f172a;
+  --report-muted: #64748b;
+  --report-teal: #0f766e;
+  background: var(--report-page);
+  color: var(--report-text);
+}
+.reports-minimal-page .reports-shell {
+  width: min(1240px, calc(100% - 48px));
+  max-width: 1240px;
+  margin: 0 auto 52px;
+}
+.reports-minimal-page .admin-top-link { margin: 8px 0 14px; }
+.reports-minimal-page .reports-back-btn {
+  padding: 6px 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #475569;
+  font-size: .88rem;
+  font-weight: 650;
+}
+.reports-minimal-page .reports-back-btn:hover {
+  transform: none;
+  color: var(--report-teal);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.reports-minimal-page .reports-hero {
+  margin: 0 0 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--report-text);
+  overflow: visible;
+}
+.reports-minimal-page .reports-hero::after { content: none; display: none; }
+.reports-minimal-page .reports-hero h1 {
+  margin: 0 0 5px;
+  font-size: clamp(1.6rem, 2.2vw, 1.95rem);
+  font-weight: 750;
+  line-height: 1.25;
+  letter-spacing: -.03em;
+  color: var(--report-text);
+}
+.reports-minimal-page .reports-hero > p {
+  margin: 0;
+  max-width: 840px;
+  color: var(--report-muted);
+  opacity: 1;
+  font-size: .88rem;
+  line-height: 1.55;
+}
+.reports-minimal-page .reports-panel {
+  margin-bottom: 15px;
+  padding: 16px 18px;
+  border: 1px solid var(--report-border);
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: none;
+}
+.reports-minimal-page .reports-panel h2 {
+  margin: 0 0 4px;
+  font-size: 1.03rem;
+  font-weight: 750;
+}
+.reports-minimal-page .reports-panel p {
+  margin: 0 0 12px;
+  color: var(--report-muted);
+  font-size: .83rem;
+  line-height: 1.5;
+}
+.reports-minimal-page .filter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  max-width: 650px;
+  margin: 0 0 13px;
+}
+.reports-minimal-page .filter-grid label {
+  margin-bottom: 5px;
+  font-size: .8rem;
+  font-weight: 700;
+}
+.reports-minimal-page .filter-grid input {
+  min-height: 43px;
+  padding: 9px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  color: var(--report-text);
+  font-size: .9rem;
+}
+.reports-minimal-page .report-filter-actions {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.reports-minimal-page .report-filter-actions button {
+  min-height: 42px;
+  padding: 10px 15px;
+  border-radius: 10px;
+  box-shadow: none;
+  font-size: .85rem;
+  font-weight: 700;
+}
+.reports-minimal-page .report-filter-actions .btn-primary {
+  border: 1px solid var(--report-teal);
+  background: var(--report-teal);
+  color: #fff;
+}
+.reports-minimal-page .report-filter-actions .btn-secondary {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #334155;
+}
+.reports-minimal-page .report-filter-actions button:hover { transform: none; }
+.reports-minimal-page .reports-back-btn:focus-visible,
+.reports-minimal-page .report-filter-actions button:focus-visible,
+.reports-minimal-page .filter-grid input:focus-visible {
+  outline: 3px solid #5eead4;
+  outline-offset: 2px;
+  box-shadow: none;
+}
+/* Scannable KPIs without seven oversized floating cards. */
+.reports-minimal-page .stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.reports-minimal-page .stat-card {
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--report-border);
+  border-radius: 12px;
+  background: var(--report-card);
+  box-shadow: none;
+  text-align: left;
+}
+.reports-minimal-page .stat-card h3 {
+  margin: 0 0 6px;
+  color: #64748b;
+  font-size: .74rem;
+  line-height: 1.35;
+  letter-spacing: .025em;
+  font-weight: 700;
+}
+.reports-minimal-page .stat-card p {
+  margin: 0;
+  color: var(--report-text);
+  font-size: clamp(1.12rem, 2vw, 1.43rem);
+  font-weight: 800;
+  line-height: 1.25;
+  font-variant-numeric: tabular-nums;
+}
+/* Separate charge reconciliations remain visible, but compact. */
+.reports-minimal-page .report-charge-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 10px;
+  margin: 0 0 12px;
+}
+.reports-minimal-page .report-charge-card {
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--report-border);
+  border-radius: 12px;
+  background: var(--report-card);
+  box-shadow: none;
+}
+.reports-minimal-page .report-charge-card h3 {
+  margin: 0 0 4px;
+  font-size: .77rem;
+  line-height: 1.35;
+  color: #475569;
+  font-weight: 750;
+}
+.reports-minimal-page .report-charge-card p {
+  margin: 0 0 4px;
+  font-size: 1.14rem;
+  color: var(--report-teal);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.reports-minimal-page .report-charge-card small {
+  display: block;
+  color: #64748b;
+  font-size: .74rem;
+  line-height: 1.4;
+}
+.reports-minimal-page .revenue-report-disclaimer {
+  margin: 0 0 15px;
+  padding: 11px 13px;
+  background: #fff;
+  border: 1px solid var(--report-border);
+  border-radius: 10px;
+  color: #475569;
+  font-size: .8rem;
+  line-height: 1.55;
+}
+/* Charts: 220px instead of 430px cards + 320px canvas; desktop has 2 cols. */
+.reports-minimal-page .chart-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 12px;
+}
+.reports-minimal-page .chart-box {
+  min-width: 0;
+  min-height: 0;
+  padding: 15px 16px 13px;
+  border: 1px solid var(--report-border);
+  border-radius: 13px;
+  background: #fff;
+  box-shadow: none;
+}
+.reports-minimal-page .chart-header { margin-bottom: 9px; }
+.reports-minimal-page .chart-header h2 {
+  margin: 0 0 4px;
+  color: var(--report-text);
+  font-size: .94rem;
+  line-height: 1.35;
+  font-weight: 750;
+  letter-spacing: -.012em;
+}
+.reports-minimal-page .chart-header p {
+  color: var(--report-muted);
+  font-size: .78rem;
+  line-height: 1.4;
+  margin: 0;
+}
+.reports-minimal-page .chart-canvas-wrap {
+  flex: 0 0 auto;
+  min-height: 220px;
+  height: 220px;
+  position: relative;
+}
+.reports-minimal-page .chart-box canvas {
+  display: block;
+  width: 100% !important;
+  height: 220px !important;
+  max-height: 220px !important;
+}
+.reports-minimal-page .chart-box.is-empty .chart-canvas-wrap { display: none !important; }
+.reports-minimal-page .chart-box.is-empty { min-height: 0; }
+.reports-minimal-page .chart-empty-state {
+  margin: 5px 0 0;
+  color: #64748b;
+  font-size: .81rem;
+  line-height: 1.5;
+  font-style: italic;
+}
+.reports-minimal-page .chart-empty-state[hidden] { display: none !important; }
+.reports-minimal-page .report-empty-overview {
+  padding: 19px 20px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 13px;
+  background: #fff;
+  color: #475569;
+  font-size: .91rem;
+  line-height: 1.5;
+}
+.reports-minimal-page .report-empty-overview[hidden] { display: none !important; }
+.reports-minimal-page .chart-grid.has-no-bookings { display: none; }
+/* Text tables do not belong on the interactive screen. */
+.reports-minimal-page .report-print-details { display: none; }
+
+@media (max-width: 950px) {
+  .reports-minimal-page .reports-shell { width: calc(100% - 32px); }
+  .reports-minimal-page .stats-grid {
+    grid-template-columns: repeat(3, minmax(0,1fr));
+  }
+}
+@media (max-width: 700px) {
+  .reports-minimal-page .reports-shell { width: calc(100% - 24px); }
+  .reports-minimal-page .reports-panel { padding: 15px; }
+  .reports-minimal-page .stats-grid,
+  .reports-minimal-page .report-charge-grid {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+  }
+  .reports-minimal-page .chart-grid { grid-template-columns: minmax(0,1fr); }
+  .reports-minimal-page .chart-canvas-wrap { min-height: 205px; height: 205px; }
+  .reports-minimal-page .chart-box canvas {
+    height: 205px !important;
+    max-height: 205px !important;
+  }
+  .reports-minimal-page .report-filter-actions button { flex: 1 1 auto; }
+}
+@media (max-width: 420px) {
+  .reports-minimal-page .filter-grid { grid-template-columns: minmax(0,1fr); }
+  .reports-minimal-page .stat-card,
+  .reports-minimal-page .report-charge-card { padding: 11px; }
+  .reports-minimal-page .stat-card p { font-size: 1.14rem; }
+  .reports-minimal-page .chart-box { padding: 12px; }
+}
+/* Print does NOT reproduce screen charts; it prints actual chart values as
+   accessible tables with white backgrounds and thin black dividers. */
+@media print {
+  @page { size: A4 portrait; margin: 10mm; }
+  .reports-minimal-page {
+    background: #fff !important;
+    color: #111827 !important;
+  }
+  .reports-minimal-page::before,
+  .reports-minimal-page::after {
+    display: none !important;
+    content: none !important;
+  }
+  .reports-minimal-page .navbar,
+  .reports-minimal-page .admin-top-link,
+  .reports-minimal-page .reports-panel,
+  .reports-minimal-page .chart-grid,
+  .reports-minimal-page .report-empty-overview {
+    display: none !important;
+  }
+  .reports-minimal-page .reports-shell {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .reports-minimal-page .reports-hero {
+    margin: 0 0 6px !important;
+    padding: 0 0 6px !important;
+    border-bottom: 1px solid #334155 !important;
+    color: #0f172a !important;
+    background: #fff !important;
+  }
+  .reports-minimal-page .reports-hero h1 {
+    font-size: 16pt !important;
+    line-height: 1.2 !important;
+    color: #111827 !important;
+    margin: 0 0 2px !important;
+  }
+  .reports-minimal-page .reports-hero > p { display: none !important; }
+  .reports-minimal-page .print-report-meta {
+    display: flex !important;
+    gap: 9px !important;
+    flex-wrap: wrap !important;
+    font-size: 8pt !important;
+    margin-top: 3px !important;
+  }
+  .reports-minimal-page .print-report-meta strong,
+  .reports-minimal-page .print-report-meta span {
+    padding: 0 !important;
+    background: transparent !important;
+    border: 0 !important;
+    color: #334155 !important;
+  }
+  .reports-minimal-page .stats-grid {
+    display: grid !important;
+    grid-template-columns: repeat(4,minmax(0,1fr)) !important;
+    gap: 4px !important;
+    margin: 0 0 5px !important;
+  }
+  .reports-minimal-page .stat-card {
+    padding: 6px 7px !important;
+    border: 1px solid #d1d5db !important;
+    border-radius: 4px !important;
+    background: #fff !important;
+    break-inside: avoid;
+  }
+  .reports-minimal-page .stat-card h3 {
+    font-size: 7pt !important;
+    line-height: 1.2 !important;
+    margin: 0 0 2px !important;
+    color: #4b5563 !important;
+  }
+  .reports-minimal-page .stat-card p {
+    font-size: 11pt !important;
+    line-height: 1.2 !important;
+    color: #111827 !important;
+    margin: 0 !important;
+  }
+  .reports-minimal-page .report-charge-grid {
+    display: grid !important;
+    grid-template-columns: repeat(3,minmax(0,1fr)) !important;
+    gap: 4px !important;
+    margin: 0 0 5px !important;
+  }
+  .reports-minimal-page .report-charge-card {
+    padding: 5px 6px !important;
+    border: 1px solid #d1d5db !important;
+    border-radius: 4px !important;
+    background: #fff !important;
+    break-inside: avoid;
+  }
+  .reports-minimal-page .report-charge-card h3 {
+    font-size: 7pt !important;
+    line-height: 1.2 !important;
+    color: #374151 !important;
+    margin: 0 0 2px !important;
+  }
+  .reports-minimal-page .report-charge-card p {
+    font-size: 10pt !important;
+    line-height: 1.1 !important;
+    color: #111827 !important;
+    margin: 0 !important;
+  }
+  .reports-minimal-page .report-charge-card small {
+    display: none !important;
+  }
+  .reports-minimal-page .revenue-report-disclaimer {
+    display: block !important;
+    margin: 0 0 7px !important;
+    padding: 5px 6px !important;
+    border: 1px solid #d1d5db !important;
+    border-radius: 3px !important;
+    background: #fff !important;
+    color: #374151 !important;
+    font-size: 7.5pt !important;
+    line-height: 1.35 !important;
+    break-inside: avoid;
+  }
+  .reports-minimal-page .report-print-details {
+    display: block !important;
+    margin-top: 4px !important;
+    color: #111827 !important;
+    font-size: 8.5pt !important;
+  }
+  .reports-minimal-page .print-details-title {
+    margin: 0 0 6px !important;
+    font-size: 11pt !important;
+    color: #111827 !important;
+    font-weight: 750 !important;
+  }
+  .reports-minimal-page .print-data-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+    gap: 7px 8px !important;
+    align-items: start !important;
+  }
+  .reports-minimal-page .print-data-section {
+    min-width: 0;
+    padding: 7px 8px !important;
+    border: 1px solid #d1d5db !important;
+    border-radius: 3px !important;
+    background: #fff !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .reports-minimal-page .print-data-section h3 {
+    font-size: 8.5pt !important;
+    line-height: 1.22 !important;
+    font-weight: 750 !important;
+    margin: 0 0 4px !important;
+    color: #111827 !important;
+  }
+  .reports-minimal-page .print-data-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    table-layout: fixed;
+  }
+  .reports-minimal-page .print-data-table th,
+  .reports-minimal-page .print-data-table td {
+    padding: 2px 4px !important;
+    border-bottom: 1px solid #e5e7eb !important;
+    line-height: 1.24 !important;
+    font-size: 7.6pt !important;
+    overflow-wrap: anywhere;
+    text-align: left !important;
+    color: #111827 !important;
+  }
+  .reports-minimal-page .print-data-table th {
+    background: #f3f4f6 !important;
+    font-weight: 750 !important;
+  }
+  .reports-minimal-page .print-data-table th:last-child,
+  .reports-minimal-page .print-data-table td:last-child {
+    width: 35%;
+    text-align: right !important;
+    font-variant-numeric: tabular-nums;
+  }
+  .reports-minimal-page .print-empty-value,
+  .reports-minimal-page .print-truncated-note {
+    margin: 2px 0 0 !important;
+    font-size: 7.5pt !important;
+    color: #6b7280 !important;
+  }
+  /* Screenshots show Chrome footer URLs; hiding them requires the user to
+     toggle Headers and footers in the browser Print dialog if desired. */
+}
