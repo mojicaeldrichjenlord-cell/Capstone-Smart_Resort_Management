@@ -173,6 +173,7 @@ const checkInBooking = async (req, res) => {
         "cancelled",
         "rejected",
         "completed",
+        "no_show",
       ].includes(
         reservationStatus,
       )
