@@ -95,7 +95,15 @@ test("Focused accommodation amenities use both Admin description and inclusions"
   assert.equal(amenityEvidence({ amenities: "Aircon, mini ref" }, "ref"), "yes");
   assert.equal(amenityEvidence({ amenities: "Shared CR" }, "private_cr"), "no");
   assert.equal(amenityEvidence({ description: "No aircon" }, "aircon"), "no");
-  assert.equal(amenityEvidence({ description: "CR" }, "private_cr"), "unknown");
+  assert.equal(amenityEvidence({ description: "CR" }, "private_cr"), "listed_unspecified");
+  assert.equal(amenityEvidence({ amenities: "CR", description: "Private CR" }, "private_cr"), "yes");
+  assert.equal(amenityEvidence({ amenities: "CR", description: "Shared CR" }, "private_cr"), "no");
+  assert.equal(amenityEvidence({ amenities: "CR", description: "No private CR" }, "private_cr"), "no");
+  assert.equal(amenityEvidence({ amenities: "Private CR", description: "Shared CR" }, "private_cr"), "unknown");
+  const crReply = amenityReply({ room_name: "Family Room A", amenities: "CR" },
+    "private_cr", "May sarili bang CR?", "taglish");
+  assert.match(crReply, /May CR pong nakalista/);
+  assert.match(crReply, /hindi nakasaad kung private/);
   assert.equal(amenityEvidence({ description: "No information" }, "ref"), "unknown");
   assert.equal(amenityEvidence({ amenities: "Aircon", description: "No aircon" }, "aircon"), "unknown");
   const reply = amenityReply({ room_name: "Family Room A", amenities: "Private CR" },
