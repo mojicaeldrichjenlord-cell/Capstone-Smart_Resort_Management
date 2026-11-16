@@ -252,6 +252,287 @@ function setupManualReservationDateRules() {
   applyManualReservationDateRules();
 }
 
+// Stage Booking-17: live Time Slot previews for both Front Desk walk-in and
+// Facebook/Messenger reservations. Reuse the EXISTING read-only conflict API.
+// These previews are advisory; final save still validates on the server.
+function getManualBookingCards() {
+  return [...document.querySelectorAll(".booking-item-card")];
+}
+
+function getManualSlotCandidate(card, slotType) {
+  const id = Number(card.querySelector(".accommodation-value")?.value || 0);
+  const accommodation = getAccommodationById(id);
+  const date = String(card.querySelector(".date-input")?.value || "");
+  const duration = getStayDuration({
+    stay_duration: card.querySelector(".stay-duration-select")?.value || 1,
+  });
+  const slot = getSlotOptions(accommodation).find(item => item.value === slotType);
+  if (!accommodation || !slot || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  const cleanDuration = ["day_extended", "night_extended"].includes(slotType) ? duration : 1;
+  const endDate = calculateCheckOutDate(date, slot.start, slot.end, cleanDuration);
+  return {
+    accommodation_id: id, accommodation_name: accommodation.name,
+    check_in_date: date, slot_type: slotType, stay_duration: cleanDuration,
+    start: date + " " + slot.start, end: endDate + " " + slot.end,
+  };
+}
+
+function getManualLocalConflict(card, candidate) {
+  if (!candidate) return "";
+  for (const other of getManualBookingCards()) {
+    if (other === card) continue;
+    const otherSlot = other.querySelector(".slot-select")?.value || "";
+    const selected = getManualSlotCandidate(other, otherSlot);
+    if (selected && selected.accommodation_id === candidate.accommodation_id &&
+        candidate.start < selected.end && selected.start < candidate.end) {
+      return candidate.accommodation_name +
+        " has overlapping time slots within this manual reservation.";
+    }
+  }
+  return "";
+}
+
+function cancelManualSlotRequest(card) {
+  const active = manualSlotRequests.get(card);
+  if (active?.timer) clearTimeout(active.timer);
+  active?.controller?.abort();
+  manualSlotRequests.delete(card);
+}
+
+function setManualItemAvailability(card, state, message) {
+  if (!card?.isConnected) return;
+  card.dataset.availabilityStatus = state;
+  const note = card.querySelector(".manual-item-availability");
+  if (note) {
+    note.dataset.state = state;
+    note.textContent = message;
+  }
+  updateManualPaymentNavigation();
+}
+
+function updateManualPaymentNavigation() {
+  const cards = getManualBookingCards();
+  const ready = cards.length > 0 && cards.every(
+    card => card.dataset.availabilityStatus === "available"
+  );
+  const nextBtn = document.getElementById("manualNextPaymentBtn");
+  if (nextBtn) {
+    nextBtn.disabled = !ready || manualPaymentChecking;
+    nextBtn.title = nextBtn.disabled
+      ? "Select and verify all accommodation schedules before payment." : "";
+  }
+}
+
+function getManualSlotLabel(state) {
+  if (state === "available") return "Available";
+  if (state === "unavailable") return "Unavailable";
+  if (state === "error") return "Unable to verify";
+  return "Checking...";
+}
+
+function getManualPrecheckState(card, candidate, results) {
+  if (!candidate) return "incomplete";
+  const today = getPhilippineTodayInputDate();
+  const type = getManualReservationType();
+  if (candidate.check_in_date < today ||
+      (type === "walkin" && candidate.check_in_date !== today)) {
+    return "unavailable";
+  }
+  // Use the EXISTING Manila-time guard for same-day expired schedules.
+  const validation = validateManualReservationSchedules([candidate]);
+  if (!validation.valid || getManualLocalConflict(card, candidate)) {
+    return "unavailable";
+  }
+  return results?.[candidate.slot_type] || "checking";
+}
+
+function renderManualSlotStatuses(card, results = null) {
+  if (!card?.isConnected) return;
+  const select = card.querySelector(".slot-select");
+  const hint = card.querySelector(".manual-slot-status");
+  if (!select || !hint) return;
+  const candidateRoom = getAccommodationById(Number(card.querySelector(".accommodation-value")?.value || 0));
+  const date = String(card.querySelector(".date-input")?.value || "");
+  if (!candidateRoom || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    hint.dataset.state = "incomplete";
+    hint.textContent = "Select an accommodation and date to check time slots.";
+    setManualItemAvailability(card, "incomplete", "Choose a time slot to verify availability.");
+    return;
+  }
+  let available = 0, unavailable = 0, errors = 0, pending = 0;
+  const states = {};
+  for (const slot of getSlotOptions(candidateRoom)) {
+    const option = [...select.options].find(item => item.value === slot.value);
+    if (!option) continue;
+    const candidate = getManualSlotCandidate(card, slot.value);
+    const state = getManualPrecheckState(card, candidate, results);
+    states[slot.value] = state;
+    option.textContent = slot.label + " (" + formatTimeDisplay(slot.start) +
+      " - " + formatTimeDisplay(slot.end) + ") — " + getManualSlotLabel(state);
+    option.disabled = state === "unavailable";
+    if (state === "available") available++;
+    else if (state === "unavailable") unavailable++;
+    else if (state === "error") errors++;
+    else pending++;
+  }
+  hint.dataset.state = pending ? "checking" : errors ? "error" :
+    unavailable ? "mixed" : "available";
+  if (pending) hint.textContent = "Checking live time slots for the selected date...";
+  else if (errors === getSlotOptions(candidateRoom).length) {
+    hint.textContent = "Availability could not be verified. Change the selection to retry.";
+  } else {
+    hint.textContent = available + " of 4 slots currently show available." +
+      (errors ? " Some slots could not be verified." : "") +
+      " All schedules will be rechecked before payment.";
+  }
+
+  if (select.value && states[select.value] === "unavailable") {
+    select.value = "";
+    const itemId = Number(card.dataset.itemId);
+    populateStayDurationOptions(itemId);
+    updateItemPreview(itemId);
+    updateSummary();
+    setManualItemAvailability(card, "incomplete",
+      "This time slot is unavailable. Choose a different slot or date.");
+    return;
+  }
+  if (!select.value) {
+    setManualItemAvailability(card, "incomplete",
+      "Select a time slot to continue.");
+    return;
+  }
+  const state = states[select.value] || "checking";
+  const detail = state === "available"
+    ? "Selected schedule currently available. Final verification required."
+    : state === "unavailable" ? "Selected schedule is unavailable."
+    : state === "error" ? "Unable to verify selected schedule. Change the selection to retry."
+    : "Checking selected schedule with the server...";
+  setManualItemAvailability(card, state, detail);
+}
+
+async function requestManualSlotAvailability(candidate, signal) {
+  const response = await fetch(API_BASE + "/bookings/check-item-availability", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Accept": "application/json" },
+    body: JSON.stringify({
+      mode: "add", accommodation_id: candidate.accommodation_id,
+      slot_type: candidate.slot_type, check_in_date: candidate.check_in_date,
+      stay_duration: candidate.stay_duration,
+    }),
+    signal, cache: "no-store",
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || "Availability check failed.");
+  return { available: data.available === true,
+    message: String(data.message || "Schedule unavailable.") };
+}
+
+function scheduleManualSlotCheck(card) {
+  if (!card?.isConnected) return;
+  const room = getAccommodationById(Number(card.querySelector(".accommodation-value")?.value || 0));
+  const date = String(card.querySelector(".date-input")?.value || "");
+  const duration = getStayDuration({
+    stay_duration: card.querySelector(".stay-duration-select")?.value || 1,
+  });
+  const type = getManualReservationType();
+  if (!room || !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+      date < getPhilippineTodayInputDate() ||
+      (type === "walkin" && date !== getPhilippineTodayInputDate())) {
+    cancelManualSlotRequest(card);
+    renderManualSlotStatuses(card);
+    return;
+  }
+  const key = JSON.stringify({ id: Number(room.id), date, duration, type });
+  const cached = manualSlotRequests.get(card);
+  // 15-second hint cache saves requests when switching only the selected slot.
+  // A network error is not cached and must never be called "booked".
+  if (cached?.key === key && Date.now() - cached.started < 15000 &&
+      (!cached.results || Object.values(cached.results).every(x => x !== "error"))) {
+    renderManualSlotStatuses(card, cached.results);
+    return;
+  }
+  cancelManualSlotRequest(card);
+  const controller = new AbortController();
+  const request = { key, controller, started: Date.now(), results: null, timer: null };
+  manualSlotRequests.set(card, request);
+  renderManualSlotStatuses(card);
+  request.timer = setTimeout(async () => {
+    const slots = getSlotOptions(room);
+    // Expired same-day slots can be classified locally without any API call.
+    const checks = await Promise.allSettled(slots.map(async slot => {
+      const candidate = getManualSlotCandidate(card, slot.value);
+      if (!candidate || !validateManualReservationSchedules([candidate]).valid) {
+        return "unavailable";
+      }
+      const result = await requestManualSlotAvailability(candidate, controller.signal);
+      return result.available ? "available" : "unavailable";
+    }));
+    if (controller.signal.aborted || !card.isConnected ||
+        manualSlotRequests.get(card) !== request) return;
+    request.results = {};
+    slots.forEach((slot, index) => {
+      const check = checks[index];
+      request.results[slot.value] = check.status === "fulfilled"
+        ? check.value : "error";
+    });
+    renderManualSlotStatuses(card, request.results);
+  }, 300);
+}
+
+function scheduleAllManualSlotChecks() {
+  for (const card of getManualBookingCards()) scheduleManualSlotCheck(card);
+  updateManualPaymentNavigation();
+}
+
+// Prevent navigations based on an old green label: recheck every selected
+// item just before creating the payment draft. This does not create a booking.
+async function verifyManualSlotsBeforePayment(cards) {
+  const signature = JSON.stringify({
+    reservationType: getManualReservationType(),
+    selections: cards.map(card =>
+      getManualSlotCandidate(card, card.querySelector(".slot-select")?.value || "")),
+  });
+  const selections = cards.map(card =>
+    getManualSlotCandidate(card, card.querySelector(".slot-select")?.value || ""));
+  if (selections.some(x => !x)) return false;
+  for (let i = 0; i < cards.length; i++) {
+    if (getManualPrecheckState(cards[i], selections[i], {}) === "unavailable") {
+      setManualItemAvailability(cards[i], "unavailable",
+        "This schedule has ended or overlaps another accommodation item.");
+      return false;
+    }
+  }
+  const results = await Promise.allSettled(
+    selections.map(selection => requestManualSlotAvailability(selection)),
+  );
+  const afterSignature = JSON.stringify({
+    reservationType: getManualReservationType(),
+    selections: cards.map(card =>
+      getManualSlotCandidate(card, card.querySelector(".slot-select")?.value || "")),
+  });
+  if (signature !== afterSignature) {
+    showMessage("Reservation schedule changed during verification. Try again.", "error");
+    scheduleAllManualSlotChecks();
+    return false;
+  }
+  let allowed = true;
+  results.forEach((result, index) => {
+    if (result.status !== "fulfilled") {
+      allowed = false;
+      setManualItemAvailability(cards[index], "error",
+        "Could not verify this schedule. Please retry.");
+      return;
+    }
+    const valid = result.value.available;
+    if (!valid) allowed = false;
+    setManualItemAvailability(cards[index], valid ? "available" : "unavailable",
+      valid ? "Verified before payment." : result.value.message);
+  });
+  if (!allowed) showMessage(
+    "One or more time slots are unavailable or could not be verified.", "error");
+  return allowed;
+}
+
 function getPhilippineTodayInputDate() {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Manila",
