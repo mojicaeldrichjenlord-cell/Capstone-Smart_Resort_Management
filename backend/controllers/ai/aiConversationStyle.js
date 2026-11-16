@@ -32,6 +32,10 @@ function wantsAccommodationCards(message, intent) {
       /\b(?:meron|may|have|need|for|para|available|pax|guests?|people|persons?)\b/.test(text)) {
     return true;
   }
+  if (String(intent || "") === "ask_recommendation" &&
+      /^\d{1,3}\s*(?:kami|pax|guests?|persons?|people|tao)(?:\b|$)/.test(text)) {
+    return true;
+  }
   return ["ask_recommendation"].includes(String(intent || "")) &&
     /\b(?:rooms?|cottages?|accommodations?|family|pavilion|good for|pax|guests?)\b/.test(text);
 }
@@ -65,4 +69,20 @@ function verifiedAccommodationCards(rows, availabilityVerified = false) {
   }));
 }
 
-module.exports = { normalizeRecentTurns, wantsAccommodationCards, verifiedAccommodationCards };
+// Keep generated text conversational if a model occasionally ignores the
+// anti-introduction prompt. Do not alter identity answers or policy facts.
+function tidyAssistantReply(value, customerMessage) {
+  const original = String(value || "").trim();
+  if (!original) return original;
+  const askedIdentity = /\b(?:who are you|what is your name|your name|sino ka|ano pangalan mo|anong pangalan mo)\b/i
+    .test(String(customerMessage || ""));
+  if (askedIdentity) return original;
+  let reply = original.replace(/^(?:(?:hello|hi|hey|good day|magandang umaga|magandang hapon|magandang gabi)(?: po)?[!,. ]+)*/i, "").trim();
+  reply = reply.replace(
+    /^(?:(?:i(?:'m| am) (?:your |the |an? )?|ako po (?:ang |si )|this is (?:your |the )?)(?:arvic seaside resort )?(?:ai assistant|virtual assistant|chatbot)[.! ]+)/i,
+    "",
+  ).trim();
+  return reply || original;
+}
+
+module.exports = { normalizeRecentTurns, wantsAccommodationCards, verifiedAccommodationCards, tidyAssistantReply };
