@@ -81,7 +81,7 @@ Additional checks/migrations require separate documented scope; do not run produ
 - QA-16 Customer Booking early slots: QA-16A/C PASS; QA-16E missing secondary Time Slot choices FAIL → repair committed → **RETEST PASS** for four restored options and client-side overlap; date-change/capacity and actual server-booking conflict tests PENDING.
 - QA-17 Front Desk Manual Reservation slots: **QA-17B page PASS, QA-17C Walk-in slots PASS, QA-17D local overlap PASS, QA-17E Facebook/Messenger future-date PASS**; persisted server-side booking-conflict test pending.
 - QA-18 Customer Payment minimal layout: **QA-18A desktop PASS; QA-18B 390px PASS; QA-18C 440px PASS**; PayPal transaction/actual reservation checkout NOT TESTED.
-- QA-19 Front Desk Manual Payment minimal layout: **QA-19A desktop/full payment PASS; QA-19B GCash 50% PASS; QA-19C Maya selector PASS; QA-19D 390px tester-reported PASS**; 440px and actual payment/submission NOT TESTED.
+- QA-19 Front Desk Manual Payment minimal layout: **QA-19A desktop/full payment PASS; QA-19B GCash 50% PASS; QA-19C Maya selector PASS; QA-19D 390px tester-reported PASS; QA-19E 440px tester-reported PASS**; actual payment/submission NOT TESTED.
 - QA-20 Admin Reports compact screen and A4 print: PENDING.
 - QA-14/15 AI accommodation data, chatbot and cross-page UI: PENDING.
 - Other fixes and all five-role regression smoke test: PENDING.
@@ -213,3 +213,9 @@ Additional checks/migrations require separate documented scope; do not run produ
 - Tester explicitly reported **PASS** for Stage QA-19D Manual Payment 390 × 844 responsive view. This is **tester-reported PASS**, with no screenshot supplied in this turn; exact mobile layout/field details have not been independently inspected here.
 - QA-19D testing scope: Reservation Summary, Payment Breakdown, Payment Details, Maya selector, proof-upload control, Submit button and no horizontal overflow; no payment submission performed.
 - Next Stage QA-19E: verify same Manual Payment screen at **440 × 844**, inspecting single-column layout, readable GCash/Maya controls, amounts, upload and Submit controls; do not submit reservation/payment.
+
+
+### QA-19E — Manual Payment 440px responsive tester result (November 17, 2026)
+- Tester explicitly reported **PASS** for Stage QA-19E on the Front Desk Manual Payment page with Chrome responsive **440 × 844**. Result is tester-reported; no screenshot provided on this turn. Expected scope: single-column cards, readable payment amounts/Maya controls, proof upload and Submit button, no horizontal overflow. No payment submission, proof processing or booking write was performed.
+- **QA-19E tester-reported PASS.** Front Desk Manual Payment desktop, GCash 50%, Maya selector, 390px and 440px responsive visual stages now completed. Actual end-to-end manual payment / booking submission remains untested.
+- **Next QA-20A:** Log out of Front Desk; log in with Admin test account; open **Reports** from Admin navigation on localhost. Confirm the Reports header, date range filters, and KPIs load. Initially view-only—do not create or delete database records. The local test database may have zero reservations, in which case one concise empty-state message should be displayed instead of nine oversized empty graphs. Send screenshot before advancing to chart/filter or A4 print testing.
