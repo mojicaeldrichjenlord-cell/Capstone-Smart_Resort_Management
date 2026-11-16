@@ -1,6 +1,6 @@
 # CAPSTONE — Master Development & Tester Handover Checklist
 **Project:** Arvic Seaside Beach Resort and Hotel — Smart Resort Booking System
-**As of:** November 16, 2026 (Asia/Manila)
+**As of:** November 17, 2026 (Asia/Manila); update this document as each improvement lands
 **Branch:** testing only (do not merge to main or deploy without approval)
 **Purpose:** Maintain one cumulative record of all recent development so the classmate Software Tester can later conduct ordered, screenshot-based QA **after the Project Owner declares the implementation batch complete**.
 
@@ -21,6 +21,7 @@
 | AI-15 Cross-page UI | Shared viewport-safe floating chatbot, compact replies, collapsible voice options, minimize/maximize, mounted across Home, Rooms, Booking, Resort Map, My Bookings, Profile | frontend/sharedCSS/ai-chat-layout.css; frontend/js/ai-chat-widget.js, ai-chat-polish.js; six Customer HTML pages; backend/tests/ai-customer-chat-ui.test.js | Four static UI checks PASS; real visuals/voice PENDING | PENDING |
 | Booking-16 Customer early slots | Date before time slot; check four time slots after selecting accommodation/date; label Available/Unavailable/Checking/Unable to verify; disable unavailable; check extended duration and overlapping draft items; final availability recheck before payment | frontend/customerJS/booking.js; customerCSS/booking.css; backend/tests/customer-booking-early-slots.test.js; docs/CUSTOMER_BOOKING_EARLY_SLOT_QA_2026-11-16.md | 6/6 isolated mocked cases PASS | PENDING |
 | Booking-17 Manual early slots | Shared Admin/Front Desk Manual Reservation date-first selection, per-slot indicators, occupied/ended slots disabled, mode-aware date rules, final pre-payment server recheck | frontend/adminJS/admin-walkin.js; adminCSS/admin-walkin.css; adminHTML/admin-walkin.html; backend/tests/manual-booking-early-slots.test.js; docs/MANUAL_BOOKING_EARLY_SLOT_QA_2026-11-16.md | 7/7 isolated mocked cases PASS | PENDING |
+| Payment-18 Customer Coastal Minimal | Customer Payment checkout white/slate/teal styling; direct grid areas, date-independent summary, mobile order summary -> breakdown -> PayPal -> policies, more readable labels and six unchanged policy terms; PayPal SDK/amount logic untouched | frontend/customerHTML/booking-payment.html; frontend/customerCSS/booking-payment-minimal.css; backend/tests/customer-payment-minimal-ui.test.js; docs/CUSTOMER_PAYMENT_MINIMAL_QA_2026-11-17.md | Structural/static 6/6 PASS, 18 critical IDs preserved; browser/SDK untested | PENDING |
 
 ### Prior unresolved findings — keep separate from the latest UI work
 - Finding #006 Front Desk expired manual booking schedule validation — programmer fix reported; tester retest PENDING.
@@ -32,7 +33,7 @@
 - Booking Availability UX — Booking-16 and Booking-17 improvements now implemented on testing; do not claim complete until QA.
 - Time Slot label consistency — review all Customer/Admin/Front Desk views for leftover "Slot Type" labels.
 - Voice Assistant device-specific redesign (desktop hands-free turn-taking, mobile hold-to-talk) is a separate FUTURE stage; **not implemented**. Only chatbot voice *panel presentation* was changed in AI-15. Test existing voice functionality for regressions.
-- Customer Payment minimalist redesign is **PROPOSAL ONLY**: docs/CUSTOMER_PAYMENT_MINIMAL_UI_PROPOSAL_2026-11-16.md; not implemented yet.
+- Customer Payment minimalist redesign is **IMPLEMENTED ON TESTING / UNTESTED IN BROWSER** as Stage Payment-18: docs/CUSTOMER_PAYMENT_MINIMAL_QA_2026-11-17.md. Original design proposal: docs/CUSTOMER_PAYMENT_MINIMAL_UI_PROPOSAL_2026-11-16.md.
 
 ## Accommodation amenities — user-performed database operations
 - Single Rooms 86–96 (Single Room Cottage 1–5, Poolside A–F) share: 1 Double Size Bed; **Private CR**; TV; Air Conditioned; Dining Table; Free Pool and Beach Entrance for 2 Pax. Single Rooms do **not** include a refrigerator.
@@ -49,19 +50,20 @@
 4. **Payment/proof/cancellation/no-show findings:** 007, 008, 017, cancellation, permissions, receipts and unchanged reservation/payment flow; use safe test environment before any transactions.
 5. **AI 14:** actual DB-backed accommodation cards and follow-up prices/amenities, switching room context, natural language, conversation reset, offline/rate-limit fallback, view/book/ask action checks and privacy/booking disclaimer.
 6. **AI 15:** every Customer page, header/composer visibility, restore/maximize, voice panel and existing voice controls, 390px/440px plus 768/1280/1440, zoom and short viewport.
-7. **Payment UI/UX stage (when implemented):** pricing identities and values unchanged; PayPal workflow and policy wording unchanged; visual accessibility, mobile stacking, cancel transaction modal; never submit real money in production QA.
+7. **Payment-18 Customer Payment minimalist UI:** verify scoped white/slate/teal style, summary/breakdown/PayPal/policies order on 390/440 mobile, unchanged six policies and all 50%/onsite amounts, PayPal SDK load/error/success only in safe sandbox, cancel transaction modal and focus; see docs/CUSTOMER_PAYMENT_MINIMAL_QA_2026-11-17.md. Never submit real money or create new Aiven bookings in production QA.
 8. Smoke-test all five roles, including staff permissions, existing booking/payment/receipt/report functionality. Record screenshot and PASS/FAIL, fixes, retests, commits, and only then request approval for main/production.
 
 ## Test commands — run from project root once owner authorizes QA
-\`\`\`powershell
+```powershell
 git switch testing
 git pull origin testing
 cd backend
 node --test tests/customer-booking-early-slots.test.js
 node --test tests/manual-booking-early-slots.test.js
+node --test tests/customer-payment-minimal-ui.test.js
 node --test tests/ai-customer-chat-ui.test.js
 node --test tests/ai-natural-recommendations.test.js
-\`\`\`
+```
 Additional checks/migrations require separate documented scope; do not run production writes as tests.
 
 ## Tester conversation handoff prompt
