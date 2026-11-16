@@ -79,7 +79,7 @@ Additional checks/migrations require separate documented scope; do not run produ
 ## QA progress log (tester fills this one stage at a time)
 - QA-00 Git pull / branch / backend / database target: PENDING tester screenshot.
 - QA-16 Customer Booking early slots: QA-16A/C PASS; QA-16E missing secondary Time Slot choices FAIL → repair committed → **RETEST PASS** for four restored options and client-side overlap; date-change/capacity and actual server-booking conflict tests PENDING.
-- QA-17 Front Desk Manual Reservation slots: PENDING.
+- QA-17 Front Desk Manual Reservation slots: **QA-17B page PASS, QA-17C Walk-in slots PASS, QA-17D local overlap PASS, QA-17E Facebook/Messenger future-date PASS**; persisted server-side booking-conflict test pending.
 - QA-18 Customer Payment minimal layout: **QA-18A desktop PASS; QA-18B 390px PASS; QA-18C 440px PASS**; PayPal transaction/actual reservation checkout NOT TESTED.
 - QA-19 Front Desk Manual Payment minimal layout: PENDING.
 - QA-20 Admin Reports compact screen and A4 print: PENDING.
@@ -181,3 +181,9 @@ Additional checks/migrations require separate documented scope; do not run produ
 - Tester localhost screenshot on Manual Reservation for Big Shade 2 Cottage on **Nov 19, 2026** shows all four slot options labeled **Available** and selected Day Tour schedule preview with ₱1,500 price and green 'Selected schedule currently available' message.
 - **QA-17E PARTIAL PASS** for future-date time-slot labels, preview and availability. **Reservation Type is not visible** in screenshot because the page is scrolled down; do not claim that Facebook/Messenger mode was definitely selected yet.
 - Next step: scroll to Guest Information and capture the Reservation Type dropdown set to **Facebook/Messenger**. Do not submit a reservation or payment. If still Walk-in, select Facebook/Messenger, then return to Item 1 to check Nov 19 remains accepted.
+
+
+### QA-17E — Facebook/Messenger mode verified (November 17, 2026)
+- Tester screenshot confirms **Reservation Type = Facebook / Messenger Reservation** in Front Desk Manual Reservation, with Big Shade 2 (Cottage) and **November 19, 2026** visible. Previous screenshot of same test showed all four slot labels Available, Day Tour preview ₱1,500, and green selected schedule availability.
+- **QA-17E PASS (UI future-date/mode + slot availability).** This is not a test of submitting Facebook/Messenger reservation, captured payment, or real occupied-slot server rejection.
+- **NEXT QA-19A — Manual Payment Coastal Minimal:** With the safe localhost test draft and confirmed available Day Tour, click **Next to Payment**. Verified source function `goToPaymentScreen` rechecks schedules, saves the draft to `sessionStorage`, and navigates to `admin-walkin-payment.html`; it does **not** create reservation or charge money at this step. Inspect the manual payment page UI, totals, method fields/policy. **DO NOT click Confirm, Pay or create a reservation.** If Next to Payment is disabled, inspect slot selection/availability rather than bypassing validation. Do not share personal guest phone/name in QA screenshots if avoidable.
