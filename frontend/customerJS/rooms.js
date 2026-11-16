@@ -455,7 +455,8 @@ function openAiForRoom(roomName, roomId) {
   }
 
   if (input) {
-    input.value = `Recommend this accommodation for me: ${roomName}`;
+    // The button opens details for this exact room, not a generic room search.
+    input.value = `Tell me more about ${roomName}.`;
     input.focus();
   }
 
