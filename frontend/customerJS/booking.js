@@ -538,15 +538,17 @@ function addBookingItem(preselectedId = null) {
   }
 
   slotSelect.addEventListener("change", () => {
-    populateStayDurationOptions(itemId);
-    updateItemPreview(itemId);
+    // QA-16H: refresh the exact card that fired the event, even if visible
+    // item numbers changed after adding/removing other accommodations.
+    populateStayDurationOptions(itemId, card);
+    updateItemPreview(itemId, card);
     updateSummary();
     scheduleAllCustomerAvailabilityChecks();
   });
 
   if (stayDurationSelect) {
     stayDurationSelect.addEventListener("change", () => {
-      updateItemPreview(itemId);
+      updateItemPreview(itemId, card);
       updateSummary();
       scheduleAllCustomerAvailabilityChecks();
     });
@@ -554,14 +556,14 @@ function addBookingItem(preselectedId = null) {
 
   dateInput.addEventListener("input", () => {
     enforceDateInputMinimum(dateInput);
-    updateItemPreview(itemId);
+    updateItemPreview(itemId, card);
     updateSummary();
     scheduleAllCustomerAvailabilityChecks();
   });
 
   dateInput.addEventListener("change", () => {
     enforceDateInputMinimum(dateInput);
-    updateItemPreview(itemId);
+    updateItemPreview(itemId, card);
     updateSummary();
     scheduleAllCustomerAvailabilityChecks();
   });
@@ -570,9 +572,9 @@ function addBookingItem(preselectedId = null) {
     setAccommodationSelection(card, itemId, preselectedId);
   }
 
-  populateSlotOptions(itemId);
-  populateStayDurationOptions(itemId);
-  updateItemPreview(itemId);
+  populateSlotOptions(itemId, card);
+  populateStayDurationOptions(itemId, card);
+  updateItemPreview(itemId, card);
   refreshTitles();
   scheduleAllCustomerAvailabilityChecks();
 }
@@ -1026,7 +1028,9 @@ function updateItemPreview(itemId, cardOverride = null) {
   const slotSelect = card.querySelector(".slot-select");
   const stayDurationSelect = card.querySelector(".stay-duration-select");
   const dateInput = card.querySelector(".date-input");
-  const preview = document.getElementById(`slotPreview-${itemId}`);
+  // Always use the preview INSIDE the selected booking card. Looking it up
+  // globally by item number can miss the correct node after a card renumber.
+  const preview = card.querySelector(".slot-preview");
 
   const accommodation = getAccommodationById(accommodationValue?.value);
 
