@@ -75,6 +75,9 @@ exports.getAllAdminBookings = async (req, res) => {
         a.image,
 
         item_counts.total_items,
+        checkout_window.latest_checkout,
+        COALESCE(checkout_window.total_checkout_items,0) AS total_checkout_items,
+        COALESCE(checkout_window.incomplete_checkout_items,0) AS incomplete_checkout_items,
         acc_list.accommodation_list
       FROM reservations r
       LEFT JOIN users u ON r.user_id = u.id
@@ -90,6 +93,16 @@ exports.getAllAdminBookings = async (req, res) => {
         FROM reservation_items
         GROUP BY reservation_id
       ) item_counts ON r.id = item_counts.reservation_id
+      LEFT JOIN (
+        SELECT reservation_id,
+          DATE_FORMAT(MAX(TIMESTAMP(check_out_date, check_out_time)),
+                      '%Y-%m-%d %H:%i:%s') AS latest_checkout,
+          COUNT(*) AS total_checkout_items,
+          SUM(CASE WHEN check_out_date IS NULL OR check_out_time IS NULL THEN 1 ELSE 0 END)
+            AS incomplete_checkout_items
+        FROM reservation_items
+        GROUP BY reservation_id
+      ) checkout_window ON r.id = checkout_window.reservation_id
       LEFT JOIN (
         SELECT
           ri.reservation_id,
@@ -194,11 +207,11 @@ exports.updateAdminBookingStatus = async (req, res) => {
         message: "This guest is already checked in. Use Front Desk operations.",
       });
     }
-    if (["completed", "cancelled", "rejected"].includes(currentStatus)) {
+    if (["completed", "cancelled", "rejected", "no_show"].includes(currentStatus)) {
       return res.status(409).json({
         success: false,
         code: "RESERVATION_STATUS_LOCKED",
-        message: "A completed, cancelled, or rejected reservation cannot be changed here.",
+        message: "A completed, cancelled, rejected, or No-Show reservation cannot be changed here.",
       });
     }
 
@@ -315,7 +328,7 @@ exports.updateGuestAdjustment = async (req, res) => {
       reservation.reservation_status,
     );
 
-    if (["cancelled", "rejected", "completed"].includes(reservationStatus)) {
+    if (["cancelled", "rejected", "completed", "no_show"].includes(reservationStatus)) {
       await connection.rollback();
 
       return res.status(400).json({
