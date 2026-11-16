@@ -243,3 +243,50 @@ test("QA-16E: extra booking card is populated directly without global ID lookup"
     assert.match(nativeOptions, new RegExp('value="' + opt.value + '"'));
   }
 });
+
+
+test("QA-16H: selected Item 2 preview uses its own card and correct price", () => {
+  const previewSource = section("function updateItemPreview(", "// Reads completed accommodation cards");
+  const preview = { innerHTML: "Select an accommodation and slot to preview its schedule and price." };
+  const card = {
+    querySelector: selector => ({
+      ".accommodation-value": { value: "74" },
+      ".slot-select": { value: "day_tour" },
+      ".stay-duration-select": { value: "1" },
+      ".date-input": { value: "2026-11-20" },
+      ".slot-preview": preview,
+    })[selector] || null,
+  };
+  const render = vm.runInNewContext(previewSource + ";updateItemPreview", {
+    document: {
+      querySelector: () => { throw Error("global card lookup should not run"); },
+      getElementById: () => { throw Error("global preview lookup should not run"); },
+    },
+    getAccommodationById: id => Number(id) === 74
+      ? { id: 74, name: "Big Shade 2", category_name: "Cottage", map_label: "Cottage - Big Shade 2" }
+      : null,
+    getSlotOptions: () => [{ value: "day_tour", label: "Day Tour",
+      price: 1500, start: "06:00:00", end: "17:00:00" }],
+    calculateCheckOutDate: date => date,
+    escapeHtml: value => String(value),
+    formatTimeDisplay: value => value,
+    formatDateDisplay: value => value,
+    formatMoney: value => Number(value).toFixed(2),
+    Number, String,
+  });
+  render(2, card);
+  assert.match(preview.innerHTML, /Big Shade 2/);
+  assert.match(preview.innerHTML, /Day Tour/);
+  assert.match(preview.innerHTML, /2026-11-20/);
+  assert.match(preview.innerHTML, /1,?500\.00|1500\.00/);
+  assert.doesNotMatch(preview.innerHTML, /Select an accommodation and slot/);
+});
+
+test("QA-16H: slot/date/duration listeners pass original card directly", () => {
+  const listeners = section("  slotSelect.addEventListener(\"change\"", "  if (preselectedId) {");
+  assert.match(listeners, /populateStayDurationOptions\(itemId, card\)/);
+  assert.equal((listeners.match(/updateItemPreview\(itemId, card\)/g) || []).length, 4);
+  const previewSource = section("function updateItemPreview(", "// Reads completed accommodation cards");
+  assert.match(previewSource, /card\.querySelector\("\.slot-preview"\)/);
+  assert.doesNotMatch(previewSource, /document\.getElementById\(/);
+});
