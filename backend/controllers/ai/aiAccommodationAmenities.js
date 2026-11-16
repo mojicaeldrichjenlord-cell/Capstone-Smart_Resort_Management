@@ -50,11 +50,19 @@ function amenityEvidence(room, kind) {
       // "CR" alone is NOT proof of a private CR.
       if (isNegated || SHARED_CR.test(clause)) findings.add("no");
       else if (PRIVATE_CR.test(clause)) findings.add("yes");
+      // A listed "CR" does confirm a bathroom exists, but NOT privacy.
+      else findings.add("listed_unspecified");
     } else {
       findings.add(isNegated ? "no" : "yes");
     }
   }
-  // Contradictory Admin text remains unverified; never guess.
+  // Explicit private/shared evidence takes precedence over a generic "CR".
+  // Conflicting explicit details must remain unknown rather than guessed.
+  if (kind === "private_cr" && findings.has("listed_unspecified")) {
+    const explicit = [...findings].filter(x => x !== "listed_unspecified");
+    return explicit.length === 1 ? explicit[0] :
+      explicit.length === 0 ? "listed_unspecified" : "unknown";
+  }
   return findings.size === 1 ? [...findings][0] : "unknown";
 }
 
@@ -83,6 +91,11 @@ function amenityReply(room, kind, message, language = "english") {
       : (kind === "private_cr"
         ? "The listed details say " + name + " does not have a private bathroom."
         : "The listed details say " + name + " does not include " + item + ".");
+  }
+  if (status === "listed_unspecified" && kind === "private_cr") {
+    return filipino
+      ? "May CR pong nakalista sa " + name + ", pero hindi nakasaad kung private ito. Puwede po itong i-confirm sa Front Desk."
+      : name + " lists a bathroom, but the details don't specify whether it's private. Please confirm with Front Desk.";
   }
   return filipino
     ? "Hindi po naka-indicate sa description o amenities ng " + name + " kung may " + item + ". Puwede po itong i-confirm sa Front Desk."
