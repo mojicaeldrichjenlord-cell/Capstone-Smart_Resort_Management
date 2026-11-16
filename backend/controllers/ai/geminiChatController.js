@@ -1217,12 +1217,21 @@ exports.chatWithGemini = async (req, res) => {
       ? [...(requestCatalog || []), ...availableRooms, ...matchedRooms]
           .find((room) => Number(room.id) === Number(mergedContext.room_id)) || null
       : null;
-    const recommendationCards = wantsAccommodationCards(message, extractedContext.intent)
-      ? verifiedAccommodationCards(
-          hasAvailabilityDetails ? matchedRooms : catalogRecommendations,
-          hasAvailabilityDetails
-        )
-      : [];
+    const guestCountFollowUp = /^\s*\d{1,3}\s*(?:kami|pax|guests?|persons?|people|tao)\b/i.test(
+      String(message || "")
+    );
+    const recentRecommendation = recentTurns.slice(-4).some((turn) =>
+      turn.role === "user" && wantsAccommodationCards(turn.text, "")
+    );
+    // "7 kami" after "May family room kayo?" should refresh matches
+    // for that guest count, without needing to say "recommend" again.
+    const recommendationCards = (
+      wantsAccommodationCards(message, extractedContext.intent) ||
+      (guestCountFollowUp && recentRecommendation)
+    ) ? verifiedAccommodationCards(
+      hasAvailabilityDetails ? matchedRooms : catalogRecommendations,
+      hasAvailabilityDetails
+    ) : [];
 
     const paymentMethodText =
       mergedContext.payment_method === "paypal"
