@@ -68,3 +68,26 @@ Following the catalog context fix, `Tell me more about Single Room (Pool side) C
 ### Stage boundary
 
 **Documentation only.** Do not implement the redesigned chatbot, voice controls, database changes, production deployment or branch merge as part of this note. Complete text assistant QA, then implement cross-page UI polish in a focused `testing`-branch stage with screenshot-based PASS/FAIL.
+
+### UI-15 implementation — Customer chatbot shared layout (testing only)
+
+Implementation has been committed on `testing`; **browser QA is NOT yet passed** and nothing has been merged to `main` or deployed. The initial CSS/HTML cross-page checks (4 static assertions) passed. The following is the manual release gate:
+
+1. On **Accommodations**, choose Single Room (Pool side) C, click **Ask AI About This**, then send the prepared message. Verify the selected room survives and the complete header remains inside the viewport. Do not treat any reply as confirmed date/slot availability.
+2. Check the same chat overlay from **Home**, **Booking**, **Resort Map**, **My Bookings**, and **Profile**: no page reflow, broken controls, missing voice panel, or unrelated booking/payment side effects. The last four mount the shared widget only on the Customer page.
+3. On each page open/close, **minimize**, maximize/restore, new chat (with confirmation), and navigate away/back. Existing conversation context should persist except after explicit New Chat.
+4. Use **Voice options**: collapsed by default, expandable; language, Start/Stop Conversation and microphone remain functional. QA voice behavior separately; UI implementation does not alter `ai-voice.js`.
+5. Send short and long multilingual messages, inspect compact Read Aloud/Translate controls, and check that the message list scrolls while the header and composer remain visible.
+6. Inspect 390px / 440px / 768px / 1280px / 1440px widths, short desktop heights, and 125% browser zoom. On touch widths, chat is viewport-filling with reachable buttons and no horizontal overflow.
+7. Check accommodation preview cards and View Details / Book This / Ask About This; booking dates, payments and reservations must not be changed by opening chat.
+8. If the accommodation page still says **No amenities or inclusions listed** after a fresh reload, independently compare `/rooms/available` API data and the same Aiven accommodation row; this is **not presumed fixed** by UI CSS changes.
+
+Commands for the Programmer (from repository root):
+
+```powershell
+cd backend
+node --test tests/ai-customer-chat-ui.test.js
+node --test tests/ai-natural-recommendations.test.js
+```
+
+Suggested first browser QA: **Accommodations page at 1280px desktop**, then mobile 390px and 440px. Report PASS/FAIL with screenshots, before proceeding to full cross-page sweep or `main` deployment.
