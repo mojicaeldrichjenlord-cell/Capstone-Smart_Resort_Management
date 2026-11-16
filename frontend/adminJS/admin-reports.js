@@ -192,6 +192,8 @@ function setupReportEvents() {
   if (printBtn) {
     printBtn.addEventListener("click", () => {
       updatePrintReportMeta();
+      // Prepare text tables for printing; chart canvases are screen-only.
+      window.ArvicReportPresentation?.preparePrint();
       document.body.classList.add("printing-report");
 
       setTimeout(() => {
@@ -348,6 +350,20 @@ function renderReports(bookings) {
   renderPeakReservationDaysChart(bookings);
   renderGuestVolumeTrendChart(bookings);
   renderMonthlyCancellationChart(bookings);
+
+  // Reports-20: read the just-rendered charts to produce compact empty states
+  // and printer-friendly data tables. This never recalculates report totals.
+  window.ArvicReportPresentation?.update(bookings, {
+    bookingStatusChart,
+    bookingSourceChart,
+    popularRoomsChart,
+    salesByCategoryChart,
+    guestsPerRoomChart,
+    slotUsageChart,
+    peakReservationDaysChart,
+    guestVolumeTrendChart,
+    monthlyCancellationChart,
+  });
 }
 
 // ============================================================
