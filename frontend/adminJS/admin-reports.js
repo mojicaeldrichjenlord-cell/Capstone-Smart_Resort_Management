@@ -34,25 +34,27 @@ let activeEndDate = "";
 // Keeps report colors clean and readable.
 // ============================================================
 
+// Reports-20: muted, distinct chart colors. Status hues still differ for
+// accessibility; categories no longer use the old rainbow-bright palette.
 const REPORT_COLORS = {
   navy: "#0F172A",
   text: "#334155",
   muted: "#64748B",
-  grid: "#E5EDF3",
+  grid: "#E9EEF2",
   teal: "#0F766E",
-  tealSoft: "#14B8A6",
-  blue: "#2563EB",
-  blueSoft: "#60A5FA",
-  green: "#22C55E",
-  greenSoft: "#86EFAC",
-  amber: "#F59E0B",
-  amberSoft: "#FCD34D",
-  red: "#EF4444",
-  redSoft: "#FCA5A5",
+  tealSoft: "#2B9A91",
+  blue: "#577C99",
+  blueSoft: "#8DAABD",
+  green: "#3C8D76",
+  greenSoft: "#8ABAA9",
+  amber: "#B88F4E",
+  amberSoft: "#D7BD8B",
+  red: "#BB6F6F",
+  redSoft: "#D6A3A3",
   gray: "#94A3B8",
   graySoft: "#CBD5E1",
-  purple: "#8B5CF6",
-  cyan: "#06B6D4",
+  purple: "#8876A1",
+  cyan: "#6C9EAD",
 };
 
 const STATUS_COLORS = {
@@ -64,17 +66,13 @@ const STATUS_COLORS = {
   no_show: REPORT_COLORS.purple,
 };
 
+// A small restrained series of colors reads clearly beside the teal KPI cards.
 const MINIMAL_PALETTE = [
   REPORT_COLORS.tealSoft,
   REPORT_COLORS.blue,
-  REPORT_COLORS.amber,
-  REPORT_COLORS.green,
-  REPORT_COLORS.purple,
-  REPORT_COLORS.cyan,
-  REPORT_COLORS.red,
   REPORT_COLORS.gray,
-  "#0EA5E9",
-  "#84CC16",
+  REPORT_COLORS.cyan,
+  REPORT_COLORS.purple,
 ];
 
 // ============================================================
@@ -82,14 +80,14 @@ const MINIMAL_PALETTE = [
 // Makes charts consistent across reports.
 // ============================================================
 
-Chart.defaults.font.family = "Arial, sans-serif";
+Chart.defaults.font.family = "Arial, system-ui, sans-serif";
 Chart.defaults.color = REPORT_COLORS.text;
 Chart.defaults.plugins.tooltip.backgroundColor = "#0F172A";
 Chart.defaults.plugins.tooltip.titleColor = "#FFFFFF";
 Chart.defaults.plugins.tooltip.bodyColor = "#E2E8F0";
 Chart.defaults.plugins.tooltip.borderColor = "rgba(255,255,255,0.12)";
 Chart.defaults.plugins.tooltip.borderWidth = 1;
-Chart.defaults.plugins.tooltip.padding = 12;
+Chart.defaults.plugins.tooltip.padding = 9;
 Chart.defaults.plugins.tooltip.cornerRadius = 10;
 
 // ============================================================
@@ -1115,10 +1113,10 @@ function getLegendStyle() {
     pointStyle: "circle",
     boxWidth: 8,
     boxHeight: 8,
-    padding: 14,
+    padding: 10,
     color: REPORT_COLORS.text,
     font: {
-      size: 11,
+      size: 10,
       weight: "700",
     },
   };
@@ -1128,7 +1126,7 @@ function getTickStyle() {
   return {
     color: REPORT_COLORS.muted,
     font: {
-      size: 11,
+      size: 10,
       weight: "600",
     },
   };
