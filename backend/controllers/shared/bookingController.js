@@ -3363,7 +3363,7 @@ exports.extendReservationItem = async (req, res) => {
       item.reservation_status || "",
     ).toLowerCase();
 
-    if (["cancelled", "completed", "rejected"].includes(reservationStatus)) {
+    if (["cancelled", "completed", "rejected", "no_show"].includes(reservationStatus)) {
       throw {
         status: 400,
         message: "This reservation can no longer be extended.",
