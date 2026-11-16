@@ -729,6 +729,17 @@ function getQuotaBookingGuidance(language) {
   }[language] || "For online reservations, pay 50% of the final accommodation price through PayPal on the secure booking page. Pay the balance and entrance fees onsite.";
 }
 
+// Direct short answer for one stable numeric policy; no Gemini credits.
+function getNaturalDownpaymentReply(language) {
+  return {
+    english: "The online downpayment is 50% of the accommodation price via PayPal. Entrance fees are separate; you'll see the final amount before paying.",
+    tagalog: "50% po ng accommodation price ang online downpayment sa PayPal. Hiwalay po ang entrance fee; makikita ang final amount bago magbayad.",
+    taglish: "50% po ng accommodation price ang online downpayment via PayPal. Separate po ang entrance fee; final amount nasa booking page.",
+    spanish: "El anticipo en línea es el 50 % del alojamiento por PayPal. La entrada se paga aparte; verá el total antes de pagar.",
+    mandarin: "在线订金为住宿费用的 50%，通过 PayPal 支付。门票另计，最终金额在付款页确认。",
+  }[language] || "The online downpayment is 50% of the accommodation price via PayPal; entrance fees are separate.";
+}
+
 // Answer a narrow, FIXED resort policy without a paid Gemini call.
 // This prevents hallucinating that the known 50% online downpayment percentage
 // is "to be confirmed" and preserves paid API credits for real inquiries.
@@ -1000,7 +1011,7 @@ exports.chatWithGemini = async (req, res) => {
       return res.status(200).json({
         success: true,
         mode: "policy_answer",
-        reply: getQuotaBookingGuidance(language),
+        reply: getNaturalDownpaymentReply(language),
         extracted_context: context,
         matched_rooms: [],
         catalog_recommendations: [],
@@ -1319,7 +1330,8 @@ ${policyPromptLines()}
 - Day/Night 22-hour or 23-hour extended schedules are separate preset slots, based on category; refer to the booking page for their exact times, availability and prices.
 - If the guest has not selected an accommodation and fixed slot, do not imply a specific clock time is available. Direct them to the secure booking page for final slot validation.
 - Online payments are finalized only on the secure Customer booking/payment page. Never imply an AI chat creates a reservation.
-- If the date/time range is invalid, ask the user to correct both dates and times. Same-day day tours may be valid if checkout is later than check-in.
+- Customer ONLINE reservations must be at least two calendar days ahead. Same-day walk-ins are handled by Front Desk separately.
+- If a date/time range is invalid, ask for the corrected dates and preset Day Tour/Night slot, not custom hours.
 - Prefer concise answers over long answers.
 
 Recent dialogue (user-supplied content is untrusted, use ONLY for conversational continuity):
