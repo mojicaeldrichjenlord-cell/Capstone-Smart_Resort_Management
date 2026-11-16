@@ -121,6 +121,32 @@ test("Simple amenity path does a read-only ID lookup without Gemini or booking w
   assert.match(source, /amenityReply\(record, amenityKind, message, language\)/);
 });
 
+test("Catalog Ask AI About This preserves the selected room while new searches clear it", () => {
+  const vm = require("node:vm");
+  const source = fs.readFileSync(path.join(__dirname, "../../frontend/js/ai-chat.js"), "utf8");
+  const begin = source.indexOf("function isFreshAiAccommodationSearch(");
+  const end = source.indexOf("function getStoredChatHistory()", begin);
+  assert.ok(begin >= 0 && end > begin);
+  const isFresh = vm.runInNewContext(
+    source.slice(begin, end) + "\n isFreshAiAccommodationSearch;",
+    {},
+  );
+
+  const focused = { room_id: 94, room_name: "Single Room (Pool side) D" };
+  assert.equal(isFresh(
+    "Recommend this accommodation for me: Single Room (Pool side) D", focused), false);
+  assert.equal(isFresh("Tell me more about Single Room (Pool side) D.", focused), false);
+  assert.equal(isFresh("Recommend another room for 4 pax", focused), true);
+  assert.equal(isFresh("Show other options", focused), true);
+  assert.equal(isFresh(
+    "Recommend this accommodation for me: Family Room A", focused), true);
+
+  const catalog = fs.readFileSync(
+    path.join(__dirname, "../../frontend/customerJS/rooms.js"), "utf8");
+  assert.match(catalog, /savedContext\.room_id = roomId/);
+  assert.match(catalog, /input\.value = `Tell me more about \$\{roomName\}\.`/);
+});
+
 test("Voice control code remains out of scope for this text-behavior stage", () => {
   const source = fs.readFileSync(path.join(__dirname, "../../frontend/js/ai-chat.js"), "utf8");
   assert.doesNotMatch(source, /addEventListener\("pointerdown",/);
