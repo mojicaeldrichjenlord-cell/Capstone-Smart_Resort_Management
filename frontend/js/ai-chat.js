@@ -190,7 +190,11 @@ async function sendAiMessage(options = {}) {
     const mergedFallbackContext = mergeContext(storedContext, fallback.context || {});
     saveAiContext(mergedFallbackContext);
 
-    appendAiSystemNote(fallback.modeNotice);
+    // Show the temporary offline banner once, not on every single reply.
+    if (!getStoredChatHistory().some((entry) => entry.type === "system" &&
+        entry.text === fallback.modeNotice)) {
+      appendAiSystemNote(fallback.modeNotice);
+    }
 
     // Persist offline booking hints silently rather than adding scripted status prose.
 
@@ -877,10 +881,10 @@ function getEnglishFallbackReply(text, merged) {
       context: merged,
     };
   }
-  if (text.includes("hello") || text.includes("hi") || text.includes("hey")) {
+  if (/\b(?:hello|hi|hey)\b/i.test(text)) {
     return {
       modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.",
-      reply: "Hello! I can still help in offline mode. You can ask about booking steps, payment methods, your bookings page, or tell me your dates, preferred Day Tour or Night slot, and number of guests.",
+      reply: "Hi! You can still ask me about bookings and room details.",
       context: merged,
     };
   }
@@ -888,7 +892,7 @@ function getEnglishFallbackReply(text, merged) {
   if (text.includes("how to book") || text.includes("book room") || text.includes("booking process")) {
     return {
       modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.",
-      reply: "To book online, open the Rooms page and choose an accommodation. Choose the check-in date, a fixed Day Tour (morning) or Night (evening) slot, and the number of guests, then review the secure booking and PayPal payment steps. Online reservations require a 50% accommodation downpayment through PayPal; entrance fees are settled onsite. You can view the reservation and receipt in My Bookings.",
+      reply: "Choose a room, date and fixed Day Tour or Night slot on the booking page. Pay the 50% accommodation downpayment through PayPal; entrance fees are paid onsite.",
       context: merged,
     };
   }
@@ -896,7 +900,7 @@ function getEnglishFallbackReply(text, merged) {
   if (text.includes("payment") || text.includes("paypal") || text.includes("cash")) {
     return {
       modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.",
-      reply: "Customer online reservations use PayPal for the required 50% accommodation downpayment; the remaining accommodation balance and entrance fees are paid onsite. Cash and other onsite payment methods apply to eligible staff-assisted manual reservations, not customer online checkout. Please verify the final amount on the secure booking page.",
+      reply: "Online booking uses PayPal for the 50% accommodation downpayment. The balance and entrance fee are paid onsite; check the final amount before paying.",
       context: merged,
     };
   }
@@ -943,7 +947,7 @@ function getEnglishFallbackReply(text, merged) {
 
   return {
     modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.",
-    reply: "AI is temporarily unavailable, but I can still help with offline guidance. You can ask about booking steps, payment methods, receipts, My Bookings, or tell me your dates, preferred Day Tour or Night slot, and number of guests.",
+    reply: "I can still help with basic booking questions. What would you like to know?",
     context: merged,
   };
 }
@@ -963,10 +967,10 @@ function getTagalogFallbackReply(text, merged) {
       context: merged,
     };
   }
-  if (text.includes("hello") || text.includes("hi") || text.includes("hey") || text.includes("kumusta")) {
+  if (/\b(?:hello|hi|hey|kumusta)\b/i.test(text)) {
     return {
       modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
-      reply: "Hello! Makakatulong pa rin ako sa offline mode. Maaari kang magtanong tungkol sa booking steps, payment methods, My Bookings page, o sabihin ang dates, preferred Day Tour (umaga) o Night (gabi), at bilang ng bisita.",
+      reply: "Hi po! Puwede pa rin kayong magtanong tungkol sa booking.",
       context: merged,
     };
   }
@@ -974,7 +978,7 @@ function getTagalogFallbackReply(text, merged) {
   if (text.includes("paano mag book") || text.includes("paano mag-book") || text.includes("booking process") || text.includes("mag book")) {
     return {
       modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
-      reply: "Para po mag-book online, buksan ang Rooms page at pumili ng accommodation. Piliin ang check-in date, fixed Day Tour (umaga) o Night (gabi) slot, at bilang ng bisita, saka sundin ang secure booking at PayPal payment steps. Ang downpayment ay 50% ng accommodation price; hiwalay ang entrance fee na babayaran onsite. Makikita po ang booking at receipt sa My Bookings.",
+      reply: "Pumili po ng accommodation, date at fixed Day Tour o Night slot sa booking page. Ang downpayment ay 50% via PayPal; hiwalay po ang entrance fee.",
       context: merged,
     };
   }
@@ -982,7 +986,7 @@ function getTagalogFallbackReply(text, merged) {
   if (text.includes("bayad") || text.includes("payment") || text.includes("paypal") || text.includes("cash")) {
     return {
       modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
-      reply: "Para po sa customer online booking, PayPal ang ginagamit para sa 50% accommodation downpayment. Ang natitirang accommodation balance at entrance fee ay babayaran onsite. Ang cash at ibang onsite payment methods ay para sa eligible manual reservations na inaasikaso ng staff, hindi sa online checkout. I-check po ang final amount sa secure booking page.",
+      reply: "Sa online booking po, PayPal ang 50% accommodation downpayment. Onsite naman ang balance at entrance fee; makikita ang final amount bago magbayad.",
       context: merged,
     };
   }
@@ -1029,7 +1033,7 @@ function getTagalogFallbackReply(text, merged) {
 
   return {
     modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
-    reply: "Pansamantalang hindi available ang AI, pero makakatulong pa rin ako gamit ang offline guidance. Maaari kang magtanong tungkol sa booking steps, payment methods, resibo, My Bookings, o sabihin ang dates, fixed Day Tour (umaga) o Night (gabi) slot, at bilang ng bisita.",
+    reply: "Makakatulong pa rin po ako sa basic booking questions. Ano po ang gusto ninyong malaman?",
     context: merged,
   };
 }
@@ -1049,10 +1053,10 @@ function getTaglishFallbackReply(text, merged) {
       context: merged,
     };
   }
-  if (text.includes("hello") || text.includes("hi") || text.includes("hey") || text.includes("kumusta")) {
+  if (/\b(?:hello|hi|hey|kumusta)\b/i.test(text)) {
     return {
       modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
-      reply: "Hello! Makakatulong pa rin ako sa offline mode. Pwede kang magtanong tungkol sa booking steps, payment methods, My Bookings page, o sabihin ang dates, Day Tour (umaga) o Night (gabi) slot, at number of guests mo.",
+      reply: "Hi po! Puwede pa rin kayong magtanong tungkol sa booking.",
       context: merged,
     };
   }
@@ -1060,7 +1064,7 @@ function getTaglishFallbackReply(text, merged) {
   if (text.includes("how to book") || text.includes("paano mag book") || text.includes("paano mag-book") || text.includes("booking process")) {
     return {
       modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
-      reply: "Para po mag-book online, open ang Rooms page, select an accommodation, then piliin ang check-in date, fixed Day Tour (umaga) o Night (gabi) slot, at number of guests. Review the secure booking and PayPal payment steps; required ang 50% accommodation downpayment via PayPal, at separate ang onsite entrance fee. Makikita po ang booking at receipt sa My Bookings.",
+      reply: "Pili po ng accommodation, date, at Day Tour o Night slot sa booking page. 50% po ang downpayment via PayPal; hiwalay ang entrance fee.",
       context: merged,
     };
   }
@@ -1068,7 +1072,7 @@ function getTaglishFallbackReply(text, merged) {
   if (text.includes("payment") || text.includes("bayad") || text.includes("paypal") || text.includes("cash")) {
     return {
       modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
-      reply: "For customer online reservations po, PayPal ang payment method para sa 50% accommodation downpayment. Onsite naman ang remaining accommodation balance at entrance fee. Cash at other onsite payment methods are for eligible staff-assisted manual reservations, hindi sa online checkout. Confirm the final amount po sa secure booking page.",
+      reply: "50% accommodation downpayment po via PayPal ang online booking. Sa resort na ang balance at entrance fee; check po ang final amount bago magbayad.",
       context: merged,
     };
   }
@@ -1115,7 +1119,7 @@ function getTaglishFallbackReply(text, merged) {
 
   return {
     modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
-    reply: "Temporarily unavailable ang AI, pero makakatulong pa rin ako gamit ang offline guidance. Pwede kang magtanong tungkol sa booking steps, payment methods, receipt, My Bookings, o sabihin ang dates, Day Tour (umaga) o Night (gabi) slot, at number of guests mo.",
+    reply: "Puwede pa rin po akong sumagot sa basic booking questions. Ano pong gusto ninyong malaman?",
     context: merged,
   };
 }
