@@ -140,3 +140,8 @@ Additional checks/migrations require separate documented scope; do not run produ
 - Tester screenshot with Chrome Responsive **390 × 390** viewport shows Customer Payment PayPal section rendered at 390px: amount due now ₱1,500.00, PayPal-ready message and button entirely visible, with no apparent horizontal overflow in that visible section. **PayPal mobile visible section PASS**; not an actual payment/SDK capture test.
 - The device viewport height remains **390px** (tester has not changed height to 844); this does not invalidate width but makes full-page verification harder.
 - Complete mobile section order and readability of Payment Breakdown/Resort Policies still **PENDING**. Next screenshot should keep width 390, optionally use height 844, and scroll to show policies plus the boundary with PayPal. The image alone cannot verify unseen sections.
+
+### QA-18B — 390x844 policy section screenshot (November 17, 2026)
+- Tester switched Chrome device emulation to **390 × 844** and scrolled to the boundary between Customer PayPal section and Resort Policy Reminder.
+- Screenshot shows PayPal button and ₱1,500 due amount above policy card, policies **01–04** readable with clean spacing, no visible clipping/overlap or horizontal overflow in shown viewport.
+- **QA-18B still PARTIAL PASS**: policies **05–06** are below current scroll and not yet verified. Next tester action: scroll down inside the mobile preview to fully reveal policies 05/06 and bottom of policy card; send screenshot. No payment interaction.
