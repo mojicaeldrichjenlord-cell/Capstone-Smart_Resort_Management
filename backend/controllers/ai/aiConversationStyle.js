@@ -51,7 +51,8 @@ function verifiedAccommodationCards(rows, availabilityVerified = false) {
   const seen = new Set();
   return rows.filter((room) => {
     const id = Number(room?.id);
-    const status = String(room?.status || "available").toLowerCase();
+    // Never treat missing or unknown Admin status as an available listing.
+    const status = String(room?.status || "").toLowerCase();
     if (!Number.isSafeInteger(id) || id < 1 || status !== "available" || seen.has(id)) return false;
     seen.add(id);
     return true;
