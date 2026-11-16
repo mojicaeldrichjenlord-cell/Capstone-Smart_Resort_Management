@@ -1230,6 +1230,148 @@ async function requestCustomerItemAvailability(selection, signal) {
   };
 }
 
+// Stage Booking-16: preview ALL four slots for the chosen room/date, using
+// the existing read-only conflict API. This preview is not a booking hold.
+function cancelCustomerSlotAvailabilityRequest(card) {
+  const active = customerSlotAvailabilityRequests.get(card);
+  if (active?.timer) clearTimeout(active.timer);
+  if (active?.controller) active.controller.abort();
+  customerSlotAvailabilityRequests.delete(card);
+}
+
+// "Unavailable" covers booked, ended and overlapping schedules without
+// disclosing other guests' details.
+function getCustomerSlotStateLabel(state) {
+  if (state === "available") return "Available";
+  if (state === "unavailable") return "Unavailable";
+  if (state === "error") return "Unable to verify";
+  return "Checking...";
+}
+
+function renderCustomerSlotAvailability(card, request = null) {
+  if (!card?.isConnected) return false;
+  const slotSelect = card.querySelector(".slot-select");
+  const note = card.querySelector(".booking-slot-status");
+  const accommodation = getAccommodationById(
+    Number(card.querySelector(".accommodation-value")?.value || 0)
+  );
+  const date = String(card.querySelector(".date-input")?.value || "");
+  const duration = getStayDuration({
+    stay_duration: card.querySelector(".stay-duration-select")?.value || 1,
+  });
+  if (!slotSelect || !note) return false;
+
+  if (!accommodation || !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+      isDateBefore(date, getCustomerEarliestBookingDate())) {
+    for (const slot of getSlotOptions(accommodation)) {
+      const option = [...slotSelect.options].find((item) => item.value === slot.value);
+      if (!option) continue;
+      option.textContent = slot.label + " (" +
+        formatTimeDisplay(slot.start) + " - " + formatTimeDisplay(slot.end) + ")";
+      option.disabled = false;
+    }
+    note.dataset.state = "incomplete";
+    note.textContent = "Select an accommodation and valid date to check available time slots.";
+    return false;
+  }
+
+  let available = 0, unavailable = 0, errors = 0, pending = 0;
+  for (const slot of getSlotOptions(accommodation)) {
+    const option = [...slotSelect.options].find((item) => item.value === slot.value);
+    if (!option) continue;
+    const candidate = buildCustomerSlotCandidate(accommodation, date, slot.value, duration);
+    const localConflict = candidate && getCustomerLocalConflict(card, candidate);
+    const state = localConflict ? "unavailable" :
+      (request?.results?.[slot.value] || "checking");
+    option.textContent = slot.label + " (" +
+      formatTimeDisplay(slot.start) + " - " + formatTimeDisplay(slot.end) + ") — " +
+      getCustomerSlotStateLabel(state);
+    option.disabled = state === "unavailable";
+    if (state === "available") available++;
+    else if (state === "unavailable") unavailable++;
+    else if (state === "error") errors++;
+    else pending++;
+  }
+
+  note.dataset.state = pending ? "checking" : errors ? "error" :
+    unavailable ? "mixed" : "available";
+  if (pending) {
+    note.textContent = "Checking time slots for this date... You can choose a slot while we check.";
+  } else {
+    const durationNote = duration > 1 ? " Extended slots checked for " + duration + " days." : "";
+    note.textContent = available + " of 4 time slots currently show available." + durationNote +
+      (errors ? " Some slots could not be verified; please retry before payment." : "") +
+      " Availability is rechecked before payment and booking.";
+  }
+
+  // If an occupied/ended slot was selected before the server replied, clear
+  // only that invalid slot rather than allowing an unavailable selection.
+  const chosen = [...slotSelect.options].find((item) => item.value === slotSelect.value);
+  if (slotSelect.value && chosen?.disabled) {
+    slotSelect.value = "";
+    const itemId = Number(card.dataset.itemId);
+    populateStayDurationOptions(itemId);
+    updateItemPreview(itemId);
+    updateSummary();
+    setCustomerCardAvailability(card, "incomplete",
+      "That time slot is unavailable. Please select another slot or date.");
+    return true;
+  }
+  return false;
+}
+
+function scheduleCustomerSlotAvailabilityCheck(card) {
+  if (!card?.isConnected) return;
+  const accommodation = getAccommodationById(
+    Number(card.querySelector(".accommodation-value")?.value || 0)
+  );
+  const date = String(card.querySelector(".date-input")?.value || "");
+  const duration = getStayDuration({
+    stay_duration: card.querySelector(".stay-duration-select")?.value || 1,
+  });
+  if (!accommodation || !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+      isDateBefore(date, getCustomerEarliestBookingDate())) {
+    cancelCustomerSlotAvailabilityRequest(card);
+    renderCustomerSlotAvailability(card);
+    return;
+  }
+
+  const key = JSON.stringify({ accommodation_id: Number(accommodation.id), date, duration });
+  const active = customerSlotAvailabilityRequests.get(card);
+  // Short UI cache avoids 4 extra requests when merely switching slots;
+  // selected-item/final-payment checks are never cached.
+  if (active?.key === key && Date.now() - active.createdAt < 20000) {
+    const cleared = renderCustomerSlotAvailability(card, active);
+    if (cleared) scheduleAllCustomerAvailabilityChecks();
+    return;
+  }
+
+  cancelCustomerSlotAvailabilityRequest(card);
+  const controller = new AbortController();
+  const request = { key, controller, createdAt: Date.now(), timer: null, results: null };
+  customerSlotAvailabilityRequests.set(card, request);
+  renderCustomerSlotAvailability(card, request);
+
+  request.timer = setTimeout(async () => {
+    const slots = getSlotOptions(accommodation);
+    const checks = await Promise.allSettled(slots.map(async (slot) => {
+      const candidate = buildCustomerSlotCandidate(accommodation, date, slot.value, duration);
+      const result = await requestCustomerItemAvailability(candidate, controller.signal);
+      return result.available ? "available" : "unavailable";
+    }));
+    if (controller.signal.aborted || !card.isConnected ||
+        customerSlotAvailabilityRequests.get(card) !== request) return;
+
+    request.results = {};
+    slots.forEach((slot, index) => {
+      const result = checks[index];
+      request.results[slot.value] = result.status === "fulfilled" ? result.value : "error";
+    });
+    const cleared = renderCustomerSlotAvailability(card, request);
+    if (cleared) scheduleAllCustomerAvailabilityChecks();
+  }, 350);
+}
+
 function scheduleAllCustomerAvailabilityChecks() {
   for (const card of document.querySelectorAll(".booking-item-card")) {
     cancelCustomerAvailabilityRequest(card);
