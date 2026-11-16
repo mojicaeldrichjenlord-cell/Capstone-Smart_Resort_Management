@@ -6,6 +6,7 @@ const { matchGeneralPolicyQuestion, inferPolicyLanguage, getPolicyReply, policyP
 const { validateAiStayWindow, calendarDayDifference, addCalendarDays } = require("./resortStayWindow");
 const { normalizeRecentTurns, wantsAccommodationCards, verifiedAccommodationCards, tidyAssistantReply } =
   require("./aiConversationStyle");
+const { requestedAmenity, amenityReply } = require("./aiAccommodationAmenities");
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -1045,6 +1046,49 @@ exports.chatWithGemini = async (req, res) => {
       });
     }
 
+    // Amenity questions about the selected room use the FRESH Admin-managed
+    // description and inclusions, not a guess from previous conversation.
+    // This read-only path needs zero Gemini credits and never checks/creates bookings.
+    const amenityKind = requestedAmenity(message);
+    const focusedRoomId = Number(req.body?.context?.room_id ?? req.body?.room_id);
+    if (amenityKind && Number.isSafeInteger(focusedRoomId) && focusedRoomId > 0) {
+      const [rows] = await db.promise().query(
+        "SELECT a.id, a.name AS room_name, a.description, a.amenities " +
+          "FROM accommodations a WHERE a.id = ? LIMIT 1",
+        [focusedRoomId],
+      );
+      const record = rows[0];
+      if (record) {
+        // An explicitly different named room must not inherit an older selection.
+        const namedMention = String(message).match(
+          /\b(?:family\s+room|room|cottage|pavilion)\s+[a-z0-9]+\b/i
+        );
+        const namesMatch = !namedMention ||
+          String(message).toLowerCase().includes(String(record.room_name).toLowerCase());
+        if (namesMatch) {
+          const language = normalizeLanguageStyle(req.body.voice_language) ||
+            detectLanguageFromMessage(message) ||
+            normalizeLanguageStyle(req.body.language_style) ||
+            normalizeLanguageStyle(req.body.context?.language_style) || "english";
+          const savedContext =
+            req.body.context && typeof req.body.context === "object" &&
+            !Array.isArray(req.body.context) ? req.body.context : {};
+          return res.status(200).json({
+            success: true,
+            mode: "verified_accommodation_amenity",
+            reply: amenityReply(record, amenityKind, message, language),
+            extracted_context: mergeContext(savedContext, {
+              room_id: record.id, room_name: record.room_name,
+              language_style: language,
+            }),
+            matched_rooms: [], catalog_recommendations: [],
+            alternative_dates: [], booking_preview: null,
+            recommendation_cards: [],
+          });
+        }
+      }
+    }
+
     // Bounded previous turns: conversation continuity without unlimited tokens.
     const recentTurns = normalizeRecentTurns(req.body.recent_turns);
     const requestContext = {
@@ -1325,7 +1369,8 @@ ${policyPromptLines()}
 - Missing core details right now: ${missingDetailsText}
 - These are preliminary availability results for the exact requested window; final slot availability is rechecked on the booking page.
 - Day, overnight and extended rates are different. Never call a day rate a nightly price or invent a total.
-- Structured bed count, view and aircon details are not verified; do not promise them.
+- Structured bed count and view preferences alone do not prove room features. But if a selected accommodation explicitly lists aircon, a CR, a ref, or another amenity in its fresh Admin-managed description or amenities, that listing IS evidence for that accommodation. Read BOTH text fields, including Filipino wording. If missing or contradictory, say it is unverified; do not guess.
+- For questions only about amenities, answer that question directly and do NOT redirect to check-in dates or a booking checklist.
 - If rooms are available, recommend only the best 1 to 3 options.
 - Briefly explain why each recommended room matches.
 - If there are no exact matches, say that clearly and mention alternative dates if provided.
