@@ -1,4 +1,5 @@
 ﻿const db = require("../../config/db");
+const { getManilaDateTimeKey } = require("../../utils/checkInWindow");
 
 const VALID_BOOKING_STATUSES = [
   "pending",
@@ -76,8 +77,10 @@ exports.getAllAdminBookings = async (req, res) => {
 
         item_counts.total_items,
         checkout_window.latest_checkout,
+        checkout_window.earliest_checkin,
         COALESCE(checkout_window.total_checkout_items,0) AS total_checkout_items,
         COALESCE(checkout_window.incomplete_checkout_items,0) AS incomplete_checkout_items,
+        COALESCE(checkout_window.incomplete_checkin_items,0) AS incomplete_checkin_items,
         acc_list.accommodation_list
       FROM reservations r
       LEFT JOIN users u ON r.user_id = u.id
@@ -97,6 +100,10 @@ exports.getAllAdminBookings = async (req, res) => {
         SELECT reservation_id,
           DATE_FORMAT(MAX(TIMESTAMP(check_out_date, check_out_time)),
                       '%Y-%m-%d %H:%i:%s') AS latest_checkout,
+          DATE_FORMAT(MIN(TIMESTAMP(check_in_date, check_in_time)),
+                      '%Y-%m-%d %H:%i:%s') AS earliest_checkin,
+          SUM(CASE WHEN check_in_date IS NULL OR check_in_time IS NULL
+                   THEN 1 ELSE 0 END) AS incomplete_checkin_items,
           COUNT(*) AS total_checkout_items,
           SUM(CASE WHEN check_out_date IS NULL OR check_out_time IS NULL THEN 1 ELSE 0 END)
             AS incomplete_checkout_items
@@ -183,7 +190,8 @@ exports.updateAdminBookingStatus = async (req, res) => {
     }
 
     const [existingRows] = await db.promise().query(
-      `SELECT id, reservation_status, COALESCE(is_checked_in, 0) AS is_checked_in
+      `SELECT id, reservation_status, COALESCE(is_checked_in, 0) AS is_checked_in,
+              checked_in_at
        FROM reservations WHERE id = ? LIMIT 1`,
       [reservationId],
     );
@@ -200,7 +208,7 @@ exports.updateAdminBookingStatus = async (req, res) => {
 
     // Match the Admin dashboard: cancellation/status management is only
     // available before check-in. Never reopen terminal reservation history.
-    if (Number(reservation.is_checked_in) !== 0) {
+    if (Number(reservation.is_checked_in) !== 0 || reservation.checked_in_at != null) {
       return res.status(409).json({
         success: false,
         code: "RESERVATION_ALREADY_CHECKED_IN",
@@ -215,12 +223,50 @@ exports.updateAdminBookingStatus = async (req, res) => {
       });
     }
 
+    // UX/QA: Cancel Reservation is an administrative correction BEFORE the
+    // earliest scheduled check-in, never a substitute for No-Show or checkout.
+    // The server enforces this even if someone bypasses the hidden UI button.
+    if (status === "cancelled") {
+      if (!["pending", "approved"].includes(currentStatus)) {
+        return res.status(409).json({
+          success: false,
+          message: "Only future Pending or Approved reservations may be cancelled.",
+        });
+      }
+
+      const [windows] = await db.promise().query(
+        `SELECT COUNT(*) AS item_count,
+                SUM(CASE WHEN check_in_date IS NULL OR check_in_time IS NULL THEN 1 ELSE 0 END)
+                  AS invalid_items,
+                DATE_FORMAT(MIN(TIMESTAMP(check_in_date, check_in_time)),
+                            '%Y-%m-%d %H:%i:%s') AS earliest_checkin
+         FROM reservation_items WHERE reservation_id = ?`,
+        [reservationId],
+      );
+      const window = windows[0] || {};
+      const start = String(window.earliest_checkin || "");
+      if (Number(window.item_count) < 1 || Number(window.invalid_items) > 0 ||
+          !/^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$/.test(start)) {
+        return res.status(409).json({
+          success: false,
+          message: "Reservation schedule is incomplete. Review before cancelling.",
+        });
+      }
+      if (start <= getManilaDateTimeKey()) {
+        return res.status(409).json({
+          success: false,
+          message: "Cancellation is no longer available because the scheduled check-in has started or passed. Use Front Desk review or Admin No-Show after the final checkout.",
+        });
+      }
+    }
+
     if (status !== currentStatus) {
       // Recheck check-in and the original status in the UPDATE itself. This
       // prevents a concurrent check-in/status change from being overwritten.
       const [result] = await db.promise().query(
         `UPDATE reservations SET reservation_status = ?
          WHERE id = ? AND COALESCE(is_checked_in, 0) = 0
+           AND checked_in_at IS NULL
            AND reservation_status = ?`,
         [status, reservationId, reservation.reservation_status],
       );
