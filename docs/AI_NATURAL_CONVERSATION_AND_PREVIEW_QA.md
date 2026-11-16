@@ -42,3 +42,29 @@ Second command is optional if that additional policy test exists locally.
 12. Regression: online booking two-day advance, role protection, payments and existing voice feature unaffected.
 
 Report PASS / FAIL and screenshot for each. Do not deploy to production until tester approval.
+
+## Deferred UI/UX stage — cross-page chatbot stability (2026-11-16)
+
+### UI finding AI-UI-001 — Customer Accommodations page
+
+**Observed at localhost** `/frontend/customerHTML/rooms.html` in desktop Chrome while opening **Ask AI About This** for a Single Room: the chat window visually overlaps a large portion of the accommodation cards, the chat header is not visible in the shown viewport, and the expanded voice toolbar uses considerable space above the conversation. This is a visual QA finding; a screenshot alone does not establish the root cause. **Status: OPEN / defer until dedicated chatbot UI/UX polish.**
+
+### Required behavior for every customer page
+
+- Chat widget must use one consistent, predictable overlay design and position on Home, Accommodations, Booking, Resort Map, My Bookings and Profile (where the widget is present); shared styling must not be overridden unexpectedly by page-specific CSS.
+- On desktop, floating chat opens fully inside the viewport with header (name, New, Minimize, Close), message history, voice controls and composer accessible. It must not push, shrink or reflow the underlying accommodation layout when opened, closed or maximized.
+- Respect top and bottom viewport boundaries, zoom, varying browser window heights, sticky headers and mobile safe areas. No clipped header, missing action buttons, unreachable input, double scroll traps or off-screen modal.
+- Keep voice UI optional/collapsible in **text chat**: no oversized Start Conversation toolbar covering chat messages. Do **not** change speech recognition, voice behavior or device-specific interaction during the UI-only stage.
+- Messages scroll independently within the chat, while the composer stays reachable; no unexpected jumps or scroll locking of the entire page. Minimize, maximize, close, reopen and new-chat controls must all work.
+- Room preview cards (photo, View Details, Book This, Ask About This) must fit the widget on every page and preserve correct room context, rates and not-yet-verified availability disclaimers.
+- Keep accessibility: keyboard navigation, visible focus, text scaling, adequate contrast and minimum tap targets; no horizontal overflow.
+- Responsive browser checks required at **390px, 440px, 768px, 1280px and 1440px**, plus short-height desktop and browser zoom. Validate open/close/minimize/maximize, scrolling, messaging, voice controls, and accommodation card actions on each relevant page.
+- CSS/layout fixes must preserve customer booking, payments, receipts, reservations and all five staff/customer roles. Prefer shared component styles plus scoped overrides; avoid broad global selectors and regressions.
+
+### Separate behavior finding from the same screenshot
+
+Following the catalog context fix, `Tell me more about Single Room (Pool side) C.` now refers to the selected room and listed ₱3,000 rate, but the answer focuses on check-in instead of summarizing verified amenities. Review natural, accommodation-specific detail responses separately from the UI redesign. **Behavior QA: PARTIAL PASS; content relevance improvement pending.**
+
+### Stage boundary
+
+**Documentation only.** Do not implement the redesigned chatbot, voice controls, database changes, production deployment or branch merge as part of this note. Complete text assistant QA, then implement cross-page UI polish in a focused `testing`-branch stage with screenshot-based PASS/FAIL.
