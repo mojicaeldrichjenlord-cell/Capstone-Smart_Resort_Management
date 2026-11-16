@@ -1297,6 +1297,9 @@ function renderCustomerSlotAvailability(card, request = null) {
     unavailable ? "mixed" : "available";
   if (pending) {
     note.textContent = "Checking time slots for this date... You can choose a slot while we check.";
+  } else if (errors === getSlotOptions(accommodation).length) {
+    // A service outage is not the same as four booked slots.
+    note.textContent = "Time-slot availability could not be verified. You may select a slot to retry; payment remains blocked until verification succeeds.";
   } else {
     const durationNote = duration > 1 ? " Extended slots checked for " + duration + " days." : "";
     note.textContent = available + " of 4 time slots currently show available." + durationNote +
