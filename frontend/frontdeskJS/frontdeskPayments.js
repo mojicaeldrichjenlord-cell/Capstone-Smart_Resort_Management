@@ -183,7 +183,7 @@ function updateSummary() {
   const remaining = allFrontDeskPayments.reduce((sum, booking) => {
     const status = getReservationStatus(booking);
 
-    if (["cancelled", "completed", "rejected"].includes(status)) {
+    if (["cancelled", "completed", "rejected", "no_show"].includes(status)) {
       return sum;
     }
 
@@ -225,7 +225,7 @@ function needsPaymentVerification(booking) {
     return false;
   }
 
-  if (["cancelled", "completed", "rejected"].includes(reservationStatus)) {
+  if (["cancelled", "completed", "rejected", "no_show"].includes(reservationStatus)) {
     return false;
   }
 
