@@ -96,7 +96,7 @@ function setup(config = {}) {
       };
     },
     AbortController: FakeAbortController, Date, JSON, Promise, Number, String,
-    Object, WeakMap, console, setTimeout: callback => {
+    Object, WeakMap, console: { error() {}, log() {} }, setTimeout: callback => {
       queueMicrotask(callback);
       return 1;
     }, clearTimeout: () => {},
