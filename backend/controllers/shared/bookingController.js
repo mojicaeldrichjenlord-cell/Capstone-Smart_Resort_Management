@@ -701,7 +701,7 @@ async function checkReservationConflicts(
       INNER JOIN reservations r ON ri.reservation_id = r.id
       INNER JOIN accommodations a ON ri.accommodation_id = a.id
       WHERE ri.accommodation_id = ?
-        AND LOWER(COALESCE(r.reservation_status, 'pending')) NOT IN ('cancelled', 'rejected', 'completed')
+        AND LOWER(COALESCE(r.reservation_status, 'pending')) NOT IN ('cancelled', 'rejected', 'completed', 'no_show')
         AND LOWER(COALESCE(r.payment_status, 'pending')) NOT IN ('rejected', 'refunded')
         AND TIMESTAMP(ri.check_in_date, ri.check_in_time) < TIMESTAMP(?, ?)
         AND TIMESTAMP(?, ?) < TIMESTAMP(ri.check_out_date, ri.check_out_time)
@@ -2572,6 +2572,15 @@ exports.updatePaymentStatus = async (req, res) => {
     }
 
     const reservation = rows[0];
+    // A terminal No-Show cannot be revived through a payment-status route.
+    // Reconciliation of recorded payments requires a separate audited process.
+    if (["no_show", "completed", "cancelled", "rejected"].includes(
+      String(reservation.reservation_status || "").toLowerCase()
+    )) {
+      return res.status(409).json({
+        message: "This reservation is closed. Payment history cannot be reset through status review.",
+      });
+    }
     const accommodationTotal = Number(reservation.accommodation_total || 0);
     const requiredDownpayment = Number(
       reservation.required_downpayment || accommodationTotal * 0.5,
@@ -2604,7 +2613,7 @@ exports.updatePaymentStatus = async (req, res) => {
       remainingBalance = accommodationTotal;
 
       if (
-        !["cancelled", "completed", "rejected"].includes(nextReservationStatus)
+        !["cancelled", "completed", "rejected", "no_show"].includes(nextReservationStatus)
       ) {
         nextReservationStatus = "pending";
       }
@@ -2679,7 +2688,7 @@ exports.checkInBooking = async (req, res) => {
     const reservation = rows[0];
     const status = String(reservation.reservation_status || "").toLowerCase();
 
-    if (["cancelled", "rejected", "completed"].includes(status)) {
+    if (["cancelled", "rejected", "completed", "no_show"].includes(status)) {
       return res.status(400).json({
         message: "This reservation can no longer be checked in.",
       });
@@ -3053,7 +3062,7 @@ exports.addAccommodationToReservation = async (req, res) => {
       reservation.reservation_status || "",
     ).toLowerCase();
 
-    if (["cancelled", "rejected", "completed"].includes(reservationStatus)) {
+    if (["cancelled", "rejected", "completed", "no_show"].includes(reservationStatus)) {
       throw {
         status: 400,
         message:
@@ -3667,7 +3676,7 @@ exports.requestBookingModification = async (req, res) => {
     const reservation = reservationRows[0];
     const status = String(reservation.reservation_status || "").toLowerCase();
 
-    if (["cancelled", "rejected", "completed"].includes(status)) {
+    if (["cancelled", "rejected", "completed", "no_show"].includes(status)) {
       throw {
         status: 400,
         message: "This reservation can no longer be modified.",
