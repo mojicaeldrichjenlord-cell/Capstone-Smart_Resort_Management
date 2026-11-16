@@ -673,8 +673,9 @@ function isValidPhilippineMobileNumber(contactNo) {
   return /^09\d{9}$/.test(String(contactNo || "").trim());
 }
 
-function goToPaymentScreen(e) {
+async function goToPaymentScreen(e) {
   e.preventDefault();
+  if (manualPaymentChecking) return;
 
   const first_name = document.getElementById("firstName").value.trim();
   const middle_name = document.getElementById("middleName").value.trim();
@@ -701,6 +702,13 @@ function goToPaymentScreen(e) {
     showMessage("Please add at least one accommodation item.", "error");
     return;
   }
+  const cards = getManualBookingCards();
+  // Previously incomplete cards were omitted from collectBookingItems().
+  // Never proceed with only a subset of the selected accommodations.
+  if (items.length !== cards.length) {
+    showMessage("Select an accommodation, date and time slot for every item.", "error");
+    return;
+  }
 
   const reservationDateValidation =
     validateManualReservationDates(items, reservation_type);
@@ -722,6 +730,29 @@ function goToPaymentScreen(e) {
       scheduleValidation.itemIndex
     ];
     invalidCard?.querySelector(".slot-select")?.focus();
+    return;
+  }
+
+  // Advisory labels can go stale. Require a fresh conflict check for ALL
+  // selected schedules before writing the manual payment-page draft.
+  manualPaymentChecking = true;
+  updateManualPaymentNavigation();
+  let verified = false;
+  try {
+    verified = await verifyManualSlotsBeforePayment(cards);
+  } catch (error) {
+    console.error("Manual pre-payment schedule verification:", error);
+    showMessage("Unable to verify availability. Please retry.", "error");
+  } finally {
+    manualPaymentChecking = false;
+    updateManualPaymentNavigation();
+  }
+  if (!verified) return;
+  if (JSON.stringify(collectBookingItems()) !== JSON.stringify(items) ||
+      getManualReservationType() !== reservation_type ||
+      !validateManualReservationSchedules(items).valid) {
+    showMessage("Your schedule changed during verification. Please retry.", "error");
+    scheduleAllManualSlotChecks();
     return;
   }
 
