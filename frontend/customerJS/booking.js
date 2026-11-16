@@ -23,6 +23,9 @@ let bookingItemCounter = 0;
 // its own cancellable, debounced server request. Never trust a cached result
 // as a reservation guarantee: the server rechecks during booking creation.
 const customerAvailabilityRequests = new WeakMap();
+// Stage Booking-16: availability state for ALL time slots, keyed by room/date/duration.
+// Separate from the existing selected-item/final-payment verification requests.
+const customerSlotAvailabilityRequests = new WeakMap();
 let customerBookingSubmissionChecking = false;
 
 const bookingForm = document.getElementById("bookingForm");
@@ -459,10 +462,15 @@ function addBookingItem(preselectedId = null) {
       </div>
 
       <div class="booking-form-group">
-        <label>Time Slot</label>
-        <select class="slot-select" data-item-id="${itemId}">
+        <label for="slotSelect-${itemId}">Time Slot</label>
+        <select id="slotSelect-${itemId}" class="slot-select" data-item-id="${itemId}"
+          aria-describedby="slotStatus-${itemId}">
           <option value="">Select time slot</option>
         </select>
+        <small class="booking-slot-status" id="slotStatus-${itemId}" role="status"
+          aria-live="polite" data-state="incomplete">
+          Select an accommodation and date to check all time slots.
+        </small>
       </div>
 
       <div class="booking-form-group">
@@ -521,6 +529,7 @@ function addBookingItem(preselectedId = null) {
   if (removeBtn) {
     removeBtn.addEventListener("click", () => {
       cancelCustomerAvailabilityRequest(card);
+      cancelCustomerSlotAvailabilityRequest(card);
       card.remove();
       updateSummary();
       refreshTitles();
@@ -1104,19 +1113,17 @@ function collectBookingItems() {
 // change their choices. Payment page navigation remains blocked on conflicts.
 let lastCustomerAvailabilityWarning = "";
 
-function getCustomerCardSelection(card) {
-  const accommodationId = Number(card.querySelector(".accommodation-value")?.value || 0);
-  const date = String(card.querySelector(".date-input")?.value || "");
-  const slotType = String(card.querySelector(".slot-select")?.value || "");
-  const accommodation = getAccommodationById(accommodationId);
-  const slot = getSlotOptions(accommodation).find((choice) => choice.value === slotType);
+// Shared candidate builder for both selected-item checks and pre-checking
+// other time slots. Use the same cross-midnight/extended stay calculation.
+function buildCustomerSlotCandidate(accommodation, date, slotType, duration = 1) {
+  const slot = getSlotOptions(accommodation).find((option) => option.value === slotType);
   if (!accommodation || !slot || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
   const stayDuration = ["day_extended", "night_extended"].includes(slotType)
-    ? getStayDuration({ stay_duration: card.querySelector(".stay-duration-select")?.value })
+    ? Math.max(1, Math.min(5, Number(duration) || 1))
     : 1;
   const checkOutDate = calculateCheckOutDate(date, slot.start, slot.end, stayDuration);
   return {
-    accommodation_id: accommodationId,
+    accommodation_id: Number(accommodation.id),
     accommodation_name: accommodation.name,
     slot_type: slotType,
     check_in_date: date,
@@ -1124,6 +1131,15 @@ function getCustomerCardSelection(card) {
     start: `${date} ${slot.start}`,
     end: `${checkOutDate} ${slot.end}`,
   };
+}
+function getCustomerCardSelection(card) {
+  const accommodation = getAccommodationById(
+    Number(card.querySelector(".accommodation-value")?.value || 0)
+  );
+  const date = String(card.querySelector(".date-input")?.value || "");
+  const slotType = String(card.querySelector(".slot-select")?.value || "");
+  const duration = card.querySelector(".stay-duration-select")?.value || 1;
+  return buildCustomerSlotCandidate(accommodation, date, slotType, duration);
 }
 
 function getCustomerLocalConflict(card, selection) {
@@ -1217,6 +1233,9 @@ async function requestCustomerItemAvailability(selection, signal) {
 function scheduleAllCustomerAvailabilityChecks() {
   for (const card of document.querySelectorAll(".booking-item-card")) {
     cancelCustomerAvailabilityRequest(card);
+    // Availability labels are pre-checked even before a time slot is picked.
+    // This has a separate debounce/AbortController and short UI cache.
+    scheduleCustomerSlotAvailabilityCheck(card);
     const selection = getCustomerCardSelection(card);
     if (!selection) {
       setCustomerCardAvailability(card, "incomplete", "Select an accommodation, date, and time slot.");
