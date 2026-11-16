@@ -58,8 +58,9 @@ function setup({ conflict = () => false, fetchStatus = () => true } = {}) {
   const context = {
     getSlotOptions: () => slots,
     calculateCheckOutDate: (startDate, startTime, endTime, duration) => {
-      const result = new Date(startDate + "T00:00:00");
-      result.setDate(result.getDate() +
+      // UTC date-only arithmetic avoids timezone-dependent test failures.
+      const result = new Date(startDate + "T00:00:00Z");
+      result.setUTCDate(result.getUTCDate() +
         (duration > 1 ? duration : endTime <= startTime ? 1 : 0));
       return result.toISOString().slice(0, 10);
     },
