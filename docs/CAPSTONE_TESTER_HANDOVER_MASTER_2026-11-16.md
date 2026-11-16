@@ -81,7 +81,7 @@ Additional checks/migrations require separate documented scope; do not run produ
 - QA-16 Customer Booking early slots: QA-16A/C PASS; QA-16E missing secondary Time Slot choices FAIL → repair committed → **RETEST PASS** for four restored options and client-side overlap; date-change/capacity and actual server-booking conflict tests PENDING.
 - QA-17 Front Desk Manual Reservation slots: **QA-17B page PASS, QA-17C Walk-in slots PASS, QA-17D local overlap PASS, QA-17E Facebook/Messenger future-date PASS**; persisted server-side booking-conflict test pending.
 - QA-18 Customer Payment minimal layout: **QA-18A desktop PASS; QA-18B 390px PASS; QA-18C 440px PASS**; PayPal transaction/actual reservation checkout NOT TESTED.
-- QA-19 Front Desk Manual Payment minimal layout: **QA-19A desktop/full payment PASS; QA-19B GCash 50% PASS; QA-19C Maya selector PASS**; responsive 390/440 and actual payment/submission NOT TESTED.
+- QA-19 Front Desk Manual Payment minimal layout: **QA-19A desktop/full payment PASS; QA-19B GCash 50% PASS; QA-19C Maya selector PASS; QA-19D 390px tester-reported PASS**; 440px and actual payment/submission NOT TESTED.
 - QA-20 Admin Reports compact screen and A4 print: PENDING.
 - QA-14/15 AI accommodation data, chatbot and cross-page UI: PENDING.
 - Other fixes and all five-role regression smoke test: PENDING.
@@ -207,3 +207,9 @@ Additional checks/migrations require separate documented scope; do not run produ
 - Tester screenshot on localhost `frontend/adminHTML/admin-walkin-payment.html` shows Mode of Payment changed to **Maya / PayMaya** while Payment Type remains **50% Down Payment**. Optional transaction reference input placeholder updated to **Optional Maya reference**. Proof Screenshot remains required, with no file chosen.
 - Payment Breakdown values remain **Accommodation Payment Selected ₱750.00; Remaining Balance ₱750.00; Estimated Entrance Fee ₱250.00; Estimated to Collect at Arrival ₱1,000.00**. **QA-19C Maya UI selector and displayed calculations PASS.** No Maya transfer, proof upload, reservation submission, or DB write tested.
 - Next visual regression QA: **QA-19D Manual Payment responsive 390 × 844** using browser DevTools, verify Reservation Summary, Payment Breakdown, Payment Details, Maya selector, required proof input and Submit button remain readable and do not horizontally overflow. Do not click Submit Manual Reservation or choose a real proof screenshot.
+
+
+### QA-19D — Manual Payment 390px responsive tester result (November 17, 2026)
+- Tester explicitly reported **PASS** for Stage QA-19D Manual Payment 390 × 844 responsive view. This is **tester-reported PASS**, with no screenshot supplied in this turn; exact mobile layout/field details have not been independently inspected here.
+- QA-19D testing scope: Reservation Summary, Payment Breakdown, Payment Details, Maya selector, proof-upload control, Submit button and no horizontal overflow; no payment submission performed.
+- Next Stage QA-19E: verify same Manual Payment screen at **440 × 844**, inspecting single-column layout, readable GCash/Maya controls, amounts, upload and Submit controls; do not submit reservation/payment.
