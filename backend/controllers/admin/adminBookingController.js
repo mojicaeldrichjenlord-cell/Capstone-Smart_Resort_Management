@@ -246,7 +246,7 @@ exports.updateAdminBookingStatus = async (req, res) => {
       const window = windows[0] || {};
       const start = String(window.earliest_checkin || "");
       if (Number(window.item_count) < 1 || Number(window.invalid_items) > 0 ||
-          !/^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}$/.test(start)) {
+          !/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(start)) {
         return res.status(409).json({
           success: false,
           message: "Reservation schedule is incomplete. Review before cancelling.",
