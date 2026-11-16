@@ -21,9 +21,11 @@
   <link rel="icon" type="image/png" href="../images/arvic-logo.png" />
     <!-- Consistent, centered confirmation for accidental logout clicks. -->
     <link rel="stylesheet" href="../sharedCSS/logout-confirm.css" />
+    <!-- Payment-19 overrides load last; they never change shared role navbar. -->
+    <link rel="stylesheet" href="../adminCSS/admin-walkin-payment-minimal.css?v=20261117-payment19" />
   </head>
 
-  <body class="has-fixed-navbar">
+  <body class="has-fixed-navbar manual-payment-page">
     <!-- ======================================================
        ROLE-AWARE NAVBAR
     ======================================================= -->
@@ -60,27 +62,25 @@
       </a>
 
       <section class="payment-hero">
-        <h1>Manual Reservation Payment</h1>
+        <p class="manual-payment-eyebrow">STAFF RESERVATION CHECKOUT</p>
+        <h1>Review and collect payment</h1>
 
-        <p>
-          Choose payment method and payment type. For GCash/Maya manual
-          payments, the proof screenshot is required while the transaction
-          reference number is optional.
+        <p class="manual-payment-intro">
+          Review the reservation and collect payment based on the booking type.
+          GCash/Maya requires a proof screenshot; reference number is optional.
         </p>
       </section>
 
+      <!-- Stage Payment-19: shared Coastal Minimal, identical manual payment logic. -->
+      <!-- Direct grid children support a safe, date-independent mobile reading order. -->
       <section class="payment-card">
         <div class="payment-grid">
-          <!-- ======================================================
-             LEFT SIDE: SUMMARY AND FORM
-          ======================================================= -->
-          <div>
-            <section class="section-box">
+          <section class="section-box manual-payment-summary">
               <h2>Reservation Summary</h2>
               <div id="reservationSummaryList" class="summary-list"></div>
             </section>
 
-            <section class="section-box">
+          <section class="section-box manual-payment-details">
               <h2>Payment Details</h2>
 
               <div id="adminPaymentForm">
@@ -178,13 +178,8 @@
 
               <p id="adminPaymentMessage" class="message"></p>
             </section>
-          </div>
 
-          <!-- ======================================================
-             RIGHT SIDE: PAYMENT BREAKDOWN
-          ======================================================= -->
-          <div>
-            <section class="section-box">
+          <section class="section-box manual-payment-breakdown">
               <h2>Payment Breakdown</h2>
 
               <div class="payment-breakdown">
@@ -242,7 +237,6 @@
                 is shown as an estimate for front-desk collection.
               </div>
             </section>
-          </div>
         </div>
       </section>
     </main>
