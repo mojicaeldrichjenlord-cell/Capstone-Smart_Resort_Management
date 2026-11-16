@@ -190,3 +190,16 @@ test("Final pre-payment recheck rejects occupied slot and preserves draft safety
   assert.match(page, /validateManualReservationSchedules\(items\)/);
   assert.match(page, /getManualLocalConflict/);
 });
+
+
+test("Verified open manual slot enables payment navigation, no booking is created", async () => {
+  const h = setup({ type: "facebook" });
+  h.els[".slot-select"].value = "day_extended";
+  h.els[".date-input"].value = "2026-11-19";
+  const valid = await h.helpers.verifyManualSlotsBeforePayment([h.card]);
+  assert.equal(valid, true);
+  assert.equal(h.els[".manual-item-availability"].dataset.state, "available");
+  assert.equal(h.nextBtn.disabled, false);
+  assert.match(page, /manualPaymentChecking = true/);
+  assert.match(page, /verifyManualSlotsBeforePayment\(cards\)/);
+});
