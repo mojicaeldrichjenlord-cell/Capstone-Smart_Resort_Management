@@ -17,6 +17,8 @@
     <link rel="stylesheet" href="../css/style.css" />
     <link rel="stylesheet" href="../customerCSS/booking-payment.css" />
     <link rel="stylesheet" href="../sharedCSS/customer-navbar.css?v=20261115-scrollnav1" />
+    <!-- Stage Payment-18: presentation-only coastal minimalist overrides. -->
+    <link rel="stylesheet" href="../customerCSS/booking-payment-minimal.css?v=20261117-payment18" />
 
     <!-- ======================================================
        QR MODAL CSS
@@ -119,7 +121,7 @@
     <link rel="stylesheet" href="../sharedCSS/logout-confirm.css" />
   </head>
 
-  <body>
+  <body class="customer-payment-page">
     <!-- ======================================================
        CUSTOMER NAVBAR
     ======================================================= -->
@@ -156,7 +158,8 @@
 
       <div class="payment-card">
         <div class="payment-title-block">
-          <h1>Reservation Payment</h1>
+          <p class="payment-step-label">SECURE RESERVATION CHECKOUT</p>
+          <h1>Review and pay</h1>
 
           <p id="paymentPageIntro">
             Review your reservation and complete the required 50% accommodation
@@ -165,11 +168,10 @@
         </div>
 
         <div class="payment-grid">
-          <div class="payment-left">
             <!-- ======================================================
                RESERVATION SUMMARY
             ======================================================= -->
-            <section class="section-box">
+            <section class="section-box payment-reservation">
               <h2>Reservation Summary</h2>
               <div id="reservationSummaryList" class="summary-list"></div>
             </section>
@@ -177,8 +179,8 @@
             <!-- ======================================================
                PAYPAL-ONLY CUSTOMER PAYMENT
             ======================================================= -->
-            <section class="section-box">
-              <h2>Online Payment</h2>
+            <section class="section-box payment-checkout">
+              <h2>Pay with PayPal</h2>
 
               <!--
                 Customer online bookings use PayPal only.
@@ -191,35 +193,6 @@
 
               <div class="payment-form-wrapper">
                 <div class="payment-form-grid">
-                  <div class="payment-form-group full-width">
-                    <label>Payment Method</label>
-
-                    <div
-                      style="
-                        min-height: 48px;
-                        display: flex;
-                        align-items: center;
-                        justify-content: space-between;
-                        gap: 12px;
-                        padding: 12px 14px;
-                        border: 1px solid #cbd5e1;
-                        border-radius: 14px;
-                        background: #f8fafc;
-                      "
-                    >
-                      <div>
-                        <strong style="display:block;color:#0f172a;">
-                          PayPal
-                        </strong>
-                        <small class="field-help">
-                          Automated online payment for customer reservations.
-                        </small>
-                      </div>
-
-                      <span class="paypal-sandbox-badge">Live</span>
-                    </div>
-                  </div>
-
                   <div class="payment-form-group full-width">
                     <label for="paymentReminderNote">
                       Optional Payment Note
@@ -239,11 +212,11 @@
               >
                 <div class="paypal-payment-header">
                   <div>
-                    <p class="paypal-kicker">AUTOMATED ONLINE PAYMENT</p>
-                    <h3>Pay 50% with PayPal</h3>
+                    <p class="paypal-kicker">SECURE ONLINE PAYMENT</p>
+                    <h3>Complete your downpayment</h3>
                   </div>
 
-                  <span class="paypal-sandbox-badge">Live</span>
+                  <span class="paypal-sandbox-badge">PayPal</span>
                 </div>
 
                 <p class="paypal-payment-copy">
@@ -253,7 +226,7 @@
                 </p>
 
                 <div class="paypal-amount-row">
-                  <span>PayPal Downpayment</span>
+                  <span>Amount to pay now</span>
                   <strong id="paypalDownpaymentAmount">₱0.00</strong>
                 </div>
 
@@ -277,13 +250,11 @@
 
               <p id="paymentMessage" class="message"></p>
             </section>
-          </div>
 
-          <aside class="payment-right">
             <!-- ======================================================
                PAYMENT BREAKDOWN
             ======================================================= -->
-            <section class="section-box">
+            <section class="section-box payment-totals">
               <h2>Payment Breakdown</h2>
 
               <div class="payment-breakdown">
@@ -293,22 +264,22 @@
                 </div>
 
                 <div class="payment-row">
-                  <span>Required Down Payment 50%</span>
+                  <span>Downpayment due now (50%)</span>
                   <strong id="paymentDownpayment">₱0.00</strong>
                 </div>
 
                 <div class="payment-row">
-                  <span>Remaining 50% Onsite</span>
+                  <span>Remaining balance at resort</span>
                   <strong id="paymentRemaining">₱0.00</strong>
                 </div>
 
                 <div class="payment-row">
-                  <span>Estimated Entrance Fee</span>
+                  <span>Estimated entrance fee (onsite)</span>
                   <strong id="paymentEntranceFee">₱0.00</strong>
                 </div>
 
                 <div class="payment-row">
-                  <span>Total Reminder for Front Desk</span>
+                  <span>Estimated total due at resort</span>
                   <strong id="paymentFrontDeskReminder">₱0.00</strong>
                 </div>
               </div>
@@ -332,7 +303,7 @@
             <!-- ======================================================
                RESORT POLICY REMINDER
             ======================================================= -->
-            <section class="section-box resort-policy-reminder">
+            <section class="section-box resort-policy-reminder payment-policies">
               <h2>Resort Policy Reminder</h2>
 
               <div class="policy-list">
@@ -387,7 +358,6 @@
                 By continuing with PayPal, you agree to these resort policies.
               </div>
             </section>
-          </aside>
         </div>
       </div>
     </main>
