@@ -80,7 +80,7 @@ Additional checks/migrations require separate documented scope; do not run produ
 - QA-00 Git pull / branch / backend / database target: PENDING tester screenshot.
 - QA-16 Customer Booking early slots: QA-16A/C PASS; QA-16E missing secondary Time Slot choices FAIL → repair committed → **RETEST PASS** for four restored options and client-side overlap; date-change/capacity and actual server-booking conflict tests PENDING.
 - QA-17 Front Desk Manual Reservation slots: PENDING.
-- QA-18 Customer Payment minimal layout: QA-18A desktop PASS; QA-18B 390px responsive visual PASS; QA-18C 440px pending; PayPal transaction NOT TESTED.
+- QA-18 Customer Payment minimal layout: **QA-18A desktop PASS; QA-18B 390px PASS; QA-18C 440px PASS**; PayPal transaction/actual reservation checkout NOT TESTED.
 - QA-19 Front Desk Manual Payment minimal layout: PENDING.
 - QA-20 Admin Reports compact screen and A4 print: PENDING.
 - QA-14/15 AI accommodation data, chatbot and cross-page UI: PENDING.
@@ -151,3 +151,10 @@ Additional checks/migrations require separate documented scope; do not run produ
 - Latest tester screenshot confirms actual Chrome responsive **390 × 844** viewport; Customer Payment Resort Policy Reminder displays all **six policies 01–06**, readable text, and the policy-agreement reminder at bottom. No visible clipping/overlap/horizontal overflow in checked areas.
 - Previous 390px screenshots separately verified mobile navbar, Summary section, PayPal amount ₱1,500 and rendered button, and PayPal → Policies vertical order. Desktop QA previously confirmed amounts and sections.
 - **QA-18B 390px visual layout PASS**, limited to visible UI; PayPal payment/capture and final booking database writes have **NOT** been tested. Next stage QA-18C: responsive viewport **440 × 844**, verify Summary, Breakdown, PayPal, Policies order with readable amounts and no horizontal overflow, without clicking PayPal.
+
+
+### QA-18C — Customer Payment 440px mobile visual test (November 17, 2026)
+- Tester supplied 3 Chrome DevTools screenshots at **440 × 844** responsive viewport. The screenshots collectively show Reservation Summary → Payment Breakdown → PayPal → Resort Policies vertically, without apparent horizontal overflow or text clipping.
+- Breakdown figures remain: accommodation ₱3,000.00, downpayment ₱1,500.00, remaining accommodation ₱1,500.00, entrance estimate ₱2,750.00, and estimated due onsite ₱4,250.00. PayPal amount due ₱1,500.00. Resort Policies **01–06** and agreement reminder are readable.
+- **QA-18C 440px responsive visual PASS.** Prior QA-18A desktop and QA-18B 390px were also visually PASS. No real PayPal transaction, reservation creation, final checkout or cross-role integrations tested. Chrome warning "Tracking Prevention blocked access to storage" seen; browser privacy warning alone is not evidence of checkout failure; verify payment integration separately only in safe sandbox with authorization.
+- **NEXT QA:** Stage Manual Booking-17 Front Desk early slot availability, starting with login and navigation only; ensure appropriate Front Desk test account and local test DB, and do not submit a reservation/payment yet. Then Manual Payment-19, Admin Reports-20, and deferred AI and full regression.
