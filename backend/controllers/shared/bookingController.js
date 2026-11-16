@@ -622,7 +622,7 @@ function isScheduleWindowAlreadyEnded(item) {
 }
 
 function getScheduleEndedMessage(accommodationName = "Selected accommodation") {
-  return `${accommodationName} is no longer available for this time frame because the selected schedule has already ended. Please choose a schedule that has not ended yet.`;
+  return `Time slot already ended for ${accommodationName}. Please choose another time slot or a future date.`;
 }
 
 // ============================================================
@@ -716,7 +716,7 @@ async function checkReservationConflicts(
 
       throw {
         status: 409,
-        message: `${conflict.accommodation_name} is already reserved for the selected date and time. Please choose another date, slot, or accommodation.`,
+        message: `${conflict.accommodation_name} is already booked for this date and time slot. Please choose another available time slot, date, or accommodation.`,
       };
     }
   }
