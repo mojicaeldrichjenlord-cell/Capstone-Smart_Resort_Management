@@ -103,3 +103,7 @@ Additional checks/migrations require separate documented scope; do not run produ
 ### QA-16F — Date refresh (tester screenshot, November 17, 2026)
 - Customer Booking localhost: Item 1 Big Shade 2 Nov 19 Day Tour, Item 2 Big Shade 2 date changed to Nov 20. All four Item 2 slot options showed Available (Day Tour, Night, Day 23 Hours, Night 23 Hours). **Date-change availability labels: PASS.** This is a UI precheck, not a server-side reservation conflict PASS.
 - **Capacity-field verification: PENDING** because native Time Slot dropdown covered the field in tester screenshot. Next test is to close the dropdown and inspect Maximum Capacity and accommodation preview. Do not create or pay for a reservation.
+
+### QA-16G — Maximum Capacity UI retest (November 17, 2026)
+- Tester screenshot: Customer Booking, Big Shade 2 (Cottage), both accommodation Item 1 and Item 2 show **Maximum Capacity 25** (no longer `-`). Item 2 has November 20, 2026, message `4 of 4 time slots currently show available`; not yet a selected slot, so the placeholder schedule/price preview is expected.
+- **QA-16G PASS** for capacity display and expected empty preview. Next QA-16H: select Day Tour for Item 2 and verify preview, selected-slot availability and two-item totals without proceeding to payment.
