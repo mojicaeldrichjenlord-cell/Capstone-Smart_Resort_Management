@@ -83,7 +83,7 @@ test("staff payment restrictions, proof validation and receipt flow untouched", 
   assert.match(js, /function updatePaymentRequirementUI/);
   assert.match(js, /function validateManualProofFile/);
   assert.match(js, /function submitManualReservation/);
-  assert.match(js, /isWalkIn \?\s*"full"/);
+  assert.match(js, /isWalkIn\s*\?\s*"full"/);
   assert.match(js, /"gcash", "paymaya"/);
   assert.match(js, /proofImage\.required = requiresScreenshot/);
   assert.match(js, /adminPaymentForm/);
