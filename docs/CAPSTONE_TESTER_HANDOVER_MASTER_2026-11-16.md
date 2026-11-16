@@ -23,6 +23,7 @@
 | Booking-17 Manual early slots | Shared Admin/Front Desk Manual Reservation date-first selection, per-slot indicators, occupied/ended slots disabled, mode-aware date rules, final pre-payment server recheck | frontend/adminJS/admin-walkin.js; adminCSS/admin-walkin.css; adminHTML/admin-walkin.html; backend/tests/manual-booking-early-slots.test.js; docs/MANUAL_BOOKING_EARLY_SLOT_QA_2026-11-16.md | 7/7 isolated mocked cases PASS | PENDING |
 | Payment-18 Customer Coastal Minimal | Customer Payment checkout white/slate/teal styling; direct grid areas, date-independent summary, mobile order summary -> breakdown -> PayPal -> policies, more readable labels and six unchanged policy terms; PayPal SDK/amount logic untouched | frontend/customerHTML/booking-payment.html; frontend/customerCSS/booking-payment-minimal.css; backend/tests/customer-payment-minimal-ui.test.js; docs/CUSTOMER_PAYMENT_MINIMAL_QA_2026-11-17.md | Structural/static 6/6 PASS, 18 critical IDs preserved; browser/SDK untested | PENDING |
 | Payment-19 Manual Payment Coastal Minimal | Front Desk Manual Payment page reworked into scoped white/slate/deep-teal cards; desktop summary/details left and breakdown right; mobile summary → breakdown → details; dynamic Amount to Pay Now styled; Cash/GCash/Maya, photo proof and role authorization untouched | frontend/adminHTML/admin-walkin-payment.html; frontend/adminCSS/admin-walkin-payment-minimal.css; backend/tests/manual-payment-minimal-ui.test.js; docs/MANUAL_PAYMENT_MINIMAL_QA_2026-11-17.md | Mapped 41 IDs preserved, 6/6 isolated static checks PASS | PENDING browser / real mode QA |
+| Reports-20 Compact Admin Reports & Print | Minimalist report header/filter/KPIs and muted compact Chart.js charts; zero-data state replaces empty graphs; A4 portrait prints KPI and chart-value tables instead of huge canvases, with estimate disclaimer | frontend/adminHTML/admin-reports.html; frontend/adminCSS/admin-reports-minimal.css; frontend/adminJS/admin-reports.js and admin-reports-presentation.js; backend/tests/admin-reports-minimal-ui.test.js; docs/ADMIN_REPORTS_MINIMAL_PRINT_QA_2026-11-17.md | 7/7 isolated static/dynamic checks PASS; print/browser not verified | PENDING |
 
 ### Prior unresolved findings — keep separate from the latest UI work
 - Finding #006 Front Desk expired manual booking schedule validation — programmer fix reported; tester retest PENDING.
@@ -53,7 +54,8 @@
 6. **AI 15:** every Customer page, header/composer visibility, restore/maximize, voice panel and existing voice controls, 390px/440px plus 768/1280/1440, zoom and short viewport.
 7. **Payment-18 Customer Payment minimalist UI:** verify scoped white/slate/teal style, summary/breakdown/PayPal/policies order on 390/440 mobile, unchanged six policies and all 50%/onsite amounts, PayPal SDK load/error/success only in safe sandbox, cancel transaction modal and focus; see docs/CUSTOMER_PAYMENT_MINIMAL_QA_2026-11-17.md. Never submit real money or create new Aiven bookings in production QA.
 8. **Payment-19 Manual Payment Coastal Minimal:** on signed Front Desk safe test session, verify Cash/GCash/Maya and Walk-in vs Facebook payment modes, proof required / reference optional, dynamic amount due and onsite estimates, mobile and desktop layout, submission protection. **Check current role guard: Admin is redirected at this payment page; never change authorization solely for visuals.** See docs/MANUAL_PAYMENT_MINIMAL_QA_2026-11-17.md.
-9. Smoke-test all five roles, including staff permissions, existing booking/payment/receipt/report functionality. Record screenshot and PASS/FAIL, fixes, retests, commits, and only then request approval for main/production.
+9. **Reports-20 Admin Reports compact UI & print:** verify 9 chart categories, muted compact cards, populated and zero-booking periods, date range updates, estimated financial KPIs, adjusted charge/refund disclaimer, A4 portrait printed table summary and mobile 390/440; see docs/ADMIN_REPORTS_MINIMAL_PRINT_QA_2026-11-17.md.
+10. Smoke-test all five roles, including staff permissions, existing booking/payment/receipt/report functionality. Record screenshot and PASS/FAIL, fixes, retests, commits, and only then request approval for main/production.
 
 ## Test commands — run from project root once owner authorizes QA
 ```powershell
@@ -64,6 +66,7 @@ node --test tests/customer-booking-early-slots.test.js
 node --test tests/manual-booking-early-slots.test.js
 node --test tests/customer-payment-minimal-ui.test.js
 node --test tests/manual-payment-minimal-ui.test.js
+node --test tests/admin-reports-minimal-ui.test.js
 node --test tests/ai-customer-chat-ui.test.js
 node --test tests/ai-natural-recommendations.test.js
 ```
