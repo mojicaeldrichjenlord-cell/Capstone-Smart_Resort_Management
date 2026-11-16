@@ -90,7 +90,7 @@ async function sendAiMessage(options = {}) {
 
   aiMessageInFlight = true;
   // New broad recommendation requests must not stay locked to an older card.
-  const freshSearch = isFreshAiAccommodationSearch(message);
+  const freshSearch = isFreshAiAccommodationSearch(message, getStoredAiContext());
   if (freshSearch) {
     const current = getStoredAiContext();
     delete current.room_id;
@@ -278,8 +278,21 @@ function getAiRecentConversationTurns(currentMessage) {
   return turns.slice(-6);
 }
 
-function isFreshAiAccommodationSearch(text) {
-  const input = String(text || "").toLowerCase();
+function isFreshAiAccommodationSearch(text, context = {}) {
+  const input = String(text || "").toLowerCase().trim();
+  const focusedName = String(context?.room_name || "").toLowerCase().trim();
+  const focusedId = Number(context?.room_id);
+
+  // "Ask AI About This" on the catalog page sets an exact room ID/name.
+  // Its historical suggested message starts with "Recommend", but it is
+  // NOT a new broad search. Preserve that selected room for the AI reply.
+  if (Number.isSafeInteger(focusedId) && focusedId > 0 && focusedName &&
+      /^recommend this accommodation for me\s*:/.test(input) &&
+      input.includes(focusedName)) {
+    return false;
+  }
+
+  // Explicit new searches should still clear the previously selected room.
   return /\b(?:recommend|suggest|ibang|other|more options|show rooms|list rooms|hanap|marerecommend|looking for)\b/.test(input) &&
     !/\b(?:magkano|how much|may cr|amenit|tell me more)\b/.test(input);
 }
