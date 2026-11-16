@@ -78,7 +78,7 @@ Additional checks/migrations require separate documented scope; do not run produ
 
 ## QA progress log (tester fills this one stage at a time)
 - QA-00 Git pull / branch / backend / database target: PENDING tester screenshot.
-- QA-16 Customer Booking early slots: QA-16A/C PASS; QA-16E missing secondary Time Slot choices FAIL → programmer repair committed, **RETEST PENDING**.
+- QA-16 Customer Booking early slots: QA-16A/C PASS; QA-16E missing secondary Time Slot choices FAIL → repair committed → **RETEST PASS** for four restored options and client-side overlap; date-change/capacity and actual server-booking conflict tests PENDING.
 - QA-17 Front Desk Manual Reservation slots: PENDING.
 - QA-18 Customer Payment minimal layout: PENDING.
 - QA-19 Front Desk Manual Payment minimal layout: PENDING.
@@ -92,3 +92,9 @@ Additional checks/migrations require separate documented scope; do not run produ
 - Programmer committed a **targeted frontend-only fix on testing** in `frontend/customerJS/booking.js`: passes the selected card directly to slot/duration/preview refresh helpers instead of relying solely on global item-ID lookup, and restores the four slot options if the option list is missing when the status check renders. No backend, DB, payment logic or reservation records changed.
 - Extended `backend/tests/customer-booking-early-slots.test.js` with two reproduction/repair tests. **8/8 isolated checks PASS.** Actual localhost retest **PENDING**. The root trigger of the intermittent missing options is not yet fully established; the guard is defensive.
 - **Tester next step:** From project root, `git pull --ff-only origin testing` (first verify clean changes outside previously modified `backend/node_modules`), then `Ctrl+Shift+R` the Customer Booking page. Recreate two items with same room/date and Day Tour on Item 1. Verify Item 2 now contains four labeled options, capacity populates, and overlapping Day Tour/extended options are disabled. If it still fails, collect read-only browser Console and DOM selection details; DO NOT make a reservation/payment.
+
+### QA-16E — Retest evidence (November 17, 2026)
+- Tester pulled the latest testing branch successfully (fast-forward from ca27685 to 12f421d).
+- Screenshot of Customer Booking localhost (Big Shade 2 Cottage, 2026-11-19, Item 2) confirms that all four slot choices are restored: Day Tour and Day 23 Hours = Unavailable/disabled; Night and Night 23 Hours = Available. Item 1 selected the same accommodation for Day Tour.
+- **QA-16E missing Time Slot regression RETEST PASS; client-side multi-item overlapping-slot labeling PASS.** This does not establish that the underlying server rejects existing bookings, because local smart_resort_test.bookings had zero records when inspected.
+- Max Capacity on Item 2 and status hint below the dropdown were not visible in the latest screenshot. **QA-16G date-switch and capacity validation PENDING.** Tester to change only Item 2 to 2026-11-20 and verify Day Tour/Day 23 Hours become Available (assuming no active reservations) and Capacity is populated, without submitting payment or reservation.
