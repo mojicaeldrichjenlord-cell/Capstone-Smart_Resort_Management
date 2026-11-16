@@ -1,0 +1,417 @@
+/*
+ * STAGE PAYMENT-18 — ARVIC COASTAL MINIMAL
+ * Customer Booking Payment page presentation only.
+ * This stylesheet intentionally loads after legacy payment.css and the
+ * customer navbar. It does not modify PayPal, pricing or payment JS.
+ * All selectors are scoped to the Customer Payment page to avoid affecting
+ * Customer Booking, the Front Desk manual payment page or other roles.
+ */
+.customer-payment-page {
+  --checkout-page: #f8fafc;
+  --checkout-card: #ffffff;
+  --checkout-text: #0f172a;
+  --checkout-muted: #64748b;
+  --checkout-border: #e2e8f0;
+  --checkout-teal: #0f766e;
+  --checkout-teal-tint: #f0fdfa;
+  background: var(--checkout-page);
+  color: var(--checkout-text);
+}
+
+.customer-payment-page .payment-page-wrapper {
+  width: min(1140px, calc(100% - 48px));
+  max-width: 1140px;
+  margin: 28px auto 64px;
+}
+
+.customer-payment-page .payment-top-actions { margin: 0 0 18px; }
+.customer-payment-page .back-btn {
+  padding: 8px 0;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  border-radius: 0;
+  color: #475569;
+  font-weight: 600;
+  font-size: .9rem;
+}
+.customer-payment-page .back-btn:hover {
+  color: var(--checkout-teal);
+  transform: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.customer-payment-page .payment-card {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.customer-payment-page .payment-title-block {
+  margin: 0 0 22px;
+  padding: 0;
+  border: 0;
+}
+.customer-payment-page .payment-step-label {
+  margin: 0 0 6px;
+  color: var(--checkout-teal);
+  font-size: .72rem;
+  letter-spacing: .075em;
+  font-weight: 750;
+}
+.customer-payment-page .payment-title-block h1 {
+  margin: 0 0 8px;
+  font-size: clamp(1.65rem, 2.5vw, 2rem);
+  font-weight: 750;
+  line-height: 1.2;
+  letter-spacing: -.035em;
+}
+.customer-payment-page .payment-title-block p:not(.payment-step-label) {
+  color: var(--checkout-muted);
+  font-size: .94rem;
+  line-height: 1.6;
+  max-width: 690px;
+}
+
+.customer-payment-page .payment-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.34fr) minmax(0, .88fr);
+  grid-template-areas: "summary breakdown" "checkout policies";
+  align-items: start;
+  gap: 18px;
+}
+.customer-payment-page .payment-reservation { grid-area: summary; }
+.customer-payment-page .payment-checkout { grid-area: checkout; }
+.customer-payment-page .payment-totals { grid-area: breakdown; }
+.customer-payment-page .payment-policies { grid-area: policies; }
+
+.customer-payment-page .payment-grid > .section-box {
+  min-width: 0;
+  padding: 23px 24px;
+  background: var(--checkout-card);
+  color: var(--checkout-text);
+  border: 1px solid var(--checkout-border);
+  border-radius: 17px;
+  box-shadow: 0 3px 16px rgba(15, 23, 42, .035);
+}
+.customer-payment-page .payment-grid .section-box h2 {
+  margin: 0 0 17px;
+  color: var(--checkout-text);
+  font-size: 1.04rem;
+  line-height: 1.35;
+  font-weight: 750;
+  letter-spacing: -.015em;
+}
+
+/* Clean readable accommodation details without nested colored cards. */
+.customer-payment-page .summary-list { gap: 0; }
+.customer-payment-page .summary-item {
+  padding: 12px 0 14px;
+  background: transparent;
+  color: #475569;
+  border: 0;
+  border-bottom: 1px solid var(--checkout-border);
+  border-radius: 0;
+  font-size: .89rem;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.customer-payment-page .summary-item:first-child { padding-top: 0; }
+.customer-payment-page .summary-item:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+.customer-payment-page .summary-item strong {
+  margin-bottom: 4px;
+  color: var(--checkout-text);
+  font-size: .97rem;
+  font-weight: 750;
+}
+
+/* The existing price and amount IDs are untouched: JS still fills them. */
+.customer-payment-page .payment-breakdown {
+  padding: 0;
+  background: transparent;
+  color: var(--checkout-text);
+  border-radius: 0;
+}
+.customer-payment-page .payment-row {
+  gap: 16px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--checkout-border);
+  align-items: flex-start;
+  font-size: .87rem;
+  line-height: 1.48;
+}
+.customer-payment-page .payment-row:first-child { padding-top: 0; }
+.customer-payment-page .payment-row span {
+  color: #475569;
+  min-width: 0;
+}
+.customer-payment-page .payment-row strong {
+  color: var(--checkout-text);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-weight: 750;
+  font-size: .92rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* One clear focal amount: the 50% accommodation downpayment due now. */
+.customer-payment-page .payment-row:nth-child(2) {
+  margin: 12px 0 5px;
+  padding: 16px 14px;
+  border: 1px solid #99f6e4;
+  border-radius: 12px;
+  background: var(--checkout-teal-tint);
+}
+.customer-payment-page .payment-row:nth-child(2) span {
+  color: #115e59;
+  font-weight: 700;
+}
+.customer-payment-page .payment-row:nth-child(2) strong {
+  color: var(--checkout-teal);
+  font-size: clamp(1.1rem, 2vw, 1.37rem);
+  font-weight: 800;
+}
+.customer-payment-page .payment-row:last-child {
+  margin: 5px 0 0;
+  padding: 14px 0 2px;
+  border-top: 1px solid var(--checkout-border);
+  border-bottom: 0;
+  font-size: .87rem;
+}
+.customer-payment-page .payment-row:last-child span,
+.customer-payment-page .payment-row:last-child strong { font-weight: 750; }
+
+.customer-payment-page .payment-note {
+  margin: 18px 0 0;
+  padding: 13px 14px;
+  border: 1px solid var(--checkout-border);
+  background: #f8fafc;
+  color: #475569;
+  border-radius: 11px;
+  font-size: .83rem;
+  line-height: 1.65;
+}
+.customer-payment-page .payment-note strong { color: var(--checkout-text); }
+
+/* PayPal remains the ONLY actual online checkout provider in Customer UI. */
+.customer-payment-page .payment-form-wrapper { margin-bottom: 16px; }
+.customer-payment-page .payment-form-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 11px;
+}
+.customer-payment-page .payment-form-group label {
+  color: #334155;
+  font-size: .88rem;
+  font-weight: 650;
+}
+.customer-payment-page .payment-form-group textarea {
+  min-height: 76px;
+  padding: 12px 13px;
+  border: 1px solid #cbd5e1;
+  border-radius: 11px;
+  background: #fff;
+  color: var(--checkout-text);
+  font-size: 1rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+.customer-payment-page .payment-form-group textarea:focus-visible {
+  border-color: var(--checkout-teal);
+  outline: 3px solid #ccfbf1;
+  outline-offset: 1px;
+  box-shadow: none;
+}
+.customer-payment-page .paypal-payment-section {
+  margin: 0;
+  padding: 17px 18px 18px;
+  border: 1px solid var(--checkout-border);
+  border-radius: 14px;
+  background: #f8fafc;
+}
+.customer-payment-page .paypal-payment-header {
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.customer-payment-page .paypal-kicker {
+  color: var(--checkout-teal);
+  font-size: .71rem;
+  font-weight: 750;
+  letter-spacing: .065em;
+}
+.customer-payment-page .paypal-payment-header h3 {
+  margin: 5px 0 0;
+  font-size: 1.05rem;
+  line-height: 1.35;
+  font-weight: 750;
+  color: var(--checkout-text);
+}
+.customer-payment-page .paypal-sandbox-badge {
+  flex: 0 0 auto;
+  min-height: 29px;
+  padding: 5px 9px;
+  border-radius: 8px;
+  background: #e7f7f4;
+  color: #115e59;
+  font-size: .73rem;
+  font-weight: 700;
+}
+.customer-payment-page .paypal-payment-copy,
+.customer-payment-page .paypal-payment-help {
+  color: #475569;
+  font-size: .88rem;
+  line-height: 1.65;
+}
+.customer-payment-page .paypal-amount-row {
+  align-items: center;
+  margin: 16px 0 14px;
+  padding: 15px 14px;
+  border: 1px solid var(--checkout-border);
+  background: #fff;
+  border-radius: 11px;
+  color: var(--checkout-text);
+  font-size: .88rem;
+}
+.customer-payment-page .paypal-amount-row strong {
+  color: var(--checkout-teal);
+  font-size: 1.2rem;
+  font-weight: 800;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+.customer-payment-page .paypal-sdk-status {
+  border: 1px solid var(--checkout-border);
+  background: #fff;
+  border-radius: 10px;
+  color: #475569;
+  font-size: .85rem;
+  line-height: 1.5;
+}
+.customer-payment-page #paypalButton {
+  width: 100%;
+  max-width: 100%;
+  min-height: 44px;
+}
+.customer-payment-page .paypal-payment-help { margin-top: 14px; }
+.customer-payment-page .message { font-weight: 650; line-height: 1.55; }
+
+/* Resort rules are neutral information, not six orange warning boxes. */
+.customer-payment-page .resort-policy-reminder {
+  background: #fff;
+  border-color: var(--checkout-border);
+}
+.customer-payment-page .resort-policy-reminder h2 {
+  color: var(--checkout-text);
+}
+.customer-payment-page .policy-list { gap: 0; }
+.customer-payment-page .policy-item {
+  grid-template-columns: 30px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--checkout-border);
+  border-radius: 0;
+  background: transparent;
+  color: #475569;
+}
+.customer-payment-page .policy-item:first-child { padding-top: 0; }
+.customer-payment-page .policy-item:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+.customer-payment-page .policy-item span {
+  width: 27px;
+  height: 27px;
+  border-radius: 8px;
+  background: #e6f5f2;
+  color: #115e59;
+  font-size: .72rem;
+  font-weight: 750;
+}
+.customer-payment-page .policy-item p {
+  color: #475569;
+  font-size: .85rem;
+  line-height: 1.65;
+}
+.customer-payment-page .policy-acknowledgement {
+  margin-top: 19px;
+  padding: 13px;
+  background: var(--checkout-teal-tint);
+  border: 1px solid #ccfbf1;
+  color: #115e59;
+  border-radius: 11px;
+  font-size: .84rem;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+/* Keep real cancellation warning visible but align its buttons with brand. */
+.customer-payment-page .cancel-transaction-box { border-radius: 18px; }
+.customer-payment-page .continue-booking-btn {
+  background: var(--checkout-teal);
+  color: #fff;
+  border-radius: 11px;
+  box-shadow: none;
+}
+.customer-payment-page .cancel-transaction-btn { border-radius: 11px; }
+.customer-payment-page .back-btn:focus-visible,
+.customer-payment-page .continue-booking-btn:focus-visible,
+.customer-payment-page .cancel-transaction-btn:focus-visible {
+  outline: 3px solid #5eead4;
+  outline-offset: 3px;
+}
+
+@media (max-width: 950px) {
+  /* Mobile/tablet reading order: see the amount BEFORE starting PayPal. */
+  .customer-payment-page .payment-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "summary"
+      "breakdown"
+      "checkout"
+      "policies";
+    gap: 14px;
+  }
+  .customer-payment-page .payment-page-wrapper {
+    width: min(720px, calc(100% - 28px));
+    margin-top: 18px;
+  }
+}
+
+@media (max-width: 560px) {
+  .customer-payment-page .payment-page-wrapper {
+    width: calc(100% - 24px);
+    margin-top: 14px;
+    margin-bottom: 38px;
+  }
+  .customer-payment-page .payment-top-actions { margin-bottom: 12px; }
+  .customer-payment-page .payment-title-block { margin-bottom: 17px; }
+  .customer-payment-page .payment-title-block h1 { font-size: 1.65rem; }
+  .customer-payment-page .payment-grid > .section-box {
+    padding: 18px 16px;
+    border-radius: 14px;
+  }
+  .customer-payment-page .paypal-payment-section { padding: 14px 12px; }
+  .customer-payment-page .paypal-payment-header { flex-wrap: wrap; }
+  .customer-payment-page .payment-row { gap: 9px; }
+  .customer-payment-page .payment-row span,
+  .customer-payment-page .payment-row strong { font-size: .82rem; }
+  .customer-payment-page .payment-row:nth-child(2) { padding: 14px 11px; }
+  .customer-payment-page .payment-row:nth-child(2) strong { font-size: 1.12rem; }
+  .customer-payment-page .payment-form-group textarea { font-size: 16px; }
+  .customer-payment-page .paypal-amount-row { gap: 9px; }
+  .customer-payment-page .paypal-amount-row strong { font-size: 1.07rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .customer-payment-page .back-btn,
+  .customer-payment-page .continue-booking-btn { transition: none; }
+}
