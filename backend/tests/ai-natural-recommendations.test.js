@@ -83,6 +83,36 @@ test("Frontend cards provide View Details, booking link and focused follow-up", 
   assert.match(roomPage, /room-card-\$\{Number\(room\.id\)\}/);
 });
 
+test("Focused accommodation amenities use both Admin description and inclusions", () => {
+  const { requestedAmenity, amenityEvidence, amenityReply } =
+    require("../controllers/ai/aiAccommodationAmenities");
+  assert.equal(requestedAmenity("May sarili bang CR yung Family Room A?"), "private_cr");
+  assert.equal(requestedAmenity("May aircon ba?"), "aircon");
+  assert.equal(requestedAmenity("Does it have a fridge?"), "ref");
+  assert.equal(requestedAmenity("May CR at aircon ba?"), null);
+  assert.equal(amenityEvidence({ description: "With private CR" }, "private_cr"), "yes");
+  assert.equal(amenityEvidence({ amenities: "Aircon, mini ref" }, "aircon"), "yes");
+  assert.equal(amenityEvidence({ amenities: "Aircon, mini ref" }, "ref"), "yes");
+  assert.equal(amenityEvidence({ amenities: "Shared CR" }, "private_cr"), "no");
+  assert.equal(amenityEvidence({ description: "No aircon" }, "aircon"), "no");
+  assert.equal(amenityEvidence({ description: "CR" }, "private_cr"), "unknown");
+  assert.equal(amenityEvidence({ description: "No information" }, "ref"), "unknown");
+  assert.equal(amenityEvidence({ amenities: "Aircon", description: "No aircon" }, "aircon"), "unknown");
+  const reply = amenityReply({ room_name: "Family Room A", amenities: "Private CR" },
+    "private_cr", "May sarili bang CR yung Family Room A?", "taglish");
+  assert.match(reply, /may sariling CR ang Family Room A/);
+  assert.doesNotMatch(reply, /check.in|booking date/i);
+});
+
+test("Simple amenity path does a read-only ID lookup without Gemini or booking writes", () => {
+  const source = fs.readFileSync(
+    path.join(__dirname, "../controllers/ai/geminiChatController.js"), "utf8");
+  assert.match(source, /mode: "verified_accommodation_amenity"/);
+  assert.match(source, /a\.description, a\.amenities/);
+  assert.match(source, /WHERE a\.id = \? LIMIT 1/);
+  assert.match(source, /amenityReply\(record, amenityKind, message, language\)/);
+});
+
 test("Voice control code remains out of scope for this text-behavior stage", () => {
   const source = fs.readFileSync(path.join(__dirname, "../../frontend/js/ai-chat.js"), "utf8");
   assert.doesNotMatch(source, /addEventListener\("pointerdown",/);
