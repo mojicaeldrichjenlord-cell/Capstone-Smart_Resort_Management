@@ -80,7 +80,7 @@ Additional checks/migrations require separate documented scope; do not run produ
 - QA-00 Git pull / branch / backend / database target: PENDING tester screenshot.
 - QA-16 Customer Booking early slots: QA-16A/C PASS; QA-16E missing secondary Time Slot choices FAIL → repair committed → **RETEST PASS** for four restored options and client-side overlap; date-change/capacity and actual server-booking conflict tests PENDING.
 - QA-17 Front Desk Manual Reservation slots: PENDING.
-- QA-18 Customer Payment minimal layout: QA-18A desktop PASS; QA-18B 390px top layout PARTIAL PASS (full vertical order pending); 440px and PayPal transaction NOT TESTED.
+- QA-18 Customer Payment minimal layout: QA-18A desktop PASS; QA-18B 390px responsive visual PASS; QA-18C 440px pending; PayPal transaction NOT TESTED.
 - QA-19 Front Desk Manual Payment minimal layout: PENDING.
 - QA-20 Admin Reports compact screen and A4 print: PENDING.
 - QA-14/15 AI accommodation data, chatbot and cross-page UI: PENDING.
@@ -145,3 +145,9 @@ Additional checks/migrations require separate documented scope; do not run produ
 - Tester switched Chrome device emulation to **390 × 844** and scrolled to the boundary between Customer PayPal section and Resort Policy Reminder.
 - Screenshot shows PayPal button and ₱1,500 due amount above policy card, policies **01–04** readable with clean spacing, no visible clipping/overlap or horizontal overflow in shown viewport.
 - **QA-18B still PARTIAL PASS**: policies **05–06** are below current scroll and not yet verified. Next tester action: scroll down inside the mobile preview to fully reveal policies 05/06 and bottom of policy card; send screenshot. No payment interaction.
+
+
+### QA-18B — 390x844 complete resort policy visual check (November 17, 2026)
+- Latest tester screenshot confirms actual Chrome responsive **390 × 844** viewport; Customer Payment Resort Policy Reminder displays all **six policies 01–06**, readable text, and the policy-agreement reminder at bottom. No visible clipping/overlap/horizontal overflow in checked areas.
+- Previous 390px screenshots separately verified mobile navbar, Summary section, PayPal amount ₱1,500 and rendered button, and PayPal → Policies vertical order. Desktop QA previously confirmed amounts and sections.
+- **QA-18B 390px visual layout PASS**, limited to visible UI; PayPal payment/capture and final booking database writes have **NOT** been tested. Next stage QA-18C: responsive viewport **440 × 844**, verify Summary, Breakdown, PayPal, Policies order with readable amounts and no horizontal overflow, without clicking PayPal.
