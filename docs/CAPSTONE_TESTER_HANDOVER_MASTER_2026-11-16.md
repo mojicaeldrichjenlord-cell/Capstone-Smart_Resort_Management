@@ -80,7 +80,7 @@ Additional checks/migrations require separate documented scope; do not run produ
 - QA-00 Git pull / branch / backend / database target: PENDING tester screenshot.
 - QA-16 Customer Booking early slots: QA-16A/C PASS; QA-16E missing secondary Time Slot choices FAIL → repair committed → **RETEST PASS** for four restored options and client-side overlap; date-change/capacity and actual server-booking conflict tests PENDING.
 - QA-17 Front Desk Manual Reservation slots: PENDING.
-- QA-18 Customer Payment minimal layout: PENDING.
+- QA-18 Customer Payment minimal layout: QA-18A Desktop layout/amounts PASS; mobile 390/440 and PayPal transaction NOT TESTED.
 - QA-19 Front Desk Manual Payment minimal layout: PENDING.
 - QA-20 Admin Reports compact screen and A4 print: PENDING.
 - QA-14/15 AI accommodation data, chatbot and cross-page UI: PENDING.
@@ -122,3 +122,10 @@ Additional checks/migrations require separate documented scope; do not run produ
 - Reservation Preview shows 2 accommodation items, **₱3,000.00** accommodation total, **₱1,500.00** 50% downpayment now, **₱1,500.00** remaining onsite, and **₱2,750.00** estimated entrance fee. These shown totals match the two ₱1,500 day-tour accommodation prices; entrance fee estimate not separately audited against guest inputs.
 - **QA-16I preview retest PASS**, including price totals. Confirmed no need for another code change to this UI symptom. **Server-side occupied-booking conflict test remains PENDING** because the tester's `smart_resort_test.bookings` was empty at the time of read-only inspection; do not mark that distinct test PASS.
 - Next QA: verify Customer Payment minimal UI with the existing safe booking draft by clicking Next to Payment (this only saves a draft and navigates; do not click any actual PayPal or payment/confirm controls).
+
+
+### QA-18A — Customer Payment desktop visual retest (November 17, 2026)
+- Tester submitted two localhost screenshots of `frontend/customerHTML/booking-payment.html` after two Big Shade 2 Day Tour booking draft items (Nov 19 and Nov 20, 2026, ₱1,500 each). Customer Payment desktop Coastal Minimal screen visibly renders Reservation Summary, Payment Breakdown, Pay with PayPal and six Resort Policy numbered rows with readable minimalist cards.
+- Displayed amounts: accommodation total ₱3,000, 50% PayPal due now ₱1,500, accommodation remaining ₱1,500, estimated entrance onsite ₱2,750, total estimated onsite ₱4,250. **Arithmetic matches; UI amount-label check PASS.** Entrance fee basis not independently recalculated from guest-count details.
+- PayPal SDK status displays `PayPal is ready. Click the PayPal button to continue.` and button is rendered; **SDK initial visual load PASS only.** No payment attempt, capture, confirmation, receipt, or booking write performed; **all actual transaction tests PENDING**.
+- **QA-18A desktop visual/amounts PASS.** Next: QA-18B inspect responsive mobile at 390px (DevTools), with expected vertical order Summary → Breakdown → PayPal → Policies. No live payment.
