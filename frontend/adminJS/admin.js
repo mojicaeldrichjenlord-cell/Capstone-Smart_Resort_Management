@@ -92,6 +92,19 @@ function getPhilippineDateKey(value) {
   return `${year}-${month}-${day}`;
 }
 
+// QA #017: Fixed-width Manila wall-clock string for No-Show eligibility.
+// MYSQL DATE_FORMAT checkout is local schedule time, NOT a UTC instant.
+function getManilaNoShowDateTimeKey(now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Manila",
+    year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(now);
+  const values = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day} ${values.hour}:${values.minute}:${values.second}`;
+}
+
 // ============================================================
 // STARTUP
 // ============================================================
@@ -616,6 +629,7 @@ function isClosedReservationStatus(
     "completed",
     "cancelled",
     "rejected",
+    "no_show",
   ].includes(
     String(status || "")
       .toLowerCase(),
@@ -1104,6 +1118,7 @@ function renderReservationCard(
           bookingId,
           bookingStatus,
         )}
+        ${renderNoShowButton(booking, bookingId, bookingStatus)}
       </div>
     </article>
   `;
@@ -1168,6 +1183,7 @@ function renderCancelButton(
       "cancelled",
       "completed",
       "rejected",
+      "no_show",
     ].includes(bookingStatus)
   ) {
     return "";
@@ -1184,6 +1200,29 @@ function renderCancelButton(
       title="Administrative cancellation before guest check-in. Existing payment records are preserved."
     >
       Cancel Reservation
+    </button>
+  `;
+}
+
+// QA #017: Explicit Admin review is required; never auto-mark or
+// show No-Show for a reservation that still has an active stay window.
+function isEligibleForAdminNoShow(booking, status) {
+  if (!["pending", "approved"].includes(status) || isBookingCheckedIn(booking) ||
+      booking.checked_in_at != null) return false;
+  if (Number(booking.total_checkout_items || 0) < 1 ||
+      Number(booking.incomplete_checkout_items || 0) > 0) return false;
+  const latest = String(booking.latest_checkout || "");
+  if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(latest)) return false;
+  return latest <= getManilaNoShowDateTimeKey();
+}
+
+function renderNoShowButton(booking, bookingId, bookingStatus) {
+  if (!bookingId || !isEligibleForAdminNoShow(booking, bookingStatus)) return "";
+  return `
+    <button type="button" class="action-btn no-show-booking-btn"
+      onclick="markReservationNoShow(${bookingId}, this)"
+      title="Admin review only. Requires final scheduled checkout to have passed; financial history remains unchanged.">
+      Mark as No-Show
     </button>
   `;
 }
@@ -1232,6 +1271,34 @@ async function cancelReservation(
       );
     },
   );
+}
+
+// QA #017: Only a signed Admin can mark a verified non-arrival as No-Show.
+// The backend rechecks ALL eligibility conditions and creates an audit record.
+async function markReservationNoShow(bookingId, button) {
+  const reservation = allBookings.find((item) => Number(item.id) === Number(bookingId));
+  if (!reservation || !isEligibleForAdminNoShow(reservation, getReservationStatus(reservation))) {
+    showMessage("This reservation is not eligible for No-Show. Refresh and review the schedule.", "error");
+    return;
+  }
+  const code = reservation.reservation_code || `#${bookingId}`;
+  if (!confirm(
+    `Mark reservation ${code} as NO-SHOW? Confirm the guest did NOT arrive and the final scheduled checkout has passed. This is an audited action; existing payments and receipts will be preserved.`
+  )) return;
+
+  await runAdminAction(button, "Marking No-Show...", async () => {
+    const adminToken = sessionStorage.getItem("adminToken");
+    if (!adminToken) throw new Error("Administrator session expired. Please log in again.");
+    const response = await fetch(`${API_BASE}/bookings/${bookingId}/no-show`, {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${adminToken}`, Accept: "application/json" },
+    });
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || "Could not mark reservation No-Show.");
+    }
+    showMessage("Reservation marked No-Show. Existing payment history was preserved.", "success");
+  });
 }
 
 async function runAdminAction(
@@ -2166,6 +2233,7 @@ function formatReservationStatus(
     cancelled: "Cancelled",
     completed: "Completed",
     rejected: "Rejected",
+    no_show: "No-Show",
   };
 
   return (
