@@ -4,7 +4,7 @@ const { generateGemini, geminiPublicError, geminiErrorStatus } = require("./gemi
 // Verified policy knowledge uses no paid Gemini calls or customer booking writes.
 const { matchGeneralPolicyQuestion, inferPolicyLanguage, getPolicyReply, policyPromptLines } = require("./resortPolicyKnowledge");
 const { validateAiStayWindow, calendarDayDifference, addCalendarDays } = require("./resortStayWindow");
-const { normalizeRecentTurns, wantsAccommodationCards, verifiedAccommodationCards } =
+const { normalizeRecentTurns, wantsAccommodationCards, verifiedAccommodationCards, tidyAssistantReply } =
   require("./aiConversationStyle");
 
 const ai = new GoogleGenAI({
@@ -957,7 +957,7 @@ async function buildQuotaLimitedAccommodationReply(payload, requestCatalog = nul
   ].filter(Boolean).join("\n\n");
   return {
     success: true, mode: "database_fallback",
-    reply, extracted_context: context,
+    reply: tidyAssistantReply(reply, message), extracted_context: context,
     matched_rooms: validWindow ? matches.slice(0, 5) : [],
     catalog_recommendations: validWindow ? [] : shown.map(room => ({
       id: room.id, name: room.room_name, image: room.image,
@@ -1380,7 +1380,7 @@ ${message}
 
     return res.status(200).json({
       success: true,
-      reply: response.text || "No response generated.",
+      reply: tidyAssistantReply(response.text || "No response generated.", message),
       matched_rooms: matchedRooms.slice(0, 5),
       catalog_recommendations: catalogRecommendations,
       extracted_context: mergedContext,
