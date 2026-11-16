@@ -1,14 +1,15 @@
-# Customer Payment Page — Minimalist UI/UX Proposal (NOT IMPLEMENTED)
+# Customer Payment Page — Coastal Minimal Design Proposal (APPROVED & IMPLEMENTED)
 **Date:** 2026-11-16
-**Status:** Proposal only; requires Programmer / Project Owner approval before any changes.
+**Status:** Approved by the Project Owner and implemented as Stage Payment-18 in `testing` on November 17, 2026. Browser/PayPal QA deferred until the development batch is complete. See `docs/CUSTOMER_PAYMENT_MINIMAL_QA_2026-11-17.md`.
 **Branch:** testing only
 
 ## Source files reviewed
 - frontend/customerHTML/booking-payment.html
-- frontend/customerCSS/booking-payment.css
+- frontend/customerCSS/booking-payment.css (legacy styles preserved)
+- frontend/customerCSS/booking-payment-minimal.css (new payment-only override)
 - frontend/customerJS/booking-payment.js
 
-## Current page facts
+## Baseline facts before redesign
 - Customer online checkout HTML is currently **PayPal-only** (hidden paymentMethod=paypal). It has an automated 50%-of-accommodation downpayment PayPal section, reservation summary, payment breakdown, and resort policies.
 - IDs feeding the live breakdown include paymentAccommodationTotal, paymentDownpayment, paymentRemaining, paymentEntranceFee, paymentFrontDeskReminder and paypalDownpaymentAmount.
 - Current breakdown is dark navy (#0f172a); policy uses warm orange/cream backgrounds and orange badges; PayPal/other surfaces are white/teal. The mixed treatments make the page look visually inconsistent.
@@ -54,5 +55,10 @@ On mobile, the breakdown goes before the real PayPal payment block.
 5. Reuse CSS tokens; remove redundant legacy visual CSS only if not referenced elsewhere. Avoid global selectors that affect other pages.
 6. Follow completed implementation with static checks then tester browser review across desktop, 390/440 mobile, zoom, long reservation summaries, PayPal loading/error/success, and cancel/return flow. Never run real payment on production as a UI test.
 
-## Approval checkpoint
-Owner should first confirm whether this visual direction is preferred. No changes to payment HTML/CSS/JS are authorized by this proposal alone. Testing remains paused until the full development batch is complete.
+## Approval and implementation log
+- Owner confirmed "okay sige" following the design proposal.
+- `frontend/customerHTML/booking-payment.html` presentation/structure and new scoped `frontend/customerCSS/booking-payment-minimal.css` implemented on `testing`.
+- `frontend/customerJS/booking-payment.js` and all backend and database/payment processing code remained unchanged.
+- Static checkout safety checks: 6/6 PASS; actual authenticated desktop/mobile/PayPal/browser QA PENDING by user request.
+- Full future test plan: `docs/CUSTOMER_PAYMENT_MINIMAL_QA_2026-11-17.md`; master handover: `docs/CAPSTONE_TESTER_HANDOVER_MASTER_2026-11-16.md`.
+- No merge to `main` or live production deployment.
