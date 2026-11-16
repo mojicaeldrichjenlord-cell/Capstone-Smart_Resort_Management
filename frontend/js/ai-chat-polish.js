@@ -32,6 +32,26 @@ document.addEventListener("DOMContentLoaded", () => {
 
   close?.addEventListener("click", () => toggle.focus());
 
+  // Minimize hides the popup but keeps chat history/context. Stop an active
+  // microphone session using the existing public voice API, never leave it
+  // listening invisibly behind a minimized window.
+  const headerActions = chat.querySelector(".ai-chat-header-actions");
+  if (headerActions && !document.getElementById("aiChatMinimize")) {
+    const minimize = document.createElement("button");
+    minimize.type = "button";
+    minimize.id = "aiChatMinimize";
+    minimize.className = "ai-chat-header-btn";
+    minimize.textContent = "−";
+    minimize.title = "Minimize";
+    minimize.setAttribute("aria-label", "Minimize chat");
+    headerActions.insertBefore(minimize, maximize || close);
+    minimize.addEventListener("click", () => {
+      window.ArvicVoice?.stopConversation?.("");
+      chat.classList.remove("show");
+      toggle.focus();
+    });
+  }
+
   // Collapse ONLY the visual panel. The voice API, speech recognition,
   // voice language setting, interrupt and stop handlers are preserved.
   if (panel && !document.getElementById("aiVoiceOptionsToggle")) {
