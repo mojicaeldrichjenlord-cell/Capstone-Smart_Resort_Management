@@ -500,6 +500,7 @@ function appendAiMessage(role, text, save = true) {
 
 function appendReplyActions(wrapper, originalText) {
   const actions = document.createElement("div");
+  actions.className = "ai-reply-actions"; // Shared compact controls across Customer pages.
   actions.style.display = "flex";
   actions.style.gap = "8px";
   actions.style.marginTop = "6px";
