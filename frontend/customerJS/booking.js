@@ -734,8 +734,8 @@ function setAccommodationSelection(card, itemId, accommodationId) {
     label.textContent = `${accommodation.name} (${accommodation.category_name})`;
   }
 
-  populateSlotOptions(itemId);
-  updateItemPreview(itemId);
+  populateSlotOptions(itemId, card);
+  updateItemPreview(itemId, card);
   updateSummary();
   scheduleAllCustomerAvailabilityChecks();
 }
@@ -942,8 +942,11 @@ function getAllowedStayDurations(slotType) {
     : [1];
 }
 
-function populateStayDurationOptions(itemId) {
-  const card = document.querySelector(`.booking-item-card[data-item-id="${itemId}"]`);
+function populateStayDurationOptions(itemId, cardOverride = null) {
+  // Reuse the exact selected card when available; do not accidentally update
+  // a different booking item during multi-accommodation changes.
+  const card = cardOverride ||
+    document.querySelector(`.booking-item-card[data-item-id="${itemId}"]`);
   if (!card) return;
 
   const slotType = card.querySelector(".slot-select")?.value || "";
@@ -968,8 +971,10 @@ function populateStayDurationOptions(itemId) {
   staySelect.disabled = !canExtendStay;
 }
 
-function populateSlotOptions(itemId) {
-  const card = document.querySelector(
+function populateSlotOptions(itemId, cardOverride = null) {
+  // The picker already knows which card was clicked. Using that same DOM
+  // reference avoids a stale/mismatched global item-ID lookup.
+  const card = cardOverride || document.querySelector(
     `.booking-item-card[data-item-id="${itemId}"]`
   );
 
@@ -979,12 +984,13 @@ function populateSlotOptions(itemId) {
   const slotSelect = card.querySelector(".slot-select");
   const capacityDisplay = card.querySelector(".capacity-display");
 
+  if (!slotSelect || !capacityDisplay) return;
   const accommodation = getAccommodationById(accommodationValue?.value);
 
   if (!accommodation) {
     slotSelect.innerHTML = `<option value="">Select time slot</option>`;
     capacityDisplay.value = "-";
-    populateStayDurationOptions(itemId);
+    populateStayDurationOptions(itemId, card);
     return;
   }
 
@@ -1006,11 +1012,11 @@ function populateSlotOptions(itemId) {
       .join("")}
   `;
 
-  populateStayDurationOptions(itemId);
+  populateStayDurationOptions(itemId, card);
 }
 
-function updateItemPreview(itemId) {
-  const card = document.querySelector(
+function updateItemPreview(itemId, cardOverride = null) {
+  const card = cardOverride || document.querySelector(
     `.booking-item-card[data-item-id="${itemId}"]`
   );
 
@@ -1260,6 +1266,21 @@ function renderCustomerSlotAvailability(card, request = null) {
     stay_duration: card.querySelector(".stay-duration-select")?.value || 1,
   });
   if (!slotSelect || !note) return false;
+
+  // QA-16E: Recover any card whose accommodation label/hidden ID loaded
+  // but whose native Time Slot options were not populated. In particular,
+  // additional booking items must not show "0 of 4" with only a placeholder.
+  // This is a UI-only repair: never infer server availability from it.
+  if (accommodation) {
+    const expectedSlots = getSlotOptions(accommodation);
+    const presentValues = [...slotSelect.options].map((option) => option.value);
+    const missingOptions = expectedSlots.some((slot) => !presentValues.includes(slot.value));
+    if (missingOptions) {
+      const itemId = Number(card.dataset.itemId);
+      populateSlotOptions(itemId, card);
+      updateItemPreview(itemId, card);
+    }
+  }
 
   if (!accommodation || !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
       isDateBefore(date, getCustomerEarliestBookingDate())) {
