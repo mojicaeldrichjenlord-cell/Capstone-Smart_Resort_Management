@@ -1171,21 +1171,25 @@ function getDisplayedEntranceFee(
   );
 }
 
+// Cancellation is only useful before the FIRST scheduled check-in.
+// After that, Front Desk reviews arrivals; after the LAST checkout, Admin
+// may mark a never-checked-in reservation as No-Show instead.
+function isEligibleForAdminCancellation(booking, status) {
+  if (!["pending", "approved"].includes(status) ||
+      isBookingCheckedIn(booking) || booking.checked_in_at != null) return false;
+  if (Number(booking.total_checkout_items || 0) < 1 ||
+      Number(booking.incomplete_checkin_items || 0) > 0) return false;
+  const earliest = String(booking.earliest_checkin || "");
+  if (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(earliest)) return false;
+  return earliest > getManilaNoShowDateTimeKey();
+}
+
 function renderCancelButton(
   booking,
   bookingId,
   bookingStatus,
 ) {
-  if (
-    !bookingId ||
-    isBookingCheckedIn(booking) ||
-    [
-      "cancelled",
-      "completed",
-      "rejected",
-      "no_show",
-    ].includes(bookingStatus)
-  ) {
+  if (!bookingId || !isEligibleForAdminCancellation(booking, bookingStatus)) {
     return "";
   }
 
@@ -1240,11 +1244,10 @@ async function cancelReservation(
   bookingId,
   button,
 ) {
-  if (!bookingId) {
-    showMessage(
-      "Invalid reservation ID.",
-      "error",
-    );
+  const reservation = allBookings.find((item) => Number(item.id) === Number(bookingId));
+  if (!bookingId || !reservation ||
+      !isEligibleForAdminCancellation(reservation, getReservationStatus(reservation))) {
+    showMessage("Cancellation is no longer available for this schedule. Refresh reservations.", "error");
     return;
   }
 
