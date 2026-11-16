@@ -80,7 +80,7 @@ Additional checks/migrations require separate documented scope; do not run produ
 - QA-00 Git pull / branch / backend / database target: PENDING tester screenshot.
 - QA-16 Customer Booking early slots: QA-16A/C PASS; QA-16E missing secondary Time Slot choices FAIL → repair committed → **RETEST PASS** for four restored options and client-side overlap; date-change/capacity and actual server-booking conflict tests PENDING.
 - QA-17 Front Desk Manual Reservation slots: PENDING.
-- QA-18 Customer Payment minimal layout: QA-18A Desktop layout/amounts PASS; mobile 390/440 and PayPal transaction NOT TESTED.
+- QA-18 Customer Payment minimal layout: QA-18A desktop PASS; QA-18B 390px top layout PARTIAL PASS (full vertical order pending); 440px and PayPal transaction NOT TESTED.
 - QA-19 Front Desk Manual Payment minimal layout: PENDING.
 - QA-20 Admin Reports compact screen and A4 print: PENDING.
 - QA-14/15 AI accommodation data, chatbot and cross-page UI: PENDING.
@@ -129,3 +129,9 @@ Additional checks/migrations require separate documented scope; do not run produ
 - Displayed amounts: accommodation total ₱3,000, 50% PayPal due now ₱1,500, accommodation remaining ₱1,500, estimated entrance onsite ₱2,750, total estimated onsite ₱4,250. **Arithmetic matches; UI amount-label check PASS.** Entrance fee basis not independently recalculated from guest-count details.
 - PayPal SDK status displays `PayPal is ready. Click the PayPal button to continue.` and button is rendered; **SDK initial visual load PASS only.** No payment attempt, capture, confirmation, receipt, or booking write performed; **all actual transaction tests PENDING**.
 - **QA-18A desktop visual/amounts PASS.** Next: QA-18B inspect responsive mobile at 390px (DevTools), with expected vertical order Summary → Breakdown → PayPal → Policies. No live payment.
+
+
+### QA-18B — Customer Payment 390px mobile emulation (November 17, 2026)
+- Tester enabled actual Chrome responsive device toolbar at **390 x 390** (previous desktop width with docked DevTools was not sufficient). Screenshot confirms Customer Payment mobile nav with hamburger, Back to Reservation Form, readable Review and pay heading, and first Reservation Summary card displayed in one column. No obvious horizontal overflow in the top visible portion.
+- **QA-18B PARTIAL PASS** for mobile activation/top viewport. Entire page, required stacking order Summary → Breakdown → PayPal → Policies and absence of horizontal overflow at lower sections **PENDING** because 390px viewport height cuts off below Summary.
+- Next tester action: keep width 390 and change responsive **height to 844**, then scroll down within phone screen and provide screenshot showing Payment Breakdown, PayPal and Resort Policies order. Never click PayPal or submit a payment.
