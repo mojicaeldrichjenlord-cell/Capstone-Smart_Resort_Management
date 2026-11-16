@@ -61,8 +61,9 @@ function amenityEvidence(room, kind) {
 function amenityReply(room, kind, message, language = "english") {
   const name = String(room?.room_name || room?.name || "accommodation").slice(0, 110);
   const status = amenityEvidence(room, kind);
-  const filipino = /\b(?:may|meron|ba|bang|yung|ung|sarili|sariling|po|kasama|naka)\b/i.test(String(message || "")) ||
-    ["tagalog", "taglish"].includes(String(language).toLowerCase());
+  // For live voice, an explicitly chosen language must win over speech
+  // transcript wording. Typed chat passes the detected conversation language.
+  const filipino = ["tagalog", "taglish"].includes(String(language).toLowerCase());
   const item = {
     private_cr: filipino ? "sariling CR" : "private bathroom",
     cr: filipino ? "CR" : "bathroom",
