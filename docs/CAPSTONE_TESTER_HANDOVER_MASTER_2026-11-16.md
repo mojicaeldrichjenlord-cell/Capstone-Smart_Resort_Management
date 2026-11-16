@@ -1,11 +1,11 @@
 # CAPSTONE — Master Development & Tester Handover Checklist
 **Project:** Arvic Seaside Beach Resort and Hotel — Smart Resort Booking System
-**As of:** November 17, 2026 (Asia/Manila); update this document as each improvement lands
+**As of:** November 17, 2026 (Asia/Manila); OWNER HAS AUTHORIZED LOCALHOST QA — update this document with each PASS/FAIL
 **Branch:** testing only (do not merge to main or deploy without approval)
-**Purpose:** Maintain one cumulative record of all recent development so the classmate Software Tester can later conduct ordered, screenshot-based QA **after the Project Owner declares the implementation batch complete**.
+**Purpose:** Guide the classmate Software Tester through ordered localhost QA, one stage at a time. The Project Owner authorized starting localhost QA on November 17, 2026. Merge to main ONLY after integrated regression QA PASS and owner approval.
 
 ## Workflow and safety
-- **CURRENT PHASE: DEVELOPMENT, NOT TESTING.** Do not ask the owner or classmate to run browser QA yet. At the user's signal that all changes are implemented, inspect latest testing branch, then walk the classmate through each section below, ONE test at a time with PASS/FAIL and screenshots.
+- **CURRENT PHASE: LOCALHOST QA AUTHORIZED (2026-11-17).** Guide the classmate Software Tester through ONE test at a time with screenshots and PASS/FAIL. Start from Stage QA-00: safe git pull / environment verification. No merge or production deployment before completed tests and explicit owner approval.
 - The tester should report actual errors with browser Console and backend logs, without exposing tokens or payment credentials. Fix failures on testing; rerun impacted regressions.
 - **Localhost != local DB.** The Project Owner has used a MySQL Workbench **Aiven** connection even during local development. Never assume localhost means an isolated DB. Verify the actual host/config before any test that writes booking/payment data. Prefer dedicated seeded test DB or read-only verification; do not mutate real production bookings/payments.
 - No merges to main, no Aiven migrations/bulk changes or production live-domain deployment without explicit approval. Preserve all five roles: Customer, Admin, Front Desk, Manager, Housekeeping.
@@ -45,7 +45,8 @@
 - The prior all-rooms bulk update script was withdrawn/deprecated. Do not apply it. Double/Family Room amenities require separate fact verification; no blanket overwrite.
 - Treat Aiven as production data: verify permissions, backup and target rows before any future database changes.
 
-## Final tester sequence (only AFTER owner says "development complete")
+## Active localhost tester sequence (authorized by owner)
+0. **QA-00 Git pull and environment:** on tester PC, from repository root check `git status` and `git branch --show-current`; if no local changes, run `git switch testing`, `git pull --ff-only origin testing`, and `git log -1 --oneline`. Then confirm backend uses `node server.js` from the backend directory and localhost frontend calls port 5000. Inspect only DB host category (local/private test vs Aiven), without pasting secrets. Do NOT alter DB or make payments. If git reports a conflict or dirty tree, STOP and ask for guidance; do not run `reset --hard`, `clean -fd`, or force checkout.
 1. Verify branch, environment, auth and available non-production fixtures. Review all stage docs; do not confuse server syntax PASS with browser PASS.
 2. **Customer Booking 16:** dates (2-day policy), booked/free/ended/extended slots, multi-item overlap, stale requests, selected-slot reset, Next to Payment blocked appropriately; desktop/mobile.
 3. **Manual Booking 17 + Finding 006:** Front Desk + Admin Manual Reservation, Walk-in today only vs Facebook today/future, slot availability, overlaps, expiration and pre-payment recheck.
@@ -57,7 +58,7 @@
 9. **Reports-20 Admin Reports compact UI & print:** verify 9 chart categories, muted compact cards, populated and zero-booking periods, date range updates, estimated financial KPIs, adjusted charge/refund disclaimer, A4 portrait printed table summary and mobile 390/440; see docs/ADMIN_REPORTS_MINIMAL_PRINT_QA_2026-11-17.md.
 10. Smoke-test all five roles, including staff permissions, existing booking/payment/receipt/report functionality. Record screenshot and PASS/FAIL, fixes, retests, commits, and only then request approval for main/production.
 
-## Test commands — run from project root once owner authorizes QA
+## Test commands — run from project root after Stage QA-00 environment verification
 ```powershell
 git switch testing
 git pull origin testing
@@ -74,3 +75,14 @@ Additional checks/migrations require separate documented scope; do not run produ
 
 ## Tester conversation handoff prompt
 "Continue the Arvic Seaside Capstone **from docs/CAPSTONE_TESTER_HANDOVER_MASTER_2026-11-16.md on the latest testing branch**. I am the Software Tester; the Programmer has completed the improvement batch and authorized QA. First confirm current branch/environment and use read-only or safe test data, then guide me **one stage and one test at a time**, marking PASS/FAIL from screenshots. Do not modify main, deploy production, change Aiven records or perform real payments without approval."
+
+## QA progress log (tester fills this one stage at a time)
+- QA-00 Git pull / branch / backend / database target: PENDING tester screenshot.
+- QA-16 Customer Booking early slots: PENDING.
+- QA-17 Front Desk Manual Reservation slots: PENDING.
+- QA-18 Customer Payment minimal layout: PENDING.
+- QA-19 Front Desk Manual Payment minimal layout: PENDING.
+- QA-20 Admin Reports compact screen and A4 print: PENDING.
+- QA-14/15 AI accommodation data, chatbot and cross-page UI: PENDING.
+- Other fixes and all five-role regression smoke test: PENDING.
+- Main-merge approval: NOT AUTHORIZED until full PASS and explicit owner sign-off.
