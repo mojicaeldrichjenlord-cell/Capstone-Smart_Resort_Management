@@ -519,10 +519,10 @@ function addBookingItem(preselectedId = null) {
       </div>
 
       <div class="walkin-group">
-        <label>Slot Type</label>
+        <label>Time Slot</label>
 
         <select class="slot-select" data-item-id="${itemId}">
-          <option value="">Select slot</option>
+          <option value="">Select time slot</option>
         </select>
       </div>
 
@@ -1056,7 +1056,7 @@ function populateSlotOptions(itemId) {
   const accommodation = getAccommodationById(accommodationValue?.value);
 
   if (!accommodation) {
-    slotSelect.innerHTML = `<option value="">Select slot</option>`;
+    slotSelect.innerHTML = `<option value="">Select time slot</option>`;
     capacityDisplay.value = "-";
     populateStayDurationOptions(itemId);
     return;
@@ -1067,7 +1067,7 @@ function populateSlotOptions(itemId) {
   const options = getSlotOptions(accommodation);
 
   slotSelect.innerHTML = `
-    <option value="">Select slot</option>
+    <option value="">Select time slot</option>
 
     ${options
       .map(
