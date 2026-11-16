@@ -139,6 +139,7 @@ async function loadRooms() {
     allRooms = Array.isArray(data) ? data : data.rooms || [];
 
     renderRooms(getFilteredRooms());
+    focusRequestedAiAccommodation();
   } catch (error) {
     console.error("loadRooms error:", error);
 
@@ -150,6 +151,19 @@ async function loadRooms() {
 
     updateCategoryCount("0 shown");
   }
+}
+
+// An AI preview's "View Details" link opens the real catalog and focuses
+// the matching accommodation. It does NOT claim the slot is booked/available.
+function focusRequestedAiAccommodation() {
+  const id = Number(new URLSearchParams(window.location.search).get("room_id"));
+  if (!Number.isSafeInteger(id) || id < 1) return;
+  const card = document.getElementById("room-card-" + id);
+  if (!card) return;
+  card.classList.add("ai-room-focused");
+  window.requestAnimationFrame(() => card.scrollIntoView({
+    behavior: "smooth", block: "center",
+  }));
 }
 
 // ============================================================
@@ -283,7 +297,7 @@ function renderRooms(rooms) {
         : "";
 
       return `
-        <div class="room-ai-card">
+        <div class="room-ai-card" id="room-card-${Number(room.id)}">
           <div class="room-photo-wrap">
             <img
               src="${imageSrc}"
