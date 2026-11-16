@@ -71,6 +71,13 @@ function setup({ conflict = () => false, fetchStatus = () => true } = {}) {
     formatTimeDisplay: time => time,
     getCustomerLocalConflict: conflict,
     populateStayDurationOptions: () => { calls.cleared++; },
+    // Emulate native options being rebuilt for a second accommodation card.
+    populateSlotOptions: (itemId, targetCard) => {
+      assert.equal(targetCard, card, "must refresh the exact selected card");
+      assert.equal(Number(itemId), Number(card.dataset.itemId));
+      selection.options = [{ value: "", disabled: false }, ...slots.map(slot =>
+        ({ value: slot.value, disabled: false, textContent: "" }))];
+    },
     updateItemPreview: () => {},
     updateSummary: () => {},
     setCustomerCardAvailability: (card, state, message) => calls.payment.push({ state, message }),
@@ -170,4 +177,69 @@ test("keeps existing final payment validation and two-day date policy", () => {
   assert.match(script, /requestCustomerItemAvailability\(selection/);
   assert.match(script, /function getCustomerLocalConflict/);
   assert.match(script, /nextBtn\.disabled\s*=\s*disabled/);
+});
+
+
+test("QA-16E: missing Item 2 slots are restored before showing statuses", () => {
+  const { card, selection, helpers, note } = setup({
+    conflict: (card, candidate) => candidate.slot_type === "day_tour"
+      ? "Overlaps item 1" : "",
+  });
+  card.dataset.itemId = "2";
+  // Actual browser failure: label/hidden accommodation ID exists, but
+  // native select has only its placeholder while the status said '0 of 4'.
+  selection.options = [{ value: "", disabled: false, textContent: "" }];
+  helpers.renderCustomerSlotAvailability(card, { results: {
+    day_tour: "available", night: "available",
+    day_extended: "available", night_extended: "available",
+  } });
+  assert.equal(selection.options.length, 5);
+  assert.equal(selection.options.find(o => o.value === "day_tour").disabled, true);
+  assert.match(selection.options.find(o => o.value === "day_tour").textContent,
+    /Unavailable/);
+  assert.equal(selection.options.find(o => o.value === "night").disabled, false);
+  assert.match(note.textContent, /3 of 4/);
+});
+
+test("QA-16E: extra booking card is populated directly without global ID lookup", () => {
+  const populate = section("function populateSlotOptions(", "function updateItemPreview(");
+  const options = [
+    {value: "day_tour", label: "Day Tour", start: "06:00:00", end: "17:00:00"},
+    {value: "night", label: "Night", start: "18:00:00", end: "05:00:00"},
+    {value: "day_extended", label: "Day 23 Hours", start: "06:00:00", end: "05:00:00"},
+    {value: "night_extended", label: "Night 23 Hours", start: "18:00:00", end: "17:00:00"},
+  ];
+  let nativeOptions = "";
+  const select = {
+    set innerHTML(value) { nativeOptions = value; },
+    get innerHTML() { return nativeOptions; },
+  };
+  const capacity = { value: "-" };
+  const card = {
+    querySelector(key) {
+      return ({
+        ".accommodation-value": { value: "77" },
+        ".slot-select": select, ".capacity-display": capacity,
+      })[key] || null;
+    },
+  };
+  let refreshedId = null;
+  const populateOptions = vm.runInNewContext(populate +
+    ";populateSlotOptions", {
+    document: { querySelector: () => { throw new Error("global lookup must not be used"); } },
+    getAccommodationById: id => Number(id) === 77
+      ? { id: 77, max_capacity: 25 } : null,
+    getSlotOptions: () => options,
+    formatTimeDisplay: time => time,
+    populateStayDurationOptions: (id, chosenCard) => {
+      assert.equal(chosenCard, card);
+      refreshedId = id;
+    },
+  });
+  populateOptions(2, card);
+  assert.equal(capacity.value, 25);
+  assert.equal(refreshedId, 2);
+  for (const opt of options) {
+    assert.match(nativeOptions, new RegExp('value="' + opt.value + '"'));
+  }
 });
