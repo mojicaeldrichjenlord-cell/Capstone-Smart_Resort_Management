@@ -78,7 +78,7 @@ Additional checks/migrations require separate documented scope; do not run produ
 
 ## QA progress log (tester fills this one stage at a time)
 - QA-00 Git pull / branch / backend / database target: PENDING tester screenshot.
-- QA-16 Customer Booking early slots: PENDING.
+- QA-16 Customer Booking early slots: QA-16A/C PASS; QA-16E missing secondary Time Slot choices FAIL → programmer repair committed, **RETEST PENDING**.
 - QA-17 Front Desk Manual Reservation slots: PENDING.
 - QA-18 Customer Payment minimal layout: PENDING.
 - QA-19 Front Desk Manual Payment minimal layout: PENDING.
@@ -86,3 +86,9 @@ Additional checks/migrations require separate documented scope; do not run produ
 - QA-14/15 AI accommodation data, chatbot and cross-page UI: PENDING.
 - Other fixes and all five-role regression smoke test: PENDING.
 - Main-merge approval: NOT AUTHORIZED until full PASS and explicit owner sign-off.
+
+### QA-16E — Active defect and targeted fix (November 17, 2026)
+- **Tester observed FAIL** on Customer Booking at localhost: Item 1 Big Shade 7, Nov 19, Day Tour selected; Item 2 showed Big Shade 7 accommodation label and date, but Time Slot had only `Select time slot`, Maximum Capacity remained `-`, and hint incorrectly showed `0 of 4 time slots currently show available`. Tester also reproduced with another accommodation. This is a UI-population failure, **not proof that all slots are booked**.
+- Programmer committed a **targeted frontend-only fix on testing** in `frontend/customerJS/booking.js`: passes the selected card directly to slot/duration/preview refresh helpers instead of relying solely on global item-ID lookup, and restores the four slot options if the option list is missing when the status check renders. No backend, DB, payment logic or reservation records changed.
+- Extended `backend/tests/customer-booking-early-slots.test.js` with two reproduction/repair tests. **8/8 isolated checks PASS.** Actual localhost retest **PENDING**. The root trigger of the intermittent missing options is not yet fully established; the guard is defensive.
+- **Tester next step:** From project root, `git pull --ff-only origin testing` (first verify clean changes outside previously modified `backend/node_modules`), then `Ctrl+Shift+R` the Customer Booking page. Recreate two items with same room/date and Day Tour on Item 1. Verify Item 2 now contains four labeled options, capacity populates, and overlapping Day Tour/extended options are disabled. If it still fails, collect read-only browser Console and DOM selection details; DO NOT make a reservation/payment.
