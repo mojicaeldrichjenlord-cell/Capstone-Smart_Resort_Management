@@ -462,6 +462,20 @@ function addBookingItem(preselectedId = null) {
       </div>
 
       <div class="booking-form-group">
+        <label>Reservation Date</label>
+        <input
+          type="date"
+          class="date-input"
+          data-item-id="${itemId}"
+          min="${earliestBookingDate}"
+          value="${earliestBookingDate}"
+        />
+        <small class="field-help">
+          Customer online reservations must be booked at least ${CUSTOMER_MIN_BOOKING_DAYS_AHEAD} days ahead.
+        </small>
+      </div>
+
+      <div class="booking-form-group">
         <label for="slotSelect-${itemId}">Time Slot</label>
         <select id="slotSelect-${itemId}" class="slot-select" data-item-id="${itemId}"
           aria-describedby="slotStatus-${itemId}">
@@ -480,20 +494,6 @@ function addBookingItem(preselectedId = null) {
         </select>
         <small class="field-help">
           Day Tour and Night are fixed schedules. Day/Night 22 Hours or 23 Hours can be 1 to 5 days depending on category.
-        </small>
-      </div>
-
-      <div class="booking-form-group">
-        <label>Reservation Date</label>
-        <input
-          type="date"
-          class="date-input"
-          data-item-id="${itemId}"
-          min="${earliestBookingDate}"
-          value="${earliestBookingDate}"
-        />
-        <small class="field-help">
-          Customer online reservations must be booked at least ${CUSTOMER_MIN_BOOKING_DAYS_AHEAD} days ahead.
         </small>
       </div>
 
