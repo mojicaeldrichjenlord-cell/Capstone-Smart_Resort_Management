@@ -98,3 +98,8 @@ Additional checks/migrations require separate documented scope; do not run produ
 - Screenshot of Customer Booking localhost (Big Shade 2 Cottage, 2026-11-19, Item 2) confirms that all four slot choices are restored: Day Tour and Day 23 Hours = Unavailable/disabled; Night and Night 23 Hours = Available. Item 1 selected the same accommodation for Day Tour.
 - **QA-16E missing Time Slot regression RETEST PASS; client-side multi-item overlapping-slot labeling PASS.** This does not establish that the underlying server rejects existing bookings, because local smart_resort_test.bookings had zero records when inspected.
 - Max Capacity on Item 2 and status hint below the dropdown were not visible in the latest screenshot. **QA-16G date-switch and capacity validation PENDING.** Tester to change only Item 2 to 2026-11-20 and verify Day Tour/Day 23 Hours become Available (assuming no active reservations) and Capacity is populated, without submitting payment or reservation.
+
+
+### QA-16F — Date refresh (tester screenshot, November 17, 2026)
+- Customer Booking localhost: Item 1 Big Shade 2 Nov 19 Day Tour, Item 2 Big Shade 2 date changed to Nov 20. All four Item 2 slot options showed Available (Day Tour, Night, Day 23 Hours, Night 23 Hours). **Date-change availability labels: PASS.** This is a UI precheck, not a server-side reservation conflict PASS.
+- **Capacity-field verification: PENDING** because native Time Slot dropdown covered the field in tester screenshot. Next test is to close the dropdown and inspect Maximum Capacity and accommodation preview. Do not create or pay for a reservation.
