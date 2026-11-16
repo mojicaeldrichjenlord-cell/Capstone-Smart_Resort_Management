@@ -81,7 +81,7 @@ Additional checks/migrations require separate documented scope; do not run produ
 - QA-16 Customer Booking early slots: QA-16A/C PASS; QA-16E missing secondary Time Slot choices FAIL → repair committed → **RETEST PASS** for four restored options and client-side overlap; date-change/capacity and actual server-booking conflict tests PENDING.
 - QA-17 Front Desk Manual Reservation slots: **QA-17B page PASS, QA-17C Walk-in slots PASS, QA-17D local overlap PASS, QA-17E Facebook/Messenger future-date PASS**; persisted server-side booking-conflict test pending.
 - QA-18 Customer Payment minimal layout: **QA-18A desktop PASS; QA-18B 390px PASS; QA-18C 440px PASS**; PayPal transaction/actual reservation checkout NOT TESTED.
-- QA-19 Front Desk Manual Payment minimal layout: **QA-19A desktop/full-payment PASS; QA-19B GCash 50% payment calculation PASS**; QA-19C Maya selector pending; actual submission NOT TESTED.
+- QA-19 Front Desk Manual Payment minimal layout: **QA-19A desktop/full payment PASS; QA-19B GCash 50% PASS; QA-19C Maya selector PASS**; responsive 390/440 and actual payment/submission NOT TESTED.
 - QA-20 Admin Reports compact screen and A4 print: PENDING.
 - QA-14/15 AI accommodation data, chatbot and cross-page UI: PENDING.
 - Other fixes and all five-role regression smoke test: PENDING.
@@ -201,3 +201,9 @@ Additional checks/migrations require separate documented scope; do not run produ
 - Tester screenshot: Front Desk manual Facebook/Messenger payment draft, Mode GCash, Payment Type `50% Down Payment`. Summary shows Accommodation Payment Selected **₱750.00**, Remaining Balance **₱750.00**, Estimated Entrance Fee **₱250.00**, Est. to Collect at Arrival **₱1,000.00**. These figures match a ₱1,500 accommodation total with 50% selected. Reminder text correctly separates entrance fee from immediate payment.
 - **QA-19B calculation/select controls PASS** for the visible breakdown. Highlighted Amount to Pay Now card not visible in screenshot; do not claim its rendered amount independently verified. Proof screenshot remains `No file chosen` and transaction reference optional; no submission or payment performed.
 - Next UI test: QA-19C switch payment method to `Maya / PayMaya` while keeping 50% Down Payment and no proof attached. Verify payment type retains selection, due amounts remain unchanged, and reference/upload helper text updates accordingly; do not click Submit Manual Reservation.
+
+
+### QA-19C — Maya/PayMaya 50% downpayment selector (November 17, 2026)
+- Tester screenshot on localhost `frontend/adminHTML/admin-walkin-payment.html` shows Mode of Payment changed to **Maya / PayMaya** while Payment Type remains **50% Down Payment**. Optional transaction reference input placeholder updated to **Optional Maya reference**. Proof Screenshot remains required, with no file chosen.
+- Payment Breakdown values remain **Accommodation Payment Selected ₱750.00; Remaining Balance ₱750.00; Estimated Entrance Fee ₱250.00; Estimated to Collect at Arrival ₱1,000.00**. **QA-19C Maya UI selector and displayed calculations PASS.** No Maya transfer, proof upload, reservation submission, or DB write tested.
+- Next visual regression QA: **QA-19D Manual Payment responsive 390 × 844** using browser DevTools, verify Reservation Summary, Payment Breakdown, Payment Details, Maya selector, required proof input and Submit button remain readable and do not horizontally overflow. Do not click Submit Manual Reservation or choose a real proof screenshot.
