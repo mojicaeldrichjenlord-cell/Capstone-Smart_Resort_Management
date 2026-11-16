@@ -3,6 +3,7 @@ const router = express.Router();
 const { requireAdminAuth } = require("../middleware/adminAuth");
 const { requireFrontDeskAuth } = require("../middleware/frontDeskAuth");
 const { requireOperationalBookingRead } = require("../middleware/operationalBookingReadAuth");
+const { markReservationNoShow } = require("../controllers/admin/adminNoShowController");
 
 // ============================================================
 // EXISTING ADMIN BOOKING OPERATIONS
@@ -89,6 +90,14 @@ router.put(
   "/:id/status",
   requireAdminAuth,
   updateAdminBookingStatus,
+);
+
+// Finding #017: never automatic; signed Admin reviews an expired, unchecked
+// reservation and explicitly confirms No-Show after its FINAL checkout.
+router.put(
+  "/:id/no-show",
+  requireAdminAuth,
+  markReservationNoShow,
 );
 
 // Guest counts and extra-guest charges may only be adjusted by Front Desk.
