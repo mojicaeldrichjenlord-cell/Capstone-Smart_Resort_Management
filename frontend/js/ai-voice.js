@@ -392,13 +392,17 @@
       status("Transcribing voice securely…");
       const response = await fetch(voiceApiBase() + "/ai/transcribe", {
         method: "POST", headers: {
-          "Content-Type": "audio/wav", "Authorization": "Bearer " + token
+          "Content-Type": "audio/wav",
+          "X-Arvic-Voice-Language": state.language,
+          "Authorization": "Bearer " + token
         }, body: wav, signal: controller.signal
       });
       const body = await response.json();
       if (!response.ok || !body.success) throw new Error(body.message || "Transcription failed");
       if (controller.signal.aborted || (kind === "live" && (!state.live || state.session !== session))) return;
-      const text = String(body.transcript || "").trim().slice(0, state.transcriptLimit);
+      const text = normalizeArvicVoiceTranscript(
+        String(body.transcript || "").trim().slice(0, state.transcriptLimit)
+      );
       const input = document.getElementById("aiChatInput");
       if (!input) return;
       if (kind === "dictation") {
@@ -529,6 +533,77 @@
     }, 800);
   }
 
+  // Improve STT interpretation for resort terms without rewriting ordinary
+  // speech. Web Speech still controls audio recognition; these corrections
+  // apply ONLY to voice transcripts, never typed customer messages.
+  function recentAccommodationVoiceContext() {
+    try {
+      if (typeof getAiRecentConversationTurns === "function") {
+        const turns = getAiRecentConversationTurns("") || [];
+        if (turns.slice(-6).some(turn =>
+          turn?.role === "user" && /\b(?:room|rooms|kwarto|kuwarto|accommodation|resort|cottage|nipa|hut|shade|pool ?side|pavilion|pavillion)\b/i.test(String(turn.text || "")))) {
+          return true;
+        }
+      }
+      if (typeof getStoredAiContext === "function") {
+        const context = getStoredAiContext() || {};
+        return Boolean(context.room_id || context.room_name);
+      }
+    } catch (_) { /* Voice is still usable if conversation storage is blocked. */ }
+    return false;
+  }
+
+  function normalizeArvicVoiceTranscript(raw, language = state.language) {
+    let text = String(raw || "").replace(/\s+/g, " ").trim();
+    // Never translate or "fix" foreign-language speech with Taglish rules.
+    if (!text || !["taglish", "english"].includes(language)) return text;
+
+    const resortTerms = /\b(?:room|rooms|kwarto|kuwarto|accommodation|resort|cottage|nipa|hut|shade|pool ?side|pavilion|pavillion|family|double)\b/i;
+    const inAccommodationConversation =
+      resortTerms.test(text) || recentAccommodationVoiceContext();
+    const searchingForAccommodation =
+      /\b(?:anong|ano|which|what|may|meron|available|show|pakita|patingin|preview|picture|photo|list|options?|hanap)\b/i.test(text);
+
+    // Edge Taglish frequently hears "full shade" instead of "pool shade"
+    // when customers are asking which resort accommodations exist.
+    if (searchingForAccommodation && inAccommodationConversation) {
+      text = text.replace(/\bfull[ -]shades?\b/gi, match =>
+        /shades$/i.test(match) ? "pool shades" : "pool shade");
+    }
+
+    // "May premyo ka ba?" is ambiguous without context: it can mean a
+    // genuine prize. Correct to "preview" ONLY in an accommodation discussion
+    // with a preview-looking request and no promotion/contest terminology.
+    const clearlyAboutPrize = /\b(?:raffle|contest|giveaway|winner|winning|panalo|paligsahan|claim|prize|promo(?:tion)?|discount)\b/i.test(text);
+    const looksLikePreviewQuestion =
+      /\b(?:may|meron|pwede|puwede|patingin|pakita|show|tingnan|picture|photos?|preview|send)\b/i.test(text);
+    if (inAccommodationConversation && looksLikePreviewQuestion && !clearlyAboutPrize) {
+      text = text.replace(/\bpre[ -]?myo\b/gi, "preview");
+    }
+    return text;
+  }
+
+  function chooseVoiceRecognitionAlternative(result) {
+    const primary = String(result?.[0]?.transcript || "");
+    if (!["taglish", "english"].includes(state.language) || !result || result.length < 2) return primary;
+    const accommodationContext = recentAccommodationVoiceContext() ||
+      /\b(?:room|cottage|shade|nipa|pavilion|resort|pool)\b/i.test(primary);
+    const primaryConfidence = Number(result[0]?.confidence);
+    for (let i = 1; i < Math.min(result.length, 3); i++) {
+      const alternative = String(result[i]?.transcript || "");
+      const confidence = Number(result[i]?.confidence);
+      if (Number.isFinite(primaryConfidence) && primaryConfidence > 0 &&
+          Number.isFinite(confidence) && confidence > 0 &&
+          confidence < primaryConfidence - 0.15) continue;
+      if (/\bpool[ -]shade\b/i.test(alternative) && /\bfull[ -]shade\b/i.test(primary)) {
+        return alternative;
+      }
+      if (accommodationContext && /\bpreview\b/i.test(alternative) &&
+          /\bpremyo\b/i.test(primary)) return alternative;
+    }
+    return primary;
+  }
+
   function beginRecognition(kind) {
     if (!SpeechRecognitionAPI || state.recognizer) return false;
     if (kind === "live" && !state.live) return false;
@@ -545,7 +620,9 @@
     recognizer.lang = getLocale().stt;
     recognizer.continuous = kind === "dictation";
     recognizer.interimResults = true;
-    recognizer.maxAlternatives = 1;
+    // Some browsers offer a better-scored "pool shade"/"preview" alternative.
+    // Prefer it only when confidence is comparable and resort context fits.
+    recognizer.maxAlternatives = 3;
     recognizer.onstart = () => {
       if (state.recognizer !== recognizer) return;
       status(kind === "dictation"
@@ -559,14 +636,14 @@
       let final = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i];
-        const transcript = String(result?.[0]?.transcript || "");
+        const transcript = chooseVoiceRecognitionAlternative(result);
         if (result.isFinal) final += transcript + " ";
         else pending += transcript;
       }
       if (final) state.finalText += final;
       const text = [state.draftPrefix, state.finalText.trim(), pending.trim()]
         .filter(Boolean).join(" ").slice(0, state.transcriptLimit);
-      input.value = text;
+      input.value = normalizeArvicVoiceTranscript(text);
       if (kind === "live") status("Heard: " + text.slice(0, 90));
     };
     recognizer.onerror = event => {
@@ -584,11 +661,14 @@
     recognizer.onend = () => {
       if (state.recognizer !== recognizer) return;
       state.recognizer = null;
-      const utterance = state.finalText.trim().slice(0, state.transcriptLimit);
+      const utterance = normalizeArvicVoiceTranscript(
+        state.finalText.trim().slice(0, state.transcriptLimit)
+      );
       const error = state.error;
       state.finalText = "";
       if (error === "fallback-recording") { void startRecordedInput(kind); return; }
       if (kind === "dictation") {
+        input.value = [state.draftPrefix, utterance].filter(Boolean).join(" ");
         state.mode = "idle";
         updateControls();
         status(utterance
