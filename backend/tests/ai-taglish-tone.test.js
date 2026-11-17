@@ -8,6 +8,9 @@ const path = require("node:path");
 const { verifiedPreviewReply } = require("../controllers/ai/aiVerifiedPreview");
 const { paymentReply, getPaymentStayKind } = require("../controllers/ai/aiFocusedPaymentReply");
 const { wantsAccommodationCards } = require("../controllers/ai/aiConversationStyle");
+const { amenityReply } = require("../controllers/ai/aiAccommodationAmenities");
+const { naturalRoomDetailsReply } = require("../controllers/ai/aiNaturalRoomDetails");
+const { focusedRoomOverview } = require("../controllers/ai/aiAccommodationDetails");
 
 const family = {
   room_name: "Family Room B", id: 100, status: "available",
@@ -87,4 +90,33 @@ test("Natural Taglish style does not alter payment or booking implementation", (
   assert.doesNotMatch(source,/\b(?:INSERT|UPDATE|DELETE)\s+(?:INTO|accommodations)\b/);
   assert.doesNotMatch(source,/generateGemini\(|paypal\.capture|createReservation\(/);
   assert.equal(getPaymentStayKind("overnight",{}),"overnight");
+});
+
+test("Taglish amenity replies are concise and transparent about unknown features", () => {
+  const verified={room_name:"Family Room B",category_name:"Room",amenities:"Private CR"};
+  assert.equal(amenityReply(verified,"private_cr","May sarili ba itong CR?","taglish"),
+    "Yes po, may sariling CR ang Family Room B.");
+  const uncertain=amenityReply({room_name:"Family Room B",category_name:"Room",amenities:"CR"},
+    "private_cr","May sarili bang CR?","taglish");
+  assert.match(uncertain,/hindi clear sa listing/);
+  assert.doesNotMatch(uncertain,/nakasaad|ninyong|pamagitan/);
+});
+
+test("Taglish room overview and details use everyday English terms without inventing amenities", () => {
+  const room={room_name:"Family Room B",category_name:"Room",capacity:20,
+    amenities:"Private CR | Kitchen",free_entrance_pax:8,overnight_price:8000};
+  const details=naturalRoomDetailsReply(room,"taglish");
+  assert.match(details,/included yung private CR at kitchen/i);
+  assert.match(details,/8 pax na free entrance/);
+  const overview=focusedRoomOverview(room,"taglish");
+  assert.match(overview,/Check niyo na lang po yung date at slot/);
+  assert.match(overview,/₱8,000/);
+  assert.doesNotMatch(overview,/confirmed booking|available on Saturday/);
+});
+
+test("Missing room amenities remain unknown in a friendly Taglish response", () => {
+  const room={room_name:"Family Room B",category_name:"Room",amenities:null};
+  const answer=naturalRoomDetailsReply(room,"taglish");
+  assert.match(answer,/Hindi pa po complete yung listed amenities/);
+  assert.doesNotMatch(answer,/aircon|private CR|kitchen/);
 });
