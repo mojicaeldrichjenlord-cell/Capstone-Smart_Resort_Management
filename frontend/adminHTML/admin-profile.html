@@ -94,6 +94,34 @@
       </section>
 
       <!-- ======================================================
+         RESORT PRICING SETTINGS
+         Admin alone can change the persistent Extra Guest Charge rate.
+      ======================================================= -->
+      <section class="profile-card" id="resortPricingSettings">
+        <h2>Resort Pricing Settings</h2>
+        <p class="guest-rate-hint">
+          Extra Guest Charge defaults to ₱250 per additional guest.
+          Only Admin can adjust this resort-wide price. Previously paid
+          charges remain recorded.
+        </p>
+        <form id="extraGuestRateForm" class="password-form">
+          <div class="profile-form-group">
+            <label for="adminExtraGuestRate">Extra Guest Rate Per Pax (₱)</label>
+            <input id="adminExtraGuestRate" class="guest-rate-admin-input"
+              type="number" value="250" min="0" max="100000" step="0.01"
+              inputmode="decimal" required disabled />
+            <small id="adminExtraGuestRateStatus" role="status">
+              Loading current rate...
+            </small>
+          </div>
+          <button type="submit" class="profile-submit-btn"
+            id="saveAdminExtraGuestRate" disabled>
+            Save Extra Guest Rate
+          </button>
+        </form>
+      </section>
+
+      <!-- ======================================================
          CHANGE PASSWORD FORM
       ======================================================= -->
       <section class="profile-card">
