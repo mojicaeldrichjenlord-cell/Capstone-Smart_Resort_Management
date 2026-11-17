@@ -111,8 +111,13 @@ function selectVerifiedPreviews(catalog, message, recentTurns = [], context = {}
           findExactNamedRoom(listed, turn.text)))?.text || ""
     : "";
   const source = currentCategory || directlyNamed ? current : prior;
-  const explicitName = directlyNamed || findExactNamedRoom(listed, source);
   const category = currentCategory || requestedCategory(source);
+  let explicitName = directlyNamed || findExactNamedRoom(listed, source);
+  // A correction like "Pool Shade, hindi Nipa Hut" must not use a
+  // negated accommodation name, even when one exactly matches a DB row.
+  if (category && explicitName && !categoryMatches(explicitName, category)) {
+    explicitName = null;
+  }
   const requestedGuests = guestCountFromText(current) || guestCountFromText(source) || 0;
 
   let matches = [];
