@@ -172,7 +172,7 @@ test("Named CR question about B overrides older selected A with exact DB lookup"
   assert.equal(queries[0].params[0], "Family Room B");
   assert.equal(out.mode, "verified_accommodation_amenity");
   assert.equal(out.extracted_context.room_name, "Family Room B");
-  assert.equal(out.reply, "Yes, Family Room B has a bathroom.");
+  assert.equal(out.reply, "Yes, Family Room B has a private bathroom.");
 });
 
 test("Pronoun CR question honors selected room, not previous other room", async () => {
