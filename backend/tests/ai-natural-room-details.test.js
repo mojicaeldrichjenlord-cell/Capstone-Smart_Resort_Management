@@ -71,7 +71,7 @@ test("Family A and B answer from their own verified amenities and free pax", () 
 
 test("Single-feature English/Taglish CR stays direct", () => {
   assert.equal(amenityReply(familyA, "cr", "Does it have a CR?", "english"),
-    "Yes, Family Room A has a bathroom.");
+    "Yes, Family Room A has a private bathroom.");
   assert.equal(amenityReply(familyB, "private_cr", "May sarili bang CR?", "taglish"),
     "Yes po, may sariling CR ang Family Room B.");
 });
@@ -188,7 +188,7 @@ test("Pronoun CR question honors selected room, not previous other room", async 
       mergeContext:(a,b)=>({...a,...b}),
     });
   assert.equal(queries[0].params[0], 99);
-  assert.equal(out.reply, "Yes, Family Room A has a bathroom.");
+  assert.equal(out.reply, "Yes, Family Room A has a private bathroom.");
 });
 
 test("Unrecognized Family Room C does not get A's amenities as an answer", async () => {
