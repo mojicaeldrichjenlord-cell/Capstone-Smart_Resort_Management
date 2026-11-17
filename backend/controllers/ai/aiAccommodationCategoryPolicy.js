@@ -38,7 +38,9 @@ function generalCategoryAmenitiesReply(message, focusedId, language = "english")
   // category-wide question ("mga cottages", "Function Areas") is new intent.
   const categoryWide = /\b(?:mga\s+cottages?|cottages|function\s+areas?|pavill?ions?)\b/.test(text);
   if (Number(focusedId) > 0 && !categoryWide) return null;
-  if (!/\b(?:amenit(?:y|ies)|inclusions?|included|kasama|meron|may)\b/.test(text)) return null;
+  // Require an actual amenity topic. "May cottages ba kayo?" is a
+  // booking/inventory question, NOT a question about amenities.
+  if (!/\b(?:amenit(?:y|ies)|inclusions?|included|kasama|facilit(?:y|ies)|features?|aircon|air[\s-]?conditioning|cr|bathroom|toilet|wifi|wi[\s-]?fi|refrigerator|fridge|karaoke|videoke|monoblock|tables?|chairs?)\b/.test(text)) return null;
   if (!/(?:\?|\b(?:ano|anong|what|which|may|meron|includes?|included|kasama)\b)/.test(text)) return null;
   // Never mistake the Room-category "Single Room Cottage" for a cottage.
   if (/\bsingle\s+room\s+cottage\b|\b(?:double|family)\s+room\b/.test(text)) return null;
