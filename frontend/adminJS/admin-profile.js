@@ -255,7 +255,7 @@ function setupResortPricingSettings() {
     const newRate = Number(input.value);
     if (!input.value.trim() || !Number.isFinite(newRate) ||
         newRate < 0 || newRate > 100000 ||
-        Math.round(newRate * 100) !== newRate * 100) {
+        Math.abs(Math.round(newRate * 100) - newRate * 100) > 1e-6) {
       showMessage("Enter a rate from ₱0 to ₱100,000 with up to 2 decimals.", "error");
       return;
     }
