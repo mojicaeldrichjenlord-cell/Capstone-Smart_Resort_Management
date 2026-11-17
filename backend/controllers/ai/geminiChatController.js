@@ -1048,6 +1048,31 @@ exports.chatWithGemini = async (req, res) => {
       });
     }
 
+    // Broad category amenities can be answered from the resort's confirmed
+    // policy without spending Gemini credits. This is strictly for generic
+    // Cottage/Function Area inquiries; specific rooms use fresh DB lookups.
+    const generalAmenityLanguage = normalizeLanguageStyle(req.body.voice_language) ||
+      (/\b(?:ano|anong|mga|may|meron|kasama|po|kubo)\b/i.test(message)
+        ? "taglish" : null) ||
+      detectLanguageFromMessage(message) ||
+      normalizeLanguageStyle(req.body.context?.language_style) || "english";
+    const categoryReply = generalCategoryAmenitiesReply(
+      message, req.body?.context?.room_id ?? req.body?.room_id, generalAmenityLanguage,
+    );
+    if (categoryReply) {
+      const savedContext = req.body.context && typeof req.body.context === "object" &&
+        !Array.isArray(req.body.context) ? req.body.context : {};
+      return res.status(200).json({
+        success: true, mode: "verified_category_amenities",
+        reply: categoryReply,
+        extracted_context: mergeContext(savedContext, {
+          language_style: generalAmenityLanguage,
+        }),
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null, recommendation_cards: [],
+      });
+    }
+
     // Amenity questions about the selected room use the FRESH Admin-managed
     // description and inclusions, not a guess from previous conversation.
     // This read-only path needs zero Gemini credits and never checks/creates bookings.
@@ -1161,31 +1186,6 @@ exports.chatWithGemini = async (req, res) => {
           recommendation_cards: [],
         });
       }
-    }
-
-    // Broad category amenities can be answered from the resort's confirmed
-    // policy without spending Gemini credits. This is strictly for generic
-    // Cottage/Function Area inquiries; specific rooms use fresh DB lookups.
-    const generalAmenityLanguage = normalizeLanguageStyle(req.body.voice_language) ||
-      (/\b(?:ano|anong|mga|may|meron|kasama|po|kubo)\b/i.test(message)
-        ? "taglish" : null) ||
-      detectLanguageFromMessage(message) ||
-      normalizeLanguageStyle(req.body.context?.language_style) || "english";
-    const categoryReply = generalCategoryAmenitiesReply(
-      message, req.body?.context?.room_id ?? req.body?.room_id, generalAmenityLanguage,
-    );
-    if (categoryReply) {
-      const savedContext = req.body.context && typeof req.body.context === "object" &&
-        !Array.isArray(req.body.context) ? req.body.context : {};
-      return res.status(200).json({
-        success: true, mode: "verified_category_amenities",
-        reply: categoryReply,
-        extracted_context: mergeContext(savedContext, {
-          language_style: generalAmenityLanguage,
-        }),
-        matched_rooms: [], catalog_recommendations: [],
-        alternative_dates: [], booking_preview: null, recommendation_cards: [],
-      });
     }
 
     // Bounded previous turns: conversation continuity without unlimited tokens.
