@@ -732,7 +732,7 @@ function getQuotaBookingGuidance(language) {
   return {
     english: "For online reservations, choose an accommodation and a fixed Day Tour (morning) or Night (evening) slot on the booking page; check-in/check-out times are not customizable. The required PayPal downpayment is 50% of the final accommodation price. Pay the remaining 50%, entrance fee, and applicable onsite charges at the resort. The secure payment page shows the exact amount before payment; a booking is not confirmed by this chat.",
     tagalog: "Para po sa online reservation, pumili kayo ng accommodation at fixed Day Tour (umaga) o Night (gabi) slot sa booking page; hindi custom ang check-in at check-out times. Ang kinakailangang downpayment sa PayPal ay 50% ng final accommodation price. Ang natitirang 50%, entrance fee, at iba pang applicable charges ay babayaran sa resort. Makikita ninyo ang eksaktong halaga sa secure payment page bago magbayad. Hindi po nakukumpirma ang booking sa chat.",
-    taglish: "Para po mag-book online, piliin ninyo ang accommodation at fixed Day Tour (umaga) o Night (gabi) slot sa booking page; hindi puwedeng custom ang oras. Ang required PayPal downpayment ay 50% ng final accommodation price. Ang remaining 50%, entrance fee, at applicable onsite charges ay babayaran sa resort. Makikita ninyo ang exact amount sa secure payment page bago magbayad. Hindi po confirmed ang booking sa chat.",
+    taglish: "For online booking po, choose a room at fixed Day Tour or Night slot sa booking page. Hindi custom yung check-in time. 50% ng final room price ang downpayment via PayPal; yung remaining 50%, entrance fees, at other charges ay sa resort babayaran. Check niyo po yung final amount sa payment page. Hindi pa confirmed ang booking dito sa chat.",
     spanish: "Para reservar en línea, elija alojamiento y horario en la página de reservas. El anticipo obligatorio por PayPal es el 50 % del precio final del alojamiento. El 50 % restante, la entrada y otros cargos se pagan en el resort. Confirme el importe exacto en la página de pago; el chat no confirma reservas.",
     mandarin: "在线预订时，请在预订页面选择住宿和时段。须通过 PayPal 支付最终住宿价格的 50% 作为订金。剩余 50%、入场费及其他现场费用在度假村支付。准确金额以安全付款页面为准；聊天不会确认预订。",
   }[language] || "For online reservations, pay 50% of the final accommodation price through PayPal on the secure booking page. Pay the balance and entrance fees onsite.";
@@ -772,7 +772,7 @@ function getQuotaPaymentIntro(language) {
   return {
     english: "AI is temporarily limited, but I can explain the resort's standard online booking payment process.",
     tagalog: "Pansamantalang limitado ang AI, pero maipapaliwanag ko po ang karaniwang online booking payment process ng resort.",
-    taglish: "Temporarily limited ang AI, pero maipapaliwanag ko po ang standard online booking payment process ng resort.",
+    taglish: "Medyo limited po yung AI ngayon, pero kaya ko pa ring i-explain yung online booking at payment steps.",
     spanish: "La IA está temporalmente limitada, pero puedo explicar el proceso de pago en línea del resort.",
     mandarin: "AI 暂时受限，但我可以说明度假村的在线预订付款流程。",
   }[language] || "AI is temporarily limited.";
@@ -849,7 +849,7 @@ async function buildQuotaLimitedAccommodationReply(payload, requestCatalog = nul
   const intro = {
     english: "Our AI service is temporarily limited, but these accommodation details come directly from the resort database.",
     tagalog: "Pansamantalang limitado ang AI, pero galing mismo sa resort database ang impormasyong ito.",
-    taglish: "Temporarily limited ang AI, pero galing mismo sa resort database ang accommodation details na ito.",
+    taglish: "Medyo limited po yung AI ngayon, pero galing pa rin sa resort database yung room details na ito.",
     spanish: "La IA está temporalmente limitada, pero estos datos provienen directamente de la base de datos del resort.",
     mandarin: "AI 服务暂时受限，但以下住宿信息直接来自度假村数据库。",
   }[language];
