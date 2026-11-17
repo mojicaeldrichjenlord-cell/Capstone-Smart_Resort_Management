@@ -342,7 +342,7 @@ test("Customer pages load AI chat before interactive voice and include voice sty
     const html = fs.readFileSync(path.resolve(
       __dirname, "../../frontend/customerHTML", page), "utf8");
     const chatIndex = html.indexOf('src="../js/ai-chat.js"');
-    const voiceIndex = html.indexOf('src="../js/ai-voice.js?v=20261117-sttqa1"');
+    const voiceIndex = html.indexOf('src="../js/ai-voice.js?v=20261117-accurate2"');
     assert.ok(chatIndex > 0 && voiceIndex > chatIndex);
     assert.match(html, /sharedCSS\/ai-voice\.css/);
   }
@@ -709,4 +709,14 @@ test("Existing alternate languages, transcript review, and cloud voice controls 
   assert.match(script,/const text = String\(body.transcript/);
   assert.match(script,/setInputMode/);
   assert.doesNotMatch(script,/\/api\/bookings|\/api\/paypal/);
+});
+
+test("Silent microphone does not spend credits or send transcription request", async () => {
+  const h = mount({savedLanguage:"taglish",audioAvailable:true,customerToken:"test-token"});
+  h.fire("aiMicBtn"); await h.settle();
+  for(let n=0;n<8;n++) h.audioProcessors[0].feed(0);
+  h.fire("aiMicBtn"); await h.settle();
+  assert.equal(h.transcriptionRequests.length,0);
+  assert.equal(h.requests.length,0);
+  assert.match(h.nodes.aiVoiceStatus.textContent,/No speech detected/i);
 });
