@@ -76,9 +76,11 @@ test("General category questions are short, accurate and category-scoped", () =>
 test("AI focused DB paths read category name and do not update DB", () => {
   const source = fs.readFileSync(path.join(__dirname,
     "../controllers/ai/geminiChatController.js"), "utf8");
-  const start = source.indexOf("// Amenity questions about the selected room");
+  const start = source.indexOf("// Broad category amenities can be answered");
+  const focused = source.indexOf("// Amenity questions about the selected room");
   const end = source.indexOf("// Bounded previous turns:", start);
-  assert.ok(start > 0 && end > start);
+  // General category questions must win over stale selected-room context.
+  assert.ok(start > 0 && focused > start && end > focused);
   const fast = source.slice(start, end);
   assert.match(fast, /c\.name AS category_name/);
   assert.match(fast, /verified_accommodation_amenity/);
