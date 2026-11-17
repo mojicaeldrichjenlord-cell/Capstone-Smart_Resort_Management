@@ -11,7 +11,8 @@ const script = fs.readFileSync(
 );
 
 function mount({ recognizerAvailable = true, savedLanguage = null, voices = [], customerToken = null,
-  cloudStatus = 503, audioAvailable = false, ios = false } = {}) {
+  cloudStatus = 503, audioAvailable = false, ios = false,
+  recentTurns = [], recordedTranscript = "How do I book a room?" } = {}) {
   const nodes = {};
   const recognitionInstances = [];
   const speechUtterances = [];
@@ -77,8 +78,13 @@ function mount({ recognizerAvailable = true, savedLanguage = null, voices = [], 
       this.started = false;
       this.onend?.();
     }
-    say(text, isFinal = true) {
-      const result = [{ transcript: text }];
+    say(text, isFinal = true, alternatives = []) {
+      const result = [
+        { transcript: text, confidence: 0.82 },
+        ...alternatives.map(item => typeof item === "string"
+          ? { transcript: item, confidence: 0.8 }
+          : item),
+      ];
       result.isFinal = isFinal;
       this.onresult({ resultIndex: 0, results: [result] });
     }
@@ -159,7 +165,7 @@ function mount({ recognizerAvailable = true, savedLanguage = null, voices = [], 
       if (String(url).endsWith("/ai/transcribe")) {
         transcriptionRequests.push({ url, opts });
         return { ok: true, async json() { return { success: true,
-          transcript: "How do I book a room?" }; } };
+          transcript: recordedTranscript }; } };
       }
       cloudRequests.push({ url, opts });
       return {
@@ -168,6 +174,8 @@ function mount({ recognizerAvailable = true, savedLanguage = null, voices = [], 
       };
     },
     console,
+    getAiRecentConversationTurns: () => recentTurns,
+    getStoredAiContext: () => ({}),
     sendAiMessage: async opts => {
       requests.push({ opts, message: nodes.aiChatInput.value });
       nodes.aiChatInput.value = "";
@@ -512,4 +520,90 @@ test("Mobile English fallback uses en-US before speech voices load", () => {
   const h = mount({ ios: true, voices: [] });
   h.voice.readAloud("Welcome!");
   assert.equal(h.speechUtterances[0].lang, "en-US");
+});
+
+test("Taglish voice recognizes resort Pool Shade even if browser hears full shade", async () => {
+  const h = mount({ savedLanguage: "taglish" });
+  h.fire("aiVoiceLive");
+  assert.equal(h.recognitionInstances[0].lang, "fil-PH");
+  assert.equal(h.recognitionInstances[0].maxAlternatives, 3);
+  h.recognitionInstances[0].say("Anong mga full shade meron kayo?");
+  h.recognitionInstances[0].stop();
+  await h.settle();
+  assert.equal(h.requests[0].message, "Anong mga pool shade meron kayo?");
+  assert.equal(h.requests.length, 1);
+});
+
+test("Taglish preview / premyo mishearing is corrected only in resort context", async () => {
+  const h = mount({ savedLanguage: "taglish",
+    recentTurns: [{role:"user",text:"Anong mga pool shade meron kayo?"}] });
+  h.fire("aiVoiceLive");
+  h.recognitionInstances[0].say("May premyo ka ba?");
+  h.recognitionInstances[0].stop();
+  await h.settle();
+  assert.equal(h.requests[0].message, "May preview ka ba?");
+  assert.equal(h.requests.length, 1);
+});
+
+test("A real prize request stays as premyo without accommodation context", async () => {
+  const h = mount({ savedLanguage: "taglish" });
+  h.fire("aiVoiceLive");
+  h.recognitionInstances[0].say("May premyo ka ba?");
+  h.recognitionInstances[0].stop();
+  await h.settle();
+  assert.equal(h.requests[0].message, "May premyo ka ba?");
+});
+
+test("Raffle premyo is never rewritten into preview even after a room discussion", async () => {
+  const h = mount({ savedLanguage: "taglish",
+    recentTurns: [{role:"user",text:"May family room kayo?"}] });
+  h.fire("aiVoiceLive");
+  h.recognitionInstances[0].say("May raffle premyo ka ba?");
+  h.recognitionInstances[0].stop();
+  await h.settle();
+  assert.equal(h.requests[0].message, "May raffle premyo ka ba?");
+});
+
+test("Near-confidence browser recognition alternative can recover preview", async () => {
+  const h = mount({ savedLanguage: "taglish",
+    recentTurns: [{role:"user",text:"Anong mga pool shade meron kayo?"}] });
+  h.fire("aiVoiceLive");
+  h.recognitionInstances[0].say("May premyo ka ba?", true,
+    [{transcript:"May preview ka ba?",confidence:0.8}]);
+  h.recognitionInstances[0].stop();
+  await h.settle();
+  assert.equal(h.requests[0].message, "May preview ka ba?");
+});
+
+test("Dictation remains editable and never autosends corrected Taglish speech", () => {
+  const h = mount({ savedLanguage: "taglish" });
+  h.fire("aiMicBtn");
+  h.recognitionInstances[0].say("Anong mga full shade meron kayo?");
+  h.fire("aiMicBtn");
+  assert.equal(h.nodes.aiChatInput.value, "Anong mga pool shade meron kayo?");
+  assert.equal(h.requests.length, 0);
+});
+
+test("Recorded STT Taglish corrections match browser speech and use language hint", async () => {
+  const h = mount({ ios:true,audioAvailable:true, customerToken:"test-token",
+    savedLanguage:"taglish",recordedTranscript:"May premyo ka ba?",
+    recentTurns:[{role:"user",text:"Anong mga pool shade meron kayo?"}] });
+  h.fire("aiMicBtn");
+  await h.settle();
+  for (let i=0;i<3;i++) h.audioProcessors[0].feed(0.1);
+  h.fire("aiMicBtn");
+  await h.settle();
+  assert.equal(h.nodes.aiChatInput.value, "May preview ka ba?");
+  assert.equal(h.transcriptionRequests[0].opts.headers["X-Arvic-Voice-Language"], "taglish");
+  assert.equal(h.requests.length, 0);
+});
+
+test("Mandarin voice speech stays untranslated and unmodified by Taglish terms", async () => {
+  const h = mount({ savedLanguage:"mandarin",
+    recentTurns:[{role:"user",text:"Pool Shade"}] });
+  h.fire("aiVoiceLive");
+  h.recognitionInstances[0].say("May premyo ka ba?");
+  h.recognitionInstances[0].stop();
+  await h.settle();
+  assert.equal(h.requests[0].message, "May premyo ka ba?");
 });
