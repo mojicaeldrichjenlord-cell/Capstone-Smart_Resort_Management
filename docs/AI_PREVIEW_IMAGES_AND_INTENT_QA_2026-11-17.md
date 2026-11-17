@@ -24,3 +24,14 @@
 
 Safety: no SQL changes, no real payments, no reservation creation, no main/domain deployment until actual browser QA and owner approval.
 Automated checks noted are source syntax and in-memory simulations, NOT actual Node/browser tests.
+## QA follow-up — Pool Shade vs Nipa Hut (2026-11-17)
+
+User-reported localhost FAIL: 'anong mga pool shade meron kayo' then 'may preview kaba' showed Big Nipa Hut 10–12 photos/cards. Pool Shade is a distinct inventory family, not synonymous with generic Cottage or Nipa Hut. The separate follow-up 'pool shade hindi nipa hut' must replace old preview choices.
+
+Targeted fix on testing only:
+- Pool Shade (including poolside shade spelling), Big/Small Shade and Big/Small Nipa Hut receive distinct exact matching. Preserve generic Cottage searches and Single Room (Pool side) behavior.
+- Natural catalog discovery ('anong mga pool shade meron kayo') and explicit corrections ('pool shade hindi nipa hut') return correct read-only verified preview cards before Gemini. A short preview follow-up uses the latest user category.
+- The frontend drops stale selected accommodation IDs after a verified category switch. An amenity-only Pool Shade question still does not trigger card spam.
+- No MySQL changes, image substitutions, bookings/payments, production deployments or migrations.
+
+Local QA: run `node --test tests/ai-verified-preview.test.js tests/ai-natural-recommendations.test.js`; restart backend and hard refresh Customer Home. In a fresh chat ask (1) 'anong mga pool shade meron kayo', (2) 'may preview kaba', (3) 'pool shade hindi nipa hut'. Every card should be a listed Pool Shade (if available), have correct photo when the matched listing has an actual image, and never show Big Nipa Hut, Pool Pavilion or Single Room (Pool side). Then confirm Nipa Hut, Function Areas and Family/Double Rooms still recommend correctly. Capture browser screenshots before merging to main.
