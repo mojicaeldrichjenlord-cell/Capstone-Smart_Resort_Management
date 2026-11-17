@@ -1544,8 +1544,11 @@ async function openGuestAdjustmentModal(
       booking,
     );
 
-  // Front Desk cannot set its own charge. The input is display-only.
+  // Front Desk must not interact with this field at all.
+  // .disabled removes mouse and keyboard focus; JavaScript still updates
+  // .value to show the fresh Admin-set rate and calculate the preview.
   rateInput.readOnly = true;
+  rateInput.disabled = true;
   rateInput.value = "250.00";
   guestAdjustmentRateLoaded = false;
 
