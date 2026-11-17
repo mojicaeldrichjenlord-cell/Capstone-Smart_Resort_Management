@@ -71,6 +71,14 @@ test("General category questions are short, accurate and category-scoped", () =>
     "May aircon ba ito?", 86, "taglish"), null);
   assert.equal(policy.generalCategoryAmenitiesReply(
     "Ano ang amenities ng rooms at cottages?", null, "taglish"), null);
+  // A booking-inventory question must not be hijacked by an amenities FAQ.
+  assert.equal(policy.generalCategoryAmenitiesReply(
+    "May cottages ba kayo?", null, "taglish"), null);
+  assert.equal(policy.generalCategoryAmenitiesReply(
+    "May function area kayo?", null, "taglish"), null);
+  assert.equal(policy.generalCategoryAmenitiesReply(
+    "May wifi ba sa cottages?", null, "taglish"),
+    "Wala pong kasamang amenities sa aming mga cottage.");
 });
 
 test("AI focused DB paths read category name and do not update DB", () => {
