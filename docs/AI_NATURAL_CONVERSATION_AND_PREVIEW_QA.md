@@ -91,3 +91,34 @@ node --test tests/ai-natural-recommendations.test.js
 ```
 
 Suggested first browser QA: **Accommodations page at 1280px desktop**, then mobile 390px and 440px. Report PASS/FAIL with screenshots, before proceeding to full cross-page sweep or `main` deployment.
+
+
+## AI-16 — Selected accommodation overview, natural conversational response (2026-11-17)
+
+### Implementation on testing
+- Added `backend/controllers/ai/aiAccommodationDetails.js` with `wantsFocusedRoomOverview` and `focusedRoomOverview`; integrates before Gemini intent extraction in `geminiChatController.js`.
+- When a customer clicks **Ask AI About This** and submits **Tell me more about [exact selected room]**, the chatbot now retrieves that room's **fresh DB row** by parameterized ID and gives a concise, factual summary: capacity, up to three listed inclusions (or the existing description), and explicitly listed Day Tour/Night rates.
+- It does **not** ask for check-in dates when the customer is only asking about room details. It does not confirm slot availability, invent missing amenities/prices, process payment, or create a reservation.
+- Generic payment questions and questions naming a **different** room are NOT intercepted. Exact selected room remains authoritative for the fast path.
+- No Gemini API calls for these simple overview requests, preserving defense/demo credits. Text-to-speech and live voice implementation unchanged.
+- Added 3 isolated regression tests in `backend/tests/ai-natural-recommendations.test.js` for correct selected room, missing facts, HTML safety, and no-booking-writes source guard.
+
+### Isolated preflight
+- 13/13 AI natural recommendation/room overview source tests PASS with a mocked JS runner (no actual DB/HTTP/Gemini).
+- 4/4 AI shared UI structural source tests PASS with a mocked JS runner.
+- **Browser/real Gemini and source-backed room data are NOT YET verified**; these tests alone do NOT authorize `main` merge.
+
+### Stage AI-16A — Tester first browser check
+1. Pull latest `testing`; restart localhost Node backend (`node server.js` inside `backend`). Hard refresh the Customer Accommodations page after pulling.
+2. In Customer Accommodations, choose **Single Room (Pool side) C**, click **Ask AI About This**, then send the prefilled **Tell me more about Single Room (Pool side) C.** message.
+3. Expect one short, direct answer about **that same room**, grounded in local DB `amenities`, `description`, `max_capacity`, and listed rates; no repetitive introduction, no invented availability, no check-in questionnaire.
+4. Verify chat header (name, close/maximize/minimize), composer, and selected-room context remain usable. The optional voice panel should start collapsed.
+5. Screenshot full chat popup and reply at ~1280px desktop and report **PASS/FAIL**. Do not submit bookings or payment.
+6. If room facts appear missing or wrong, inspect the **local test database** first; do not silently assume Aiven rows match local MySQL. **Cottage 1–5 Pool Balcony correction on Aiven remains separately unverified.**
+
+### Subsequent gates (after AI-16A)
+- AI-16B: Recommendation cards for `May family room kayo?`, followed by `7 kami`, view/book links, actual room details, and no stale ID.
+- AI-16C: `May sarili bang CR ito?`, `May ref ba?`, `Magkano ang downpayment?` — all DB-backed/official-policy replies.
+- AI-16D: Test same popup on all six Customer pages, desktop and 390/440px mobile, focus/input/scroll/minimize/maximize.
+- AI-16E: Real Gemini natural multilingual conversation and quota/offline fallback **only on local test backend**; never rotate live API keys or make live reservations.
+- Later: voice redesign is separate scope, not part of this QA gate.
