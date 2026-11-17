@@ -67,7 +67,9 @@ test("Short preview follow-up uses latest user category, not old selected accomm
 
 test("An unqualified preview asks which accommodation; saved focused ID is validated", () => {
   assert.deepEqual(ids(selectVerifiedPreviews(catalog,"may preview ba?")),[]);
-  assert.match(verifiedPreviewReply(selectVerifiedPreviews(catalog,"may preview ba?"),"taglish"),/Anong accommodation/);
+  assert.match(verifiedPreviewReply(selectVerifiedPreviews(catalog,"may preview ba?"),"taglish"),/Anong room or cottage/);
+  // Pure Tagalog remains separate from the relaxed Taglish wording.
+  assert.match(verifiedPreviewReply(selectVerifiedPreviews(catalog,"may preview ba?"),"tagalog"),/Anong accommodation/);
   assert.deepEqual(ids(selectVerifiedPreviews(catalog,"may preview ba?",[],{room_id:100,room_name:"Family Room B"})),[100]);
   assert.deepEqual(ids(selectVerifiedPreviews(catalog,"may preview ba?",[],{room_id:100,room_name:"Family Room A"})),[]);
 });
