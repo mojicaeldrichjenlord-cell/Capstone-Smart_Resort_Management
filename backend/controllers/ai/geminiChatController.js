@@ -1051,15 +1051,35 @@ exports.chatWithGemini = async (req, res) => {
     // description and inclusions, not a guess from previous conversation.
     // This read-only path needs zero Gemini credits and never checks/creates bookings.
     const amenityKind = requestedAmenity(message);
-    const focusedRoomId = Number(req.body?.context?.room_id ?? req.body?.room_id);
-    if (amenityKind && Number.isSafeInteger(focusedRoomId) && focusedRoomId > 0) {
+    const rawFocusedRoomId = req.body?.context?.room_id ?? req.body?.room_id;
+    const focusedRoomId = Number(rawFocusedRoomId);
+    const focusedRoomName = String(
+      req.body?.context?.room_name ?? req.body?.room_name ?? ""
+    ).trim();
+    const hasFocusedId = Number.isSafeInteger(focusedRoomId) && focusedRoomId > 0;
+    // Some older chat sessions keep the exact focused room name but lose its
+    // numeric ID. Resolve ONLY an unambiguous exact DB name in that case;
+    // never choose a room from a previous multi-room recommendation list.
+    const canResolveByName = !hasFocusedId &&
+      (rawFocusedRoomId === null || rawFocusedRoomId === undefined ||
+        rawFocusedRoomId === "") &&
+      focusedRoomName.length > 0 && focusedRoomName.length <= 110;
+    if (amenityKind && (hasFocusedId || canResolveByName)) {
+      const columns = "SELECT a.id, a.name AS room_name, a.description, a.amenities " +
+        "FROM accommodations a ";
       const [rows] = await db.promise().query(
-        "SELECT a.id, a.name AS room_name, a.description, a.amenities " +
-          "FROM accommodations a WHERE a.id = ? LIMIT 1",
-        [focusedRoomId],
+        hasFocusedId
+          ? columns + "WHERE a.id = ? LIMIT 1"
+          : columns + "WHERE a.name = ? LIMIT 2",
+        [hasFocusedId ? focusedRoomId : focusedRoomName],
       );
-      const record = rows[0];
-      if (record) {
+      const record = hasFocusedId ? rows[0] :
+        (rows.length === 1 ? rows[0] : null);
+      // Reject stale/reassigned IDs and ambiguous or non-exact name matches.
+      // Room details must always come from the currently verified DB record.
+      if (record && (!focusedRoomName ||
+          String(record.room_name).trim().toLowerCase() ===
+            focusedRoomName.toLowerCase())) {
         // An explicitly different named room must not inherit an older selection.
         const namedMention = String(message).match(
           /\b(?:family\s+room|room|cottage|pavilion)\s+[a-z0-9]+\b/i
@@ -1365,6 +1385,9 @@ Do not repeat saved booking details or greet the customer every turn.
 For recommendations: one friendly line, then let the visual accommodation cards show details.
 For questions like "magkano yan" / "may CR ba yan", use the focused accommodation
 below and answer based ONLY on its fresh data; if not listed, say so briefly.
+If asked about ONE amenity (e.g. "May aircon?"), answer ONLY that amenity
+in one short sentence. Do not list CR, dining table or other amenities that
+were not asked about; do not add a check-in/date/availability sales question.
 Be honest when date/time availability has not been verified.
 If the user switches topics, follow their new topic instead of a booking checklist.
 Never claim to be human; when asked, say you're the resort's AI assistant.
@@ -1420,7 +1443,7 @@ ${policyPromptLines()}
 - These are preliminary availability results for the exact requested window; final slot availability is rechecked on the booking page.
 - Day, overnight and extended rates are different. Never call a day rate a nightly price or invent a total.
 - Structured bed count and view preferences alone do not prove room features. But if a selected accommodation explicitly lists aircon, a CR, a ref, or another amenity in its fresh Admin-managed description or amenities, that listing IS evidence for that accommodation. Read BOTH text fields, including Filipino wording. If missing or contradictory, say it is unverified; do not guess.
-- For questions only about amenities, answer that question directly and do NOT redirect to check-in dates or a booking checklist.
+- For questions only about amenities, answer that question directly and do NOT redirect to check-in dates or a booking checklist. If they ask one feature, mention ONLY that feature; do not volunteer other inclusions or offer availability unless the guest asks.
 - If rooms are available, recommend only the best 1 to 3 options.
 - Briefly explain why each recommended room matches.
 - If there are no exact matches, say that clearly and mention alternative dates if provided.
