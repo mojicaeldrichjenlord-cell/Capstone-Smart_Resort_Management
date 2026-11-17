@@ -27,7 +27,7 @@ function setup(config = {}) {
     { value: "day_extended", label: "Day 22 Hours", start: "07:00:00", end: "05:00:00" },
     { value: "night_extended", label: "Night 22 Hours", start: "19:00:00", end: "17:00:00" },
   ];
-  const room = { id: 94, name: "Single Room (Pool side) D" };
+  const room = { id: 94, name: "Single Room (Pool side) D", max_capacity: 4 };
   let reservationType = config.type || "walkin";
   const requests = [], statuses = [], cards = [];
   const createCard = (slot = "", date = "2026-11-16", duration = "1") => {
@@ -40,6 +40,7 @@ function setup(config = {}) {
       ".slot-select": select,
       ".date-input": { value: date },
       ".stay-duration-select": { value: duration },
+      ".capacity-display": { value: "-" },
       ".manual-slot-status": { dataset: {}, textContent: "" },
       ".manual-item-availability": { dataset: {}, textContent: "" },
     };
@@ -81,6 +82,18 @@ function setup(config = {}) {
     },
     formatTimeDisplay: v => v,
     populateStayDurationOptions: () => {},
+    // Simulates the native dropdown population while the REAL renderer
+    // decides whether to recover a missing newly added item.
+    populateSlotOptions: (id, card) => {
+      const target = card || cards.find(x => Number(x.dataset.itemId) === Number(id));
+      const picker = target?.querySelector(".slot-select");
+      if (picker) picker.options = [
+        { value: "", disabled: false },
+        ...slots.map(x => ({ value: x.value, disabled: false, textContent: "" })),
+      ];
+      const capacity = target?.querySelector(".capacity-display");
+      if (capacity) capacity.value = String(room.max_capacity);
+    },
     updateItemPreview: () => {},
     updateSummary: () => {},
     showMessage: () => {},
@@ -202,4 +215,86 @@ test("Verified open manual slot enables payment navigation, no booking is create
   assert.equal(h.nextBtn.disabled, false);
   assert.match(page, /manualPaymentChecking = true/);
   assert.match(page, /verifyManualSlotsBeforePayment\(cards\)/);
+});
+
+test("A newly selected second accommodation restores four missing slots and capacity", () => {
+  const h = setup({ type: "facebook" });
+  const second = h.createCard("", "2026-11-19");
+  second.els[".slot-select"].options = [{ value: "", disabled: false }];
+  second.els[".capacity-display"].value = "-";
+  h.helpers.renderManualSlotStatuses(second.card, {
+    day_tour: "available", night: "available",
+    day_extended: "unavailable", night_extended: "available",
+  });
+  assert.deepEqual(
+    Array.from(second.els[".slot-select"].options, o => o.value),
+    ["", "day_tour", "night", "day_extended", "night_extended"],
+  );
+  assert.equal(second.els[".capacity-display"].value, "4");
+  assert.match(second.els[".manual-slot-status"].textContent, /3 of 4/);
+  assert.equal(second.els[".slot-select"].options[3].disabled, true);
+});
+
+test("After removal, re-added item keeps stable identity and populates its own slots", () => {
+  const rooms = [{ id: 101, name: "Beach Pavilion", category_name: "Function Area", max_capacity: 80 }];
+  const slots = [
+    { value: "day_tour", label: "Day Tour", start: "08:00:00", end: "18:00:00" },
+    { value: "night", label: "Night", start: "20:00:00", end: "06:00:00" },
+    { value: "day_extended", label: "Day 23 Hours", start: "08:00:00", end: "06:00:00" },
+    { value: "night_extended", label: "Night 23 Hours", start: "20:00:00", end: "18:00:00" },
+  ];
+  const cards = [];
+  const createCard = (id) => {
+    const elements = {
+      ".booking-item-title": { textContent: "" },
+      ".accommodation-value": { value: "" },
+      ".accommodation-picker-label": { textContent: "" },
+      ".slot-select": { innerHTML: "", value: "" },
+      ".capacity-display": { value: "-" },
+      ".stay-duration-select": { innerHTML: "", value: "1", disabled: true },
+    };
+    const card = {
+      dataset: { itemId: String(id) },
+      querySelector: selector => elements[selector] || null,
+    };
+    cards.push(card);
+    return { card, elements };
+  };
+  const document = {
+    querySelectorAll: selector => selector === ".booking-item-card" ? cards : [],
+    querySelector: selector => {
+      const id = /data-item-id="(\\d+)"/.exec(selector)?.[1];
+      return cards.find(c => c.dataset.itemId === id) || null;
+    },
+  };
+  const context = {
+    document,
+    getAccommodationById: id => rooms.find(r => Number(r.id) === Number(id)) || null,
+    getSlotOptions: () => slots,
+    getAllowedStayDurations: () => [1],
+    formatTimeDisplay: value => value,
+    updateItemPreview: () => {},
+    updateSummary: () => {},
+    scheduleAllManualSlotChecks: () => {},
+  };
+  const fragment = extract("function setAccommodationSelection(", "function closeAllAccommodationPickers(") +
+    extract("function refreshTitles()", "function getAccommodationById(") +
+    extract("function populateStayDurationOptions(", "function updateItemPreview(");
+  const { setAccommodationSelection, refreshTitles } = vm.runInNewContext(
+    fragment + "\n;({setAccommodationSelection,refreshTitles})", context,
+  );
+  createCard(1);
+  const removed = createCard(2);
+  cards.splice(cards.indexOf(removed.card), 1);
+  refreshTitles();
+  const second = createCard(3);
+  refreshTitles();
+  setAccommodationSelection(second.card, 3, 101);
+  assert.equal(second.card.dataset.itemId, "3",
+    "Internal item IDs must never be renumbered after removing another card.");
+  assert.equal(second.elements[".booking-item-title"].textContent, "Accommodation Item 2");
+  assert.equal(second.elements[".capacity-display"].value, 80);
+  assert.equal((second.elements[".slot-select"].innerHTML.match(
+    /<option value="(?:day_tour|night|day_extended|night_extended)"/g) || []).length, 4);
+  assert.equal(cards[0].dataset.itemId, "1");
 });
