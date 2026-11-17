@@ -151,3 +151,52 @@ test("Voice control code remains out of scope for this text-behavior stage", () 
   const source = fs.readFileSync(path.join(__dirname, "../../frontend/js/ai-chat.js"), "utf8");
   assert.doesNotMatch(source, /addEventListener\("pointerdown",/);
 });
+
+
+test("AI focused-room overview matches selected room but not a different room or payment topic", () => {
+  const { wantsFocusedRoomOverview } = require("../controllers/ai/aiAccommodationDetails");
+  const selected = "Single Room (Pool side) C";
+  assert.equal(wantsFocusedRoomOverview("Tell me more about Single Room (Pool side) C.", selected), true);
+  assert.equal(wantsFocusedRoomOverview("Tell me more about it.", selected), true);
+  assert.equal(wantsFocusedRoomOverview("What are the amenities of this room?", selected), true);
+  assert.equal(wantsFocusedRoomOverview("Anong amenities ng Single Room (Pool side) C?", selected), true);
+  assert.equal(wantsFocusedRoomOverview("Tell me more about Family Room A.", selected), false);
+  assert.equal(wantsFocusedRoomOverview("Tell me more about payment.", selected), false);
+  assert.equal(wantsFocusedRoomOverview("Magkano yan?", selected), false);
+});
+
+test("AI focused-room details are concise, from DB facts, and never invent a rate", () => {
+  const { focusedRoomOverview } = require("../controllers/ai/aiAccommodationDetails");
+  const verified = focusedRoomOverview({
+    room_name: "Single Room (Pool side) C", capacity: 4,
+    amenities: "Private CR\nTV\nAir Conditioned",
+    day_price: 3000, overnight_price: 3000,
+  }, "taglish");
+  assert.match(verified, /Single Room \(Pool side\) C/);
+  assert.match(verified, /Private CR/);
+  assert.match(verified, /4 guests/);
+  assert.match(verified, /₱3,000/);
+  assert.doesNotMatch(verified, /available (?:on|for)|confirmed (?:available|booking)/i);
+  const missing = focusedRoomOverview({ room_name: "Family Room B", capacity: 8 }, "english");
+  assert.match(missing, /not listed/i);
+  assert.doesNotMatch(missing, /₱|fridge|pool balcony|private bathroom/i);
+  const sanitized = focusedRoomOverview({
+    room_name: "Room X", capacity: 2, amenities: "<script>alert(1)</script>; TV",
+  }, "english");
+  assert.doesNotMatch(sanitized, /<script>/i);
+});
+
+test("AI selected-room overview is a read-only DB path before Gemini extraction", () => {
+  const source = fs.readFileSync(
+    path.join(__dirname, "../controllers/ai/geminiChatController.js"), "utf8");
+  const start = source.indexOf("// Room overview fast path:");
+  const end = source.indexOf("// Bounded previous turns:", start);
+  assert.ok(start >= 0 && end > start);
+  const overview = source.slice(start, end);
+  assert.match(overview, /mode: "verified_accommodation_overview"/);
+  assert.match(overview, /WHERE a\.id = \? LIMIT 1/);
+  assert.match(overview, /wantsFocusedRoomOverview\(message, overviewRecord\.room_name\)/);
+  assert.match(overview, /focusedRoomOverview\(overviewRecord, language\)/);
+  assert.doesNotMatch(overview, /INSERT|UPDATE|DELETE|generateGemini\(/i);
+  assert.ok(end < source.indexOf("await extractStructuredIntent(", end));
+});
