@@ -79,9 +79,12 @@ function amenityReply(room, kind, message, language = "english") {
     ref: filipino ? "ref" : "refrigerator",
   }[kind];
   if (status === "yes") {
+    // A one-feature question deserves a one-feature answer. Do not list
+    // unrelated inclusions or upsell a booking/date when the guest just asks
+    // "May aircon?" or "May sarili bang CR ito?".
     return filipino
-      ? "Yes po, may " + item + " ang " + name + " ayon sa nakalistang description o amenities."
-      : "Yes, " + name + " lists " + item + " in its description or amenities.";
+      ? "Yes po, may " + item + " ang " + name + "."
+      : "Yes, " + name + " has " + item + ".";
   }
   if (status === "no") {
     return filipino
