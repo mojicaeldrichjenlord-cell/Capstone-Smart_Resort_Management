@@ -562,7 +562,8 @@
     const inAccommodationConversation =
       resortTerms.test(text) || recentAccommodationVoiceContext();
     const searchingForAccommodation =
-      /\b(?:anong|ano|which|what|may|meron|available|show|pakita|patingin|preview|picture|photo|list|options?|hanap)\b/i.test(text);
+      /\b(?:anong|ano|which|what|show|pakita|patingin|preview|picture|photo|list|options?|hanap)\b/i.test(text) ||
+      /\bfull[ -]shades?\b.*\b(?:meron|available)\b/i.test(text);
 
     // Edge Taglish frequently hears "full shade" instead of "pool shade"
     // when customers are asking which resort accommodations exist.
