@@ -1178,6 +1178,10 @@ exports.chatWithGemini = async (req, res) => {
           const language = normalizeLanguageStyle(req.body.voice_language) ||
             (/\b(?:may|meron|ba|bang|yung|sarili(?:ng)?|po|kasama)\b/i.test(String(message))
               ? "taglish" : null) ||
+            // Use current question over older Taglish chat context:
+            // "Does it have a CR?" should receive a natural English reply.
+            (/^(?:does|do|is|are|has|have|can|what|which|will)\b/i.test(String(message).trim())
+              ? "english" : null) ||
             detectLanguageFromMessage(message) ||
             normalizeLanguageStyle(req.body.language_style) ||
             normalizeLanguageStyle(req.body.context?.language_style) || "english";
