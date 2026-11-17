@@ -91,8 +91,8 @@ function amenityReply(room, kind, message, language = "english") {
   // transcript wording. Typed chat passes the detected conversation language.
   const filipino = ["tagalog", "taglish"].includes(String(language).toLowerCase());
   const item = {
-    private_cr: filipino ? "sariling CR" : "private bathroom",
-    cr: filipino ? "CR" : "bathroom",
+    private_cr: filipino ? "sariling CR" : "a private bathroom",
+    cr: filipino ? "CR" : "a bathroom",
     aircon: filipino ? "aircon" : "air conditioning",
     ref: filipino ? "ref" : "refrigerator",
     karaoke: "karaoke",
