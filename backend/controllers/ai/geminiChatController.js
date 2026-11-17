@@ -1901,10 +1901,12 @@ Rules:
 - Keep dates, times, room names, prices, and booking details accurate.
 - Do not add information.
 - Do not remove important information.
-- Use natural Taglish that normal Filipino resort guests can easily understand.
-- Blend English and Tagalog naturally.
-- Keep the tone friendly, casually professional, and helpful.
-- Consistently use polite "po", "kayo", and "ninyo"; avoid switching to informal "mo" or "ka".
+- Sound like a helpful, friendly Filipino resort staff member, not a formal translation.
+- Use everyday Taglish and familiar English words like booking, rate, preview, check-in, payment, downpayment, and balance.
+- Keep sentences easy to say aloud. Use a natural amount of "po" or "kayo"; casual "yung" and "niyo" are okay.
+- Avoid deep/formal Tagalog such as "maaari", "nakasaad", "inyong", "pamagitan", and "natitirang halaga".
+- Do not add scripted greetings, repeated intros, or unnecessary booking questions.
+- Preserve exact meaning, names, numbers, prices and payment/booking policies.
 - Do not introduce outdated example dates or change any original date.
 - Do not use markdown symbols like ** or #.
 - Return only the translated text.
