@@ -105,6 +105,13 @@ function amenityReply(room, kind, message, language = "english") {
       : name + " does not include amenities.";
   }
   if (status === "yes") {
+    // A generic CR question can mention "private" when the CURRENT
+    // accommodation's verified details explicitly say Private CR.
+    if (kind === "cr" && amenityEvidence(room, "private_cr") === "yes") {
+      return filipino
+        ? "Yes po, may sariling CR ang " + name + "."
+        : "Yes, " + name + " has a private bathroom.";
+    }
     // A one-feature question deserves a one-feature answer. Do not list
     // unrelated inclusions or upsell a booking/date when the guest just asks
     // "May aircon?" or "May sarili bang CR ito?".
