@@ -162,6 +162,13 @@ test("Correcting 'pool shade hindi nipa hut' returns only Pool Shade cards", () 
     {role:"user",text:"nipa hut preview"},
   ], {room_id:64,room_name:"Big Nipa Hut 10"});
   assert.deepEqual(ids(selection), [61, 62]);
+  const withPlainNipaName = [...catalog, {
+    id:66,room_name:"Nipa Hut",category_name:"Cottage",
+    capacity:12,status:"available",
+  }];
+  assert.deepEqual(ids(selectVerifiedPreviews(
+    withPlainNipaName, correction,
+  )), [61,62], "Negated Nipa Hut name must never override Pool Shade");
 });
 
 test("Generic Nipa Hut, Shade, Pool Pavilion, and Poolside Room stay separate", () => {
