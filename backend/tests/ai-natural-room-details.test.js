@@ -94,7 +94,7 @@ test("Function Area and ordinary Cottage category remain distinguished", () => {
   assert.match(naturalRoomDetailsReply({
     room_name:"Single Room Cottage 1",category_name:"Room",
     amenities:"Private CR\nAir Conditioned",
-  },"taglish"), /private CR, at air Conditioned/i);
+  },"taglish"), /private CR at air Conditioned/i);
 });
 
 test("HTML and unknown free entrance data cannot contaminate answer", () => {
