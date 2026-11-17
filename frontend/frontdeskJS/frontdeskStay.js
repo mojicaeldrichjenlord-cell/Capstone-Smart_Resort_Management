@@ -23,6 +23,8 @@ let frontdeskStayAccommodations = [];
 let selectedAddAccommodationBookingId = null;
 let addAccommodationAvailabilityTimer = null;
 let addAccommodationAvailabilityState = "unknown";
+// Discard outdated selected-slot responses after changing room/date/slot.
+let addAccommodationSelectionVersion = 0;
 
 let selectedExtendStayBookingId = null;
 let extendStayAvailabilityTimer = null;
@@ -60,8 +62,17 @@ function setupFrontdeskStayEvents() {
     "addAccommodationStayDuration",
   ].forEach((id) => {
     document.getElementById(id)?.addEventListener("change", () => {
+      if (id === "addAccommodationSelect") {
+        const slot = document.getElementById("addAccommodationSlot");
+        if (slot) slot.value = "";
+      }
+      addAccommodationSelectionVersion++;
       updateAddAccommodationDurationState();
       updateAddAccommodationPreview();
+      // Show Available/Unavailable for all four slots (Customer-style).
+      if (typeof scheduleAddAccommodationSlotAvailabilityCheck === "function") {
+        scheduleAddAccommodationSlotAvailabilityCheck();
+      }
       scheduleAddAccommodationAvailabilityCheck();
     });
   });
@@ -333,6 +344,10 @@ async function openAddAccommodationModal(bookingId) {
     return;
   }
 
+  addAccommodationSelectionVersion++;
+  if (typeof cancelAddAccommodationSlotAvailability === "function") {
+    cancelAddAccommodationSlotAvailability();
+  }
   selectedAddAccommodationBookingId = Number(bookingId);
   addAccommodationAvailabilityState = "unknown";
 
@@ -369,7 +384,8 @@ async function openAddAccommodationModal(bookingId) {
   }
 
   if (slotSelect) {
-    slotSelect.value = "day_tour";
+    // Require a fresh selection after the four status labels load.
+    slotSelect.value = "";
   }
 
   if (durationSelect) {
@@ -415,6 +431,9 @@ async function openAddAccommodationModal(bookingId) {
 
     updateAddAccommodationDurationState();
     updateAddAccommodationPreview();
+    if (typeof scheduleAddAccommodationSlotAvailabilityCheck === "function") {
+      scheduleAddAccommodationSlotAvailabilityCheck();
+    }
   } catch (error) {
     console.error("openAddAccommodationModal error:", error);
 
@@ -432,6 +451,10 @@ async function openAddAccommodationModal(bookingId) {
 
 function closeAddAccommodationModal() {
   clearTimeout(addAccommodationAvailabilityTimer);
+  addAccommodationSelectionVersion++;
+  if (typeof cancelAddAccommodationSlotAvailability === "function") {
+    cancelAddAccommodationSlotAvailability();
+  }
 
   selectedAddAccommodationBookingId = null;
   addAccommodationAvailabilityState = "unknown";
@@ -523,17 +546,17 @@ function updateAddAccommodationPreview() {
 
   const accommodation = getSelectedStayAccommodation();
   const slotType = String(
-    document.getElementById("addAccommodationSlot")?.value || "day_tour",
+    document.getElementById("addAccommodationSlot")?.value || "",
   );
   const checkInDate = String(
     document.getElementById("addAccommodationDate")?.value || "",
   ).trim();
   const duration = getAddAccommodationDuration();
 
-  if (!accommodation || !checkInDate) {
+  if (!accommodation || !checkInDate || !slotType) {
     preview.innerHTML = `
       <strong>Add Accommodation Preview</strong>
-      <span>Complete the form to preview the unpaid accommodation balance.</span>
+      <span>Choose an accommodation, date, and available time slot to preview the unpaid balance.</span>
     `;
     return;
   }
@@ -601,6 +624,7 @@ function scheduleAddAccommodationAvailabilityCheck() {
 
 async function checkAddAccommodationAvailabilityNow(showErrors = true) {
   const payload = getAddAccommodationAvailabilityPayload();
+  const version = addAccommodationSelectionVersion;
 
   if (!payload) {
     addAccommodationAvailabilityState = "unknown";
@@ -615,6 +639,12 @@ async function checkAddAccommodationAvailabilityNow(showErrors = true) {
   }
 
   const result = await checkStayItemAvailability(payload);
+
+  // Never enable saving from a stale asynchronous availability result.
+  if (version !== addAccommodationSelectionVersion ||
+      JSON.stringify(getAddAccommodationAvailabilityPayload()) !== JSON.stringify(payload)) {
+    return false;
+  }
 
   if (result.available) {
     addAccommodationAvailabilityState = "available";
@@ -685,7 +715,8 @@ async function submitAddAccommodation() {
 
   const available = await checkAddAccommodationAvailabilityNow();
 
-  if (!available) {
+  if (!available ||
+      JSON.stringify(getAddAccommodationAvailabilityPayload()) !== JSON.stringify(payload)) {
     return;
   }
 
