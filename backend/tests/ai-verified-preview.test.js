@@ -22,6 +22,11 @@ const catalog = [
   {id:95,room_name:"Single Room (Pool side) C",category_name:"Room",capacity:4,status:"available"},
   {id:41,room_name:"Double Room 1",category_name:"Room",capacity:6,status:"available"},
   {id:42,room_name:"Double Room 2",category_name:"Room",capacity:6,status:"maintenance"},
+  {id:61,room_name:"Pool Shade A",category_name:"Cottage",capacity:8,status:"available"},
+  {id:62,room_name:"Pool Shade C",category_name:"Cottage",capacity:8,status:"available"},
+  {id:63,room_name:"Pool Shade E",category_name:"Cottage",capacity:8,status:"maintenance"},
+  {id:64,room_name:"Big Nipa Hut 10",category_name:"Cottage",capacity:20,status:"available"},
+  {id:65,room_name:"Small Shade 3",category_name:"Cottage",capacity:10,status:"available"},
 ];
 function ids(result) { return result.rows.map(room => room.id); }
 
@@ -130,4 +135,51 @@ test("Controller routes explicit previews before generic Gemini and cards remain
   assert.match(controller,/recommendation_cards: verifiedAccommodationCards\(selection.rows, false\)/);
   assert.match(frontend,/function setAiRecommendationPhoto/);
   assert.match(frontend,/addCandidate\(verifiedAiRoomStaticPhoto\(room\)\)/);
+});
+
+test("Pool Shade discovery identifies only Pool Shade records, never Nipa Hut or Pavilion", () => {
+  const msg = "anong mga pool shade meron kayo";
+  assert.equal(isVerifiedPreviewRequest(msg), true);
+  const selection = selectVerifiedPreviews(catalog, msg);
+  assert.equal(selection.category, "pool_shade");
+  assert.deepEqual(ids(selection), [61, 62]);
+  assert.ok(!ids(selection).includes(63), "Maintenance records must stay hidden");
+});
+
+test("Follow-up 'may preview kaba' preserves the most recent Pool Shade category", () => {
+  const selection = selectVerifiedPreviews(catalog, "may preview kaba", [
+    {role:"user",text:"anong mga pool shade meron kayo"},
+    {role:"assistant",text:"Meron po kaming iba't ibang pool shade"},
+  ], {room_id:64,room_name:"Big Nipa Hut 10"});
+  assert.deepEqual(ids(selection), [61, 62]);
+  assert.equal(selection.category, "pool_shade");
+});
+
+test("Correcting 'pool shade hindi nipa hut' returns only Pool Shade cards", () => {
+  const correction = "pool shade hindi nipa hut";
+  assert.equal(isVerifiedPreviewRequest(correction), true);
+  const selection = selectVerifiedPreviews(catalog, correction, [
+    {role:"user",text:"nipa hut preview"},
+  ], {room_id:64,room_name:"Big Nipa Hut 10"});
+  assert.deepEqual(ids(selection), [61, 62]);
+});
+
+test("Generic Nipa Hut, Shade, Pool Pavilion, and Poolside Room stay separate", () => {
+  assert.deepEqual(ids(selectVerifiedPreviews(catalog, "nipa hut preview")), [64]);
+  assert.deepEqual(ids(selectVerifiedPreviews(catalog, "pool pavilion preview")), [101]);
+  assert.deepEqual(ids(selectVerifiedPreviews(catalog, "single room pool side preview")), [93,94,95]);
+  assert.deepEqual(ids(selectVerifiedPreviews(catalog, "pool shade preview")), [61,62]);
+  assert.deepEqual(ids(selectVerifiedPreviews(catalog, "small shade preview")), [65]);
+});
+
+test("Pool Shade amenity questions do not trigger an unsolicited preview card", () => {
+  assert.equal(isVerifiedPreviewRequest("may CR ba sa Pool Shade?"), false);
+  assert.equal(isVerifiedPreviewRequest("magkano ang Pool Shade A?"), false);
+  assert.equal(isVerifiedPreviewRequest("Pool Shade A picture"), true);
+});
+
+test("Frontend clears an older focused room when a new category preview replaces it", () => {
+  assert.match(frontend, /data\.mode === "verified_accommodation_preview"/);
+  assert.match(frontend, /delete merged\.room_id;/);
+  assert.match(frontend, /delete merged\.room_name;/);
 });
