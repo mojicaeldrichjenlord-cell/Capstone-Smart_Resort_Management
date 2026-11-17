@@ -82,7 +82,7 @@ test("Route is staff-only and no code disables normal reservation or payment wri
   const route=fs.readFileSync(path.join(__dirname,"../routes/bookingRoutes.js"),"utf8");
   const controller=fs.readFileSync(path.join(__dirname,"../controllers/shared/bookingReadinessController.js"),"utf8");
   assert.match(route,/router.get\("\/demo-readiness", requireOperationalBookingRead, getBookingReadiness\)/);
-  assert.match(route,/router.post\(\s*"\/",\s*requireCustomerAuth/);
+  assert.match(route,/router.post\(\s*"\/",\s*\/\/ Authenticate before storing any uploaded payment proof\.\s*requireCustomerAuth/);
   assert.match(route,/router.post\(\s*"\/walk-in",\s*requireFrontDeskAuth/);
   assert.match(controller,/INFORMATION_SCHEMA\.COLUMNS/);
   assert.doesNotMatch(controller,/\b(?:INSERT|UPDATE|DELETE|TRUNCATE|DROP|ALTER)\s+(?:TABLE\s+)?(?:reservations|reservation_items|payment_transactions)/i);
