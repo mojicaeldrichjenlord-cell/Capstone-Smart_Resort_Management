@@ -16,6 +16,16 @@ function requestedCategory(value) {
   if (/\bsingle room (?:pool side|poolside)\b|\bpoolside (?:single )?room\b|\bpool side (?:single )?room\b/.test(text))
     return "single_poolside";
   if (/\bsingle room cottage\b/.test(text)) return "single_cottage";
+  // Pool Shade is a distinct inventory group, not Nipa Hut, Pavilion,
+  // Poolside Room, or every generic Cottage.
+  if (/\bpool shades?\b|\bpoolside shades?\b|\bpool side shades?\b/.test(text))
+    return "pool_shade";
+  if (/\bbig shades?\b/.test(text)) return "big_shade";
+  if (/\bsmall shades?\b/.test(text)) return "small_shade";
+  if (/\bbig nipa huts?\b/.test(text)) return "big_nipa";
+  if (/\bsmall nipa huts?\b/.test(text)) return "small_nipa";
+  if (/\bnipa huts?\b/.test(text)) return "nipa_hut";
+  if (/\bshades?\b/.test(text)) return "shade";
   if (/\bfamily rooms?\b/.test(text)) return "family";
   if (/\bdouble rooms?\b/.test(text)) return "double";
   if (/\bfunction areas?\b|\bfunction halls?\b|\bpavilions?\b|\bpavillions?\b/.test(text)) return "function";
@@ -37,8 +47,15 @@ function isVerifiedPreviewRequest(message) {
   if (hasPreviewWords(text)) return true;
   // A specific large-group accommodation recommendation should also show
   // options, even if the customer did not literally say "preview".
-  return Boolean(requestedCategory(text) && guestCountFromText(text) &&
-    /\b(?:anong|ano|which|what|recommend|suggest|para\s+sa|good\s+for|hanap)\b/i.test(text));
+  const category = requestedCategory(text);
+  if (!category) return false;
+  // "Anong mga Pool Shade meron kayo?" is a catalog discovery request.
+  // "Pool Shade hindi Nipa Hut" is a correction requiring fresh cards,
+  // rather than another irrelevant generic Gemini response.
+  if (/\b(?:anong|ano|alin|which|what|list|show|pakita|may|meron|available|recommend|suggest|hanap|hindi|not|instead|mali|ang sabi ko|ang tinutukoy ko)\b/i.test(text))
+    return true;
+  return Boolean(guestCountFromText(text) &&
+    /\b(?:para\s+sa|good\s+for|for)\b/i.test(text));
 }
 
 function findExactNamedRoom(catalog, message) {
@@ -56,6 +73,15 @@ function categoryMatches(room, category) {
   const kind = norm(room.category_name || room.category);
   if (category === "single_poolside") return /single room/.test(name) && /pool side|poolside/.test(name);
   if (category === "single_cottage") return /single room cottage/.test(name);
+  if (category === "pool_shade") return /\bpool(?:side| side)? shade\b/.test(name) ||
+    /\bpool(?:side| side)? shade\b/.test(kind);
+  if (category === "big_shade") return /\bbig shade\b/.test(name);
+  if (category === "small_shade") return /\bsmall shade\b/.test(name);
+  if (category === "shade") return /\bshade\b/.test(name) ||
+    (/\bshade\b/.test(kind) && !/\bnipa hut\b/.test(name));
+  if (category === "big_nipa") return /\bbig nipa hut\b/.test(name);
+  if (category === "small_nipa") return /\bsmall nipa hut\b/.test(name);
+  if (category === "nipa_hut") return /\bnipa hut\b/.test(name);
   if (category === "family") return /\bfamily room\b/.test(name);
   if (category === "double") return /\bdouble room\b/.test(name);
   if (category === "function") return /function/.test(kind) || /\bpavill?ion\b|\bfunction area\b/.test(name);
