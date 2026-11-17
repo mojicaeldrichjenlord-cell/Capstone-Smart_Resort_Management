@@ -123,3 +123,133 @@ test("Controller routes exact read-only DB facts before Gemini", () => {
   assert.doesNotMatch(code,/\b(?:UPDATE|DELETE|INSERT)\s+(?:INTO|accommodations)\b/i);
   assert.doesNotMatch(code,/generateGemini\(/);
 });
+
+
+// Execute the exact live controller fast paths with isolated request/DB
+// mocks, so selected A cannot leak into an explicit question about B.
+function extractFastHandler(source, startText, endText, globals) {
+  const begin = source.indexOf(startText);
+  const end = source.indexOf(endText, begin);
+  assert.ok(begin > 0 && end > begin);
+  const expression = source.slice(begin, end);
+  return new Function(...Object.keys(globals),
+    "return (async function(){ " + expression + "\nreturn null; })()"
+  )(...Object.values(globals));
+}
+
+const source = fs.readFileSync(
+  path.join(__dirname, "../controllers/ai/geminiChatController.js"), "utf8"
+);
+const { explicitEntranceRoomName } = require("../controllers/ai/aiAccommodationEntrance");
+
+function testDb(state, rowsById) {
+  return {
+    promise: () => ({query: async (sql, params) => {
+      state.push({ sql, params });
+      if (/WHERE a\.name = \?/.test(sql)) {
+        return [Object.values(rowsById).filter(r => r.room_name === params[0])];
+      }
+      return [[rowsById[params[0]]].filter(Boolean)];
+    }}),
+  };
+}
+
+test("Named CR question about B overrides older selected A with exact DB lookup", async () => {
+  const queries = [], out = {};
+  const req = { body: { message: "Does Family Room B have a CR?",
+    context: { room_id: 99, room_name: "Family Room A", language_style: "taglish" } } };
+  const res = {status: () => ({json: data => Object.assign(out, data)})};
+  await extractFastHandler(source, "    const amenityKind = requestedAmenity(message);",
+    "    // Natural open-ended room details:", {
+      req, res, db: testDb(queries, {99:familyA,100:familyB}),
+      message:req.body.message,
+      requestedAmenity, explicitEntranceRoomName, amenityReply,
+      normalizeLanguageStyle: v => v || null,
+      detectLanguageFromMessage: () => null,
+      mergeContext: (old, next) => ({...old,...next}),
+    });
+  assert.equal(queries.length, 1);
+  assert.equal(queries[0].params[0], "Family Room B");
+  assert.equal(out.mode, "verified_accommodation_amenity");
+  assert.equal(out.extracted_context.room_name, "Family Room B");
+  assert.equal(out.reply, "Yes, Family Room B has a bathroom.");
+});
+
+test("Pronoun CR question honors selected room, not previous other room", async () => {
+  const queries = [], out = {};
+  const req = { body: {message: "does it have a cr?",
+    context: {room_id:99,room_name:"Family Room A",language_style:"taglish"}}};
+  const res={status:()=>({json: v=>Object.assign(out,v)})};
+  await extractFastHandler(source, "    const amenityKind = requestedAmenity(message);",
+    "    // Natural open-ended room details:",{
+      req,res,db:testDb(queries,{99:familyA,100:familyB}),message:req.body.message,
+      requestedAmenity,explicitEntranceRoomName,amenityReply,
+      normalizeLanguageStyle:v=>v||null,detectLanguageFromMessage:()=>null,
+      mergeContext:(a,b)=>({...a,...b}),
+    });
+  assert.equal(queries[0].params[0], 99);
+  assert.equal(out.reply, "Yes, Family Room A has a bathroom.");
+});
+
+test("Unrecognized Family Room C does not get A's amenities as an answer", async () => {
+  const queries=[],out={};
+  const req={body:{message:"Does Family Room C have a CR?",
+    context:{room_id:99,room_name:"Family Room A"}}};
+  const res={status:()=>({json:v=>Object.assign(out,v)})};
+  await extractFastHandler(source,"    const amenityKind = requestedAmenity(message);",
+    "    // Natural open-ended room details:",{
+      req,res,db:testDb(queries,{99:familyA}),message:req.body.message,
+      requestedAmenity,explicitEntranceRoomName,amenityReply,
+      normalizeLanguageStyle:v=>v||null,detectLanguageFromMessage:()=>null,
+      mergeContext:(a,b)=>({...a,...b}),
+    });
+  assert.equal(queries.length,0);
+  assert.equal(Object.keys(out).length,0);
+});
+
+test("Natural named B details override older selected A and list DB-factual 8 pax",async()=>{
+  const queries=[],out={};
+  const req={body:{message:"anong meron sa family room b?",
+    context:{room_id:99,room_name:"Family Room A"}}};
+  const res={status:()=>({json:v=>Object.assign(out,v)})};
+  const getAccommodationCatalog=async()=>[familyA,familyB];
+  await extractFastHandler(source,"    // Natural open-ended room details:",
+    "    // Room overview fast path:",{
+      req,res,db:testDb(queries,{99:familyA,100:familyB}),
+      getAccommodationCatalog,message:req.body.message,
+      isNaturalRoomDetailsQuestion,
+      normalizeText:v=>String(v||"").toLowerCase(),
+      normalizeLanguageStyle:v=>v||null,
+      detectLanguageFromMessage:()=>null,
+      mergeContext:(a,b)=>({...a,...b}),
+      naturalRoomDetailsReply,
+    });
+  assert.equal(queries.length,1);
+  assert.equal(queries[0].params[0],100);
+  assert.equal(out.mode,"verified_natural_room_details");
+  assert.equal(out.extracted_context.room_id,100);
+  assert.match(out.reply,/Family Room B/);
+  assert.match(out.reply,/8 pax na free entrance/);
+  assert.doesNotMatch(out.reply,/refrigerator|fridge|\bTV\b/i);
+});
+
+test("Two named rooms require comparison instead of arbitrary A or B",async()=>{
+  const queries=[],out={};
+  const req={body:{message:"anong meron sa family room a at family room b?",
+    context:{room_id:99,room_name:"Family Room A"}}};
+  const res={status:()=>({json:v=>Object.assign(out,v)})};
+  await extractFastHandler(source,"    // Natural open-ended room details:",
+    "    // Room overview fast path:",{
+      req,res,db:testDb(queries,{99:familyA,100:familyB}),
+      getAccommodationCatalog:async()=>[familyA,familyB],
+      message:req.body.message,
+      isNaturalRoomDetailsQuestion,
+      normalizeText:v=>String(v||"").toLowerCase(),
+      normalizeLanguageStyle:v=>v||null,
+      detectLanguageFromMessage:()=>null,
+      mergeContext:(a,b)=>({...a,...b}),
+      naturalRoomDetailsReply,
+    });
+  assert.equal(queries.length,0);
+  assert.equal(Object.keys(out).length,0);
+});
