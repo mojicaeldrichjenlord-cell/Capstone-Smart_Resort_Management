@@ -211,20 +211,20 @@
         </div>
 
         <div class="guest-adjustment-form-group">
-          <label for="extraGuestRateInput">Extra Guest Rate Per Pax</label>
+          <label for="extraGuestRateInput">Extra Guest Rate Per Pax (Admin-set)</label>
 
           <input
             type="number"
             id="extraGuestRateInput"
             min="0"
             step="0.01"
-            value="0"
-            placeholder="0.00"
+            value="250.00"
+            readonly
+            aria-readonly="true"
           />
 
-          <small>
-            Only guests above the originally booked guest count are charged
-            using this rate.
+          <small id="extraGuestRateStatus" role="status">
+            ₱250.00 per additional guest by default. Only Admin can change this rate.
           </small>
         </div>
 
