@@ -131,3 +131,29 @@ test("AI photo recovery refuses to render a different accommodation ID", async (
   await Promise.resolve();
   assert.equal(img.src, methods.AI_ROOM_IMAGE_FALLBACK);
 });
+
+
+test("AI image resolver matches deployed image path on hosted and local pages", () => {
+  // Exact file path is known from the read-only Aiven image audit and the
+  // GitHub frontend/images directory. Never attempt a production HTTP write.
+  const vm = require("node:vm");
+  const chat = read("js/ai-chat.js");
+  const start = chat.indexOf("const AI_ROOM_IMAGE_FALLBACK =");
+  const end = chat.indexOf("function aiRoomMoney(amount)", start);
+  const snippet = chat.slice(start, end) + "\nresolveAiRoomImage;";
+  const path = "images/accommodations/Single-Room-Cottage/single-room-cottage-1.jpg";
+  const live = vm.runInNewContext(snippet, {
+    AI_API_BASE: "https://smartresort-backend.onrender.com/api",
+    encodeURIComponent,
+    window: { location: { pathname: "/customerHTML/index.html" } }
+  });
+  assert.equal(live(path), "/images/accommodations/Single-Room-Cottage/single-room-cottage-1.jpg");
+  assert.equal(live("frontend/" + path), "/images/accommodations/Single-Room-Cottage/single-room-cottage-1.jpg");
+  const local = vm.runInNewContext(snippet, {
+    AI_API_BASE: "http://127.0.0.1:5000/api",
+    encodeURIComponent,
+    window: { location: { pathname: "/frontend/customerHTML/rooms.html" } }
+  });
+  assert.equal(local(path), "/frontend/images/accommodations/Single-Room-Cottage/single-room-cottage-1.jpg");
+  assert.equal(live("javascript:alert(1)").startsWith("data:image/svg+xml"), true);
+});
