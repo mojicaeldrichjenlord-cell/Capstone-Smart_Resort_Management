@@ -90,6 +90,7 @@ function amenityReply(room, kind, message, language = "english") {
   // For live voice, an explicitly chosen language must win over speech
   // transcript wording. Typed chat passes the detected conversation language.
   const filipino = ["tagalog", "taglish"].includes(String(language).toLowerCase());
+  const everydayTaglish = String(language).toLowerCase() === "taglish";
   const item = {
     private_cr: filipino ? "sariling CR" : "a private bathroom",
     cr: filipino ? "CR" : "a bathroom",
@@ -130,11 +131,15 @@ function amenityReply(room, kind, message, language = "english") {
   }
   if (status === "listed_unspecified" && kind === "private_cr") {
     return filipino
-      ? "May CR pong nakalista sa " + name + ", pero hindi nakasaad kung private ito. Puwede po itong i-confirm sa Front Desk."
+      ? (everydayTaglish
+        ? "May CR po yung " + name + ", pero hindi clear sa listing kung private. Paki-check na lang po sa Front Desk."
+        : "May CR pong nakalista sa " + name + ", pero hindi nakasaad kung private ito. Puwede po itong i-confirm sa Front Desk.")
       : name + " lists a bathroom, but the details don't specify whether it's private. Please confirm with Front Desk.";
   }
   return filipino
-    ? "Hindi po naka-indicate sa description o amenities ng " + name + " kung may " + item + ". Puwede po itong i-confirm sa Front Desk."
+    ? (everydayTaglish
+      ? "Hindi pa po clear sa room details kung may " + item + " yung " + name + ". Paki-check na lang po sa Front Desk."
+      : "Hindi po naka-indicate sa description o amenities ng " + name + " kung may " + item + ". Puwede po itong i-confirm sa Front Desk.")
     : "The description and amenities don't confirm whether " + name + " has " + item + ". Please check with Front Desk.";
 }
 module.exports = { requestedAmenity, amenityEvidence, amenityReply };

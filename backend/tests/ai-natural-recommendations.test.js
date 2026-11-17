@@ -102,8 +102,8 @@ test("Focused accommodation amenities use both Admin description and inclusions"
   assert.equal(amenityEvidence({ amenities: "Private CR", description: "Shared CR" }, "private_cr"), "unknown");
   const crReply = amenityReply({ room_name: "Family Room A", amenities: "CR" },
     "private_cr", "May sarili bang CR?", "taglish");
-  assert.match(crReply, /May CR pong nakalista/);
-  assert.match(crReply, /hindi nakasaad kung private/);
+  assert.match(crReply, /May CR po yung Family Room A/);
+  assert.match(crReply, /hindi clear sa listing kung private/);
   assert.equal(amenityEvidence({ description: "No information" }, "ref"), "unknown");
   assert.equal(amenityEvidence({ amenities: "Aircon", description: "No aircon" }, "aircon"), "unknown");
   const reply = amenityReply({ room_name: "Family Room A", amenities: "Private CR" },
@@ -225,7 +225,7 @@ test("Single-feature aircon follow-up stays concise and never lists other amenit
   // Never guess when a feature is missing or contradictory in Admin data.
   const missing = amenityReply({ room_name: "Room X", amenities: "TV" },
     "aircon", "May aircon?", "taglish");
-  assert.match(missing, /Hindi po naka-indicate/);
+  assert.match(missing, /Hindi pa po clear sa room details/);
   assert.doesNotMatch(missing, /Yes po/i);
 });
 

@@ -31,7 +31,7 @@ test("Room without verified amenities remains unknown rather than falsely no ame
   const room = { name: "Double Room 1", category_name: "Room", description: "2-6 pax" };
   assert.equal(amenityEvidence(room, "aircon"), "unknown");
   assert.match(amenityReply(room, "aircon", "May aircon?", "taglish"),
-    /Hindi po naka-indicate/);
+    /Hindi pa po clear sa room details/);
   assert.doesNotMatch(focusedRoomOverview(room, "english"),
     /does not include amenities/i);
 });

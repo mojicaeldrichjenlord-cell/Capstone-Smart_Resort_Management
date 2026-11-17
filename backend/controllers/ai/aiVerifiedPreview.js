@@ -16,6 +16,16 @@ function requestedCategory(value) {
   if (/\bsingle room (?:pool side|poolside)\b|\bpoolside (?:single )?room\b|\bpool side (?:single )?room\b/.test(text))
     return "single_poolside";
   if (/\bsingle room cottage\b/.test(text)) return "single_cottage";
+  // Pool Shade is a distinct inventory group, not Nipa Hut, Pavilion,
+  // Poolside Room, or every generic Cottage.
+  if (/\bpool shades?\b|\bpoolside shades?\b|\bpool side shades?\b/.test(text))
+    return "pool_shade";
+  if (/\bbig shades?\b/.test(text)) return "big_shade";
+  if (/\bsmall shades?\b/.test(text)) return "small_shade";
+  if (/\bbig nipa huts?\b/.test(text)) return "big_nipa";
+  if (/\bsmall nipa huts?\b/.test(text)) return "small_nipa";
+  if (/\bnipa huts?\b/.test(text)) return "nipa_hut";
+  if (/\bshades?\b/.test(text)) return "shade";
   if (/\bfamily rooms?\b/.test(text)) return "family";
   if (/\bdouble rooms?\b/.test(text)) return "double";
   if (/\bfunction areas?\b|\bfunction halls?\b|\bpavilions?\b|\bpavillions?\b/.test(text)) return "function";
@@ -35,10 +45,21 @@ function guestCountFromText(value) {
 function isVerifiedPreviewRequest(message) {
   const text = String(message || "");
   if (hasPreviewWords(text)) return true;
+  // "May CR ba sa Pool Shade?" remains an amenity question, not a
+  // discovery request. Explicit photos/previews still take priority.
+  if (/\b(?:magkano|presyo|price|rates?|how much|cr|bathroom|toilet|aircon|air condition|amenit(?:y|ies)|inclusions?|kitchen|wifi|parking|free entrance)\b/i.test(text))
+    return false;
   // A specific large-group accommodation recommendation should also show
   // options, even if the customer did not literally say "preview".
-  return Boolean(requestedCategory(text) && guestCountFromText(text) &&
-    /\b(?:anong|ano|which|what|recommend|suggest|para\s+sa|good\s+for|hanap)\b/i.test(text));
+  const category = requestedCategory(text);
+  if (!category) return false;
+  // "Anong mga Pool Shade meron kayo?" is a catalog discovery request.
+  // "Pool Shade hindi Nipa Hut" is a correction requiring fresh cards,
+  // rather than another irrelevant generic Gemini response.
+  if (/\b(?:anong|ano|alin|which|what|list|show|pakita|may|meron|available|recommend|suggest|hanap|hindi|not|instead|mali|ang sabi ko|ang tinutukoy ko)\b/i.test(text))
+    return true;
+  return Boolean(guestCountFromText(text) &&
+    /\b(?:para\s+sa|good\s+for|for)\b/i.test(text));
 }
 
 function findExactNamedRoom(catalog, message) {
@@ -56,6 +77,15 @@ function categoryMatches(room, category) {
   const kind = norm(room.category_name || room.category);
   if (category === "single_poolside") return /single room/.test(name) && /pool side|poolside/.test(name);
   if (category === "single_cottage") return /single room cottage/.test(name);
+  if (category === "pool_shade") return /\bpool(?:side| side)? shade\b/.test(name) ||
+    /\bpool(?:side| side)? shade\b/.test(kind);
+  if (category === "big_shade") return /\bbig shade\b/.test(name);
+  if (category === "small_shade") return /\bsmall shade\b/.test(name);
+  if (category === "shade") return /\bshade\b/.test(name) ||
+    (/\bshade\b/.test(kind) && !/\bnipa hut\b/.test(name));
+  if (category === "big_nipa") return /\bbig nipa hut\b/.test(name);
+  if (category === "small_nipa") return /\bsmall nipa hut\b/.test(name);
+  if (category === "nipa_hut") return /\bnipa hut\b/.test(name);
   if (category === "family") return /\bfamily room\b/.test(name);
   if (category === "double") return /\bdouble room\b/.test(name);
   if (category === "function") return /function/.test(kind) || /\bpavill?ion\b|\bfunction area\b/.test(name);
@@ -81,8 +111,13 @@ function selectVerifiedPreviews(catalog, message, recentTurns = [], context = {}
           findExactNamedRoom(listed, turn.text)))?.text || ""
     : "";
   const source = currentCategory || directlyNamed ? current : prior;
-  const explicitName = directlyNamed || findExactNamedRoom(listed, source);
   const category = currentCategory || requestedCategory(source);
+  let explicitName = directlyNamed || findExactNamedRoom(listed, source);
+  // A correction like "Pool Shade, hindi Nipa Hut" must not use a
+  // negated accommodation name, even when one exactly matches a DB row.
+  if (category && explicitName && !categoryMatches(explicitName, category)) {
+    explicitName = null;
+  }
   const requestedGuests = guestCountFromText(current) || guestCountFromText(source) || 0;
 
   let matches = [];
@@ -132,7 +167,20 @@ function selectVerifiedPreviews(catalog, message, recentTurns = [], context = {}
 }
 
 function verifiedPreviewReply(selection, language) {
-  const tagalog = language === "tagalog" || language === "taglish";
+  // Keep the separate pure-Tagalog wording while using everyday Taglish in
+  // voice and text chat. Room selection and card facts remain unchanged.
+  const taglish = language === "taglish";
+  if (taglish) {
+    if (!selection?.targetKnown) return "Sure po! Anong room or cottage ang gusto niyong makita?";
+    if (!selection.rows?.length) return "Wala po akong makitang matching accommodation sa listing. Try po natin ibang type or guest count.";
+    if (selection.alternative) return "Wala pong cottage na kasya sa group niyo. Ito po yung larger Function Areas based sa listed capacity. Check niyo na lang po ang dates at slots sa booking page.";
+    if (selection.rows.length === 1) {
+      const name = String(selection.rows[0].room_name || selection.rows[0].name || "accommodation");
+      return "Ito po yung preview ng " + name + ". Click niyo lang yung View Details para sa photos and info.";
+    }
+    return "Ito po yung matching accommodations. Check niyo lang yung photos and details sa cards.";
+  }
+  const tagalog = language === "tagalog";
   if (!selection?.targetKnown) return tagalog
     ? "Anong accommodation po ang gusto ninyong makita? Sabihin lang ang pangalan o uri."
     : "Which accommodation would you like to preview? Tell me its name or type.";

@@ -13,6 +13,8 @@ const { isFreeEntranceQuestion, explicitEntranceRoomName, verifiedFreeEntranceRe
 const { wantsFocusedRoomOverview, focusedRoomOverview } = require("./aiAccommodationDetails");
 const { isVerifiedPreviewRequest, selectVerifiedPreviews, verifiedPreviewReply } =
   require("./aiVerifiedPreview");
+const { isRoomPaymentInquiry, resolvePaymentRoom, paymentReply } =
+  require("./aiFocusedPaymentReply");
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -730,7 +732,7 @@ function getQuotaBookingGuidance(language) {
   return {
     english: "For online reservations, choose an accommodation and a fixed Day Tour (morning) or Night (evening) slot on the booking page; check-in/check-out times are not customizable. The required PayPal downpayment is 50% of the final accommodation price. Pay the remaining 50%, entrance fee, and applicable onsite charges at the resort. The secure payment page shows the exact amount before payment; a booking is not confirmed by this chat.",
     tagalog: "Para po sa online reservation, pumili kayo ng accommodation at fixed Day Tour (umaga) o Night (gabi) slot sa booking page; hindi custom ang check-in at check-out times. Ang kinakailangang downpayment sa PayPal ay 50% ng final accommodation price. Ang natitirang 50%, entrance fee, at iba pang applicable charges ay babayaran sa resort. Makikita ninyo ang eksaktong halaga sa secure payment page bago magbayad. Hindi po nakukumpirma ang booking sa chat.",
-    taglish: "Para po mag-book online, piliin ninyo ang accommodation at fixed Day Tour (umaga) o Night (gabi) slot sa booking page; hindi puwedeng custom ang oras. Ang required PayPal downpayment ay 50% ng final accommodation price. Ang remaining 50%, entrance fee, at applicable onsite charges ay babayaran sa resort. Makikita ninyo ang exact amount sa secure payment page bago magbayad. Hindi po confirmed ang booking sa chat.",
+    taglish: "For online booking po, choose a room at fixed Day Tour or Night slot sa booking page. Hindi custom yung check-in time. 50% ng final room price ang downpayment via PayPal; yung remaining 50%, entrance fees, at other charges ay sa resort babayaran. Check niyo po yung final amount sa payment page. Hindi pa confirmed ang booking dito sa chat.",
     spanish: "Para reservar en línea, elija alojamiento y horario en la página de reservas. El anticipo obligatorio por PayPal es el 50 % del precio final del alojamiento. El 50 % restante, la entrada y otros cargos se pagan en el resort. Confirme el importe exacto en la página de pago; el chat no confirma reservas.",
     mandarin: "在线预订时，请在预订页面选择住宿和时段。须通过 PayPal 支付最终住宿价格的 50% 作为订金。剩余 50%、入场费及其他现场费用在度假村支付。准确金额以安全付款页面为准；聊天不会确认预订。",
   }[language] || "For online reservations, pay 50% of the final accommodation price through PayPal on the secure booking page. Pay the balance and entrance fees onsite.";
@@ -770,7 +772,7 @@ function getQuotaPaymentIntro(language) {
   return {
     english: "AI is temporarily limited, but I can explain the resort's standard online booking payment process.",
     tagalog: "Pansamantalang limitado ang AI, pero maipapaliwanag ko po ang karaniwang online booking payment process ng resort.",
-    taglish: "Temporarily limited ang AI, pero maipapaliwanag ko po ang standard online booking payment process ng resort.",
+    taglish: "Medyo limited po yung AI ngayon, pero kaya ko pa ring i-explain yung online booking at payment steps.",
     spanish: "La IA está temporalmente limitada, pero puedo explicar el proceso de pago en línea del resort.",
     mandarin: "AI 暂时受限，但我可以说明度假村的在线预订付款流程。",
   }[language] || "AI is temporarily limited.";
@@ -847,7 +849,7 @@ async function buildQuotaLimitedAccommodationReply(payload, requestCatalog = nul
   const intro = {
     english: "Our AI service is temporarily limited, but these accommodation details come directly from the resort database.",
     tagalog: "Pansamantalang limitado ang AI, pero galing mismo sa resort database ang impormasyong ito.",
-    taglish: "Temporarily limited ang AI, pero galing mismo sa resort database ang accommodation details na ito.",
+    taglish: "Medyo limited po yung AI ngayon, pero galing pa rin sa resort database yung room details na ito.",
     spanish: "La IA está temporalmente limitada, pero estos datos provienen directamente de la base de datos del resort.",
     mandarin: "AI 服务暂时受限，但以下住宿信息直接来自度假村数据库。",
   }[language];
@@ -1024,6 +1026,35 @@ exports.chatWithGemini = async (req, res) => {
         catalog_recommendations: [],
         alternative_dates: [],
         booking_preview: null,
+      });
+    }
+
+    // Price/payment follow-ups must use the selected accommodation's CURRENT
+    // DB rates. "Payment options" is not a request for unrelated cheap
+    // cottages; don't send recommendation cards. Never promise a live slot,
+    // quote an entrance fee as part of the 50% deposit or create a booking.
+    if (isRoomPaymentInquiry(message)) {
+      const savedContext = req.body.context &&
+        typeof req.body.context === "object" && !Array.isArray(req.body.context)
+        ? req.body.context : {};
+      const recent = normalizeRecentTurns(req.body.recent_turns);
+      const catalog = await getAccommodationCatalog();
+      const room = resolvePaymentRoom(catalog, message, savedContext, recent);
+      const language = normalizeLanguageStyle(req.body.voice_language) ||
+        detectLanguageFromMessage(message) ||
+        normalizeLanguageStyle(req.body.language_style) ||
+        normalizeLanguageStyle(savedContext.language_style) || "english";
+      const nextContext = mergeContext(savedContext, {
+        language_style: language,
+        ...(room ? { room_id: room.id, room_name: room.room_name } : {}),
+      });
+      return res.status(200).json({
+        success: true, mode: "verified_accommodation_payment",
+        reply: paymentReply(message, nextContext, room, language),
+        extracted_context: nextContext,
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null,
+        recommendation_cards: [],
       });
     }
 
@@ -1564,7 +1595,26 @@ exports.chatWithGemini = async (req, res) => {
       mergedContext.language_style === "tagalog"
         ? "Reply in natural Tagalog."
         : mergedContext.language_style === "taglish"
-        ? "Reply in natural Taglish (Filipino and English)."
+        ? [
+          "Reply in casual, everyday Filipino-English Taglish used by friendly",
+          "Philippine resort front-desk staff. Simple, natural, warm, and polite;",
+          "not formal Tagalog and not a literal Filipino translation of English.",
+          "Use normal words like room, booking, schedule, available, preview,",
+          "payment, downpayment, balance, check-in, overnight, rate, and details.",
+          "Address guests politely with po and kayo when natural, but avoid",
+          "repeating ninyo or po unnaturally in every clause.",
+          "Avoid stiff or deep words like maaari, inyong, natitirang halaga,",
+          "nakasaad, sa pamamagitan ng, matutulungan namin kayong pumili,",
+          "nararapat, and a robotic scripted sales question after every answer.",
+          "Examples of tone ONLY (not facts):",
+          "'Yes po, may private CR yung room na yun.'",
+          "'Ito po yung preview. Click niyo lang yung View Details for photos.'",
+          "'₱X po yung listed overnight rate; ₱Y ang estimated downpayment.'",
+          "Answer the guest's actual question first. Use 1-2 short sentences",
+          "for normal chat or voice; payment breakdowns may need 3.",
+          "Never alter verified room details, pricing, payment policies,",
+          "booking constraints, or safety limitations for a casual tone."
+        ].join(" ")
         : mergedContext.language_style === "spanish"
         ? "Reply entirely in natural Spanish."
         : mergedContext.language_style === "mandarin"
@@ -1604,8 +1654,9 @@ Current resort date: ${resortToday} (Asia/Manila, Philippines).
 - Never use old example dates (for example, a year that has already passed).
 - Prefer asking for the guest's actual check-in date without inventing sample dates.
 - If a date example is essential, use an explicitly hypothetical FUTURE date after the current resort date.
-- For Tagalog or Taglish, consistently address guests politely using "po", "kayo", and "ninyo"; do not casually switch to "mo" or "ka".
-- When answering in Tagalog or Taglish, use short, natural customer-service phrasing instead of mixed formal/informal wording.
+- For Tagalog: use polite, clear Filipino.
+- For Taglish: use simple everyday Filipino plus familiar English service/booking terms. Polite "po" and "kayo" are enough; natural "niyo" or "yung" are fine. Never force deep Tagalog or excessively repeat "ninyo".
+- Never change the source facts, numeric amounts, room identities, or availability status just to sound casual.
 
 ${fixedVoiceLanguage ? `
 LIVE SPOKEN CONVERSATION (important):
@@ -1850,10 +1901,12 @@ Rules:
 - Keep dates, times, room names, prices, and booking details accurate.
 - Do not add information.
 - Do not remove important information.
-- Use natural Taglish that normal Filipino resort guests can easily understand.
-- Blend English and Tagalog naturally.
-- Keep the tone friendly, casually professional, and helpful.
-- Consistently use polite "po", "kayo", and "ninyo"; avoid switching to informal "mo" or "ka".
+- Sound like a helpful, friendly Filipino resort staff member, not a formal translation.
+- Use everyday Taglish and familiar English words like booking, rate, preview, check-in, payment, downpayment, and balance.
+- Keep sentences easy to say aloud. Use a natural amount of "po" or "kayo"; casual "yung" and "niyo" are okay.
+- Avoid deep/formal Tagalog such as "maaari", "nakasaad", "inyong", "pamagitan", and "natitirang halaga".
+- Do not add scripted greetings, repeated intros, or unnecessary booking questions.
+- Preserve exact meaning, names, numbers, prices and payment/booking policies.
 - Do not introduce outdated example dates or change any original date.
 - Do not use markdown symbols like ** or #.
 - Return only the translated text.

@@ -78,7 +78,7 @@ test("Single-feature English/Taglish CR stays direct", () => {
 
 test("Missing test DB amenity is UNKNOWN; no fabricated Family B features", () => {
   const staleTest = { id:100, room_name:"Family Room B", category_name:"Room", amenities: null, free_entrance_pax:8 };
-  assert.match(naturalRoomDetailsReply(staleTest,"taglish"), /Hindi pa po kumpleto/);
+  assert.match(naturalRoomDetailsReply(staleTest,"taglish"), /Hindi pa po complete/);
   assert.doesNotMatch(naturalRoomDetailsReply(staleTest,"taglish"), /aircon|private CR|refrigerator/);
   assert.match(amenityReply(staleTest,"cr","does it have a cr?","english"), /don't confirm/i);
 });

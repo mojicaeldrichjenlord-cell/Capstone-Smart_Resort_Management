@@ -51,6 +51,7 @@ function naturalList(items) {
 
 function naturalRoomDetailsReply(row, language = "taglish") {
   const filipino = ["tagalog", "taglish"].includes(String(language).toLowerCase());
+  const everydayTaglish = String(language).toLowerCase() === "taglish";
   const name = safeFact(row?.room_name || row?.name || "Accommodation");
   // The resort specifically confirmed that regular Cottage-category
   // accommodations do not include amenities. This must NEVER classify
@@ -65,7 +66,9 @@ function naturalRoomDetailsReply(row, language = "taglish") {
     // A missing TEST DB record is not evidence that the real room has no
     // inclusions. Never fill gaps by guessing from another accommodation.
     return filipino
-      ? "Hindi pa po kumpleto ang nakalistang amenities ng " + name + ". Puwede po itong i-confirm sa Front Desk."
+      ? (everydayTaglish
+        ? "Hindi pa po complete yung listed amenities ng " + name + ". Paki-confirm na lang po sa Front Desk."
+        : "Hindi pa po kumpleto ang nakalistang amenities ng " + name + ". Puwede po itong i-confirm sa Front Desk.")
       : "The listed amenities for " + name + " aren't complete yet. Please confirm with the Front Desk.";
   }
 
@@ -98,7 +101,9 @@ function naturalRoomDetailsReply(row, language = "taglish") {
        " Free entrance is included for " + free + " guests.")
     : "";
   return filipino
-    ? "Sa " + name + " po, kasama ang " + naturalList(details) + "." + freeStatement
+    ? (everydayTaglish
+      ? "Sa " + name + " po, included yung " + naturalList(details) + "." + freeStatement
+      : "Sa " + name + " po, kasama ang " + naturalList(details) + "." + freeStatement)
     : name + " includes " + naturalList(details) + "." + freeStatement;
 }
 

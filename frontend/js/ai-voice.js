@@ -1,9 +1,10 @@
 // Arvic AI Voice Assistant: optional Azure Blessica for Taglish plus browser fallback.
 // Voice Message: transcribe -> review/edit -> press Send.
 // Live Conversation: listen -> existing Gemini chat -> speak -> listen again.
-// Microphone audio stays in browser speech recognition; Taglish text can be
-// sent to the authenticated Azure-backed server for speech generation.
-// When Azure is unavailable, regular browser speech remains functional.
+// Accurate voice input records short WAV clips for signed Gemini transcription;
+// Fast voice input uses browser SpeechRecognition when available.
+// Cloud input is explicit in the UI, is not stored by this application, and
+// remains separate from optional Azure Blessica speech output.
 (() => {
   "use strict";
 
@@ -14,6 +15,7 @@
     mandarin: { stt: "zh-CN", tts: "zh-CN", label: "中文 (Mandarin)" },
   });
   const KEY = "smartresort_ai_voice_language_v1";
+  const INPUT_MODE_KEY = "arvic_ai_voice_input_mode_v1";
   const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
   // Web Speech can be denied by Safari even when the iPhone mic is allowed.
   const isIOS = /iPhone|iPad|iPod/i.test(window.navigator?.userAgent || "") ||
@@ -28,6 +30,8 @@
   const canSpeak = () => Boolean(SpeechRecognitionAPI || canRecord());
   const state = {
     language: "english",
+    inputMode: "fast",
+    inputModeExplicit: false,
     live: false,
     mode: "idle",
     recognizer: null,
@@ -135,7 +139,12 @@
     controls.live.disabled = !canSpeak();
     controls.live.classList.toggle("active", state.live);
     controls.interrupt.hidden = !(state.live && state.mode === "live-speaking");
-    controls.lang.disabled = state.mode === "dictation";
+    controls.lang.disabled = state.mode === "dictation" || state.mode === "dictation-transcribing";
+    // Avoid changing transcription providers in the middle of recording.
+    if (controls.inputMode) {
+      controls.inputMode.disabled = state.live || listening || state.mode === "dictation-transcribing";
+      controls.inputMode.value = state.inputMode;
+    }
     controls.panel.classList.toggle("listening", listening);
   }
 
@@ -366,7 +375,9 @@
       return;
     }
     const { kind, session, prefix, parts, context, count, heard } = active;
-    const wav = send && count > 4000 && (kind === "dictation" || heard)
+    // Never spend a Gemini transcription request on a silent mic,
+    // including manual dictation stopped before any actual speech.
+    const wav = send && count > 4000 && heard
       ? makeWav(parts, context.sampleRate) : null;
     cancelRecordedInput();
     if (!wav) {
@@ -392,12 +403,16 @@
       status("Transcribing voice securely…");
       const response = await fetch(voiceApiBase() + "/ai/transcribe", {
         method: "POST", headers: {
-          "Content-Type": "audio/wav", "Authorization": "Bearer " + token
+          "Content-Type": "audio/wav",
+          "X-Arvic-Voice-Language": state.language,
+          "Authorization": "Bearer " + token
         }, body: wav, signal: controller.signal
       });
       const body = await response.json();
       if (!response.ok || !body.success) throw new Error(body.message || "Transcription failed");
       if (controller.signal.aborted || (kind === "live" && (!state.live || state.session !== session))) return;
+      // This is already a model-transcribed audio result, not a browser
+      // guess. Preserve it instead of rewriting specific words afterwards.
       const text = String(body.transcript || "").trim().slice(0, state.transcriptLimit);
       const input = document.getElementById("aiChatInput");
       if (!input) return;
@@ -435,7 +450,8 @@
     let stream, context;
     try {
       stream = await window.navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true }
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true,
+          channelCount: 1 }
       });
       if (generation !== recordingGeneration || (kind === "live" && (!state.live || state.session !== session))) {
         stream.getTracks().forEach(track => track.stop()); return false;
@@ -448,7 +464,8 @@
       gain.gain.value = 0;
       source.connect(processor); processor.connect(gain); gain.connect(context.destination);
       const active = { kind, session, prefix, stream, context, source, processor,
-        gain, parts: [], count: 0, heard: false, lastSpeech: 0, timeout: null };
+        gain, parts: [], count: 0, heard: false, voiceFrames: 0,
+        lastSpeech: 0, timeout: null };
       recording = active;
       processor.onaudioprocess = event => {
         if (recording !== active) return;
@@ -458,11 +475,15 @@
         for (let n = 0; n < samples.length; n++) energy += samples[n] * samples[n];
         const elapsed = active.count / context.sampleRate;
         if (Math.sqrt(energy / samples.length) > 0.012) {
-          active.heard = true; active.lastSpeech = elapsed;
+          active.voiceFrames++;
+          // Require sustained voice, not a single click or mic pop.
+          if (active.voiceFrames >= 3) active.heard = true;
+          active.lastSpeech = elapsed;
         }
-        // Auto-finish a live turn after silence; never upload empty recordings.
-        if (elapsed >= 12 || (kind === "live" && active.heard &&
-          elapsed - active.lastSpeech >= 1.15)) {
+        // Allow natural pauses in Taglish without cutting off the sentence.
+        // Keep WAV under the backend's 500 KB audio limit (14 s at 16 kHz).
+        if (elapsed >= 14 || (kind === "live" && active.heard &&
+          elapsed - active.lastSpeech >= 1.6)) {
           finishRecordedInput(true);
         }
       };
@@ -472,7 +493,7 @@
       }
       active.timeout = setTimeout(() => {
         if (recording === active) finishRecordedInput(true);
-      }, 13000);
+      }, 14500);
       status(kind === "dictation"
         ? "Recording… Tap ■ to transcribe and review."
         : "Listening… Speak, then pause for the AI reply.");
@@ -488,10 +509,32 @@
   }
 
   function beginVoiceInput(kind) {
-    if ((preferRecording || !SpeechRecognitionAPI) && canRecord()) {
+    // Accurate mode transcribes actual audio via the existing signed Gemini
+    // endpoint. Fast mode retains browser STT without an extra Gemini request.
+    if (canRecord() && (state.inputMode === "accurate" ||
+        preferRecording || !SpeechRecognitionAPI)) {
       return startRecordedInput(kind);
     }
+    if (state.inputMode === "accurate" && !canRecord()) {
+      status("Accurate input unsupported on this device; using browser speech recognition.");
+    }
     return beginRecognition(kind);
+  }
+
+  function setInputMode(mode) {
+    if (!["accurate", "fast"].includes(mode)) return;
+    if (state.live) stopConversation("Voice input mode changed. Start a new conversation.");
+    if (state.mode === "dictation" || state.mode === "dictation-transcribing") {
+      stopRecognition(true); cancelRecordedInput(); state.mode = "idle";
+    }
+    state.inputMode = mode;
+    state.inputModeExplicit = true;
+    try { localStorage.setItem(INPUT_MODE_KEY, mode); } catch (_) { /* private mode */ }
+    if (controls?.inputMode) controls.inputMode.value = mode;
+    updateControls();
+    status(mode === "accurate"
+      ? "Accurate voice input: short microphone clips are securely transcribed with Gemini. This uses Gemini credits."
+      : "Fast voice input: browser speech recognition, no Gemini transcription call.");
   }
 
   function stopConversation(message = "Voice conversation ended.") {
@@ -514,8 +557,14 @@
       stopRecognition(true); cancelRecordedInput(); state.mode = "idle";
     }
     state.language = language;
+    if (!state.inputModeExplicit) {
+      // Mixed Filipino/English needs higher quality STT by default when audio
+      // recording is available; other locales retain faster browser input.
+      state.inputMode = language === "taglish" && canRecord() ? "accurate" : "fast";
+    }
     try { localStorage.setItem(KEY, language); } catch (_) { /* private mode */ }
     if (controls?.lang) controls.lang.value = language;
+    if (controls?.inputMode) controls.inputMode.value = state.inputMode;
     updateControls();
     status("Voice language: " + getLocale().label + ". Text chat can use other languages.");
   }
@@ -527,6 +576,78 @@
       state.restartTimer = null;
       if (state.live && state.session === session) beginVoiceInput("live");
     }, 800);
+  }
+
+  // Improve STT interpretation for resort terms without rewriting ordinary
+  // speech. Web Speech still controls audio recognition; these corrections
+  // apply ONLY to voice transcripts, never typed customer messages.
+  function recentAccommodationVoiceContext() {
+    try {
+      if (typeof getAiRecentConversationTurns === "function") {
+        const turns = getAiRecentConversationTurns("") || [];
+        if (turns.slice(-6).some(turn =>
+          turn?.role === "user" && /\b(?:room|rooms|kwarto|kuwarto|accommodation|resort|cottage|nipa|hut|shade|pool ?side|pavilion|pavillion)\b/i.test(String(turn.text || "")))) {
+          return true;
+        }
+      }
+      if (typeof getStoredAiContext === "function") {
+        const context = getStoredAiContext() || {};
+        return Boolean(context.room_id || context.room_name);
+      }
+    } catch (_) { /* Voice is still usable if conversation storage is blocked. */ }
+    return false;
+  }
+
+  function normalizeArvicVoiceTranscript(raw, language = state.language) {
+    let text = String(raw || "").replace(/\s+/g, " ").trim();
+    // Never translate or "fix" foreign-language speech with Taglish rules.
+    if (!text || !["taglish", "english"].includes(language)) return text;
+
+    const resortTerms = /\b(?:room|rooms|kwarto|kuwarto|accommodation|resort|cottage|nipa|hut|shade|pool ?side|pavilion|pavillion|family|double)\b/i;
+    const inAccommodationConversation =
+      resortTerms.test(text) || recentAccommodationVoiceContext();
+    const searchingForAccommodation =
+      /\b(?:anong|ano|which|what|show|pakita|patingin|preview|picture|photo|list|options?|hanap)\b/i.test(text) ||
+      /\bfull[ -]shades?\b.*\b(?:meron|available)\b/i.test(text);
+
+    // Edge Taglish frequently hears "full shade" instead of "pool shade"
+    // when customers are asking which resort accommodations exist.
+    if (searchingForAccommodation && inAccommodationConversation) {
+      text = text.replace(/\bfull[ -]shades?\b/gi, match =>
+        /shades$/i.test(match) ? "pool shades" : "pool shade");
+    }
+
+    // "May premyo ka ba?" is ambiguous without context: it can mean a
+    // genuine prize. Correct to "preview" ONLY in an accommodation discussion
+    // with a preview-looking request and no promotion/contest terminology.
+    const clearlyAboutPrize = /\b(?:raffle|contest|giveaway|winner|winning|panalo|paligsahan|claim|prize|promo(?:tion)?|discount)\b/i.test(text);
+    const looksLikePreviewQuestion =
+      /\b(?:may|meron|pwede|puwede|patingin|pakita|show|tingnan|picture|photos?|preview|send)\b/i.test(text);
+    if (inAccommodationConversation && looksLikePreviewQuestion && !clearlyAboutPrize) {
+      text = text.replace(/\bpre[ -]?myo\b/gi, "preview");
+    }
+    return text;
+  }
+
+  function chooseVoiceRecognitionAlternative(result) {
+    const primary = String(result?.[0]?.transcript || "");
+    if (!["taglish", "english"].includes(state.language) || !result || result.length < 2) return primary;
+    const accommodationContext = recentAccommodationVoiceContext() ||
+      /\b(?:room|cottage|shade|nipa|pavilion|resort|pool)\b/i.test(primary);
+    const primaryConfidence = Number(result[0]?.confidence);
+    for (let i = 1; i < Math.min(result.length, 3); i++) {
+      const alternative = String(result[i]?.transcript || "");
+      const confidence = Number(result[i]?.confidence);
+      if (Number.isFinite(primaryConfidence) && primaryConfidence > 0 &&
+          Number.isFinite(confidence) && confidence > 0 &&
+          confidence < primaryConfidence - 0.15) continue;
+      if (/\bpool[ -]shade\b/i.test(alternative) && /\bfull[ -]shade\b/i.test(primary)) {
+        return alternative;
+      }
+      if (accommodationContext && /\bpreview\b/i.test(alternative) &&
+          /\bpremyo\b/i.test(primary)) return alternative;
+    }
+    return primary;
   }
 
   function beginRecognition(kind) {
@@ -545,7 +666,9 @@
     recognizer.lang = getLocale().stt;
     recognizer.continuous = kind === "dictation";
     recognizer.interimResults = true;
-    recognizer.maxAlternatives = 1;
+    // Some browsers offer a better-scored "pool shade"/"preview" alternative.
+    // Prefer it only when confidence is comparable and resort context fits.
+    recognizer.maxAlternatives = 3;
     recognizer.onstart = () => {
       if (state.recognizer !== recognizer) return;
       status(kind === "dictation"
@@ -559,15 +682,15 @@
       let final = "";
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i];
-        const transcript = String(result?.[0]?.transcript || "");
+        const transcript = chooseVoiceRecognitionAlternative(result);
         if (result.isFinal) final += transcript + " ";
         else pending += transcript;
       }
       if (final) state.finalText += final;
       const text = [state.draftPrefix, state.finalText.trim(), pending.trim()]
         .filter(Boolean).join(" ").slice(0, state.transcriptLimit);
-      input.value = text;
-      if (kind === "live") status("Heard: " + text.slice(0, 90));
+      input.value = normalizeArvicVoiceTranscript(text);
+      if (kind === "live") status("Heard: " + input.value.slice(0, 90));
     };
     recognizer.onerror = event => {
       if (state.recognizer !== recognizer) return;
@@ -584,11 +707,14 @@
     recognizer.onend = () => {
       if (state.recognizer !== recognizer) return;
       state.recognizer = null;
-      const utterance = state.finalText.trim().slice(0, state.transcriptLimit);
+      const utterance = normalizeArvicVoiceTranscript(
+        state.finalText.trim().slice(0, state.transcriptLimit)
+      );
       const error = state.error;
       state.finalText = "";
       if (error === "fallback-recording") { void startRecordedInput(kind); return; }
       if (kind === "dictation") {
+        input.value = [state.draftPrefix, utterance].filter(Boolean).join(" ");
         state.mode = "idle";
         updateControls();
         status(utterance
@@ -718,6 +844,13 @@
       '<button id="aiVoiceLive" type="button" aria-pressed="false">Start Conversation</button>',
       '</div>',
       '<div class="ai-voice-actions">',
+      '<label for="aiVoiceInputMode">Voice input</label>',
+      '<select id="aiVoiceInputMode" aria-label="Choose voice recognition mode">',
+      '<option value="accurate">Accurate (Gemini)</option>',
+      '<option value="fast">Fast (browser)</option>',
+      '</select>',
+      '</div>',
+      '<div class="ai-voice-actions">',
       '<button id="aiVoiceInterrupt" type="button" hidden>Interrupt AI</button>',
       '</div>',
       '<p id="aiVoiceStatus" role="status" aria-live="polite">',
@@ -731,6 +864,7 @@
       panel,
       mic: microphone,
       lang: panel.querySelector("#aiVoiceLanguage"),
+      inputMode: panel.querySelector("#aiVoiceInputMode"),
       live: panel.querySelector("#aiVoiceLive"),
       interrupt: panel.querySelector("#aiVoiceInterrupt"),
       status: panel.querySelector("#aiVoiceStatus"),
@@ -740,7 +874,14 @@
       try { return localStorage.getItem(KEY); } catch (_) { return null; }
     })();
     state.language = Object.hasOwn(LOCALES, saved) ? saved : "english";
+    const preferredMode = (() => {
+      try { return localStorage.getItem(INPUT_MODE_KEY); } catch (_) { return null; }
+    })();
+    state.inputModeExplicit = preferredMode === "accurate" || preferredMode === "fast";
+    state.inputMode = state.inputModeExplicit ? preferredMode
+      : (state.language === "taglish" && canRecord() ? "accurate" : "fast");
     controls.lang.value = state.language;
+    controls.inputMode.value = state.inputMode;
     // Safari/Android may populate voices lazily; warm the list before Read Aloud.
     // Still synthesize synchronously when the user taps to preserve iOS gestures.
     window.speechSynthesis?.getVoices?.();
@@ -751,6 +892,7 @@
     });
     controls.interrupt.addEventListener("click", interruptConversation);
     controls.lang.addEventListener("change", () => setLanguage(controls.lang.value));
+    controls.inputMode.addEventListener("change", () => setInputMode(controls.inputMode.value));
 
     document.getElementById("aiChatClose")?.addEventListener("click", () =>
       stopConversation("Voice controls stopped when the assistant closed."));
@@ -766,7 +908,9 @@
     } else {
       status("Voice language: " + getLocale().label +
         ". 🎤 = dictate and review; Start Conversation = talk hands-free. " +
-        "On some devices, recorded voice is securely sent for AI transcription.");
+        (state.inputMode === "accurate"
+          ? "Accurate input uploads short microphone audio to Gemini for transcription and uses credits."
+          : "Fast input uses browser recognition when available."));
     }
     updateControls();
   }
@@ -774,8 +918,9 @@
   window.ArvicVoice = Object.freeze({
     init, readAloud, stopConversation, isLiveActive: () => state.live,
     getLanguage: () => state.language,
-    setLanguage,
-    getState: () => ({ mode: state.mode, live: state.live, language: state.language, recordingFallback: preferRecording }),
+    setLanguage, setInputMode,
+    getState: () => ({ mode: state.mode, live: state.live, language: state.language,
+      inputMode: state.inputMode, recordingFallback: preferRecording }),
   });
   document.addEventListener("DOMContentLoaded", init);
 })();

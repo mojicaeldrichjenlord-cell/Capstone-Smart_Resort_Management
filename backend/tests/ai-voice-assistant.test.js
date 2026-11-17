@@ -11,7 +11,8 @@ const script = fs.readFileSync(
 );
 
 function mount({ recognizerAvailable = true, savedLanguage = null, voices = [], customerToken = null,
-  cloudStatus = 503, audioAvailable = false, ios = false } = {}) {
+  cloudStatus = 503, audioAvailable = false, ios = false,
+  recentTurns = [], recordedTranscript = "How do I book a room?" } = {}) {
   const nodes = {};
   const recognitionInstances = [];
   const speechUtterances = [];
@@ -55,7 +56,7 @@ function mount({ recognizerAvailable = true, savedLanguage = null, voices = [], 
   element("aiNewChatBtn");
   // Fake DOM has no HTML parser: create nodes that the injected toolbar
   // would normally produce from panel.innerHTML in a real browser.
-  for (const id of ["aiVoiceLanguage", "aiVoiceLive",
+  for (const id of ["aiVoiceLanguage", "aiVoiceInputMode", "aiVoiceLive",
     "aiVoiceInterrupt", "aiVoiceStatus", "aiVoiceChoice",
     "aiVoicePreview", "aiVoiceInfo"]) element(id);
 
@@ -77,8 +78,13 @@ function mount({ recognizerAvailable = true, savedLanguage = null, voices = [], 
       this.started = false;
       this.onend?.();
     }
-    say(text, isFinal = true) {
-      const result = [{ transcript: text }];
+    say(text, isFinal = true, alternatives = []) {
+      const result = [
+        { transcript: text, confidence: 0.82 },
+        ...alternatives.map(item => typeof item === "string"
+          ? { transcript: item, confidence: 0.8 }
+          : item),
+      ];
       result.isFinal = isFinal;
       this.onresult({ resultIndex: 0, results: [result] });
     }
@@ -159,7 +165,7 @@ function mount({ recognizerAvailable = true, savedLanguage = null, voices = [], 
       if (String(url).endsWith("/ai/transcribe")) {
         transcriptionRequests.push({ url, opts });
         return { ok: true, async json() { return { success: true,
-          transcript: "How do I book a room?" }; } };
+          transcript: recordedTranscript }; } };
       }
       cloudRequests.push({ url, opts });
       return {
@@ -168,6 +174,8 @@ function mount({ recognizerAvailable = true, savedLanguage = null, voices = [], 
       };
     },
     console,
+    getAiRecentConversationTurns: () => recentTurns,
+    getStoredAiContext: () => ({}),
     sendAiMessage: async opts => {
       requests.push({ opts, message: nodes.aiChatInput.value });
       nodes.aiChatInput.value = "";
@@ -238,7 +246,9 @@ test("Live mode sends recognized turn, speaks response, and listens again", asyn
   assert.equal(h.requests[0].opts.source, "voice");
   assert.equal(h.requests[0].message, "Need a room for five guests");
   assert.equal(h.speechUtterances.length, 1);
-  assert.equal(h.speechUtterances[0].lang, "en-PH");
+  // Recognition listens in en-PH; speech output defaults to en-US when
+  // the browser has no installed voice to choose from.
+  assert.equal(h.speechUtterances[0].lang, "en-US");
   assert.equal(h.voice.getState().mode, "live-speaking");
   h.speechUtterances[0].onend();
   h.runScheduled();
@@ -332,7 +342,7 @@ test("Customer pages load AI chat before interactive voice and include voice sty
     const html = fs.readFileSync(path.resolve(
       __dirname, "../../frontend/customerHTML", page), "utf8");
     const chatIndex = html.indexOf('src="../js/ai-chat.js"');
-    const voiceIndex = html.indexOf('src="../js/ai-voice.js?v=20261115-voiceqa2"');
+    const voiceIndex = html.indexOf('src="../js/ai-voice.js?v=20261117-accurate2"');
     assert.ok(chatIndex > 0 && voiceIndex > chatIndex);
     assert.match(html, /sharedCSS\/ai-voice\.css/);
   }
@@ -474,7 +484,7 @@ test("iOS hands-free turn transcribes after silence and resumes listening", asyn
   const h = mount({ ios: true, audioAvailable: true, customerToken: "fake-customer-token" });
   h.fire("aiVoiceLive"); await h.settle();
   for (let i = 0; i < 22; i++) h.audioProcessors[0].feed(0.1);
-  for (let i = 0; i < 32; i++) h.audioProcessors[0].feed(0);
+  for (let i = 0; i < 42; i++) h.audioProcessors[0].feed(0);
   await h.settle();
   assert.equal(h.requests.length, 1);
   assert.equal(h.requests[0].message, "How do I book a room?");
@@ -512,4 +522,201 @@ test("Mobile English fallback uses en-US before speech voices load", () => {
   const h = mount({ ios: true, voices: [] });
   h.voice.readAloud("Welcome!");
   assert.equal(h.speechUtterances[0].lang, "en-US");
+});
+
+test("Taglish voice recognizes resort Pool Shade even if browser hears full shade", async () => {
+  const h = mount({ savedLanguage: "taglish" });
+  h.fire("aiVoiceLive");
+  assert.equal(h.recognitionInstances[0].lang, "fil-PH");
+  assert.equal(h.recognitionInstances[0].maxAlternatives, 3);
+  h.recognitionInstances[0].say("Anong mga full shade meron kayo?");
+  h.recognitionInstances[0].stop();
+  await h.settle();
+  assert.equal(h.requests[0].message, "Anong mga pool shade meron kayo?");
+  assert.equal(h.requests.length, 1);
+});
+
+test("Taglish preview / premyo mishearing is corrected only in resort context", async () => {
+  const h = mount({ savedLanguage: "taglish",
+    recentTurns: [{role:"user",text:"Anong mga pool shade meron kayo?"}] });
+  h.fire("aiVoiceLive");
+  h.recognitionInstances[0].say("May premyo ka ba?");
+  h.recognitionInstances[0].stop();
+  await h.settle();
+  assert.equal(h.requests[0].message, "May preview ka ba?");
+  assert.equal(h.requests.length, 1);
+});
+
+test("A real prize request stays as premyo without accommodation context", async () => {
+  const h = mount({ savedLanguage: "taglish" });
+  h.fire("aiVoiceLive");
+  h.recognitionInstances[0].say("May premyo ka ba?");
+  h.recognitionInstances[0].stop();
+  await h.settle();
+  assert.equal(h.requests[0].message, "May premyo ka ba?");
+});
+
+test("Raffle premyo is never rewritten into preview even after a room discussion", async () => {
+  const h = mount({ savedLanguage: "taglish",
+    recentTurns: [{role:"user",text:"May family room kayo?"}] });
+  h.fire("aiVoiceLive");
+  h.recognitionInstances[0].say("May raffle premyo ka ba?");
+  h.recognitionInstances[0].stop();
+  await h.settle();
+  assert.equal(h.requests[0].message, "May raffle premyo ka ba?");
+});
+
+test("Near-confidence browser recognition alternative can recover preview", async () => {
+  const h = mount({ savedLanguage: "taglish",
+    recentTurns: [{role:"user",text:"Anong mga pool shade meron kayo?"}] });
+  h.fire("aiVoiceLive");
+  h.recognitionInstances[0].say("May premyo ka ba?", true,
+    [{transcript:"May preview ka ba?",confidence:0.8}]);
+  h.recognitionInstances[0].stop();
+  await h.settle();
+  assert.equal(h.requests[0].message, "May preview ka ba?");
+});
+
+test("Dictation remains editable and never autosends corrected Taglish speech", () => {
+  const h = mount({ savedLanguage: "taglish" });
+  h.fire("aiMicBtn");
+  h.recognitionInstances[0].say("Anong mga full shade meron kayo?");
+  h.fire("aiMicBtn");
+  assert.equal(h.nodes.aiChatInput.value, "Anong mga pool shade meron kayo?");
+  assert.equal(h.requests.length, 0);
+});
+
+test("Recorded Gemini STT faithfully preserves a returned transcript without forced word substitutions", async () => {
+  const h = mount({ ios:true,audioAvailable:true, customerToken:"test-token",
+    savedLanguage:"taglish",recordedTranscript:"May premyo ka ba?",
+    recentTurns:[{role:"user",text:"Anong mga pool shade meron kayo?"}] });
+  h.fire("aiMicBtn");
+  await h.settle();
+  for (let i=0;i<3;i++) h.audioProcessors[0].feed(0.1);
+  h.fire("aiMicBtn");
+  await h.settle();
+  assert.equal(h.nodes.aiChatInput.value, "May premyo ka ba?");
+  assert.equal(h.transcriptionRequests[0].opts.headers["X-Arvic-Voice-Language"], "taglish");
+  assert.equal(h.requests.length, 0);
+});
+
+test("Mandarin voice speech stays untranslated and unmodified by Taglish terms", async () => {
+  const h = mount({ savedLanguage:"mandarin",
+    recentTurns:[{role:"user",text:"Pool Shade"}] });
+  h.fire("aiVoiceLive");
+  h.recognitionInstances[0].say("May premyo ka ba?");
+  h.recognitionInstances[0].stop();
+  await h.settle();
+  assert.equal(h.requests[0].message, "May premyo ka ba?");
+});
+
+test("Full shade amenity question is not silently converted into Pool Shade", async () => {
+  const h = mount({ savedLanguage:"taglish" });
+  h.fire("aiVoiceLive");
+  h.recognitionInstances[0].say("May full shade ba sa cottage?");
+  h.recognitionInstances[0].stop();
+  await h.settle();
+  assert.equal(h.requests[0].message, "May full shade ba sa cottage?");
+});
+
+test("Taglish on a recording-capable Edge desktop defaults to accurate audio STT", async () => {
+  const h = mount({ savedLanguage:"taglish", audioAvailable:true,
+    customerToken:"fake-customer-token", recordedTranscript:"Anong ibang cottage ang meron kayo?" });
+  assert.equal(h.voice.getState().inputMode,"accurate");
+  assert.equal(h.nodes.aiVoiceInputMode.value,"accurate");
+  h.fire("aiVoiceLive"); await h.settle();
+  assert.equal(h.recognitionInstances.length,0,"Gemini audio STT must replace browser STT in accurate mode");
+  assert.equal(h.audioProcessors.length,1);
+  for(let n=0;n<4;n++) h.audioProcessors[0].feed(0.1);
+  for(let n=0;n<43;n++) h.audioProcessors[0].feed(0);
+  await h.settle();
+  assert.equal(h.transcriptionRequests.length,1);
+  assert.equal(h.transcriptionRequests[0].opts.headers["X-Arvic-Voice-Language"],"taglish");
+  assert.equal(h.requests[0].message,"Anong ibang cottage ang meron kayo?");
+  assert.equal(h.requests.length,1,"One utterance submits only one AI chat request");
+});
+
+test("General accurate transcription respects arbitrary words instead of dictionary substitutions", async () => {
+  const h = mount({ savedLanguage:"taglish",audioAvailable:true,
+    customerToken:"fake-customer-token",recordedTranscript:"Pwede po ba ang late checkout? May parking?" });
+  h.fire("aiMicBtn"); await h.settle();
+  for(let n=0;n<3;n++) h.audioProcessors[0].feed(0.1);
+  h.fire("aiMicBtn"); await h.settle();
+  assert.equal(h.nodes.aiChatInput.value,"Pwede po ba ang late checkout? May parking?");
+  assert.equal(h.requests.length,0,"Dictation must be editable and not auto-send");
+  assert.equal(h.transcriptionRequests.length,1);
+});
+
+test("Fast browser mode remains available for Taglish to save Gemini credits", async () => {
+  const h = mount({ savedLanguage:"taglish",audioAvailable:true,
+    customerToken:"fake-customer-token" });
+  h.nodes.aiVoiceInputMode.value="fast";
+  h.fire("aiVoiceInputMode","change");
+  assert.equal(h.voice.getState().inputMode,"fast");
+  assert.equal(h.stored.get("arvic_ai_voice_input_mode_v1"),"fast");
+  h.fire("aiVoiceLive");
+  assert.equal(h.recognitionInstances.length,1);
+  h.recognitionInstances[0].say("What accommodations do you have?");
+  h.recognitionInstances[0].stop(); await h.settle();
+  assert.equal(h.requests.length,1);
+  assert.equal(h.transcriptionRequests.length,0);
+});
+
+test("English can explicitly enable accurate audio transcription without forcing Taglish corrections", async () => {
+  const h = mount({ savedLanguage:"english",audioAvailable:true,
+    customerToken:"fake-customer-token",recordedTranscript:"What are the options for tomorrow?" });
+  assert.equal(h.voice.getState().inputMode,"fast");
+  h.nodes.aiVoiceInputMode.value="accurate";
+  h.fire("aiVoiceInputMode","change");
+  assert.equal(h.voice.getState().inputMode,"accurate");
+  h.fire("aiMicBtn"); await h.settle();
+  for(let n=0;n<3;n++) h.audioProcessors[0].feed(0.1);
+  h.fire("aiMicBtn"); await h.settle();
+  assert.equal(h.nodes.aiChatInput.value,"What are the options for tomorrow?");
+  assert.equal(h.transcriptionRequests.length,1);
+  assert.equal(h.requests.length,0);
+});
+
+test("Switching to Filipino selects accurate input unless user chose fast explicitly", () => {
+  const h=mount({audioAvailable:true});
+  assert.equal(h.voice.getState().inputMode,"fast");
+  h.nodes.aiVoiceLanguage.value="taglish";
+  h.fire("aiVoiceLanguage","change");
+  assert.equal(h.voice.getState().inputMode,"accurate");
+  h.nodes.aiVoiceInputMode.value="fast";
+  h.fire("aiVoiceInputMode","change");
+  h.nodes.aiVoiceLanguage.value="english";
+  h.fire("aiVoiceLanguage","change");
+  h.nodes.aiVoiceLanguage.value="taglish";
+  h.fire("aiVoiceLanguage","change");
+  assert.equal(h.voice.getState().inputMode,"fast");
+});
+
+test("Changing input provider ends current hands-free session safely", () => {
+  const h=mount({audioAvailable:true});
+  h.fire("aiVoiceLive");
+  assert.equal(h.voice.isLiveActive(),true);
+  h.voice.setInputMode("accurate");
+  assert.equal(h.voice.isLiveActive(),false);
+  assert.equal(h.requests.length,0);
+});
+
+test("Existing alternate languages, transcript review, and cloud voice controls remain", () => {
+  assert.match(script,/Accurate \(Gemini\)/);
+  assert.match(script,/Fast \(browser\)/);
+  assert.match(script,/autoGainControl: true/);
+  assert.match(script,/elapsed - active.lastSpeech >= 1\.6/);
+  assert.match(script,/const text = String\(body.transcript/);
+  assert.match(script,/setInputMode/);
+  assert.doesNotMatch(script,/\/api\/bookings|\/api\/paypal/);
+});
+
+test("Silent microphone does not spend credits or send transcription request", async () => {
+  const h = mount({savedLanguage:"taglish",audioAvailable:true,customerToken:"test-token"});
+  h.fire("aiMicBtn"); await h.settle();
+  for(let n=0;n<8;n++) h.audioProcessors[0].feed(0);
+  h.fire("aiMicBtn"); await h.settle();
+  assert.equal(h.transcriptionRequests.length,0);
+  assert.equal(h.requests.length,0);
+  assert.match(h.nodes.aiVoiceStatus.textContent,/No speech detected/i);
 });

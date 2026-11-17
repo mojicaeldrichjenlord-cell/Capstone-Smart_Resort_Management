@@ -27,8 +27,28 @@ function createTranscribeVoice({
         message: "Voice transcription is temporarily unavailable. Please type your message." });
     }
     try {
+      // Language hint is an allowlisted UI setting, never a free-form prompt.
+      // Resort vocabulary helps distinguish Filipino/English homophones such
+      // as "preview"/"premyo" and "Pool Shade"/"full shade". It must never
+      // override what the audio actually says.
+      const language = String(req.get("x-arvic-voice-language") || "").toLowerCase();
+      const languageHint = ({
+        english: "English (Philippines)",
+        taglish: "Taglish / Filipino mixed with English (Philippines)",
+        spanish: "Spanish",
+        mandarin: "Mandarin Chinese",
+      })[language] || "English, Filipino/Taglish, Spanish, or Mandarin";
+      const prompt =
+        "Transcribe the speech faithfully in " + languageHint + ". " +
+        "The conversation is about Arvic Seaside Resort accommodations. " +
+        "Relevant proper names include Pool Shade, Big Shade, Small Shade, " +
+        "Nipa Hut, Pool Pavilion, Beach Pavilion, Family Room, Double Room, " +
+        "Single Room Poolside, and the feature called an accommodation preview. " +
+        "Do not change genuinely spoken words to fit these examples. " +
+        "Output only the exact spoken words, not a reply, commentary or translation. " +
+        "If there is no intelligible human speech, output exactly NO_SPEECH.";
       const answer = await generate(client(), [{ role: "user", parts: [
-        { text: "Accurately transcribe spoken words in this recording (English, Filipino, Taglish, Spanish, Mandarin). Output only the words spoken, not an answer. If there is no intelligible human speech, output exactly NO_SPEECH." },
+        { text: prompt },
         { inlineData: { mimeType: "audio/wav", data: audio.toString("base64") } },
       ] }]);
       const raw = String(answer?.text || "").trim();
