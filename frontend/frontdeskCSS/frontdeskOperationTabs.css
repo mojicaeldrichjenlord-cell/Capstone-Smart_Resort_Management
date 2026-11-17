@@ -298,3 +298,50 @@
     min-height: 34px;
   }
 }
+
+
+/* ============================================================
+   FRONT DESK ADD ACCOMMODATION — LIVE TIME-SLOT LABELS
+   Reuses the same calm availability indicators as Customer Booking.
+   Native <option disabled> prevents choosing a booked/ended schedule.
+============================================================ */
+#addAccommodationSlot {
+  min-width: 0;
+  width: 100%;
+}
+
+#addAccommodationSlot option:disabled {
+  color: #9f1239;
+  background: #fff1f2;
+}
+
+#addAccommodationSlotStatus {
+  display: block;
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #dbe7ef;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  font-weight: 650;
+}
+
+#addAccommodationSlotStatus[data-state="checking"] {
+  border-color: #bae6fd;
+  background: #f0f9ff;
+  color: #075985;
+}
+
+#addAccommodationSlotStatus[data-state="ready"] {
+  border-color: #a7f3d0;
+  background: #ecfdf5;
+  color: #065f46;
+}
+
+#addAccommodationSlotStatus[data-state="error"] {
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #9a3412;
+}
