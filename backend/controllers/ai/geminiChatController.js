@@ -7,6 +7,7 @@ const { validateAiStayWindow, calendarDayDifference, addCalendarDays } = require
 const { normalizeRecentTurns, wantsAccommodationCards, verifiedAccommodationCards, tidyAssistantReply } =
   require("./aiConversationStyle");
 const { requestedAmenity, amenityReply } = require("./aiAccommodationAmenities");
+const { wantsFocusedRoomOverview, focusedRoomOverview } = require("./aiAccommodationDetails");
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -1091,6 +1092,50 @@ exports.chatWithGemini = async (req, res) => {
             recommendation_cards: [],
           });
         }
+      }
+    }
+
+    // Room overview fast path: answer "Tell me more about [selected room]"
+    // from the actual current DB record. Do not replace a room summary with
+    // generic check-in questions, generate Gemini tokens, or invent inclusions.
+    const overviewId = Number(req.body?.context?.room_id ?? req.body?.room_id);
+    const overviewName = req.body?.context?.room_name ?? req.body?.room_name;
+    if (Number.isSafeInteger(overviewId) && overviewId > 0 &&
+        wantsFocusedRoomOverview(message, overviewName)) {
+      const [overviewRows] = await db.promise().query(
+        "SELECT a.id, a.name AS room_name, a.description, a.amenities, " +
+          "a.max_capacity AS capacity, a.day_price, a.overnight_price " +
+          "FROM accommodations a WHERE a.id = ? LIMIT 1",
+        [overviewId],
+      );
+      const overviewRecord = overviewRows[0];
+      // The selected room may have been renamed. A question naming a
+      // DIFFERENT room must never receive facts about the older selection.
+      if (overviewRecord &&
+          wantsFocusedRoomOverview(message, overviewRecord.room_name)) {
+        const language = normalizeLanguageStyle(req.body.voice_language) ||
+          (/^(?:tell me|can you tell|describe|what|more details)/i.test(String(message).trim())
+            ? "english" : null) ||
+          (/\b(?:ano|anong|ang|mga|nito|ito|po|pakikwento)\b/i.test(String(message))
+            ? "taglish" : null) ||
+          detectLanguageFromMessage(message) ||
+          normalizeLanguageStyle(req.body.language_style) ||
+          normalizeLanguageStyle(req.body.context?.language_style) || "english";
+        const savedContext = req.body.context &&
+          typeof req.body.context === "object" && !Array.isArray(req.body.context)
+          ? req.body.context : {};
+        return res.status(200).json({
+          success: true, mode: "verified_accommodation_overview",
+          reply: focusedRoomOverview(overviewRecord, language),
+          extracted_context: mergeContext(savedContext, {
+            room_id: overviewRecord.id,
+            room_name: overviewRecord.room_name,
+            language_style: language,
+          }),
+          matched_rooms: [], catalog_recommendations: [],
+          alternative_dates: [], booking_preview: null,
+          recommendation_cards: [],
+        });
       }
     }
 
