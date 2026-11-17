@@ -813,9 +813,9 @@ function verifiedAiRoomStaticPhoto(room) {
   } else if ((match = name.match(/^single room pool side ([a-f])$/))) {
     candidate = "images/accommodations/Single-Room-Poolside/Single-Room-Poolside-" +
       match[1].toUpperCase() + ".jpg";
-  } else if ((match = name.match(/^big shade (\d+) (?:cottage)?$/))) {
+  } else if ((match = name.match(/^big shade (\d+)(?: cottage)?$/))) {
     candidate = "images/accommodations/Big-Shade/Big-Shade-" + match[1] + ".jpg";
-  } else if ((match = name.match(/^small shade (\d+a?) (?:cottage)?$/))) {
+  } else if ((match = name.match(/^small shade (\d+a?)(?: cottage)?$/))) {
     candidate = "images/accommodations/Small-Shade/Small-Shade-" + match[1].toUpperCase() + ".jpg";
   } else if ((match = name.match(/^big nipa hut (\d+)$/))) {
     candidate = "images/accommodations/Big-Nipa-Hut/Big-Nipa-Hut-" + match[1] + ".jpg";
