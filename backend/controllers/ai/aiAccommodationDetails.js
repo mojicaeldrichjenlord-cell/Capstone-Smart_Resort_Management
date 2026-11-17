@@ -40,6 +40,7 @@ function listedRate(value) {
 
 function focusedRoomOverview(room, language = "english") {
   const taglish = ["tagalog", "taglish"].includes(String(language).toLowerCase());
+  const everydayTaglish = String(language).toLowerCase() === "taglish";
   const name = cleanedFact(room?.room_name || room?.name || "Accommodation", 90);
   const count = Number(room?.capacity ?? room?.max_capacity);
   const capacity = Number.isSafeInteger(count) && count > 0
@@ -64,6 +65,9 @@ function focusedRoomOverview(room, language = "english") {
       ? "Wala pong kasamang amenities sa cottage na ito. "
       : overview ? "Kasama ang " + overview + ". "
       : "Wala pang nakalistang inclusions. ";
+    if (everydayTaglish) {
+      return `${name} po, ${capacity}. ${details}${rates ? "Listed rates: " + rates + ". " : ""}Check niyo na lang po yung date at slot sa booking page.`;
+    }
     return `${name} po ay ${capacity}. ${details}${rates ? "Listed rates: " + rates + "; " : ""}i-confirm pa rin po ang date at slot sa booking page.`;
   }
   const details = plainCottage
