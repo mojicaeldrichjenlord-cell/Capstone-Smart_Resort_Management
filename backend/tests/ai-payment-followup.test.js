@@ -67,7 +67,7 @@ test("Stale room ID or missing ID must never quote a different accommodation", (
   assert.equal(resolvePaymentRoom(catalog,paymentQuestion,
     {room_id:999,room_name:"Missing Room"}),null);
   const reply=paymentReply(paymentQuestion,{},null,"taglish");
-  assert.match(reply,/Aling accommodation/);
+  assert.match(reply,/Anong room po/);
   assert.doesNotMatch(reply,/₱|Small Nipa/);
 });
 
@@ -81,7 +81,7 @@ test("Unknown, zero and invalid rates do not turn into zero-amount quotations", 
   const room={id:100,room_name:"Family Room B",overnight_price:null};
   const reply=paymentReply(paymentQuestion,{},room,"taglish");
   assert.doesNotMatch(reply,/₱0|₱4,000/);
-  assert.match(reply,/i-confirm/);
+  assert.match(reply,/day tour or overnight/);
 });
 
 test("Extended/multiple nights are not priced as a single overnight stay", () => {
@@ -116,7 +116,7 @@ test("Unavailable accommodation cannot be quoted as a payable booking", () => {
   const room={id:100,room_name:"Family Room B",status:"maintenance",
     day_price:8000,overnight_price:8000};
   const reply=paymentReply(paymentQuestion,{},room,"taglish");
-  assert.match(reply,/hindi kasalukuyang listed as available/);
+  assert.match(reply,/hindi currently available sa listing/);
   assert.doesNotMatch(reply,/₱8,000|₱4,000/);
 });
 
@@ -124,6 +124,19 @@ test("Estimated payment breakdown includes onsite accommodation balance separate
   const room=resolvePaymentRoom(catalog,paymentQuestion,
     {room_id:100,room_name:"Family Room B"});
   const reply=paymentReply(paymentQuestion,{},room,"taglish");
-  assert.match(reply,/natitirang accommodation balance: ₱4,000\.00/);
+  assert.match(reply,/₱4,000\.00 yung remaining room balance/);
   assert.match(reply,/entrance fees/);
+});
+
+test("Everyday Taglish payment wording keeps exact verified amounts without formal language", () => {
+  const room=resolvePaymentRoom(catalog,paymentQuestion,
+    {room_id:100,room_name:"Family Room B"});
+  const reply=paymentReply(paymentQuestion,{},room,"taglish");
+  assert.match(reply,/yung listed overnight rate/);
+  assert.match(reply,/remaining room balance/);
+  assert.match(reply,/₱8,000\.00/);
+  assert.match(reply,/₱4,000\.00/);
+  assert.doesNotMatch(reply,/maipapaliwanag|ninyo|inyong|pamagitan|natitirang halaga/);
+  const english=paymentReply(paymentQuestion,{},room,"english");
+  assert.match(english,/The current online checkout uses PayPal/);
 });
