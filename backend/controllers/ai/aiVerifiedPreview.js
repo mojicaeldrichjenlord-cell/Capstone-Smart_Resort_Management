@@ -167,7 +167,20 @@ function selectVerifiedPreviews(catalog, message, recentTurns = [], context = {}
 }
 
 function verifiedPreviewReply(selection, language) {
-  const tagalog = language === "tagalog" || language === "taglish";
+  // Keep the separate pure-Tagalog wording while using everyday Taglish in
+  // voice and text chat. Room selection and card facts remain unchanged.
+  const taglish = language === "taglish";
+  if (taglish) {
+    if (!selection?.targetKnown) return "Sure po! Anong room or cottage ang gusto niyong makita?";
+    if (!selection.rows?.length) return "Wala po akong makitang matching accommodation sa listing. Try po natin ibang type or guest count.";
+    if (selection.alternative) return "Wala pong cottage na kasya sa group niyo. Ito po yung larger Function Areas based sa listed capacity. Check niyo na lang po ang dates at slots sa booking page.";
+    if (selection.rows.length === 1) {
+      const name = String(selection.rows[0].room_name || selection.rows[0].name || "accommodation");
+      return "Ito po yung preview ng " + name + ". Click niyo lang yung View Details para sa photos and info.";
+    }
+    return "Ito po yung matching accommodations. Check niyo lang yung photos and details sa cards.";
+  }
+  const tagalog = language === "tagalog";
   if (!selection?.targetKnown) return tagalog
     ? "Anong accommodation po ang gusto ninyong makita? Sabihin lang ang pangalan o uri."
     : "Which accommodation would you like to preview? Tell me its name or type.";
