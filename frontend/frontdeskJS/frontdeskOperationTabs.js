@@ -16,8 +16,8 @@
       tabs: [
         ["Guest Count", [
           ".guest-adjustment-summary-grid",
-          ".guest-adjustment-form-group:nth-of-type(1)", // resolved below by input owner instead
-          ".guest-adjustment-form-group:nth-of-type(2)",
+          "#actualGuestCountInput",
+          "#extraGuestRateInput",
         ]],
         ["Charges & Review", [
           ".guest-adjustment-charge-preview",
@@ -101,15 +101,6 @@
         ]],
       ],
     },
-  ];
-
-  // The Guest Adjustment form-group elements have no stable IDs on their
-  // wrapper. Resolve by their child input IDs instead of nth-child (which
-  // depends on the surrounding source markup).
-  modalSpecs[0].tabs[0][1] = [
-    ".guest-adjustment-summary-grid",
-    '#actualGuestCountInput',
-    '#extraGuestRateInput',
   ];
 
   function getSectionNode(box, selector) {
