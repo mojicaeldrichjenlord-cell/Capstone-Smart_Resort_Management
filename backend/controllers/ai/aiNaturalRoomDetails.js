@@ -19,6 +19,8 @@ function isNaturalRoomDetailsQuestion(message) {
     /\b(?:ano(?:ng)?|what)\s+(?:po\s+)?(?:ang\s+)?(?:mga\s+)?(?:meron|may|included|inclusions?|inclusion|amenities|facilities|features|kasama|nasa\s+loob)\b/.test(text) ||
     /\b(?:what(?:'s| is)\s+(?:inside|included|in)\b|what\s+(?:does|do)\s+(?:(?:the|this|that)\s+)?(?:room|cottage|pavilion|family|double|single|it)\b.{0,70}\bhave\b)/.test(text) ||
     /\b(?:ano(?:ng)?\s+kasama|may\s+ano\s+sa|ano(?:ng)?\s+laman|what\s+comes\s+with)\b/.test(text) ||
+    /\bwhat\s+(?:are|is)\s+(?:the\s+)?(?:listed\s+)?(?:inclusions|amenities|facilities|features)\b/.test(text) ||
+    /^(?:please\s+)?(?:tell\s+me\s+(?:more\s+)?about|can\s+you\s+tell\s+me\s+about|pakikwento|paki\s*kwento)\b/.test(text) ||
     /^(?:can\s+you\s+)?(?:describe|explain)\s+(?:this\s+|that\s+|the\s+)?(?:room|accommodation|family\s+room|double\s+room|single\s+room)\b/.test(text)
   );
 }
