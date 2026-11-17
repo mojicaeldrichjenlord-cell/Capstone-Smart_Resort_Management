@@ -8,6 +8,7 @@ const { normalizeRecentTurns, wantsAccommodationCards, verifiedAccommodationCard
   require("./aiConversationStyle");
 const { requestedAmenity, amenityReply } = require("./aiAccommodationAmenities");
 const { generalCategoryAmenitiesReply } = require("./aiAccommodationCategoryPolicy");
+const { isNaturalRoomDetailsQuestion, naturalRoomDetailsReply } = require("./aiNaturalRoomDetails");
 const { isFreeEntranceQuestion, explicitEntranceRoomName, verifiedFreeEntranceReply } = require("./aiAccommodationEntrance");
 const { wantsFocusedRoomOverview, focusedRoomOverview } = require("./aiAccommodationDetails");
 
@@ -1189,6 +1190,71 @@ exports.chatWithGemini = async (req, res) => {
             reply: amenityReply(record, amenityKind, message, language),
             extracted_context: mergeContext(savedContext, {
               room_id: record.id, room_name: record.room_name,
+              language_style: language,
+            }),
+            matched_rooms: [], catalog_recommendations: [],
+            alternative_dates: [], booking_preview: null,
+            recommendation_cards: [],
+          });
+        }
+      }
+    }
+
+    // Natural open-ended room details: "anong meron sa Family Room B",
+    // "what does this room have?", etc. Answer from one EXACT fresh DB
+    // accommodation; never infer amenities from another room's listing.
+    // This keeps ordinary conversation natural without hard-coding Q&A.
+    if (isNaturalRoomDetailsQuestion(message)) {
+      const saved = req.body.context && typeof req.body.context === "object" &&
+        !Array.isArray(req.body.context) ? req.body.context : {};
+      const name = String(saved.room_name ?? req.body.room_name ?? "").trim();
+      const id = Number(saved.room_id ?? req.body.room_id);
+      const hasId = Number.isSafeInteger(id) && id > 0;
+
+      // Check explicit mentions before using old focused-room context.
+      // Two named rooms = comparison question, so don't arbitrarily pick one.
+      const availableCatalog = await getAccommodationCatalog();
+      const normal = value => normalizeText(value).normalize("NFKC")
+        .replace(/[^a-z0-9]+/g, " ").trim();
+      const q = " " + normal(message) + " ";
+      const mentions = availableCatalog.filter(x => {
+        const title = normal(x.room_name);
+        return title.length >= 5 && q.includes(" " + title + " ");
+      });
+      // If the customer explicitly names an unlisted room, never silently
+      // use an unrelated selected room from an earlier recommendation.
+      const mentionsUnlistedRoom = /\b(?:family\s+room|double\s+room|single\s+room)\s+[a-z0-9]\b/i.test(message) &&
+        mentions.length === 0;
+
+      if (mentions.length === 1 || (!mentionsUnlistedRoom && !mentions.length && (hasId || name))) {
+        const chosen = mentions.length === 1 ? mentions[0] : null;
+        const byId = Boolean(chosen || hasId);
+        const lookupId = chosen ? Number(chosen.id) : id;
+        const [detailRows] = await db.promise().query(
+          "SELECT a.id, a.name AS room_name, a.description, a.amenities, " +
+            "a.free_entrance_pax, a.max_capacity AS capacity, " +
+            "c.name AS category_name FROM accommodations a " +
+            "LEFT JOIN accommodation_categories c ON c.id = a.category_id " +
+            (byId ? "WHERE a.id = ? LIMIT 1" : "WHERE a.name = ? LIMIT 2"),
+          [byId ? lookupId : name],
+        );
+        const room = byId ? detailRows[0] : (detailRows.length === 1 ? detailRows[0] : null);
+        const focusedMatches = chosen || !name ||
+          String(room?.room_name || "").trim().toLowerCase() === name.toLowerCase();
+        if (room && focusedMatches) {
+          const language = normalizeLanguageStyle(req.body.voice_language) ||
+            (/^(?:what|does|do|can you|describe|explain)/i.test(String(message).trim())
+              ? "english" : null) ||
+            (/\b(?:ano|anong|meron|kasama|po|mga|kwarto)\b/i.test(message)
+              ? "taglish" : null) ||
+            detectLanguageFromMessage(message) ||
+            normalizeLanguageStyle(req.body.language_style) ||
+            normalizeLanguageStyle(saved.language_style) || "english";
+          return res.status(200).json({
+            success: true, mode: "verified_natural_room_details",
+            reply: naturalRoomDetailsReply(room, language),
+            extracted_context: mergeContext(saved, {
+              room_id: room.id, room_name: room.room_name,
               language_style: language,
             }),
             matched_rooms: [], catalog_recommendations: [],
