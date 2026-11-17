@@ -375,7 +375,9 @@
       return;
     }
     const { kind, session, prefix, parts, context, count, heard } = active;
-    const wav = send && count > 4000 && (kind === "dictation" || heard)
+    // Never spend a Gemini transcription request on a silent mic,
+    // including manual dictation stopped before any actual speech.
+    const wav = send && count > 4000 && heard
       ? makeWav(parts, context.sampleRate) : null;
     cancelRecordedInput();
     if (!wav) {
