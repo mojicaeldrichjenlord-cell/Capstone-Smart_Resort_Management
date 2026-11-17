@@ -2,6 +2,11 @@
 // Does not invent details, call Gemini, check dates, or mutate bookings/payments.
 "use strict";
 
+const {
+  isPlainCottageCategory, isFunctionAreaCategory,
+  FUNCTION_AREA_AMENITIES, hasListedAmenities,
+} = require("./aiAccommodationCategoryPolicy");
+
 // Keep "Tell me more about this room" on topic instead of jumping into a
 // check-in questionnaire. Never hijack a question naming a different room.
 function wantsFocusedRoomOverview(message, roomName) {
@@ -42,16 +47,30 @@ function focusedRoomOverview(room, language = "english") {
     : (taglish ? "hindi pa nakalista ang capacity" : "capacity is not listed");
   const amenities = String(room?.amenities || "").split(/[\n\r,;|•]+/)
     .map(value => cleanedFact(value, 55)).filter(Boolean).slice(0, 3);
-  const overview = amenities.length ? amenities.join(", ")
+  // Category rules apply ONLY to actual Cottage/Function Area categories.
+  // A "Single Room Cottage" belongs to Room and retains its room amenities.
+  const plainCottage = isPlainCottageCategory(room);
+  const inclusions = isFunctionAreaCategory(room) && !hasListedAmenities(room)
+    ? FUNCTION_AREA_AMENITIES : amenities;
+  const overview = plainCottage ? "" : inclusions.length
+    ? inclusions.join(", ")
     : cleanedFact(String(room?.description || "").split(/[.!?]/)[0], 120);
   const rates = [
     listedRate(room?.day_price) ? "Day Tour " + listedRate(room.day_price) : "",
     listedRate(room?.overnight_price) ? "Night " + listedRate(room.overnight_price) : "",
   ].filter(Boolean).join("; ");
   if (taglish) {
-    return `${name} po ay ${capacity}. ${overview ? "Nakalista ang " + overview + ". " : "Wala pang nakalistang room inclusions. "}${rates ? "Listed rates: " + rates + "; " : ""}i-confirm pa rin po ang date at slot sa booking page.`;
+    const details = plainCottage
+      ? "Wala pong kasamang amenities sa cottage na ito. "
+      : overview ? "Kasama ang " + overview + ". "
+      : "Wala pang nakalistang inclusions. ";
+    return `${name} po ay ${capacity}. ${details}${rates ? "Listed rates: " + rates + "; " : ""}i-confirm pa rin po ang date at slot sa booking page.`;
   }
-  return `${name} is ${capacity}. ${overview ? "Listed details: " + overview + ". " : "Room inclusions are not listed yet. "}${rates ? "Listed rates: " + rates + "; " : ""}please confirm the date and slot on the booking page.`;
+  const details = plainCottage
+    ? "This cottage does not include amenities. "
+    : overview ? "Listed details: " + overview + ". "
+    : "Accommodation inclusions are not listed yet. ";
+  return `${name} is ${capacity}. ${details}${rates ? "Listed rates: " + rates + "; " : ""}please confirm the date and slot on the booking page.`;
 }
 
 module.exports = { wantsFocusedRoomOverview, focusedRoomOverview };

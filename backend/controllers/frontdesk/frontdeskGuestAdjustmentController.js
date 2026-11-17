@@ -1,4 +1,5 @@
 const db = require("../../config/db");
+const { getExtraGuestRate } = require("../../services/extraGuestRate");
 
 // ============================================================
 // FRONT DESK GUEST ADJUSTMENT CONTROLLER
@@ -51,8 +52,8 @@ function toMoney(value) {
 //
 // First adjustment:
 // Actual = 8
-// Rate = 300
-// Target extra guest total = 600
+// Rate = 250 (Admin default)
+// Target extra guest total = 500
 // Paid before = 0
 // Current unpaid due = 600
 //
@@ -85,11 +86,6 @@ const updateGuestAdjustment = async (req, res) => {
         -1,
       );
 
-    const extraGuestRate =
-      Number(
-        req.body.extra_guest_rate || 0,
-      );
-
     if (
       !reservationId ||
       Number.isNaN(reservationId)
@@ -106,17 +102,6 @@ const updateGuestAdjustment = async (req, res) => {
         success: false,
         message:
           "Actual guest count must be at least 1.",
-      });
-    }
-
-    if (
-      !Number.isFinite(extraGuestRate) ||
-      extraGuestRate < 0
-    ) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Extra guest rate cannot be negative.",
       });
     }
 
@@ -220,6 +205,11 @@ const updateGuestAdjustment = async (req, res) => {
           bookedGuestCount,
         0,
       );
+
+    // Always fetch the Admin-managed price from the server-side DB.
+    // A forged Front Desk extra_guest_rate payload is intentionally ignored.
+    // Read in the SAME transaction as the reservation/charge update.
+    const extraGuestRate = await getExtraGuestRate(connection);
 
     const targetExtraGuestTotal =
       extraGuestCount *

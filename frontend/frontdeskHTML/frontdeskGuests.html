@@ -17,6 +17,8 @@
     <!-- Loaded last so this page can apply one consistent visual system
          across all Front Desk action buttons without changing JS behavior. -->
     <link rel="stylesheet" href="../frontdeskCSS/frontdeskGuests.css" />
+    <!-- Accessible, fixed-height operation tabs; last to override modal layouts. -->
+    <link rel="stylesheet" href="../frontdeskCSS/frontdeskOperationTabs.css" />
       <!-- Consistent, centered confirmation for accidental logout clicks. -->
     <link rel="stylesheet" href="../sharedCSS/logout-confirm.css" />
   </head>
@@ -211,20 +213,22 @@
         </div>
 
         <div class="guest-adjustment-form-group">
-          <label for="extraGuestRateInput">Extra Guest Rate Per Pax</label>
+          <label for="extraGuestRateInput">Extra Guest Rate Per Pax (Admin-set)</label>
 
           <input
             type="number"
             id="extraGuestRateInput"
             min="0"
             step="0.01"
-            value="0"
-            placeholder="0.00"
+            value="250.00"
+            readonly
+            disabled
+            aria-label="Extra Guest Rate Per Pax, set by Admin"
+            title="Only Admin can change this rate"
           />
 
-          <small>
-            Only guests above the originally booked guest count are charged
-            using this rate.
+          <small id="extraGuestRateStatus" role="status">
+            ₱250.00 per additional guest by default. Only Admin can change this rate.
           </small>
         </div>
 
@@ -592,14 +596,20 @@
           </div>
 
           <div class="stay-form-group">
-            <label for="addAccommodationSlot">Schedule Type</label>
+            <label for="addAccommodationSlot">Time Slot</label>
 
-            <select id="addAccommodationSlot">
+            <select id="addAccommodationSlot" aria-describedby="addAccommodationSlotStatus">
+              <option value="">Select time slot</option>
               <option value="day_tour">Day Tour</option>
               <option value="night">Night</option>
               <option value="day_extended">Day 22/23 Hours</option>
               <option value="night_extended">Night 22/23 Hours</option>
             </select>
+
+            <small class="add-accommodation-slot-status" id="addAccommodationSlotStatus"
+              data-state="incomplete" role="status" aria-live="polite">
+              Select an accommodation and date to check all time slots.
+            </small>
           </div>
 
           <div class="stay-form-group">
@@ -989,6 +999,8 @@
     <script src="../sharedJS/api-config.js"></script>
     <script src="../frontdeskJS/frontdeskGuests.js"></script>
     <script src="../frontdeskJS/frontdeskStay.js"></script>
+    <!-- Customer-style availability labels for every Front Desk Add Accommodation slot. -->
+    <script src="../frontdeskJS/frontdeskAddSlotAvailability.js"></script>
     <script src="../frontdeskJS/frontdeskAccommodationBalance.js"></script>
     <script src="../frontdeskJS/frontdeskCheckout.js"></script>
     <script src="../frontdeskJS/frontdeskEntranceCollection.js"></script>
@@ -996,6 +1008,8 @@
     <script src="../frontdeskJS/frontdeskAdditionalCharges.js"></script>
     <script src="../frontdeskJS/frontdeskUnpaidCharges.js"></script>
     <script src="../frontdeskJS/frontdeskGuestActionsUI.js"></script>
+    <!-- Presentation-only tab navigation: preserves original form/button IDs. -->
+    <script src="../frontdeskJS/frontdeskOperationTabs.js"></script>
       <script src="../sharedJS/logout-confirm.js"></script>
   </body>
 </html>

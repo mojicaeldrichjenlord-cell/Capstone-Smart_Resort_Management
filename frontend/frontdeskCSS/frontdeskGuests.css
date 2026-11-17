@@ -1995,3 +1995,33 @@ body.guest-modal-open {
     grid-template-columns: 1fr;
   }
 }
+
+/* ============================================================
+   FRONT DESK GUEST ADJUSTMENT — ADMIN-LOCKED EXTRA GUEST RATE
+   The actual price is always enforced by the backend, not CSS.
+============================================================ */
+#extraGuestRateInput:disabled {
+  background: #f1f5f9;
+  color: #0f172a;
+  -webkit-text-fill-color: #0f172a;
+  font-weight: 800;
+  opacity: 1;
+  cursor: default;
+  pointer-events: none;
+}
+
+#extraGuestRateInput[readonly]::-webkit-outer-spin-button,
+#extraGuestRateInput[readonly]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+#extraGuestRateInput[readonly] {
+  appearance: textfield;
+}
+
+#extraGuestRateStatus {
+  display: block;
+  color: #475569;
+  line-height: 1.45;
+}

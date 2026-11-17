@@ -59,6 +59,8 @@ let allGuestBookings = [];
 let selectedGuestAdjustmentBookingId = null;
 
 let guestAdjustmentPaidExtraGuestTotal = 0;
+// Prevent Front Desk from saving until the Admin-set rate is confirmed.
+let guestAdjustmentRateLoaded = false;
 
 // ============================================================
 // STEP 3F-B2 STATE
@@ -216,15 +218,6 @@ function setupGuestEvents() {
   document
     .getElementById(
       "actualGuestCountInput",
-    )
-    ?.addEventListener(
-      "input",
-      updateGuestAdjustmentPreview,
-    );
-
-  document
-    .getElementById(
-      "extraGuestRateInput",
     )
     ?.addEventListener(
       "input",
@@ -1551,7 +1544,13 @@ async function openGuestAdjustmentModal(
       booking,
     );
 
-  rateInput.value = "0";
+  // Front Desk must not interact with this field at all.
+  // .disabled removes mouse and keyboard focus; JavaScript still updates
+  // .value to show the fresh Admin-set rate and calculate the preview.
+  rateInput.readOnly = true;
+  rateInput.disabled = true;
+  rateInput.value = "250.00";
+  guestAdjustmentRateLoaded = false;
 
   guestAdjustmentPaidExtraGuestTotal =
     0;
@@ -1576,11 +1575,48 @@ async function openGuestAdjustmentModal(
 
   updateGuestAdjustmentPreview();
 
+  // Fetch the current resort rate for every modal open (not localStorage).
+  // The backend independently enforces this rate when saving the charge.
+  await loadAdminExtraGuestRate(bookingId);
+
   await loadGuestAdjustmentChargeSummary(
     bookingId,
   );
 
   updateGuestAdjustmentPreview();
+}
+
+// Read-only Front Desk rate from signed API: Admin changes persist in MySQL.
+// Never trust the editable DOM field or browser-supplied rate on the server.
+async function loadAdminExtraGuestRate(bookingId) {
+  const rateInput = document.getElementById("extraGuestRateInput");
+  const status = document.getElementById("extraGuestRateStatus");
+  if (status) status.textContent = "Loading current resort rate...";
+  try {
+    const response = await fetch(`${API_BASE}/guest-rate/frontdesk`, {
+      headers: { Authorization: requireFrontDeskFinancialAuthorization() },
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || "Unable to load rate.");
+    const rate = Number(data.extra_guest_rate);
+    if (!Number.isFinite(rate) || rate < 0 || rate > 100000) {
+      throw new Error("Invalid extra guest rate from server.");
+    }
+    // Modal can be closed or reopened while an old request is in-flight.
+    if (selectedGuestAdjustmentBookingId !== Number(bookingId)) return null;
+    guestAdjustmentRateLoaded = true;
+    if (rateInput) rateInput.value = rate.toFixed(2);
+    if (status) status.textContent =
+      "Rate is set by the Admin. Front Desk cannot edit it.";
+    updateGuestAdjustmentPreview();
+    return rate;
+  } catch (error) {
+    if (selectedGuestAdjustmentBookingId !== Number(bookingId)) return null;
+    guestAdjustmentRateLoaded = false;
+    if (status) status.textContent = "Rate unavailable. Saving is disabled.";
+    showMessage(error.message || "Unable to load extra guest rate.", "error");
+    return null;
+  }
 }
 
 function closeGuestAdjustmentModal() {
@@ -1589,6 +1625,7 @@ function closeGuestAdjustmentModal() {
 
   guestAdjustmentPaidExtraGuestTotal =
     0;
+  guestAdjustmentRateLoaded = false;
 
   document
     .getElementById(
@@ -2034,6 +2071,11 @@ async function saveGuestAdjustment() {
     return;
   }
 
+  if (!guestAdjustmentRateLoaded) {
+    showMessage("Cannot verify Admin-set guest rate. Reopen Guest Adjustment.", "error");
+    return;
+  }
+
   if (
     !Number.isFinite(
       extraGuestRate,
@@ -2081,6 +2123,15 @@ async function saveGuestAdjustment() {
     return;
   }
 
+  // Refresh the rate immediately before saving. If Admin changed it
+  // while this modal was open, show the new preview and require re-confirmation.
+  const currentRate = await loadAdminExtraGuestRate(reservationId);
+  if (currentRate === null) return;
+  if (currentRate !== extraGuestRate) {
+    showMessage("Admin updated the rate. Please review the new total before saving.", "error");
+    return;
+  }
+
   const originalText =
     saveBtn?.textContent ||
     "Apply Guest Adjustment";
@@ -2106,10 +2157,10 @@ async function saveGuestAdjustment() {
           },
           body:
             JSON.stringify({
+              // The server uses the Admin-managed rate; do NOT submit a
+              // browser-editable price (prevents fee tampering).
               actual_guest_count:
                 actualGuestCount,
-              extra_guest_rate:
-                extraGuestRate,
             }),
         },
       );

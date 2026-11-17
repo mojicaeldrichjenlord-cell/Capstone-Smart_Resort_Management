@@ -7,6 +7,9 @@ const { validateAiStayWindow, calendarDayDifference, addCalendarDays } = require
 const { normalizeRecentTurns, wantsAccommodationCards, verifiedAccommodationCards, tidyAssistantReply } =
   require("./aiConversationStyle");
 const { requestedAmenity, amenityReply } = require("./aiAccommodationAmenities");
+const { generalCategoryAmenitiesReply } = require("./aiAccommodationCategoryPolicy");
+const { isNaturalRoomDetailsQuestion, naturalRoomDetailsReply } = require("./aiNaturalRoomDetails");
+const { isFreeEntranceQuestion, explicitEntranceRoomName, verifiedFreeEntranceReply } = require("./aiAccommodationEntrance");
 const { wantsFocusedRoomOverview, focusedRoomOverview } = require("./aiAccommodationDetails");
 
 const ai = new GoogleGenAI({
@@ -1047,19 +1050,130 @@ exports.chatWithGemini = async (req, res) => {
       });
     }
 
+    // Broad category amenities can be answered from the resort's confirmed
+    // policy without spending Gemini credits. This is strictly for generic
+    // Cottage/Function Area inquiries; specific rooms use fresh DB lookups.
+    const generalAmenityLanguage = normalizeLanguageStyle(req.body.voice_language) ||
+      (/\b(?:ano|anong|mga|may|meron|kasama|po|kubo)\b/i.test(message)
+        ? "taglish" : null) ||
+      detectLanguageFromMessage(message) ||
+      normalizeLanguageStyle(req.body.context?.language_style) || "english";
+    const categoryReply = generalCategoryAmenitiesReply(
+      message, req.body?.context?.room_id ?? req.body?.room_id, generalAmenityLanguage,
+    );
+    if (categoryReply) {
+      const savedContext = req.body.context && typeof req.body.context === "object" &&
+        !Array.isArray(req.body.context) ? req.body.context : {};
+      return res.status(200).json({
+        success: true, mode: "verified_category_amenities",
+        reply: categoryReply,
+        extracted_context: mergeContext(savedContext, {
+          language_style: generalAmenityLanguage,
+        }),
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null, recommendation_cards: [],
+      });
+    }
+
+    // FREE ENTRANCE — answer from the CURRENT database free_entrance_pax,
+    // never from memory, the room capacity, the listed amenities, or Gemini.
+    // This is a read-only shortcut; bookings still enforce entrance fees.
+    if (isFreeEntranceQuestion(message)) {
+      const explicitName = explicitEntranceRoomName(message);
+      const rawSelectedId = req.body?.context?.room_id ?? req.body?.room_id;
+      const selectedId = Number(rawSelectedId);
+      const validSelectedId = Number.isSafeInteger(selectedId) && selectedId > 0;
+      const selectedName = String(
+        req.body?.context?.room_name ?? req.body?.room_name ?? ""
+      ).trim();
+      const hasSelectedName = selectedName.length > 0 && selectedName.length <= 110;
+      // Explicitly named accommodation overrides an older focused room.
+      // If the user names an unrecognized room, do not silently answer for
+      // some OTHER selected accommodation.
+      const namesAnotherRoom = /\b(?:single|double|family)\s+room\b/i.test(message) &&
+        !explicitName;
+      if (!namesAnotherRoom && (explicitName || validSelectedId || hasSelectedName)) {
+        const sql = "SELECT id, name AS room_name, free_entrance_pax " +
+          "FROM accommodations WHERE " +
+          (explicitName ? "name = ? LIMIT 2" :
+            validSelectedId ? "id = ? LIMIT 1" : "name = ? LIMIT 2");
+        const [freeRows] = await db.promise().query(sql, [
+          explicitName || (validSelectedId ? selectedId : selectedName),
+        ]);
+        const record = (explicitName || !validSelectedId)
+          ? (freeRows.length === 1 ? freeRows[0] : null)
+          : freeRows[0];
+        // Room IDs can be reassigned: do not trust old selected names.
+        if (record && (explicitName ||
+            !hasSelectedName ||
+            String(record.room_name).trim().toLowerCase() === selectedName.toLowerCase())) {
+          const language = normalizeLanguageStyle(req.body.voice_language) ||
+            (/\b(?:ilang|ilan|may|meron|ba|po|kasama|libreng?|sa|ng)\b/i.test(message)
+              ? "taglish" : null) ||
+            detectLanguageFromMessage(message) ||
+            normalizeLanguageStyle(req.body.language_style) ||
+            normalizeLanguageStyle(req.body.context?.language_style) || "english";
+          const savedContext = req.body.context &&
+            typeof req.body.context === "object" && !Array.isArray(req.body.context)
+            ? req.body.context : {};
+          return res.status(200).json({
+            success: true,
+            mode: "verified_accommodation_free_entrance",
+            reply: verifiedFreeEntranceReply(record, language),
+            extracted_context: mergeContext(savedContext, {
+              room_id: record.id, room_name: record.room_name,
+              language_style: language,
+            }),
+            matched_rooms: [], catalog_recommendations: [],
+            alternative_dates: [], booking_preview: null, recommendation_cards: [],
+          });
+        }
+      }
+    }
+
     // Amenity questions about the selected room use the FRESH Admin-managed
     // description and inclusions, not a guess from previous conversation.
     // This read-only path needs zero Gemini credits and never checks/creates bookings.
     const amenityKind = requestedAmenity(message);
-    const focusedRoomId = Number(req.body?.context?.room_id ?? req.body?.room_id);
-    if (amenityKind && Number.isSafeInteger(focusedRoomId) && focusedRoomId > 0) {
+    // When a guest names a different room, that EXPLICIT room wins over
+    // any selected card from a previous turn. Never pick one of two names.
+    const explicitlyNamedAmenityRoom = explicitEntranceRoomName(message);
+    const unresolvedNamedAmenityRoom =
+      /\b(?:single|double|family)\s+room\b/i.test(message) &&
+      !explicitlyNamedAmenityRoom;
+    const rawFocusedRoomId = req.body?.context?.room_id ?? req.body?.room_id;
+    const focusedRoomId = Number(rawFocusedRoomId);
+    const focusedRoomName = String(
+      req.body?.context?.room_name ?? req.body?.room_name ?? ""
+    ).trim();
+    const hasFocusedId = Number.isSafeInteger(focusedRoomId) && focusedRoomId > 0;
+    // Some older chat sessions keep the exact focused room name but lose its
+    // numeric ID. Resolve ONLY an unambiguous exact DB name in that case;
+    // never choose a room from a previous multi-room recommendation list.
+    const canResolveByName = !hasFocusedId &&
+      (rawFocusedRoomId === null || rawFocusedRoomId === undefined ||
+        rawFocusedRoomId === "") &&
+      focusedRoomName.length > 0 && focusedRoomName.length <= 110;
+    if (amenityKind && !unresolvedNamedAmenityRoom &&
+        (explicitlyNamedAmenityRoom || hasFocusedId || canResolveByName)) {
+      const byId = !explicitlyNamedAmenityRoom && hasFocusedId;
+      const lookup = explicitlyNamedAmenityRoom ||
+        (byId ? focusedRoomId : focusedRoomName);
+      const columns = "SELECT a.id, a.name AS room_name, a.description, a.amenities, " +
+        "c.name AS category_name FROM accommodations a " +
+        "LEFT JOIN accommodation_categories c ON c.id = a.category_id ";
       const [rows] = await db.promise().query(
-        "SELECT a.id, a.name AS room_name, a.description, a.amenities " +
-          "FROM accommodations a WHERE a.id = ? LIMIT 1",
-        [focusedRoomId],
+        byId ? columns + "WHERE a.id = ? LIMIT 1" :
+          columns + "WHERE a.name = ? LIMIT 2",
+        [lookup],
       );
-      const record = rows[0];
-      if (record) {
+      const record = byId ? rows[0] :
+        (rows.length === 1 ? rows[0] : null);
+      // Reject stale/reassigned IDs; an explicitly named room is an
+      // intentional context switch and must NOT be compared to old focus.
+      if (record && (explicitlyNamedAmenityRoom || !focusedRoomName ||
+          String(record.room_name).trim().toLowerCase() ===
+            focusedRoomName.toLowerCase())) {
         // An explicitly different named room must not inherit an older selection.
         const namedMention = String(message).match(
           /\b(?:family\s+room|room|cottage|pavilion)\s+[a-z0-9]+\b/i
@@ -1073,6 +1187,10 @@ exports.chatWithGemini = async (req, res) => {
           const language = normalizeLanguageStyle(req.body.voice_language) ||
             (/\b(?:may|meron|ba|bang|yung|sarili(?:ng)?|po|kasama)\b/i.test(String(message))
               ? "taglish" : null) ||
+            // Use current question over older Taglish chat context:
+            // "Does it have a CR?" should receive a natural English reply.
+            (/^(?:does|do|is|are|has|have|can|what|which|will)\b/i.test(String(message).trim())
+              ? "english" : null) ||
             detectLanguageFromMessage(message) ||
             normalizeLanguageStyle(req.body.language_style) ||
             normalizeLanguageStyle(req.body.context?.language_style) || "english";
@@ -1095,6 +1213,71 @@ exports.chatWithGemini = async (req, res) => {
       }
     }
 
+    // Natural open-ended room details: "anong meron sa Family Room B",
+    // "what does this room have?", etc. Answer from one EXACT fresh DB
+    // accommodation; never infer amenities from another room's listing.
+    // This keeps ordinary conversation natural without hard-coding Q&A.
+    if (isNaturalRoomDetailsQuestion(message)) {
+      const saved = req.body.context && typeof req.body.context === "object" &&
+        !Array.isArray(req.body.context) ? req.body.context : {};
+      const name = String(saved.room_name ?? req.body.room_name ?? "").trim();
+      const id = Number(saved.room_id ?? req.body.room_id);
+      const hasId = Number.isSafeInteger(id) && id > 0;
+
+      // Check explicit mentions before using old focused-room context.
+      // Two named rooms = comparison question, so don't arbitrarily pick one.
+      const availableCatalog = await getAccommodationCatalog();
+      const normal = value => normalizeText(value).normalize("NFKC")
+        .replace(/[^a-z0-9]+/g, " ").trim();
+      const q = " " + normal(message) + " ";
+      const mentions = availableCatalog.filter(x => {
+        const title = normal(x.room_name);
+        return title.length >= 5 && q.includes(" " + title + " ");
+      });
+      // If the customer explicitly names an unlisted room, never silently
+      // use an unrelated selected room from an earlier recommendation.
+      const mentionsUnlistedRoom = /\b(?:family\s+room|double\s+room|single\s+room)\s+[a-z0-9]\b/i.test(message) &&
+        mentions.length === 0;
+
+      if (mentions.length === 1 || (!mentionsUnlistedRoom && !mentions.length && (hasId || name))) {
+        const chosen = mentions.length === 1 ? mentions[0] : null;
+        const byId = Boolean(chosen || hasId);
+        const lookupId = chosen ? Number(chosen.id) : id;
+        const [detailRows] = await db.promise().query(
+          "SELECT a.id, a.name AS room_name, a.description, a.amenities, " +
+            "a.free_entrance_pax, a.max_capacity AS capacity, " +
+            "c.name AS category_name FROM accommodations a " +
+            "LEFT JOIN accommodation_categories c ON c.id = a.category_id " +
+            (byId ? "WHERE a.id = ? LIMIT 1" : "WHERE a.name = ? LIMIT 2"),
+          [byId ? lookupId : name],
+        );
+        const room = byId ? detailRows[0] : (detailRows.length === 1 ? detailRows[0] : null);
+        const focusedMatches = chosen || !name ||
+          String(room?.room_name || "").trim().toLowerCase() === name.toLowerCase();
+        if (room && focusedMatches) {
+          const language = normalizeLanguageStyle(req.body.voice_language) ||
+            (/^(?:what|does|do|can you|describe|explain)/i.test(String(message).trim())
+              ? "english" : null) ||
+            (/\b(?:ano|anong|meron|kasama|po|mga|kwarto)\b/i.test(message)
+              ? "taglish" : null) ||
+            detectLanguageFromMessage(message) ||
+            normalizeLanguageStyle(req.body.language_style) ||
+            normalizeLanguageStyle(saved.language_style) || "english";
+          return res.status(200).json({
+            success: true, mode: "verified_natural_room_details",
+            reply: naturalRoomDetailsReply(room, language),
+            extracted_context: mergeContext(saved, {
+              room_id: room.id, room_name: room.room_name,
+              language_style: language,
+            }),
+            matched_rooms: [], catalog_recommendations: [],
+            alternative_dates: [], booking_preview: null,
+            recommendation_cards: [],
+          });
+        }
+      }
+    }
+
     // Room overview fast path: answer "Tell me more about [selected room]"
     // from the actual current DB record. Do not replace a room summary with
     // generic check-in questions, generate Gemini tokens, or invent inclusions.
@@ -1104,8 +1287,10 @@ exports.chatWithGemini = async (req, res) => {
         wantsFocusedRoomOverview(message, overviewName)) {
       const [overviewRows] = await db.promise().query(
         "SELECT a.id, a.name AS room_name, a.description, a.amenities, " +
-          "a.max_capacity AS capacity, a.day_price, a.overnight_price " +
-          "FROM accommodations a WHERE a.id = ? LIMIT 1",
+          "a.max_capacity AS capacity, a.day_price, a.overnight_price, " +
+          "c.name AS category_name FROM accommodations a " +
+          "LEFT JOIN accommodation_categories c ON c.id = a.category_id " +
+          "WHERE a.id = ? LIMIT 1",
         [overviewId],
       );
       const overviewRecord = overviewRows[0];
@@ -1365,6 +1550,9 @@ Do not repeat saved booking details or greet the customer every turn.
 For recommendations: one friendly line, then let the visual accommodation cards show details.
 For questions like "magkano yan" / "may CR ba yan", use the focused accommodation
 below and answer based ONLY on its fresh data; if not listed, say so briefly.
+If asked about ONE amenity (e.g. "May aircon?"), answer ONLY that amenity
+in one short sentence. Do not list CR, dining table or other amenities that
+were not asked about; do not add a check-in/date/availability sales question.
 Be honest when date/time availability has not been verified.
 If the user switches topics, follow their new topic instead of a booking checklist.
 Never claim to be human; when asked, say you're the resort's AI assistant.
@@ -1397,6 +1585,8 @@ ${policyPromptLines()}
 - Fixed resort payment policy: online reservations require a PayPal downpayment equal to 50% of the FINAL accommodation price; entrance fees are EXCLUDED from that downpayment. The remaining 50% of accommodation price plus entrance fees and applicable charges are paid onsite.
 - When asked for the general online downpayment percentage, say 50% directly; NEVER say the percentage is unknown or only confirmed on the booking page. The booking page confirms the final peso amount for the selected accommodation and schedule.
 - Only use the room/system data provided below.
+- Confirmed category distinction: normal Cottage-category accommodations have NO included amenities. "Single Room Cottage" belongs to Room category, and DOES have separately listed room amenities. Never confuse them.
+- Confirmed Function Area inclusions: tables, monoblock chairs, and karaoke. Do not invent quantities, extra equipment, or fees. For named properties, prefer fresh Admin-managed DB details when populated.
 - Do not invent rooms, prices, amenities, availability, or times.
 - Quote an accommodation's rate ONLY if that named accommodation and its exact Day Tour/Overnight/Extended rate are in the fresh database results below. If absent, say the rate needs checking on the booking page.
 - Never reuse prices from older conversations, illustrative examples, or unrelated accommodations; a rate for one room is not the price for all rooms.
@@ -1420,7 +1610,7 @@ ${policyPromptLines()}
 - These are preliminary availability results for the exact requested window; final slot availability is rechecked on the booking page.
 - Day, overnight and extended rates are different. Never call a day rate a nightly price or invent a total.
 - Structured bed count and view preferences alone do not prove room features. But if a selected accommodation explicitly lists aircon, a CR, a ref, or another amenity in its fresh Admin-managed description or amenities, that listing IS evidence for that accommodation. Read BOTH text fields, including Filipino wording. If missing or contradictory, say it is unverified; do not guess.
-- For questions only about amenities, answer that question directly and do NOT redirect to check-in dates or a booking checklist.
+- For questions only about amenities, answer that question directly and do NOT redirect to check-in dates or a booking checklist. If they ask one feature, mention ONLY that feature; do not volunteer other inclusions or offer availability unless the guest asks.
 - If rooms are available, recommend only the best 1 to 3 options.
 - Briefly explain why each recommended room matches.
 - If there are no exact matches, say that clearly and mention alternative dates if provided.

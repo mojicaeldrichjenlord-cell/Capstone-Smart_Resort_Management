@@ -1,0 +1,347 @@
+/* ============================================================
+   FRONT DESK OPERATION TABS — fixed card, clickable sections
+   This enhancement only changes presentation. Existing input IDs,
+   event handlers, amounts, server guards and payment logic remain.
+   Fallback: if JS cannot initialize, original scrolling modal works.
+============================================================ */
+
+.fd-tabbed-modal-box {
+  display: flex !important;
+  flex-direction: column;
+  gap: 12px;
+  box-sizing: border-box;
+  height: min(695px, calc(100dvh - 48px));
+  min-height: 0;
+  max-height: calc(100dvh - 48px) !important;
+  overflow: hidden !important;
+  padding: clamp(14px, 2.5vw, 22px) !important;
+}
+
+/* Header and close control stay fixed; long descriptions are clamped.
+   The user can read the full details inside the tabs if necessary. */
+.fd-tabbed-modal-box > .guest-adjustment-header,
+.fd-tabbed-modal-box > .entrance-adjustment-header,
+.fd-tabbed-modal-box > .stay-modal-header,
+.fd-tabbed-modal-box > .extra-bed-header,
+.fd-tabbed-modal-box > .additional-charges-header {
+  flex: 0 0 auto;
+  min-width: 0;
+  margin: 0 !important;
+  gap: 12px;
+}
+.fd-tabbed-modal-box > :first-child > div:first-child {
+  min-width: 0;
+}
+.fd-tabbed-modal-box > :first-child h2 {
+  margin-bottom: 3px;
+  font-size: clamp(1.15rem, 2vw, 1.4rem);
+}
+.fd-tabbed-modal-box > :first-child p:not([class*="eyebrow"]) {
+  margin: 0 !important;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+.fd-tabbed-modal-box > :first-child p[class*="eyebrow"] {
+  margin-bottom: 3px !important;
+}
+
+/* Accessible buttons, not anchor links. No vertical modal scrolling
+   just to switch the operation step. */
+.fd-tab-nav {
+  display: flex;
+  gap: 5px;
+  flex: 0 0 auto;
+  width: 100%;
+  min-width: 0;
+  padding: 5px;
+  border: 1px solid #dce7ee;
+  border-radius: 15px;
+  background: #f1f5f9;
+}
+.fd-tab-trigger {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: #52647b;
+  font: inherit;
+  font-size: 0.83rem;
+  font-weight: 850;
+  line-height: 1.15;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease;
+}
+.fd-tab-trigger:hover {
+  color: #0f766e;
+  background: #e0f2f1;
+}
+.fd-tab-trigger.is-active,
+.fd-tab-trigger[aria-selected="true"] {
+  color: #ffffff;
+  background: #0f766e;
+  box-shadow: 0 2px 8px rgba(15, 118, 110, .18);
+}
+.fd-tab-trigger:focus-visible {
+  outline: 3px solid #5eead4;
+  outline-offset: 2px;
+}
+
+.fd-tab-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+.fd-tab-panel {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  min-height: 0;
+  padding: 4px 4px 10px;
+  overflow-x: hidden;
+  overflow-y: auto; /* Fallback only for dense data and short phones. */
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #b2c9d4 transparent;
+}
+.fd-tab-panel[hidden] {
+  display: none !important;
+}
+.fd-tab-panel > * {
+  flex-shrink: 0;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* Save, Collect, Remove and Cancel remain visible at the bottom while
+   switching sections, with the same original JS-bound button nodes. */
+.fd-tab-footer {
+  flex: 0 0 auto;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 10px;
+}
+.fd-tab-footer > * {
+  margin: 0 !important;
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.fd-tab-footer button {
+  min-height: 39px;
+  border-radius: 11px;
+  line-height: 1.25;
+  padding: 9px 12px;
+  font-size: 0.82rem;
+  white-space: normal;
+}
+
+/* Condense the original dense full-page blocks for tab-sized panels. */
+#guestAdjustmentModal .fd-tab-panel .guest-adjustment-summary-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+#guestAdjustmentModal .fd-tab-panel .guest-adjustment-summary-item {
+  padding: 12px;
+}
+#guestAdjustmentModal .fd-tab-panel .guest-adjustment-summary-item strong {
+  font-size: 1.4rem;
+}
+#guestAdjustmentModal .fd-tab-panel .guest-adjustment-charge-preview {
+  align-items: center;
+  flex-direction: row;
+  gap: 10px;
+  padding: 14px;
+}
+
+#entranceAdjustmentModal .fd-tab-panel .entrance-adjustment-meta-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+#entranceAdjustmentModal .fd-tab-panel .entrance-adjustment-meta-item {
+  padding: 10px;
+}
+#entranceAdjustmentModal .fd-tab-panel .entrance-adjustment-meta-item.wide {
+  grid-column: span 2;
+}
+#entranceAdjustmentModal .fd-tab-panel .entrance-adjustment-input-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+#entranceAdjustmentModal .fd-tab-panel .entrance-adjustment-form-group textarea {
+  min-height: 68px;
+}
+#entranceAdjustmentModal .fd-tab-panel .entrance-adjustment-breakdown {
+  padding: 13px;
+}
+#entranceAdjustmentModal .fd-tab-panel .entrance-breakdown-row {
+  align-items: center;
+  flex-direction: row;
+  gap: 8px;
+  padding-block: 8px;
+}
+
+#addAccommodationModal .fd-tab-panel .stay-form-grid,
+#extendStayModal .fd-tab-panel .stay-form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+#addAccommodationModal .fd-tab-panel .stay-form-group.full,
+#extendStayModal .fd-tab-panel .stay-form-group.full {
+  grid-column: 1 / -1;
+}
+
+#extraBedModal .fd-tab-panel .extra-bed-summary-grid,
+#additionalChargesModal .fd-tab-panel .additional-charges-summary {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+#additionalChargesModal .fd-tab-panel .additional-charges-form {
+  min-height: 0;
+}
+/* Keep the label/notes for Add Charge visible. Its save controls have
+   been moved to the fixed footer, without changing handler references. */
+#additionalChargesModal .fd-tab-panel .additional-charges-form-grid {
+  gap: 10px;
+}
+#additionalChargesModal .fd-tab-panel .additional-charges-form-group textarea {
+  min-height: 68px;
+}
+
+@media (max-width: 700px) {
+  /* Match the fixed card height to each overlay's actual side padding.
+     Otherwise the 2 × 22px default overlay padding can clip the footer. */
+  .guest-adjustment-modal,
+  .entrance-adjustment-modal,
+  .stay-modal,
+  .extra-bed-modal,
+  .additional-charges-modal {
+    padding: 10px !important;
+  }
+  .fd-tabbed-modal-box {
+    height: calc(100dvh - 20px);
+    max-height: calc(100dvh - 20px) !important;
+    gap: 8px;
+    padding: 12px !important;
+    border-radius: 17px !important;
+  }
+  .fd-tab-nav {
+    gap: 3px;
+    padding: 4px;
+  }
+  .fd-tab-trigger {
+    min-height: 43px;
+    padding: 6px 5px;
+    font-size: 0.7rem;
+  }
+  .fd-tab-footer {
+    padding-top: 8px;
+  }
+  .fd-tab-footer > .guest-adjustment-modal-actions,
+  .fd-tab-footer > .stay-modal-actions,
+  .fd-tab-footer > .extra-bed-actions,
+  .fd-tab-footer > .additional-charges-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .fd-tab-footer > .entrance-adjustment-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .fd-tab-footer button {
+    width: 100% !important;
+    font-size: 0.73rem;
+    padding: 8px 6px;
+    min-height: 37px;
+  }
+  #entranceAdjustmentModal .fd-tab-panel .entrance-adjustment-meta-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  #entranceAdjustmentModal .fd-tab-panel .entrance-adjustment-meta-item.wide {
+    grid-column: 1 / -1;
+  }
+  #entranceAdjustmentModal .fd-tab-panel .entrance-adjustment-input-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  #guestAdjustmentModal .fd-tab-panel .guest-adjustment-charge-preview {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  #additionalChargesModal .fd-tab-panel .additional-charges-form-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  #additionalChargesModal .fd-tab-panel .additional-charges-form-group.full {
+    grid-column: 1 / -1;
+  }
+}
+
+/* On extremely short screens the active tab may have its own limited
+   scroll rather than cut off important legal notes or input controls. */
+@media (max-height: 520px) {
+  .fd-tabbed-modal-box {
+    gap: 5px;
+  }
+  .fd-tabbed-modal-box > :first-child p:not([class*="eyebrow"]) {
+    -webkit-line-clamp: 1;
+  }
+  .fd-tab-trigger {
+    min-height: 34px;
+  }
+}
+
+
+/* ============================================================
+   FRONT DESK ADD ACCOMMODATION — LIVE TIME-SLOT LABELS
+   Reuses the same calm availability indicators as Customer Booking.
+   Native <option disabled> prevents choosing a booked/ended schedule.
+============================================================ */
+#addAccommodationSlot {
+  min-width: 0;
+  width: 100%;
+}
+
+#addAccommodationSlot option:disabled {
+  color: #9f1239;
+  background: #fff1f2;
+}
+
+#addAccommodationSlotStatus {
+  display: block;
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid #dbe7ef;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  font-weight: 650;
+}
+
+#addAccommodationSlotStatus[data-state="checking"] {
+  border-color: #bae6fd;
+  background: #f0f9ff;
+  color: #075985;
+}
+
+#addAccommodationSlotStatus[data-state="ready"] {
+  border-color: #a7f3d0;
+  background: #ecfdf5;
+  color: #065f46;
+}
+
+#addAccommodationSlotStatus[data-state="error"] {
+  border-color: #fed7aa;
+  background: #fff7ed;
+  color: #9a3412;
+}

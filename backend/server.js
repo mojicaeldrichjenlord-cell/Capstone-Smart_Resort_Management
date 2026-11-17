@@ -18,6 +18,7 @@ const bookingRoutes = require("./routes/bookingRoutes");
 const adminBookingRoutes = require("./routes/adminBookingRoutes");
 const adminPaymentRoutes = require("./routes/adminPaymentRoutes");
 const adminStaffRoutes = require("./routes/adminStaffRoutes");
+const extraGuestRateRoutes = require("./routes/extraGuestRateRoutes");
 const aiRoutes = require("./routes/aiRoutes");
 const managerRoutes = require("./routes/managerRoutes");
 const housekeepingRoutes = require("./routes/housekeepingRoutes");
@@ -57,6 +58,8 @@ app.use("/api/admin/bookings", adminBookingRoutes);
 app.use("/api/admin/payments", adminPaymentRoutes);
 // Admin manages staff identities; authorization enforced inside the router.
 app.use("/api/admin/staff", adminStaffRoutes);
+// Admin-only resort pricing update; Front Desk gets a read-only rate.
+app.use("/api/guest-rate", extraGuestRateRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/manager", managerRoutes);
 // Housekeeping API has independent signed-role checks and never inherits Admin rights.
