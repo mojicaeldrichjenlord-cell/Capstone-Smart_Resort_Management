@@ -99,6 +99,30 @@ function paymentReply(message, context, room, language = "taglish") {
   const name = room && String(room.room_name || room.name || "").trim();
   const isListed = room && (!room.status ||
     String(room.status).toLowerCase().trim() === "available");
+  // Casual, spoken-friendly Taglish. Keep all calculations exactly the
+  // same as the other language paths and never imply a confirmed booking.
+  if (language === "taglish") {
+    let lead;
+    if (room && !isListed) {
+      lead = "Sorry po, hindi currently available sa listing yung " + name +
+        ", kaya hindi pa tayo makakapagbigay ng booking estimate.";
+    } else if (room && stay && amount !== null) {
+      lead = "For " + name + " po, " + peso(amount) + " yung listed " +
+        (stay === "overnight" ? "overnight" : "day tour") +
+        " rate for one standard slot. Estimated 50% downpayment is " +
+        peso(amount * 0.5) + " via PayPal, then " + peso(amount * 0.5) +
+        " yung remaining room balance.";
+    } else if (room) {
+      lead = "For " + name + " po, day tour or overnight ba ang plan niyo? " +
+        "Para tama yung rate na ma-estimate natin.";
+    } else {
+      lead = "Anong room po ang balak niyong i-book? " +
+        "Para ma-check natin yung correct listed rate.";
+    }
+    const fees = "Separate pa po ang entrance fees and other charges na babayaran onsite.";
+    const notice = "Final amount and slot availability sa booking page pa po mache-check.";
+    return [lead, fees, notice].join(" ");
+  }
   let rateLine;
   if (room && !isListed) {
     rateLine = filipino
