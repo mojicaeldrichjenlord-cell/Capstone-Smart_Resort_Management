@@ -17,6 +17,8 @@
     <!-- Loaded last so this page can apply one consistent visual system
          across all Front Desk action buttons without changing JS behavior. -->
     <link rel="stylesheet" href="../frontdeskCSS/frontdeskGuests.css" />
+    <!-- Accessible, fixed-height operation tabs; last to override modal layouts. -->
+    <link rel="stylesheet" href="../frontdeskCSS/frontdeskOperationTabs.css" />
       <!-- Consistent, centered confirmation for accidental logout clicks. -->
     <link rel="stylesheet" href="../sharedCSS/logout-confirm.css" />
   </head>
@@ -998,6 +1000,8 @@
     <script src="../frontdeskJS/frontdeskAdditionalCharges.js"></script>
     <script src="../frontdeskJS/frontdeskUnpaidCharges.js"></script>
     <script src="../frontdeskJS/frontdeskGuestActionsUI.js"></script>
+    <!-- Presentation-only tab navigation: preserves original form/button IDs. -->
+    <script src="../frontdeskJS/frontdeskOperationTabs.js"></script>
       <script src="../sharedJS/logout-confirm.js"></script>
   </body>
 </html>
