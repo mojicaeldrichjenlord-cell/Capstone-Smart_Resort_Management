@@ -246,7 +246,9 @@ test("Live mode sends recognized turn, speaks response, and listens again", asyn
   assert.equal(h.requests[0].opts.source, "voice");
   assert.equal(h.requests[0].message, "Need a room for five guests");
   assert.equal(h.speechUtterances.length, 1);
-  assert.equal(h.speechUtterances[0].lang, "en-PH");
+  // Recognition listens in en-PH; speech output defaults to en-US when
+  // the browser has no installed voice to choose from.
+  assert.equal(h.speechUtterances[0].lang, "en-US");
   assert.equal(h.voice.getState().mode, "live-speaking");
   h.speechUtterances[0].onend();
   h.runScheduled();
