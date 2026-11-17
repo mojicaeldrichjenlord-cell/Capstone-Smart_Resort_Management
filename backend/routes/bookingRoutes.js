@@ -53,6 +53,8 @@ const { requireReceiptAuth } = require("../middleware/receiptAuth");
 const { requireOperationalBookingRead } = require("../middleware/operationalBookingReadAuth");
 const { getPaymentProofImage } = require("../controllers/shared/paymentProofController");
 const { getAdminReportPaidCharges } = require("../controllers/admin/adminReportPaidChargesController");
+const { getBookingReadiness } =
+  require("../controllers/shared/bookingReadinessController");
 
 function bindAuthenticatedFrontDeskCreator(req, res, next) {
   const creatorId = Number(req.frontDeskUser?.id);
@@ -270,6 +272,10 @@ router.get(
   requireOperationalBookingRead,
   getPaymentProofImage,
 );
+
+// Staff-only read-only preflight, before tomorrow's live-domain demo.
+// Never changes reservation state or bypasses PayPal / double-booking checks.
+router.get("/demo-readiness", requireOperationalBookingRead, getBookingReadiness);
 
 router.get("/", requireOperationalBookingRead, getAllBookings);
 
