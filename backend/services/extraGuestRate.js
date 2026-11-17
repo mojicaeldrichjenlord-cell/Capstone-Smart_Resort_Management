@@ -15,7 +15,7 @@ function parseExtraGuestRate(value) {
   if (value === null || value === undefined || String(value).trim() === "" ||
       !Number.isFinite(numeric) || numeric < 0 ||
       numeric > MAX_EXTRA_GUEST_RATE ||
-      Math.round(numeric * 100) !== numeric * 100) {
+      Math.abs(Math.round(numeric * 100) - numeric * 100) > 1e-6) {
     return null;
   }
   return numeric;
