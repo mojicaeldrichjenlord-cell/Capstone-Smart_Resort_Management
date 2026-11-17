@@ -141,7 +141,9 @@ test("Rate endpoints use signed-role checks; Admin UI is editable, Front Desk is
   const adminHtml = read("frontend/adminHTML/admin-profile.html");
   const adminScript = read("frontend/adminJS/admin-profile.js");
   const frontDeskScript = read("frontend/frontdeskJS/frontdeskGuests.js");
-  assert.match(html, /id="extraGuestRateInput"[\s\S]*?readonly/);
+  assert.match(html, /id="extraGuestRateInput"[\s\S]*?readonly[\s\S]*?disabled/);
+  assert.match(frontDeskScript, /rateInput\.disabled = true/);
+  assert.match(read("frontend/frontdeskCSS/frontdeskGuests.css"), /#extraGuestRateInput:disabled[\s\S]*?pointer-events: none/);
   assert.match(html, /value="250\.00"/);
   assert.match(adminHtml, /id="extraGuestRateForm"/);
   assert.match(adminScript, /guest-rate\/admin/);
