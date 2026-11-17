@@ -645,7 +645,7 @@
       const text = [state.draftPrefix, state.finalText.trim(), pending.trim()]
         .filter(Boolean).join(" ").slice(0, state.transcriptLimit);
       input.value = normalizeArvicVoiceTranscript(text);
-      if (kind === "live") status("Heard: " + text.slice(0, 90));
+      if (kind === "live") status("Heard: " + input.value.slice(0, 90));
     };
     recognizer.onerror = event => {
       if (state.recognizer !== recognizer) return;
