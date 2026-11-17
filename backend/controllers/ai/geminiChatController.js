@@ -1135,6 +1135,12 @@ exports.chatWithGemini = async (req, res) => {
     // description and inclusions, not a guess from previous conversation.
     // This read-only path needs zero Gemini credits and never checks/creates bookings.
     const amenityKind = requestedAmenity(message);
+    // When a guest names a different room, that EXPLICIT room wins over
+    // any selected card from a previous turn. Never pick one of two names.
+    const explicitlyNamedAmenityRoom = explicitEntranceRoomName(message);
+    const unresolvedNamedAmenityRoom =
+      /\b(?:single|double|family)\s+room\b/i.test(message) &&
+      !explicitlyNamedAmenityRoom;
     const rawFocusedRoomId = req.body?.context?.room_id ?? req.body?.room_id;
     const focusedRoomId = Number(rawFocusedRoomId);
     const focusedRoomName = String(
@@ -1148,21 +1154,24 @@ exports.chatWithGemini = async (req, res) => {
       (rawFocusedRoomId === null || rawFocusedRoomId === undefined ||
         rawFocusedRoomId === "") &&
       focusedRoomName.length > 0 && focusedRoomName.length <= 110;
-    if (amenityKind && (hasFocusedId || canResolveByName)) {
+    if (amenityKind && !unresolvedNamedAmenityRoom &&
+        (explicitlyNamedAmenityRoom || hasFocusedId || canResolveByName)) {
+      const byId = !explicitlyNamedAmenityRoom && hasFocusedId;
+      const lookup = explicitlyNamedAmenityRoom ||
+        (byId ? focusedRoomId : focusedRoomName);
       const columns = "SELECT a.id, a.name AS room_name, a.description, a.amenities, " +
         "c.name AS category_name FROM accommodations a " +
         "LEFT JOIN accommodation_categories c ON c.id = a.category_id ";
       const [rows] = await db.promise().query(
-        hasFocusedId
-          ? columns + "WHERE a.id = ? LIMIT 1"
-          : columns + "WHERE a.name = ? LIMIT 2",
-        [hasFocusedId ? focusedRoomId : focusedRoomName],
+        byId ? columns + "WHERE a.id = ? LIMIT 1" :
+          columns + "WHERE a.name = ? LIMIT 2",
+        [lookup],
       );
-      const record = hasFocusedId ? rows[0] :
+      const record = byId ? rows[0] :
         (rows.length === 1 ? rows[0] : null);
-      // Reject stale/reassigned IDs and ambiguous or non-exact name matches.
-      // Room details must always come from the currently verified DB record.
-      if (record && (!focusedRoomName ||
+      // Reject stale/reassigned IDs; an explicitly named room is an
+      // intentional context switch and must NOT be compared to old focus.
+      if (record && (explicitlyNamedAmenityRoom || !focusedRoomName ||
           String(record.room_name).trim().toLowerCase() ===
             focusedRoomName.toLowerCase())) {
         // An explicitly different named room must not inherit an older selection.
