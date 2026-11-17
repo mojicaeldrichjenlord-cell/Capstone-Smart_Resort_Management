@@ -705,14 +705,80 @@ function resolveAiRoomImage(value) {
   const image = String(value || "").trim();
   const base = AI_API_BASE.replace(/\/api\/?$/, "");
   if (/^https?:\/\//i.test(image)) return image;
-  if (/^data:image\/(?:png|jpeg|webp|gif);base64,/i.test(image) && image.length < 250000) return image;
-  const clean = image.replace(/^\.\.\//, "").replace(/^\/+/, "");
+
+  // Some older room photos are inline image bytes. Never truncate a valid
+  // JPG/PNG/WebP/GIF data URI; the AI response may hold only a short prefix,
+  // so the full image can also be recovered from GET /api/rooms/:id.
+  if (/^data:image\/(?:png|jpe?g|webp|gif);base64,[a-z0-9+/=]+$/i.test(image) &&
+      image.length <= 4500000) return image;
+
+  const clean = image.replace(/^(?:\.\.\/)+/, "").replace(/^\/+/, "");
+  if (clean.includes("..")) return AI_ROOM_IMAGE_FALLBACK;
   if (/^api\/rooms\/media\/[1-9]\d*$/.test(clean)) return base + "/" + clean;
-  if (/^uploads\/[a-z0-9_./-]+$/i.test(clean) && !clean.includes("..")) return base + "/" + clean;
-  if (/^(?:frontend\/)?images\/[a-z0-9_./-]+$/i.test(clean) && !clean.includes("..")) {
+  if (/^uploads\/[a-z0-9_./-]+$/i.test(clean)) return base + "/" + clean;
+  if (/^(?:frontend\/)?(?:images|assets)\/[a-z0-9_./-]+$/i.test(clean)) {
     return "../" + clean.replace(/^frontend\//, "");
   }
   return AI_ROOM_IMAGE_FALLBACK;
+}
+
+// AI cards can receive a missing, legacy or truncated cover-image value.
+// Retrieve the SAME publicly listed accommodation/gallery as the catalog
+// page when needed, instead of inventing an image or consuming Gemini credits.
+// One read-only GET per failed card, with an ID+name guard against stale cards.
+function setAiRecommendationPhoto(img, room) {
+  const id = Number(room?.id);
+  const expectedName = String(room?.name || "").trim();
+  const attempted = new Set();
+  const candidates = [];
+  let detailChecked = false;
+
+  function addCandidate(value) {
+    const src = resolveAiRoomImage(value);
+    if (src !== AI_ROOM_IMAGE_FALLBACK && !attempted.has(src)) {
+      attempted.add(src);
+      candidates.push(src);
+    }
+  }
+
+  async function loadRoomImages() {
+    detailChecked = true;
+    try {
+      const response = await fetch(AI_API_BASE + "/rooms/" + encodeURIComponent(String(id)));
+      if (response.ok) {
+        const data = await response.json();
+        const latest = data?.room;
+        // Never show a different room's photo if Admin renamed/replaced it.
+        if (Number(latest?.id) === id && String(latest?.name || "").trim() === expectedName) {
+          addCandidate(latest.image);
+          if (Array.isArray(latest.gallery_images)) {
+            latest.gallery_images.forEach(addCandidate);
+          }
+        }
+      }
+    } catch (_) {
+      // A failed photo request must not hide recommendations or stop the chat.
+    }
+    showNext();
+  }
+
+  function showNext() {
+    if (candidates.length) {
+      img.src = candidates.shift();
+      return;
+    }
+    if (!detailChecked && Number.isSafeInteger(id) && id > 0) {
+      // A response image may be blank or too short to contain real data.
+      void loadRoomImages();
+      return;
+    }
+    img.onerror = null;
+    img.src = AI_ROOM_IMAGE_FALLBACK;
+  }
+
+  img.onerror = showNext;
+  addCandidate(room?.image);
+  showNext();
 }
 
 function aiRoomMoney(amount) {
@@ -759,8 +825,7 @@ function appendAiRecommendationCards(items, save = true) {
     img.className = "ai-recommendation-photo";
     img.alt = String(room.name || "Accommodation") + " preview";
     img.loading = "lazy";
-    img.src = resolveAiRoomImage(room.image);
-    img.onerror = () => { img.onerror = null; img.src = AI_ROOM_IMAGE_FALLBACK; };
+    setAiRecommendationPhoto(img, room);
     card.appendChild(img);
 
     const body = document.createElement("div");

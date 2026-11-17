@@ -72,3 +72,62 @@ test("existing accommodation chat context and buttons remain present", () => {
   assert.match(chat, /Ask About This/);
   assert.match(chat, /ai-reply-actions/);
 });
+
+
+test("AI photo cards recover listed accommodation gallery when image is missing", async () => {
+  // Execute the actual browser-side image helpers with mocked fetch: this is
+  // a read-only test and never requests the live backend or production DB.
+  const vm = require("node:vm");
+  const chat = read("js/ai-chat.js");
+  const start = chat.indexOf("const AI_ROOM_IMAGE_FALLBACK =");
+  const end = chat.indexOf("function aiRoomMoney(amount)", start);
+  assert.ok(start >= 0 && end > start);
+  const calls = [];
+  const methods = vm.runInNewContext(chat.slice(start, end) +
+    "\n({ resolveAiRoomImage, setAiRecommendationPhoto, AI_ROOM_IMAGE_FALLBACK });", {
+    AI_API_BASE: "https://smartresort-backend.onrender.com/api",
+    encodeURIComponent,
+    fetch: async (url) => {
+      calls.push(url);
+      return { ok: true, json: async () => ({
+        room: {
+          id: 86, name: "Single Room Cottage 1",
+          image: "", gallery_images: ["/api/rooms/media/44"]
+        }
+      }) };
+    }
+  });
+  const img = { src: "", onerror: null };
+  methods.setAiRecommendationPhoto(img, { id: 86, name: "Single Room Cottage 1", image: "" });
+  // The async detail load is a Promise chain; no timers or network needed.
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0], "https://smartresort-backend.onrender.com/api/rooms/86");
+  assert.equal(img.src, "https://smartresort-backend.onrender.com/api/rooms/media/44");
+  assert.equal(methods.resolveAiRoomImage("data:image/svg+xml;base64,YWJj"),
+    methods.AI_ROOM_IMAGE_FALLBACK);
+});
+
+test("AI photo recovery refuses to render a different accommodation ID", async () => {
+  const vm = require("node:vm");
+  const chat = read("js/ai-chat.js");
+  const start = chat.indexOf("const AI_ROOM_IMAGE_FALLBACK =");
+  const end = chat.indexOf("function aiRoomMoney(amount)", start);
+  assert.ok(start >= 0 && end > start);
+  const methods = vm.runInNewContext(chat.slice(start, end) +
+    "\n({ setAiRecommendationPhoto, AI_ROOM_IMAGE_FALLBACK });", {
+    AI_API_BASE: "https://smartresort-backend.onrender.com/api",
+    encodeURIComponent,
+    fetch: async () => ({ ok: true, json: async () => ({
+      room: { id: 999, name: "Another Room", image: "/api/rooms/media/12" }
+    }) })
+  });
+  const img = { src: "", onerror: null };
+  methods.setAiRecommendationPhoto(img, { id: 86, name: "Single Room Cottage 1", image: "" });
+  await Promise.resolve();
+  await Promise.resolve();
+  await Promise.resolve();
+  assert.equal(img.src, methods.AI_ROOM_IMAGE_FALLBACK);
+});
