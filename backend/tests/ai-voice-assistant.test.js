@@ -340,7 +340,7 @@ test("Customer pages load AI chat before interactive voice and include voice sty
     const html = fs.readFileSync(path.resolve(
       __dirname, "../../frontend/customerHTML", page), "utf8");
     const chatIndex = html.indexOf('src="../js/ai-chat.js"');
-    const voiceIndex = html.indexOf('src="../js/ai-voice.js?v=20261115-voiceqa2"');
+    const voiceIndex = html.indexOf('src="../js/ai-voice.js?v=20261117-sttqa1"');
     assert.ok(chatIndex > 0 && voiceIndex > chatIndex);
     assert.match(html, /sharedCSS\/ai-voice\.css/);
   }
@@ -606,4 +606,13 @@ test("Mandarin voice speech stays untranslated and unmodified by Taglish terms",
   h.recognitionInstances[0].stop();
   await h.settle();
   assert.equal(h.requests[0].message, "May premyo ka ba?");
+});
+
+test("Full shade amenity question is not silently converted into Pool Shade", async () => {
+  const h = mount({ savedLanguage:"taglish" });
+  h.fire("aiVoiceLive");
+  h.recognitionInstances[0].say("May full shade ba sa cottage?");
+  h.recognitionInstances[0].stop();
+  await h.settle();
+  assert.equal(h.requests[0].message, "May full shade ba sa cottage?");
 });
