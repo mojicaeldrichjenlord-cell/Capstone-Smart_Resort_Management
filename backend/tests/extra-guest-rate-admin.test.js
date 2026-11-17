@@ -16,15 +16,15 @@ function read(relative) {
 
 function fakeRateService(mockDb) {
   const code = read("backend/services/extraGuestRate.js");
-  const exports = {};
+  const mod = { exports: {} };
   vm.runInNewContext(
     "(function(module, require) {" + code + "\n})",
     {},
-  )({ exports }, name => {
+  )(mod, name => {
     assert.equal(name, "../config/db");
     return mockDb;
   });
-  return exports;
+  return mod.exports;
 }
 
 test("₱250 default, money precision, and safe admin input validation", () => {
