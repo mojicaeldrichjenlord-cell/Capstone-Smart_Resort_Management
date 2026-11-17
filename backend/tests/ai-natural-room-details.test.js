@@ -71,7 +71,7 @@ test("Family A and B answer from their own verified amenities and free pax", () 
 
 test("Single-feature English/Taglish CR stays direct", () => {
   assert.equal(amenityReply(familyA, "cr", "Does it have a CR?", "english"),
-    "Yes, Family Room A has bathroom.");
+    "Yes, Family Room A has a bathroom.");
   assert.equal(amenityReply(familyB, "private_cr", "May sarili bang CR?", "taglish"),
     "Yes po, may sariling CR ang Family Room B.");
 });
