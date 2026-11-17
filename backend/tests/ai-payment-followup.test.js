@@ -111,3 +111,19 @@ test("Backend answers payment questions before broad recommendation and with no 
   assert.match(tail,/recommendation_cards: \[\]/);
   assert.doesNotMatch(tail,/generateGemini\(/);
 });
+
+test("Unavailable accommodation cannot be quoted as a payable booking", () => {
+  const room={id:100,room_name:"Family Room B",status:"maintenance",
+    day_price:8000,overnight_price:8000};
+  const reply=paymentReply(paymentQuestion,{},room,"taglish");
+  assert.match(reply,/hindi kasalukuyang listed as available/);
+  assert.doesNotMatch(reply,/₱8,000|₱4,000/);
+});
+
+test("Estimated payment breakdown includes onsite accommodation balance separately from entrance", () => {
+  const room=resolvePaymentRoom(catalog,paymentQuestion,
+    {room_id:100,room_name:"Family Room B"});
+  const reply=paymentReply(paymentQuestion,{},room,"taglish");
+  assert.match(reply,/natitirang accommodation balance: ₱4,000\.00/);
+  assert.match(reply,/entrance fees/);
+});
