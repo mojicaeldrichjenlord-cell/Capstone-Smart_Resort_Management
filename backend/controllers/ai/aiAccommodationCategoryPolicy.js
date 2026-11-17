@@ -32,8 +32,12 @@ function hasListedAmenities(room) {
 // Specific room questions should use the fresh read-only DB fast paths.
 function generalCategoryAmenitiesReply(message, focusedId, language = "english") {
   const raw = String(message || "").normalize("NFKC").trim();
-  if (raw.length > 220 || !raw || Number(focusedId) > 0) return null;
+  if (raw.length > 220 || !raw) return null;
   const text = raw.toLowerCase();
+  // A focused room should win for pronoun questions, but an explicit
+  // category-wide question ("mga cottages", "Function Areas") is new intent.
+  const categoryWide = /\b(?:mga\s+cottages?|cottages|function\s+areas|pavilions)\b/.test(text);
+  if (Number(focusedId) > 0 && !categoryWide) return null;
   if (!/\b(?:amenit(?:y|ies)|inclusions?|included|kasama|meron|may)\b/.test(text)) return null;
   if (!/(?:\?|\b(?:ano|anong|what|which|may|meron|includes?|included|kasama)\b)/.test(text)) return null;
   // Never mistake the Room-category "Single Room Cottage" for a cottage.
