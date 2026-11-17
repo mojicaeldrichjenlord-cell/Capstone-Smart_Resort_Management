@@ -21,6 +21,12 @@ function normalizeRecentTurns(input) {
 function wantsAccommodationCards(message, intent) {
   const text = String(message || "").normalize("NFKC").toLowerCase().trim();
   if (!text) return false;
+  // Do not turn "payment options", a quoted amount, or a downpayment
+  // follow-up into accommodation recommendation cards merely because
+  // "options" and "available" are generic recommendation trigger words.
+  if (/\b(?:payments?|paypal|down[\s-]?payments?|deposits?|balance|babayaran|ibabayad|magbayad|bayad|how much to pay)\b/.test(text)) {
+    return false;
+  }
   if (/\b(?:magkano|how much|amenit(?:y|ies)|bathroom|toilet|cr|aircon|air.condition|price|rate|cost|presyo|inclusion|details?|tell me more)\b/.test(text) &&
       !/\b(?:recommend|suggest|options?|choices?|show|list|hanap|ibang|other|marerecommend)\b/.test(text)) {
     return false;
