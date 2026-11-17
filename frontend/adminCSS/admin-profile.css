@@ -217,3 +217,39 @@
     font-size: 1.35rem;
   }
 }
+
+/* ======================================================
+   ADMIN RESORT PRICING
+   Keep the fee editor consistent with existing profile cards.
+====================================================== */
+.guest-rate-hint {
+  color: #475569;
+  line-height: 1.6;
+  margin: -10px 0 18px;
+}
+
+.guest-rate-admin-input {
+  width: 100%;
+  max-width: 340px;
+  padding: 14px 16px;
+  border: 1px solid #cbd5e1;
+  border-radius: 16px;
+  background: white;
+  color: #0f172a;
+  font: inherit;
+}
+
+.guest-rate-admin-input:focus-visible {
+  outline: 3px solid rgba(20, 184, 166, 0.2);
+  border-color: #14b8a6;
+}
+
+#adminExtraGuestRateStatus {
+  color: #475569;
+  line-height: 1.5;
+}
+
+#saveAdminExtraGuestRate:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
