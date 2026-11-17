@@ -586,7 +586,7 @@ test("Dictation remains editable and never autosends corrected Taglish speech", 
   assert.equal(h.requests.length, 0);
 });
 
-test("Recorded STT Taglish corrections match browser speech and use language hint", async () => {
+test("Recorded Gemini STT faithfully preserves a returned transcript without forced word substitutions", async () => {
   const h = mount({ ios:true,audioAvailable:true, customerToken:"test-token",
     savedLanguage:"taglish",recordedTranscript:"May premyo ka ba?",
     recentTurns:[{role:"user",text:"Anong mga pool shade meron kayo?"}] });
@@ -595,7 +595,7 @@ test("Recorded STT Taglish corrections match browser speech and use language hin
   for (let i=0;i<3;i++) h.audioProcessors[0].feed(0.1);
   h.fire("aiMicBtn");
   await h.settle();
-  assert.equal(h.nodes.aiChatInput.value, "May preview ka ba?");
+  assert.equal(h.nodes.aiChatInput.value, "May premyo ka ba?");
   assert.equal(h.transcriptionRequests[0].opts.headers["X-Arvic-Voice-Language"], "taglish");
   assert.equal(h.requests.length, 0);
 });
