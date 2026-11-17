@@ -1089,7 +1089,7 @@ exports.chatWithGemini = async (req, res) => {
       // Explicitly named accommodation overrides an older focused room.
       // If the user names an unrecognized room, do not silently answer for
       // some OTHER selected accommodation.
-      const namesAnotherRoom = /\\b(?:single|double|family)\\s+room\\b/i.test(message) &&
+      const namesAnotherRoom = /\b(?:single|double|family)\s+room\b/i.test(message) &&
         !explicitName;
       if (!namesAnotherRoom && (explicitName || validSelectedId || hasSelectedName)) {
         const sql = "SELECT id, name AS room_name, free_entrance_pax " +
@@ -1107,7 +1107,7 @@ exports.chatWithGemini = async (req, res) => {
             !hasSelectedName ||
             String(record.room_name).trim().toLowerCase() === selectedName.toLowerCase())) {
           const language = normalizeLanguageStyle(req.body.voice_language) ||
-            (/\\b(?:ilang|ilan|may|meron|ba|po|kasama|libreng?|sa|ng)\\b/i.test(message)
+            (/\b(?:ilang|ilan|may|meron|ba|po|kasama|libreng?|sa|ng)\b/i.test(message)
               ? "taglish" : null) ||
             detectLanguageFromMessage(message) ||
             normalizeLanguageStyle(req.body.language_style) ||
