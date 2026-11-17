@@ -200,3 +200,46 @@ test("AI selected-room overview is a read-only DB path before Gemini extraction"
   assert.doesNotMatch(overview, /INSERT|UPDATE|DELETE|generateGemini\(/i);
   assert.ok(end < source.indexOf("await extractStructuredIntent(", end));
 });
+
+test("Single-feature aircon follow-up stays concise and never lists other amenities", () => {
+  const { requestedAmenity, amenityReply } =
+    require("../controllers/ai/aiAccommodationAmenities");
+
+  // Actual screenshot scenario: a focused Single Room Cottage with several
+  // inclusions, but guest asks ONLY whether aircon is available.
+  const room = {
+    room_name: "Single Room Cottage 1",
+    amenities: "1 Double Size Bed\nPrivate CR\nTV\nAir Conditioned\nDining Table",
+  };
+  assert.equal(requestedAmenity("may aircon?"), "aircon");
+  assert.equal(requestedAmenity("May aircon ba ito?"), "aircon");
+  const taglish = amenityReply(room, "aircon", "may aircon?", "taglish");
+  assert.equal(taglish, "Yes po, may aircon ang Single Room Cottage 1.");
+  assert.doesNotMatch(taglish, /private CR|dining table|booking|availability|petsa|check.in/i);
+
+  const english = amenityReply(room, "aircon", "Does this room have AC?", "english");
+  assert.equal(english, "Yes, Single Room Cottage 1 has air conditioning.");
+  const ownCr = amenityReply(room, "private_cr", "May sarili bang CR ito?", "taglish");
+  assert.equal(ownCr, "Yes po, may sariling CR ang Single Room Cottage 1.");
+
+  // Never guess when a feature is missing or contradictory in Admin data.
+  const missing = amenityReply({ room_name: "Room X", amenities: "TV" },
+    "aircon", "May aircon?", "taglish");
+  assert.match(missing, /Hindi po naka-indicate/);
+  assert.doesNotMatch(missing, /Yes po/i);
+});
+
+test("Amenity route preserves single-topic DB response even when room ID is missing", () => {
+  const source = fs.readFileSync(
+    path.join(__dirname, "../controllers/ai/geminiChatController.js"), "utf8");
+  const start = source.indexOf("// Amenity questions about the selected room");
+  const end = source.indexOf("// Room overview fast path:", start);
+  assert.ok(start >= 0 && end > start);
+  const pathSource = source.slice(start, end);
+  assert.match(pathSource, /mode: "verified_accommodation_amenity"/);
+  assert.match(pathSource, /WHERE a\.name = \? LIMIT 2/);
+  assert.match(pathSource, /rows\.length === 1/);
+  assert.match(pathSource, /String\(record\.room_name\)\.trim\(\)\.toLowerCase\(\)/);
+  assert.doesNotMatch(pathSource, /INSERT INTO|UPDATE accommodations|DELETE FROM|generateGemini\(/i);
+  assert.match(source, /If asked about ONE amenity/);
+});
