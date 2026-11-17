@@ -141,6 +141,14 @@ async function sendAiMessage(options = {}) {
 
     if (data.extracted_context) {
       const merged = mergeContext(getStoredAiContext(), data.extracted_context);
+      // A category preview (e.g. Pool Shade) must genuinely clear the old
+      // selected room. mergeContext uses nullish fallbacks and would otherwise
+      // resurrect an earlier Nipa Hut / Family Room after category switching.
+      if (data.mode === "verified_accommodation_preview" &&
+          !Object.prototype.hasOwnProperty.call(data.extracted_context, "room_id")) {
+        delete merged.room_id;
+        delete merged.room_name;
+      }
       saveAiContext(merged);
 
       // Save silently. Repeating context summaries on every reply feels robotic.
