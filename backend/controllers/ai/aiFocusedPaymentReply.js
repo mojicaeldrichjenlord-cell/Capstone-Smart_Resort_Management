@@ -97,15 +97,23 @@ function paymentReply(message, context, room, language = "taglish") {
     stay === "day" ? room?.day_price : null;
   const amount = validRate(field);
   const name = room && String(room.room_name || room.name || "").trim();
+  const isListed = room && (!room.status ||
+    String(room.status).toLowerCase().trim() === "available");
   let rateLine;
-  if (room && stay && amount !== null) {
+  if (room && !isListed) {
+    rateLine = filipino
+      ? "Ang " + name + " po ay hindi kasalukuyang listed as available. Hindi muna ako magbibigay ng payable quote para rito."
+      : name + " is not currently listed as available, so I cannot give a payable quote for it.";
+  } else if (room && stay && amount !== null) {
     rateLine = filipino
       ? "Para po sa " + name + ", ang listed " + (stay === "overnight" ? "overnight" : "day tour") +
         " rate para sa isang standard slot ay " + peso(amount) +
-        ". Estimated 50% downpayment: " + peso(amount * 0.5) + "."
+        ". Estimated 50% downpayment: " + peso(amount * 0.5) +
+        "; natitirang accommodation balance: " + peso(amount * 0.5) + "."
       : "For " + name + ", the listed " + (stay === "overnight" ? "overnight" : "day-tour") +
         " rate for one standard slot is " + peso(amount) +
-        ". Estimated 50% downpayment: " + peso(amount * 0.5) + ".";
+        ". Estimated 50% downpayment: " + peso(amount * 0.5) +
+        "; remaining accommodation balance: " + peso(amount * 0.5) + ".";
   } else if (room) {
     rateLine = filipino
       ? "Para po sa " + name + ", kailangan munang i-confirm ang exact stay type para ma-compute ang applicable accommodation rate."
