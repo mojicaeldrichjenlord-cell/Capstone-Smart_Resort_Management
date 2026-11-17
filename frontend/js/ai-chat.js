@@ -717,7 +717,11 @@ function resolveAiRoomImage(value) {
   if (/^api\/rooms\/media\/[1-9]\d*$/.test(clean)) return base + "/" + clean;
   if (/^uploads\/[a-z0-9_./-]+$/i.test(clean)) return base + "/" + clean;
   if (/^(?:frontend\/)?(?:images|assets)\/[a-z0-9_./-]+$/i.test(clean)) {
-    return "../" + clean.replace(/^frontend\//, "");
+    // Use the same root-relative static path as Customer Accommodations.
+    // The local VS Code Live Server may mount the project under /frontend/.
+    const pathname = typeof window !== "undefined" ? window.location.pathname : "";
+    const prefix = /^\/frontend\//i.test(pathname) ? "/frontend/" : "/";
+    return prefix + clean.replace(/^frontend\//i, "");
   }
   return AI_ROOM_IMAGE_FALLBACK;
 }
