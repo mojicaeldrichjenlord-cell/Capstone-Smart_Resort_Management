@@ -717,11 +717,22 @@ function resolveAiRoomImage(value) {
   if (/^api\/rooms\/media\/[1-9]\d*$/.test(clean)) return base + "/" + clean;
   if (/^uploads\/[a-z0-9_./-]+$/i.test(clean)) return base + "/" + clean;
   if (/^(?:frontend\/)?(?:images|assets)\/[a-z0-9_./-]+$/i.test(clean)) {
-    // Use the same root-relative static path as Customer Accommodations.
-    // The local VS Code Live Server may mount the project under /frontend/.
+    // Git/Vercel file paths are case-sensitive even though local Windows Live
+    // Server accepts the older mixed-case DB filenames. IDs 1-5 have confirmed
+    // lowercase filenames in /images/accommodations/Single-Room-Cottage/.
+    // Correct ONLY this verified legacy mismatch; preserve other room paths.
+    const cottage = clean.match(
+      /^(frontend\/)?images\/accommodations\/single-room-cottage\/single-room-cottage-([1-5])\.jpg$/i
+    );
+    const staticPath = cottage
+      ? (cottage[1] || "") + "images/accommodations/Single-Room-Cottage/single-room-cottage-" + cottage[2] + ".jpg"
+      : clean;
+
+    // Match Customer Accommodations: root-relative on Vercel, /frontend/
+    // prefix in the local project-root VS Code Live Server.
     const pathname = typeof window !== "undefined" ? window.location.pathname : "";
     const prefix = /^\/frontend\//i.test(pathname) ? "/frontend/" : "/";
-    return prefix + clean.replace(/^frontend\//i, "");
+    return prefix + staticPath.replace(/^frontend\//i, "");
   }
   return AI_ROOM_IMAGE_FALLBACK;
 }

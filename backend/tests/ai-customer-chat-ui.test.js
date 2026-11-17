@@ -157,3 +157,36 @@ test("AI image resolver matches deployed image path on hosted and local pages", 
   assert.equal(local(path), "/frontend/images/accommodations/Single-Room-Cottage/single-room-cottage-1.jpg");
   assert.equal(live("javascript:alert(1)").startsWith("data:image/svg+xml"), true);
 });
+
+
+test("AI recommendation photos resolve verified Cottage 1-5 filename case on Vercel", () => {
+  // Live browser Console on 2026-11-17 returned 404 for the stored
+  // Single-Room-Cottage-1.jpg filename; Git contains lowercase basename.
+  // Windows Live Server did not surface this Linux case-sensitive mismatch.
+  const vm = require("node:vm");
+  const chat = read("js/ai-chat.js");
+  const start = chat.indexOf("const AI_ROOM_IMAGE_FALLBACK =");
+  const end = chat.indexOf("function aiRoomMoney(amount)", start);
+  assert.ok(start >= 0 && end > start);
+  const snippet = chat.slice(start, end) + "\nresolveAiRoomImage;";
+  const live = vm.runInNewContext(snippet, {
+    AI_API_BASE: "https://smartresort-backend.onrender.com/api",
+    encodeURIComponent,
+    window: { location: { pathname: "/customerHTML/index.html" } }
+  });
+  const local = vm.runInNewContext(snippet, {
+    AI_API_BASE: "http://127.0.0.1:5000/api",
+    encodeURIComponent,
+    window: { location: { pathname: "/frontend/customerHTML/rooms.html" } }
+  });
+  for (let id = 1; id <= 5; id++) {
+    const legacy = "images/accommodations/Single-Room-Cottage/Single-Room-Cottage-" + id + ".jpg";
+    const canonical = "images/accommodations/Single-Room-Cottage/single-room-cottage-" + id + ".jpg";
+    assert.equal(live(legacy), "/" + canonical);
+    assert.equal(local(legacy), "/frontend/" + canonical);
+    assert.equal(live(canonical), "/" + canonical);
+  }
+  // Preserve case on unrelated accommodation photos.
+  const unrelated = "images/accommodations/Family-Room/Family-Room-A.jpg";
+  assert.equal(live(unrelated), "/" + unrelated);
+});
