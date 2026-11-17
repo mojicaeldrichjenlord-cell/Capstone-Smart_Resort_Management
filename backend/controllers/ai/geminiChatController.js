@@ -7,6 +7,7 @@ const { validateAiStayWindow, calendarDayDifference, addCalendarDays } = require
 const { normalizeRecentTurns, wantsAccommodationCards, verifiedAccommodationCards, tidyAssistantReply } =
   require("./aiConversationStyle");
 const { requestedAmenity, amenityReply } = require("./aiAccommodationAmenities");
+const { generalCategoryAmenitiesReply } = require("./aiAccommodationCategoryPolicy");
 const { wantsFocusedRoomOverview, focusedRoomOverview } = require("./aiAccommodationDetails");
 
 const ai = new GoogleGenAI({
@@ -1065,8 +1066,9 @@ exports.chatWithGemini = async (req, res) => {
         rawFocusedRoomId === "") &&
       focusedRoomName.length > 0 && focusedRoomName.length <= 110;
     if (amenityKind && (hasFocusedId || canResolveByName)) {
-      const columns = "SELECT a.id, a.name AS room_name, a.description, a.amenities " +
-        "FROM accommodations a ";
+      const columns = "SELECT a.id, a.name AS room_name, a.description, a.amenities, " +
+        "c.name AS category_name FROM accommodations a " +
+        "LEFT JOIN accommodation_categories c ON c.id = a.category_id ";
       const [rows] = await db.promise().query(
         hasFocusedId
           ? columns + "WHERE a.id = ? LIMIT 1"
@@ -1124,8 +1126,10 @@ exports.chatWithGemini = async (req, res) => {
         wantsFocusedRoomOverview(message, overviewName)) {
       const [overviewRows] = await db.promise().query(
         "SELECT a.id, a.name AS room_name, a.description, a.amenities, " +
-          "a.max_capacity AS capacity, a.day_price, a.overnight_price " +
-          "FROM accommodations a WHERE a.id = ? LIMIT 1",
+          "a.max_capacity AS capacity, a.day_price, a.overnight_price, " +
+          "c.name AS category_name FROM accommodations a " +
+          "LEFT JOIN accommodation_categories c ON c.id = a.category_id " +
+          "WHERE a.id = ? LIMIT 1",
         [overviewId],
       );
       const overviewRecord = overviewRows[0];
@@ -1157,6 +1161,31 @@ exports.chatWithGemini = async (req, res) => {
           recommendation_cards: [],
         });
       }
+    }
+
+    // Broad category amenities can be answered from the resort's confirmed
+    // policy without spending Gemini credits. This is strictly for generic
+    // Cottage/Function Area inquiries; specific rooms use fresh DB lookups.
+    const generalAmenityLanguage = normalizeLanguageStyle(req.body.voice_language) ||
+      (/\b(?:ano|anong|mga|may|meron|kasama|po|kubo)\b/i.test(message)
+        ? "taglish" : null) ||
+      detectLanguageFromMessage(message) ||
+      normalizeLanguageStyle(req.body.context?.language_style) || "english";
+    const categoryReply = generalCategoryAmenitiesReply(
+      message, req.body?.context?.room_id ?? req.body?.room_id, generalAmenityLanguage,
+    );
+    if (categoryReply) {
+      const savedContext = req.body.context && typeof req.body.context === "object" &&
+        !Array.isArray(req.body.context) ? req.body.context : {};
+      return res.status(200).json({
+        success: true, mode: "verified_category_amenities",
+        reply: categoryReply,
+        extracted_context: mergeContext(savedContext, {
+          language_style: generalAmenityLanguage,
+        }),
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null, recommendation_cards: [],
+      });
     }
 
     // Bounded previous turns: conversation continuity without unlimited tokens.
@@ -1420,6 +1449,8 @@ ${policyPromptLines()}
 - Fixed resort payment policy: online reservations require a PayPal downpayment equal to 50% of the FINAL accommodation price; entrance fees are EXCLUDED from that downpayment. The remaining 50% of accommodation price plus entrance fees and applicable charges are paid onsite.
 - When asked for the general online downpayment percentage, say 50% directly; NEVER say the percentage is unknown or only confirmed on the booking page. The booking page confirms the final peso amount for the selected accommodation and schedule.
 - Only use the room/system data provided below.
+- Confirmed category distinction: normal Cottage-category accommodations have NO included amenities. "Single Room Cottage" belongs to Room category, and DOES have separately listed room amenities. Never confuse them.
+- Confirmed Function Area inclusions: tables, monoblock chairs, and karaoke. Do not invent quantities, extra equipment, or fees. For named properties, prefer fresh Admin-managed DB details when populated.
 - Do not invent rooms, prices, amenities, availability, or times.
 - Quote an accommodation's rate ONLY if that named accommodation and its exact Day Tour/Overnight/Extended rate are in the fresh database results below. If absent, say the rate needs checking on the booking page.
 - Never reuse prices from older conversations, illustrative examples, or unrelated accommodations; a rate for one room is not the price for all rooms.
