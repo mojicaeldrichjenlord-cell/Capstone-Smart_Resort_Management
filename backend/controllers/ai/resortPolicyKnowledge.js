@@ -71,6 +71,36 @@ const ANSWERS = Object.freeze({
   },
 });
 
+// Short natural responses for common customer FAQs. Keep the long reference
+// POLICY_FACTS unchanged for reasoning and safety; speak concisely by default.
+const NATURAL_POLICY_REPLIES = Object.freeze({
+  booking: {
+    english: "I can help you choose a room, but the booking and payment happen on the secure booking page. What date are you planning?",
+    tagalog: "Matutulungan ko po kayong pumili. Sa booking page po ang final reservation at payment. Anong date po ang balak ninyo?",
+    taglish: "Tulungan ko po kayong pumili! Sa booking page po ang actual reservation at payment. Anong date po ang balak ninyo?",
+  },
+  schedule: {
+    english: "We have fixed Day Tour and Night slots, not custom check-in times. Exact hours depend on the accommodation. Day Tour or Night?",
+    tagalog: "Fixed Day Tour at Night schedule po tayo, hindi custom ang oras. Depende sa accommodation ang exact time. Day Tour po ba o Night?",
+    taglish: "Fixed Day Tour at Night slots po tayo, hindi custom ang check-in time. Depende sa accommodation ang exact hours. Day Tour po ba o Night?",
+  },
+  entrance: {
+    english: "Entrance fees are separate from the 50% accommodation downpayment. The booking page shows an estimate; Front Desk confirms the final amount onsite.",
+    tagalog: "Hiwalay po ang entrance fee sa 50% accommodation downpayment. Estimate muna ang nasa booking page; sa Front Desk po ang final amount.",
+    taglish: "Separate po ang entrance fee sa 50% accommodation downpayment. Estimate muna sa booking page; Front Desk po ang magko-confirm onsite.",
+  },
+  walkin: {
+    english: "Yes, Front Desk handles same-day walk-ins if a slot is available. You can settle the accommodation payment onsite.",
+    tagalog: "Opo, puwedeng same-day walk-in basta may available na slot. Sa Front Desk po ang accommodation payment.",
+    taglish: "Yes po, puwedeng same-day walk-in if may available na slot. Sa Front Desk po ang payment.",
+  },
+  cancellation: {
+    english: "You can cancel an eligible booking in My Bookings at least one day before check-in. Cancellation doesn't automatically refund a payment.",
+    tagalog: "Puwede po kayong mag-cancel ng eligible booking sa My Bookings at least isang araw bago ang check-in. Hindi po automatic ang refund.",
+    taglish: "Puwede po mag-cancel ng eligible booking sa My Bookings at least one day before check-in. Hindi po automatic ang refund.",
+  },
+});
+
 // Fixed-policy language correction: a prior English conversation preference
 // must not override an explicitly Filipino new question. Voice language wins.
 function inferPolicyLanguage(message) {
@@ -106,7 +136,7 @@ const REFUND_FACEBOOK_GUIDANCE = Object.freeze({
 function getPolicyReply(kind, language) {
   const locale = ["english","tagalog","taglish","spanish","mandarin"].includes(language)
     ? language : "english";
-  const answer = ANSWERS[kind]?.[locale] || null;
+  const answer = NATURAL_POLICY_REPLIES[kind]?.[locale] || ANSWERS[kind]?.[locale] || null;
   if (!answer) return null;
   if (kind === "refund" || kind === "cancellationRefund") {
     return answer + "\n\n" + REFUND_FACEBOOK_GUIDANCE[locale] +

@@ -89,6 +89,15 @@ async function sendAiMessage(options = {}) {
   }
 
   aiMessageInFlight = true;
+  // New broad recommendation requests must not stay locked to an older card.
+  const freshSearch = isFreshAiAccommodationSearch(message, getStoredAiContext());
+  if (freshSearch) {
+    const current = getStoredAiContext();
+    delete current.room_id;
+    delete current.room_name;
+    saveAiContext(current);
+  }
+  const recentTurns = getAiRecentConversationTurns(message);
   appendAiMessage("user", message);
   input.value = "";
 
@@ -97,8 +106,9 @@ async function sendAiMessage(options = {}) {
 
   const payload = {
     message,
+    recent_turns: recentTurns,
     ...pageContext,
-    context: storedContext,
+    context: freshSearch ? getStoredAiContext() : storedContext,
     // Voice sessions use a fixed selected language; typed chat stays adaptive.
     ...(options.source === "voice"
       ? { voice_language: window.ArvicVoice?.getLanguage?.() || "english" }
@@ -133,14 +143,15 @@ async function sendAiMessage(options = {}) {
       const merged = mergeContext(getStoredAiContext(), data.extracted_context);
       saveAiContext(merged);
 
-      const summary = summarizeContext(merged);
-      if (summary) {
-        appendAiSystemNote(`Saved details: ${summary}`);
-      }
+      // Save silently. Repeating context summaries on every reply feels robotic.
     }
 
     const aiReply = data.reply || "No reply generated.";
     appendAiMessage("assistant", aiReply);
+
+    if (Array.isArray(data.recommendation_cards) && data.recommendation_cards.length) {
+      appendAiRecommendationCards(data.recommendation_cards);
+    }
 
     if (Array.isArray(data.alternative_dates) && data.alternative_dates.length > 0) {
       const altText = data.alternative_dates
@@ -179,12 +190,13 @@ async function sendAiMessage(options = {}) {
     const mergedFallbackContext = mergeContext(storedContext, fallback.context || {});
     saveAiContext(mergedFallbackContext);
 
-    appendAiSystemNote(fallback.modeNotice);
-
-    const summary = summarizeContext(mergedFallbackContext);
-    if (summary) {
-      appendAiSystemNote(`Saved details: ${summary}`);
+    // Show the temporary offline banner once, not on every single reply.
+    if (!getStoredChatHistory().some((entry) => entry.type === "system" &&
+        entry.text === fallback.modeNotice)) {
+      appendAiSystemNote(fallback.modeNotice);
     }
+
+    // Persist offline booking hints silently rather than adding scripted status prose.
 
     // In Live Voice mode, preserve the selected spoken language even when
     // Gemini is offline. Never make unverified availability promises.
@@ -252,6 +264,39 @@ function saveAiContext(context) {
   localStorage.setItem(AI_CONTEXT_KEY, JSON.stringify(context || {}));
 }
 
+// Send only a few recent conversational messages. Skip UI notices and
+// the current input; booking context continues in the separate structured state.
+function getAiRecentConversationTurns(currentMessage) {
+  const turns = getStoredChatHistory()
+    .filter((entry) => entry?.type === "message" &&
+      ["user", "assistant"].includes(entry.role) && typeof entry.text === "string")
+    .map(({ role, text }) => ({ role, text: text.trim().slice(0, 240) }));
+  if (turns.length && turns[turns.length - 1].role === "user" &&
+      turns[turns.length - 1].text === String(currentMessage).trim().slice(0, 240)) {
+    turns.pop();
+  }
+  return turns.slice(-6);
+}
+
+function isFreshAiAccommodationSearch(text, context = {}) {
+  const input = String(text || "").toLowerCase().trim();
+  const focusedName = String(context?.room_name || "").toLowerCase().trim();
+  const focusedId = Number(context?.room_id);
+
+  // "Ask AI About This" on the catalog page sets an exact room ID/name.
+  // Its historical suggested message starts with "Recommend", but it is
+  // NOT a new broad search. Preserve that selected room for the AI reply.
+  if (Number.isSafeInteger(focusedId) && focusedId > 0 && focusedName &&
+      /^recommend this accommodation for me\s*:/.test(input) &&
+      input.includes(focusedName)) {
+    return false;
+  }
+
+  // Explicit new searches should still clear the previously selected room.
+  return /\b(?:recommend|suggest|ibang|other|more options|show rooms|list rooms|hanap|marerecommend|looking for)\b/.test(input) &&
+    !/\b(?:magkano|how much|may cr|amenit|tell me more)\b/.test(input);
+}
+
 function getStoredChatHistory() {
   try {
     const raw = localStorage.getItem(AI_CHAT_HISTORY_KEY);
@@ -268,7 +313,8 @@ function saveChatHistory(history) {
 function addToChatHistory(entry) {
   const history = getStoredChatHistory();
   history.push(entry);
-  saveChatHistory(history);
+  // Keep local chat storage bounded; do not keep old stale previews indefinitely.
+  saveChatHistory(history.slice(-80));
 }
 
 function clearChatMessagesUI() {
@@ -289,7 +335,7 @@ function restoreChatHistory() {
   if (!history.length) {
     appendAiMessage(
       "assistant",
-      "Hi! I’m your Arvic Seaside Resort AI Assistant. This is a fresh new chat. You can ask about rooms, booking dates, check-in/check-out time, guests, or payment method.",
+      "Hi po! Anong accommodation o booking details ang maitutulong ko sa inyo?",
       false
     );
 
@@ -310,6 +356,8 @@ function restoreChatHistory() {
       appendAiSystemNote(item.text, false);
     } else if (item.type === "preview") {
       appendBookingPreviewCard(item.preview, false);
+    } else if (item.type === "recommendations") {
+      appendAiRecommendationCards(item.cards, false);
     }
   });
 
@@ -452,6 +500,7 @@ function appendAiMessage(role, text, save = true) {
 
 function appendReplyActions(wrapper, originalText) {
   const actions = document.createElement("div");
+  actions.className = "ai-reply-actions"; // Shared compact controls across Customer pages.
   actions.style.display = "flex";
   actions.style.gap = "8px";
   actions.style.marginTop = "6px";
@@ -645,6 +694,132 @@ function appendBookingPreviewCard(preview, save = true) {
   }
 }
 
+
+// Verified room photos and amounts are rendered by the website, not generated
+// inside the model's reply. Reject javascript:/file:/unsupported image schemes.
+const AI_ROOM_IMAGE_FALLBACK = "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360"><rect width="640" height="360" fill="#e2e8f0"/><text x="320" y="185" text-anchor="middle" font-family="Arial" font-size="24" fill="#475569">Photo unavailable</text></svg>'
+);
+
+function resolveAiRoomImage(value) {
+  const image = String(value || "").trim();
+  const base = AI_API_BASE.replace(/\/api\/?$/, "");
+  if (/^https?:\/\//i.test(image)) return image;
+  if (/^data:image\/(?:png|jpeg|webp|gif);base64,/i.test(image) && image.length < 250000) return image;
+  const clean = image.replace(/^\.\.\//, "").replace(/^\/+/, "");
+  if (/^api\/rooms\/media\/[1-9]\d*$/.test(clean)) return base + "/" + clean;
+  if (/^uploads\/[a-z0-9_./-]+$/i.test(clean) && !clean.includes("..")) return base + "/" + clean;
+  if (/^(?:frontend\/)?images\/[a-z0-9_./-]+$/i.test(clean) && !clean.includes("..")) {
+    return "../" + clean.replace(/^frontend\//, "");
+  }
+  return AI_ROOM_IMAGE_FALLBACK;
+}
+
+function aiRoomMoney(amount) {
+  return Number.isFinite(Number(amount)) && Number(amount) > 0
+    ? "₱" + formatMoney(amount) : "Rate not listed";
+}
+
+function getAiCustomerPageUrl(page, accommodationId) {
+  const id = Number(accommodationId);
+  if (!Number.isSafeInteger(id) || id <= 0) return "rooms.html";
+  return page + "?room_id=" + encodeURIComponent(String(id));
+}
+
+function setAiFocusedAccommodation(room) {
+  const id = Number(room?.id);
+  if (!Number.isSafeInteger(id) || id <= 0) return;
+  const context = getStoredAiContext();
+  context.room_id = id;
+  context.room_name = String(room.name || "").slice(0, 110);
+  // Keep existing guests/date preferences, but change the property being discussed.
+  saveAiContext(context);
+}
+
+function appendAiRecommendationCards(items, save = true) {
+  const messages = document.getElementById("aiChatMessages");
+  if (!messages || !Array.isArray(items)) return;
+  const cards = items.filter((room) => Number.isSafeInteger(Number(room?.id)) &&
+    Number(room.id) > 0).slice(0, 3);
+  if (!cards.length) return;
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "ai-recommendations";
+  const caption = document.createElement("p");
+  caption.className = "ai-recommendations-caption";
+  caption.textContent = "Accommodation previews · Rates are listed prices; final slot availability is checked when booking.";
+  wrapper.appendChild(caption);
+  const grid = document.createElement("div");
+  grid.className = "ai-recommendations-grid";
+
+  cards.forEach((room) => {
+    const card = document.createElement("article");
+    card.className = "ai-recommendation-card";
+    const img = document.createElement("img");
+    img.className = "ai-recommendation-photo";
+    img.alt = String(room.name || "Accommodation") + " preview";
+    img.loading = "lazy";
+    img.src = resolveAiRoomImage(room.image);
+    img.onerror = () => { img.onerror = null; img.src = AI_ROOM_IMAGE_FALLBACK; };
+    card.appendChild(img);
+
+    const body = document.createElement("div");
+    body.className = "ai-recommendation-body";
+    const name = document.createElement("strong");
+    name.textContent = String(room.name || "Accommodation");
+    const info = document.createElement("p");
+    info.textContent = [
+      String(room.category || "Accommodation"),
+      Number(room.capacity) > 0 ? "Up to " + Number(room.capacity) + " guests" : "Capacity not listed",
+    ].join(" · ");
+    const prices = document.createElement("p");
+    prices.className = "ai-recommendation-price";
+    prices.textContent = "Day " + aiRoomMoney(room.day_price) +
+      " · Night " + aiRoomMoney(room.overnight_price);
+    const note = document.createElement("p");
+    note.className = "ai-recommendation-note";
+    note.textContent = room.availability_verified
+      ? "Preliminary date match · Recheck exact time slot before payment"
+      : "Listing available · Date and time slot not checked yet";
+    body.append(name, info, prices, note);
+
+    const actions = document.createElement("div");
+    actions.className = "ai-recommendation-actions";
+    const detail = document.createElement("a");
+    detail.href = getAiCustomerPageUrl("rooms.html", room.id);
+    detail.textContent = "View Details";
+    detail.className = "ai-recommendation-link";
+    const book = document.createElement("a");
+    book.href = getAiCustomerPageUrl("booking.html", room.id);
+    book.textContent = "Book This";
+    book.className = "ai-recommendation-link primary";
+    const ask = document.createElement("button");
+    ask.type = "button";
+    ask.textContent = "Ask About This";
+    ask.className = "ai-recommendation-link";
+    ask.addEventListener("click", () => {
+      setAiFocusedAccommodation(room);
+      const chat = document.getElementById("aiChatWindow");
+      chat?.classList.add("show");
+      const input = document.getElementById("aiChatInput");
+      if (input) {
+        input.value = "Tell me more about " + String(room.name || "this accommodation") + ".";
+        input.focus();
+      }
+    });
+    actions.append(detail, book, ask);
+    body.appendChild(actions);
+    card.appendChild(body);
+    grid.appendChild(card);
+  });
+  wrapper.appendChild(grid);
+  messages.appendChild(wrapper);
+  messages.scrollTop = messages.scrollHeight;
+  if (save) {
+    addToChatHistory({ type: "recommendations", cards });
+  }
+}
+
 function createBookingFromPreview(preview, button) {
   // AI suggestions never create reservations directly. The Customer
   // booking form owns final dates, slot pricing, payment and conflict checks.
@@ -720,10 +895,10 @@ function getEnglishFallbackReply(text, merged) {
       context: merged,
     };
   }
-  if (text.includes("hello") || text.includes("hi") || text.includes("hey")) {
+  if (/\b(?:hello|hi|hey)\b/i.test(text)) {
     return {
       modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.",
-      reply: "Hello! I can still help in offline mode. You can ask about booking steps, payment methods, your bookings page, or tell me your dates, preferred Day Tour or Night slot, and number of guests.",
+      reply: "Hi! You can still ask me about bookings and room details.",
       context: merged,
     };
   }
@@ -731,7 +906,7 @@ function getEnglishFallbackReply(text, merged) {
   if (text.includes("how to book") || text.includes("book room") || text.includes("booking process")) {
     return {
       modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.",
-      reply: "To book online, open the Rooms page and choose an accommodation. Choose the check-in date, a fixed Day Tour (morning) or Night (evening) slot, and the number of guests, then review the secure booking and PayPal payment steps. Online reservations require a 50% accommodation downpayment through PayPal; entrance fees are settled onsite. You can view the reservation and receipt in My Bookings.",
+      reply: "Choose a room, date and fixed Day Tour or Night slot on the booking page. Pay the 50% accommodation downpayment through PayPal; entrance fees are paid onsite.",
       context: merged,
     };
   }
@@ -739,7 +914,7 @@ function getEnglishFallbackReply(text, merged) {
   if (text.includes("payment") || text.includes("paypal") || text.includes("cash")) {
     return {
       modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.",
-      reply: "Customer online reservations use PayPal for the required 50% accommodation downpayment; the remaining accommodation balance and entrance fees are paid onsite. Cash and other onsite payment methods apply to eligible staff-assisted manual reservations, not customer online checkout. Please verify the final amount on the secure booking page.",
+      reply: "Online booking uses PayPal for the 50% accommodation downpayment. The balance and entrance fee are paid onsite; check the final amount before paying.",
       context: merged,
     };
   }
@@ -786,7 +961,7 @@ function getEnglishFallbackReply(text, merged) {
 
   return {
     modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.",
-    reply: "AI is temporarily unavailable, but I can still help with offline guidance. You can ask about booking steps, payment methods, receipts, My Bookings, or tell me your dates, preferred Day Tour or Night slot, and number of guests.",
+    reply: "I can still help with basic booking questions. What would you like to know?",
     context: merged,
   };
 }
@@ -806,10 +981,10 @@ function getTagalogFallbackReply(text, merged) {
       context: merged,
     };
   }
-  if (text.includes("hello") || text.includes("hi") || text.includes("hey") || text.includes("kumusta")) {
+  if (/\b(?:hello|hi|hey|kumusta)\b/i.test(text)) {
     return {
       modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
-      reply: "Hello! Makakatulong pa rin ako sa offline mode. Maaari kang magtanong tungkol sa booking steps, payment methods, My Bookings page, o sabihin ang dates, preferred Day Tour (umaga) o Night (gabi), at bilang ng bisita.",
+      reply: "Hi po! Puwede pa rin kayong magtanong tungkol sa booking.",
       context: merged,
     };
   }
@@ -817,7 +992,7 @@ function getTagalogFallbackReply(text, merged) {
   if (text.includes("paano mag book") || text.includes("paano mag-book") || text.includes("booking process") || text.includes("mag book")) {
     return {
       modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
-      reply: "Para po mag-book online, buksan ang Rooms page at pumili ng accommodation. Piliin ang check-in date, fixed Day Tour (umaga) o Night (gabi) slot, at bilang ng bisita, saka sundin ang secure booking at PayPal payment steps. Ang downpayment ay 50% ng accommodation price; hiwalay ang entrance fee na babayaran onsite. Makikita po ang booking at receipt sa My Bookings.",
+      reply: "Pumili po ng accommodation, date at fixed Day Tour o Night slot sa booking page. Ang downpayment ay 50% via PayPal; hiwalay po ang entrance fee.",
       context: merged,
     };
   }
@@ -825,7 +1000,7 @@ function getTagalogFallbackReply(text, merged) {
   if (text.includes("bayad") || text.includes("payment") || text.includes("paypal") || text.includes("cash")) {
     return {
       modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
-      reply: "Para po sa customer online booking, PayPal ang ginagamit para sa 50% accommodation downpayment. Ang natitirang accommodation balance at entrance fee ay babayaran onsite. Ang cash at ibang onsite payment methods ay para sa eligible manual reservations na inaasikaso ng staff, hindi sa online checkout. I-check po ang final amount sa secure booking page.",
+      reply: "Sa online booking po, PayPal ang 50% accommodation downpayment. Onsite naman ang balance at entrance fee; makikita ang final amount bago magbayad.",
       context: merged,
     };
   }
@@ -872,7 +1047,7 @@ function getTagalogFallbackReply(text, merged) {
 
   return {
     modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
-    reply: "Pansamantalang hindi available ang AI, pero makakatulong pa rin ako gamit ang offline guidance. Maaari kang magtanong tungkol sa booking steps, payment methods, resibo, My Bookings, o sabihin ang dates, fixed Day Tour (umaga) o Night (gabi) slot, at bilang ng bisita.",
+    reply: "Makakatulong pa rin po ako sa basic booking questions. Ano po ang gusto ninyong malaman?",
     context: merged,
   };
 }
@@ -892,10 +1067,10 @@ function getTaglishFallbackReply(text, merged) {
       context: merged,
     };
   }
-  if (text.includes("hello") || text.includes("hi") || text.includes("hey") || text.includes("kumusta")) {
+  if (/\b(?:hello|hi|hey|kumusta)\b/i.test(text)) {
     return {
       modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
-      reply: "Hello! Makakatulong pa rin ako sa offline mode. Pwede kang magtanong tungkol sa booking steps, payment methods, My Bookings page, o sabihin ang dates, Day Tour (umaga) o Night (gabi) slot, at number of guests mo.",
+      reply: "Hi po! Puwede pa rin kayong magtanong tungkol sa booking.",
       context: merged,
     };
   }
@@ -903,7 +1078,7 @@ function getTaglishFallbackReply(text, merged) {
   if (text.includes("how to book") || text.includes("paano mag book") || text.includes("paano mag-book") || text.includes("booking process")) {
     return {
       modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
-      reply: "Para po mag-book online, open ang Rooms page, select an accommodation, then piliin ang check-in date, fixed Day Tour (umaga) o Night (gabi) slot, at number of guests. Review the secure booking and PayPal payment steps; required ang 50% accommodation downpayment via PayPal, at separate ang onsite entrance fee. Makikita po ang booking at receipt sa My Bookings.",
+      reply: "Pili po ng accommodation, date, at Day Tour o Night slot sa booking page. 50% po ang downpayment via PayPal; hiwalay ang entrance fee.",
       context: merged,
     };
   }
@@ -911,7 +1086,7 @@ function getTaglishFallbackReply(text, merged) {
   if (text.includes("payment") || text.includes("bayad") || text.includes("paypal") || text.includes("cash")) {
     return {
       modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
-      reply: "For customer online reservations po, PayPal ang payment method para sa 50% accommodation downpayment. Onsite naman ang remaining accommodation balance at entrance fee. Cash at other onsite payment methods are for eligible staff-assisted manual reservations, hindi sa online checkout. Confirm the final amount po sa secure booking page.",
+      reply: "50% accommodation downpayment po via PayPal ang online booking. Sa resort na ang balance at entrance fee; check po ang final amount bago magbayad.",
       context: merged,
     };
   }
@@ -958,7 +1133,7 @@ function getTaglishFallbackReply(text, merged) {
 
   return {
     modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
-    reply: "Temporarily unavailable ang AI, pero makakatulong pa rin ako gamit ang offline guidance. Pwede kang magtanong tungkol sa booking steps, payment methods, receipt, My Bookings, o sabihin ang dates, Day Tour (umaga) o Night (gabi) slot, at number of guests mo.",
+    reply: "Puwede pa rin po akong sumagot sa basic booking questions. Ano pong gusto ninyong malaman?",
     context: merged,
   };
 }

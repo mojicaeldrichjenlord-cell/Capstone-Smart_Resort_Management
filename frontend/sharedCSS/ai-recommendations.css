@@ -1,0 +1,95 @@
+/* AI accommodation previews: text/voice assistant shares these safe DB-backed cards.
+   A visual listing is NOT a confirmed booking or a guaranteed available slot. */
+.ai-recommendations {
+  width: 100%;
+  margin: 8px 0 14px;
+  color: #0f172a;
+}
+.ai-recommendations-caption {
+  font-size: .78rem;
+  line-height: 1.45;
+  color: #475569;
+  margin: 0 0 8px;
+}
+.ai-recommendations-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 215px), 1fr));
+  gap: 10px;
+}
+.ai-recommendation-card {
+  min-width: 0;
+  border: 1px solid #dbe7e9;
+  background: #fff;
+  border-radius: 15px;
+  overflow: hidden;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, .07);
+}
+.ai-recommendation-photo {
+  display: block;
+  width: 100%;
+  height: 130px;
+  object-fit: cover;
+  background: #e2e8f0;
+}
+.ai-recommendation-body {
+  padding: 10px 11px 12px;
+  overflow-wrap: anywhere;
+}
+.ai-recommendation-body strong {
+  font-size: .95rem;
+}
+.ai-recommendation-body p {
+  margin: 5px 0;
+  font-size: .80rem;
+  line-height: 1.45;
+  color: #475569;
+}
+.ai-recommendation-body .ai-recommendation-price {
+  font-weight: 700;
+  color: #0f766e;
+}
+.ai-recommendation-body .ai-recommendation-note {
+  font-size: .74rem;
+  color: #64748b;
+}
+.ai-recommendation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 11px;
+}
+.ai-recommendation-link {
+  flex: 1 1 auto;
+  padding: 7px 8px;
+  border: 1px solid #94a3b8;
+  background: #f8fafc;
+  color: #134e4a;
+  border-radius: 8px;
+  cursor: pointer;
+  font: inherit;
+  font-size: .75rem;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+  text-decoration: none;
+}
+.ai-recommendation-link.primary {
+  border-color: #0d9488;
+  background: #0d9488;
+  color: white;
+}
+.ai-recommendation-link:focus-visible {
+  outline: 3px solid #38bdf8;
+  outline-offset: 2px;
+}
+.ai-recommendation-link:hover { filter: brightness(.95); }
+.room-ai-card.ai-room-focused {
+  outline: 3px solid #14b8a6;
+  outline-offset: 3px;
+  scroll-margin-top: 100px;
+}
+@media (max-width: 480px) {
+  .ai-recommendations-grid { grid-template-columns: minmax(0, 1fr); }
+  .ai-recommendation-photo { height: 145px; }
+  .ai-recommendation-link { min-height: 39px; }
+}

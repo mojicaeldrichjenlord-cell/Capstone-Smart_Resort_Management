@@ -414,7 +414,7 @@ function getPaymentStatus(booking) {
 }
 
 function isClosedStatus(status) {
-  return ["completed", "cancelled", "rejected"].includes(
+  return ["completed", "cancelled", "rejected", "no_show"].includes(
     String(status || "").toLowerCase(),
   );
 }
@@ -459,6 +459,7 @@ function formatReservationStatus(status) {
     completed: "Completed",
     cancelled: "Cancelled",
     rejected: "Rejected",
+    no_show: "No-Show",
   };
 
   return labels[status] || titleCase(status);

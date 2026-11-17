@@ -461,3 +461,44 @@
     gap: 4px;
   }
 }
+
+/* Stage Booking-17: same early Time Slot feedback on Manual Reservation.
+   Walk-in remains today-only; Facebook/Messenger can use future dates. */
+.manual-slot-status,
+.manual-item-availability {
+  display: block;
+  margin: 7px 0 0;
+  padding: 9px 11px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: .8rem;
+  line-height: 1.45;
+  font-weight: 600;
+}
+.manual-slot-status[data-state="checking"],
+.manual-item-availability[data-state="checking"] {
+  border-color: #bae6fd; background: #f0f9ff; color: #075985;
+}
+.manual-slot-status[data-state="available"],
+.manual-item-availability[data-state="available"] {
+  border-color: #a7f3d0; background: #ecfdf5; color: #065f46;
+}
+.manual-slot-status[data-state="mixed"],
+.manual-slot-status[data-state="error"],
+.manual-item-availability[data-state="error"] {
+  border-color: #fcd34d; background: #fffbeb; color: #92400e;
+}
+.manual-item-availability[data-state="unavailable"] {
+  border-color: #fca5a5; background: #fff1f2; color: #991b1b;
+}
+.slot-select option:disabled {
+  background: #fff1f2; color: #9f1239;
+}
+#manualNextPaymentBtn:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+  box-shadow: none;
+  transform: none;
+}

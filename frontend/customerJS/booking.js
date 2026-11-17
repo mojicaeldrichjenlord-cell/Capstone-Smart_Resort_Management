@@ -12,7 +12,9 @@
 // ============================================================
 
 const BOOKING_DRAFT_KEY = "smartresort_booking_draft_v2";
-const CUSTOMER_MIN_BOOKING_DAYS_AHEAD = 0;
+// Release policy: customers must reserve at least two calendar days ahead.
+// Front Desk walk-ins and Facebook/Messenger bookings have separate rules.
+const CUSTOMER_MIN_BOOKING_DAYS_AHEAD = 2;
 
 let availableAccommodations = [];
 let bookingItemCounter = 0;
@@ -21,6 +23,9 @@ let bookingItemCounter = 0;
 // its own cancellable, debounced server request. Never trust a cached result
 // as a reservation guarantee: the server rechecks during booking creation.
 const customerAvailabilityRequests = new WeakMap();
+// Stage Booking-16: availability state for ALL time slots, keyed by room/date/duration.
+// Separate from the existing selected-item/final-payment verification requests.
+const customerSlotAvailabilityRequests = new WeakMap();
 let customerBookingSubmissionChecking = false;
 
 const bookingForm = document.getElementById("bookingForm");
@@ -457,23 +462,6 @@ function addBookingItem(preselectedId = null) {
       </div>
 
       <div class="booking-form-group">
-        <label>Slot Type</label>
-        <select class="slot-select" data-item-id="${itemId}">
-          <option value="">Select slot</option>
-        </select>
-      </div>
-
-      <div class="booking-form-group">
-        <label>Stay Duration</label>
-        <select class="stay-duration-select" data-item-id="${itemId}">
-          <option value="1">1 day only</option>
-        </select>
-        <small class="field-help">
-          Day Tour and Night are fixed schedules. Day/Night 22 Hours or 23 Hours can be 1 to 5 days depending on category.
-        </small>
-      </div>
-
-      <div class="booking-form-group">
         <label>Reservation Date</label>
         <input
           type="date"
@@ -484,6 +472,28 @@ function addBookingItem(preselectedId = null) {
         />
         <small class="field-help">
           Customer online reservations must be booked at least ${CUSTOMER_MIN_BOOKING_DAYS_AHEAD} days ahead.
+        </small>
+      </div>
+
+      <div class="booking-form-group">
+        <label for="slotSelect-${itemId}">Time Slot</label>
+        <select id="slotSelect-${itemId}" class="slot-select" data-item-id="${itemId}"
+          aria-describedby="slotStatus-${itemId}">
+          <option value="">Select time slot</option>
+        </select>
+        <small class="booking-slot-status" id="slotStatus-${itemId}" role="status"
+          aria-live="polite" data-state="incomplete">
+          Select an accommodation and date to check all time slots.
+        </small>
+      </div>
+
+      <div class="booking-form-group">
+        <label>Stay Duration</label>
+        <select class="stay-duration-select" data-item-id="${itemId}">
+          <option value="1">1 day only</option>
+        </select>
+        <small class="field-help">
+          Day Tour and Night are fixed schedules. Day/Night 22 Hours or 23 Hours can be 1 to 5 days depending on category.
         </small>
       </div>
 
@@ -519,6 +529,7 @@ function addBookingItem(preselectedId = null) {
   if (removeBtn) {
     removeBtn.addEventListener("click", () => {
       cancelCustomerAvailabilityRequest(card);
+      cancelCustomerSlotAvailabilityRequest(card);
       card.remove();
       updateSummary();
       refreshTitles();
@@ -527,15 +538,17 @@ function addBookingItem(preselectedId = null) {
   }
 
   slotSelect.addEventListener("change", () => {
-    populateStayDurationOptions(itemId);
-    updateItemPreview(itemId);
+    // QA-16H: refresh the exact card that fired the event, even if visible
+    // item numbers changed after adding/removing other accommodations.
+    populateStayDurationOptions(itemId, card);
+    updateItemPreview(itemId, card);
     updateSummary();
     scheduleAllCustomerAvailabilityChecks();
   });
 
   if (stayDurationSelect) {
     stayDurationSelect.addEventListener("change", () => {
-      updateItemPreview(itemId);
+      updateItemPreview(itemId, card);
       updateSummary();
       scheduleAllCustomerAvailabilityChecks();
     });
@@ -543,14 +556,14 @@ function addBookingItem(preselectedId = null) {
 
   dateInput.addEventListener("input", () => {
     enforceDateInputMinimum(dateInput);
-    updateItemPreview(itemId);
+    updateItemPreview(itemId, card);
     updateSummary();
     scheduleAllCustomerAvailabilityChecks();
   });
 
   dateInput.addEventListener("change", () => {
     enforceDateInputMinimum(dateInput);
-    updateItemPreview(itemId);
+    updateItemPreview(itemId, card);
     updateSummary();
     scheduleAllCustomerAvailabilityChecks();
   });
@@ -559,9 +572,9 @@ function addBookingItem(preselectedId = null) {
     setAccommodationSelection(card, itemId, preselectedId);
   }
 
-  populateSlotOptions(itemId);
-  populateStayDurationOptions(itemId);
-  updateItemPreview(itemId);
+  populateSlotOptions(itemId, card);
+  populateStayDurationOptions(itemId, card);
+  updateItemPreview(itemId, card);
   refreshTitles();
   scheduleAllCustomerAvailabilityChecks();
 }
@@ -723,8 +736,8 @@ function setAccommodationSelection(card, itemId, accommodationId) {
     label.textContent = `${accommodation.name} (${accommodation.category_name})`;
   }
 
-  populateSlotOptions(itemId);
-  updateItemPreview(itemId);
+  populateSlotOptions(itemId, card);
+  updateItemPreview(itemId, card);
   updateSummary();
   scheduleAllCustomerAvailabilityChecks();
 }
@@ -931,8 +944,11 @@ function getAllowedStayDurations(slotType) {
     : [1];
 }
 
-function populateStayDurationOptions(itemId) {
-  const card = document.querySelector(`.booking-item-card[data-item-id="${itemId}"]`);
+function populateStayDurationOptions(itemId, cardOverride = null) {
+  // Reuse the exact selected card when available; do not accidentally update
+  // a different booking item during multi-accommodation changes.
+  const card = cardOverride ||
+    document.querySelector(`.booking-item-card[data-item-id="${itemId}"]`);
   if (!card) return;
 
   const slotType = card.querySelector(".slot-select")?.value || "";
@@ -957,8 +973,10 @@ function populateStayDurationOptions(itemId) {
   staySelect.disabled = !canExtendStay;
 }
 
-function populateSlotOptions(itemId) {
-  const card = document.querySelector(
+function populateSlotOptions(itemId, cardOverride = null) {
+  // The picker already knows which card was clicked. Using that same DOM
+  // reference avoids a stale/mismatched global item-ID lookup.
+  const card = cardOverride || document.querySelector(
     `.booking-item-card[data-item-id="${itemId}"]`
   );
 
@@ -968,12 +986,13 @@ function populateSlotOptions(itemId) {
   const slotSelect = card.querySelector(".slot-select");
   const capacityDisplay = card.querySelector(".capacity-display");
 
+  if (!slotSelect || !capacityDisplay) return;
   const accommodation = getAccommodationById(accommodationValue?.value);
 
   if (!accommodation) {
-    slotSelect.innerHTML = `<option value="">Select slot</option>`;
+    slotSelect.innerHTML = `<option value="">Select time slot</option>`;
     capacityDisplay.value = "-";
-    populateStayDurationOptions(itemId);
+    populateStayDurationOptions(itemId, card);
     return;
   }
 
@@ -982,7 +1001,7 @@ function populateSlotOptions(itemId) {
   const options = getSlotOptions(accommodation);
 
   slotSelect.innerHTML = `
-    <option value="">Select slot</option>
+    <option value="">Select time slot</option>
 
     ${options
       .map(
@@ -995,11 +1014,11 @@ function populateSlotOptions(itemId) {
       .join("")}
   `;
 
-  populateStayDurationOptions(itemId);
+  populateStayDurationOptions(itemId, card);
 }
 
-function updateItemPreview(itemId) {
-  const card = document.querySelector(
+function updateItemPreview(itemId, cardOverride = null) {
+  const card = cardOverride || document.querySelector(
     `.booking-item-card[data-item-id="${itemId}"]`
   );
 
@@ -1009,7 +1028,9 @@ function updateItemPreview(itemId) {
   const slotSelect = card.querySelector(".slot-select");
   const stayDurationSelect = card.querySelector(".stay-duration-select");
   const dateInput = card.querySelector(".date-input");
-  const preview = document.getElementById(`slotPreview-${itemId}`);
+  // Always use the preview INSIDE the selected booking card. Looking it up
+  // globally by item number can miss the correct node after a card renumber.
+  const preview = card.querySelector(".slot-preview");
 
   const accommodation = getAccommodationById(accommodationValue?.value);
 
@@ -1102,19 +1123,17 @@ function collectBookingItems() {
 // change their choices. Payment page navigation remains blocked on conflicts.
 let lastCustomerAvailabilityWarning = "";
 
-function getCustomerCardSelection(card) {
-  const accommodationId = Number(card.querySelector(".accommodation-value")?.value || 0);
-  const date = String(card.querySelector(".date-input")?.value || "");
-  const slotType = String(card.querySelector(".slot-select")?.value || "");
-  const accommodation = getAccommodationById(accommodationId);
-  const slot = getSlotOptions(accommodation).find((choice) => choice.value === slotType);
+// Shared candidate builder for both selected-item checks and pre-checking
+// other time slots. Use the same cross-midnight/extended stay calculation.
+function buildCustomerSlotCandidate(accommodation, date, slotType, duration = 1) {
+  const slot = getSlotOptions(accommodation).find((option) => option.value === slotType);
   if (!accommodation || !slot || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
   const stayDuration = ["day_extended", "night_extended"].includes(slotType)
-    ? getStayDuration({ stay_duration: card.querySelector(".stay-duration-select")?.value })
+    ? Math.max(1, Math.min(5, Number(duration) || 1))
     : 1;
   const checkOutDate = calculateCheckOutDate(date, slot.start, slot.end, stayDuration);
   return {
-    accommodation_id: accommodationId,
+    accommodation_id: Number(accommodation.id),
     accommodation_name: accommodation.name,
     slot_type: slotType,
     check_in_date: date,
@@ -1122,6 +1141,15 @@ function getCustomerCardSelection(card) {
     start: `${date} ${slot.start}`,
     end: `${checkOutDate} ${slot.end}`,
   };
+}
+function getCustomerCardSelection(card) {
+  const accommodation = getAccommodationById(
+    Number(card.querySelector(".accommodation-value")?.value || 0)
+  );
+  const date = String(card.querySelector(".date-input")?.value || "");
+  const slotType = String(card.querySelector(".slot-select")?.value || "");
+  const duration = card.querySelector(".stay-duration-select")?.value || 1;
+  return buildCustomerSlotCandidate(accommodation, date, slotType, duration);
 }
 
 function getCustomerLocalConflict(card, selection) {
@@ -1212,9 +1240,172 @@ async function requestCustomerItemAvailability(selection, signal) {
   };
 }
 
+// Stage Booking-16: preview ALL four slots for the chosen room/date, using
+// the existing read-only conflict API. This preview is not a booking hold.
+function cancelCustomerSlotAvailabilityRequest(card) {
+  const active = customerSlotAvailabilityRequests.get(card);
+  if (active?.timer) clearTimeout(active.timer);
+  if (active?.controller) active.controller.abort();
+  customerSlotAvailabilityRequests.delete(card);
+}
+
+// "Unavailable" covers booked, ended and overlapping schedules without
+// disclosing other guests' details.
+function getCustomerSlotStateLabel(state) {
+  if (state === "available") return "Available";
+  if (state === "unavailable") return "Unavailable";
+  if (state === "error") return "Unable to verify";
+  return "Checking...";
+}
+
+function renderCustomerSlotAvailability(card, request = null) {
+  if (!card?.isConnected) return false;
+  const slotSelect = card.querySelector(".slot-select");
+  const note = card.querySelector(".booking-slot-status");
+  const accommodation = getAccommodationById(
+    Number(card.querySelector(".accommodation-value")?.value || 0)
+  );
+  const date = String(card.querySelector(".date-input")?.value || "");
+  const duration = getStayDuration({
+    stay_duration: card.querySelector(".stay-duration-select")?.value || 1,
+  });
+  if (!slotSelect || !note) return false;
+
+  // QA-16E: Recover any card whose accommodation label/hidden ID loaded
+  // but whose native Time Slot options were not populated. In particular,
+  // additional booking items must not show "0 of 4" with only a placeholder.
+  // This is a UI-only repair: never infer server availability from it.
+  if (accommodation) {
+    const expectedSlots = getSlotOptions(accommodation);
+    const presentValues = [...slotSelect.options].map((option) => option.value);
+    const missingOptions = expectedSlots.some((slot) => !presentValues.includes(slot.value));
+    if (missingOptions) {
+      const itemId = Number(card.dataset.itemId);
+      populateSlotOptions(itemId, card);
+      updateItemPreview(itemId, card);
+    }
+  }
+
+  if (!accommodation || !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+      isDateBefore(date, getCustomerEarliestBookingDate())) {
+    for (const slot of getSlotOptions(accommodation)) {
+      const option = [...slotSelect.options].find((item) => item.value === slot.value);
+      if (!option) continue;
+      option.textContent = slot.label + " (" +
+        formatTimeDisplay(slot.start) + " - " + formatTimeDisplay(slot.end) + ")";
+      option.disabled = false;
+    }
+    note.dataset.state = "incomplete";
+    note.textContent = "Select an accommodation and valid date to check available time slots.";
+    return false;
+  }
+
+  let available = 0, unavailable = 0, errors = 0, pending = 0;
+  for (const slot of getSlotOptions(accommodation)) {
+    const option = [...slotSelect.options].find((item) => item.value === slot.value);
+    if (!option) continue;
+    const candidate = buildCustomerSlotCandidate(accommodation, date, slot.value, duration);
+    const localConflict = candidate && getCustomerLocalConflict(card, candidate);
+    const state = localConflict ? "unavailable" :
+      (request?.results?.[slot.value] || "checking");
+    option.textContent = slot.label + " (" +
+      formatTimeDisplay(slot.start) + " - " + formatTimeDisplay(slot.end) + ") — " +
+      getCustomerSlotStateLabel(state);
+    option.disabled = state === "unavailable";
+    if (state === "available") available++;
+    else if (state === "unavailable") unavailable++;
+    else if (state === "error") errors++;
+    else pending++;
+  }
+
+  note.dataset.state = pending ? "checking" : errors ? "error" :
+    unavailable ? "mixed" : "available";
+  if (pending) {
+    note.textContent = "Checking time slots for this date... You can choose a slot while we check.";
+  } else if (errors === getSlotOptions(accommodation).length) {
+    // A service outage is not the same as four booked slots.
+    note.textContent = "Time-slot availability could not be verified. You may select a slot to retry; payment remains blocked until verification succeeds.";
+  } else {
+    const durationNote = duration > 1 ? " Extended slots checked for " + duration + " days." : "";
+    note.textContent = available + " of 4 time slots currently show available." + durationNote +
+      (errors ? " Some slots could not be verified; please retry before payment." : "") +
+      " Availability is rechecked before payment and booking.";
+  }
+
+  // If an occupied/ended slot was selected before the server replied, clear
+  // only that invalid slot rather than allowing an unavailable selection.
+  const chosen = [...slotSelect.options].find((item) => item.value === slotSelect.value);
+  if (slotSelect.value && chosen?.disabled) {
+    slotSelect.value = "";
+    const itemId = Number(card.dataset.itemId);
+    populateStayDurationOptions(itemId);
+    updateItemPreview(itemId);
+    updateSummary();
+    setCustomerCardAvailability(card, "incomplete",
+      "That time slot is unavailable. Please select another slot or date.");
+    return true;
+  }
+  return false;
+}
+
+function scheduleCustomerSlotAvailabilityCheck(card) {
+  if (!card?.isConnected) return;
+  const accommodation = getAccommodationById(
+    Number(card.querySelector(".accommodation-value")?.value || 0)
+  );
+  const date = String(card.querySelector(".date-input")?.value || "");
+  const duration = getStayDuration({
+    stay_duration: card.querySelector(".stay-duration-select")?.value || 1,
+  });
+  if (!accommodation || !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+      isDateBefore(date, getCustomerEarliestBookingDate())) {
+    cancelCustomerSlotAvailabilityRequest(card);
+    renderCustomerSlotAvailability(card);
+    return;
+  }
+
+  const key = JSON.stringify({ accommodation_id: Number(accommodation.id), date, duration });
+  const active = customerSlotAvailabilityRequests.get(card);
+  // Short UI cache avoids 4 extra requests when merely switching slots;
+  // selected-item/final-payment checks are never cached.
+  if (active?.key === key && Date.now() - active.createdAt < 20000) {
+    const cleared = renderCustomerSlotAvailability(card, active);
+    if (cleared) scheduleAllCustomerAvailabilityChecks();
+    return;
+  }
+
+  cancelCustomerSlotAvailabilityRequest(card);
+  const controller = new AbortController();
+  const request = { key, controller, createdAt: Date.now(), timer: null, results: null };
+  customerSlotAvailabilityRequests.set(card, request);
+  renderCustomerSlotAvailability(card, request);
+
+  request.timer = setTimeout(async () => {
+    const slots = getSlotOptions(accommodation);
+    const checks = await Promise.allSettled(slots.map(async (slot) => {
+      const candidate = buildCustomerSlotCandidate(accommodation, date, slot.value, duration);
+      const result = await requestCustomerItemAvailability(candidate, controller.signal);
+      return result.available ? "available" : "unavailable";
+    }));
+    if (controller.signal.aborted || !card.isConnected ||
+        customerSlotAvailabilityRequests.get(card) !== request) return;
+
+    request.results = {};
+    slots.forEach((slot, index) => {
+      const result = checks[index];
+      request.results[slot.value] = result.status === "fulfilled" ? result.value : "error";
+    });
+    const cleared = renderCustomerSlotAvailability(card, request);
+    if (cleared) scheduleAllCustomerAvailabilityChecks();
+  }, 350);
+}
+
 function scheduleAllCustomerAvailabilityChecks() {
   for (const card of document.querySelectorAll(".booking-item-card")) {
     cancelCustomerAvailabilityRequest(card);
+    // Availability labels are pre-checked even before a time slot is picked.
+    // This has a separate debounce/AbortController and short UI cache.
+    scheduleCustomerSlotAvailabilityCheck(card);
     const selection = getCustomerCardSelection(card);
     if (!selection) {
       setCustomerCardAvailability(card, "incomplete", "Select an accommodation, date, and time slot.");

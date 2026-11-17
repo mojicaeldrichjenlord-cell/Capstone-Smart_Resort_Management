@@ -1,0 +1,10 @@
+-- DEPRECATED / DO NOT EXECUTE.
+-- This previous draft assumed all Room accommodations share Aircon, Own CR,
+-- TV, Refrigerator and Table. The resort owner later clarified that
+-- Single Rooms have a DIFFERENT verified inclusion list and NO refrigerator.
+-- Therefore the old all-room bulk UPDATE was unsafe and has been removed.
+--
+-- Use the category-specific, backup-first review in:
+-- docs/SINGLE_ROOM_AMENITIES_REVIEW_2026-11-16.sql
+--
+-- No production database migration is automatically executed by GitHub commits.

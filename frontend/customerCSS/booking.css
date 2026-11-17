@@ -923,3 +923,36 @@
   box-shadow: none;
   transform: none;
 }
+
+/* Stage Booking-16: date-specific time-slot visibility before payment.
+   Native select options receive Available / Unavailable / Checking labels;
+   disabled options are backed by the existing server conflict check. */
+.booking-slot-status {
+  display: block;
+  margin-top: 7px;
+  padding: 9px 11px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: .79rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+.booking-slot-status[data-state="available"] {
+  border-color: #a7f3d0;
+  background: #ecfdf5;
+  color: #065f46;
+}
+.booking-slot-status[data-state="mixed"],
+.booking-slot-status[data-state="error"] {
+  border-color: #fcd34d;
+  background: #fffbeb;
+  color: #92400e;
+}
+.booking-slot-status[data-state="checking"] {
+  border-color: #bae6fd;
+  background: #f0f9ff;
+  color: #075985;
+}
+.slot-select option:disabled { color: #9f1239; background: #fff1f2; }

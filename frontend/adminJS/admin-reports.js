@@ -34,25 +34,27 @@ let activeEndDate = "";
 // Keeps report colors clean and readable.
 // ============================================================
 
+// Reports-20: muted, distinct chart colors. Status hues still differ for
+// accessibility; categories no longer use the old rainbow-bright palette.
 const REPORT_COLORS = {
   navy: "#0F172A",
   text: "#334155",
   muted: "#64748B",
-  grid: "#E5EDF3",
+  grid: "#E9EEF2",
   teal: "#0F766E",
-  tealSoft: "#14B8A6",
-  blue: "#2563EB",
-  blueSoft: "#60A5FA",
-  green: "#22C55E",
-  greenSoft: "#86EFAC",
-  amber: "#F59E0B",
-  amberSoft: "#FCD34D",
-  red: "#EF4444",
-  redSoft: "#FCA5A5",
+  tealSoft: "#2B9A91",
+  blue: "#577C99",
+  blueSoft: "#8DAABD",
+  green: "#3C8D76",
+  greenSoft: "#8ABAA9",
+  amber: "#B88F4E",
+  amberSoft: "#D7BD8B",
+  red: "#BB6F6F",
+  redSoft: "#D6A3A3",
   gray: "#94A3B8",
   graySoft: "#CBD5E1",
-  purple: "#8B5CF6",
-  cyan: "#06B6D4",
+  purple: "#8876A1",
+  cyan: "#6C9EAD",
 };
 
 const STATUS_COLORS = {
@@ -61,19 +63,16 @@ const STATUS_COLORS = {
   rejected: REPORT_COLORS.red,
   cancelled: REPORT_COLORS.gray,
   completed: REPORT_COLORS.blue,
+  no_show: REPORT_COLORS.purple,
 };
 
+// A small restrained series of colors reads clearly beside the teal KPI cards.
 const MINIMAL_PALETTE = [
   REPORT_COLORS.tealSoft,
   REPORT_COLORS.blue,
-  REPORT_COLORS.amber,
-  REPORT_COLORS.green,
-  REPORT_COLORS.purple,
-  REPORT_COLORS.cyan,
-  REPORT_COLORS.red,
   REPORT_COLORS.gray,
-  "#0EA5E9",
-  "#84CC16",
+  REPORT_COLORS.cyan,
+  REPORT_COLORS.purple,
 ];
 
 // ============================================================
@@ -81,14 +80,14 @@ const MINIMAL_PALETTE = [
 // Makes charts consistent across reports.
 // ============================================================
 
-Chart.defaults.font.family = "Arial, sans-serif";
+Chart.defaults.font.family = "Arial, system-ui, sans-serif";
 Chart.defaults.color = REPORT_COLORS.text;
 Chart.defaults.plugins.tooltip.backgroundColor = "#0F172A";
 Chart.defaults.plugins.tooltip.titleColor = "#FFFFFF";
 Chart.defaults.plugins.tooltip.bodyColor = "#E2E8F0";
 Chart.defaults.plugins.tooltip.borderColor = "rgba(255,255,255,0.12)";
 Chart.defaults.plugins.tooltip.borderWidth = 1;
-Chart.defaults.plugins.tooltip.padding = 12;
+Chart.defaults.plugins.tooltip.padding = 9;
 Chart.defaults.plugins.tooltip.cornerRadius = 10;
 
 // ============================================================
@@ -191,6 +190,8 @@ function setupReportEvents() {
   if (printBtn) {
     printBtn.addEventListener("click", () => {
       updatePrintReportMeta();
+      // Prepare text tables for printing; chart canvases are screen-only.
+      window.ArvicReportPresentation?.preparePrint();
       document.body.classList.add("printing-report");
 
       setTimeout(() => {
@@ -347,6 +348,20 @@ function renderReports(bookings) {
   renderPeakReservationDaysChart(bookings);
   renderGuestVolumeTrendChart(bookings);
   renderMonthlyCancellationChart(bookings);
+
+  // Reports-20: read the just-rendered charts to produce compact empty states
+  // and printer-friendly data tables. This never recalculates report totals.
+  window.ArvicReportPresentation?.update(bookings, {
+    bookingStatusChart,
+    bookingSourceChart,
+    popularRoomsChart,
+    salesByCategoryChart,
+    guestsPerRoomChart,
+    slotUsageChart,
+    peakReservationDaysChart,
+    guestVolumeTrendChart,
+    monthlyCancellationChart,
+  });
 }
 
 // ============================================================
@@ -424,6 +439,7 @@ function renderBookingStatusChart(bookings) {
     approved: 0,
     completed: 0,
     cancelled: 0,
+    no_show: 0,
   };
 
   bookings.forEach((booking) => {
@@ -444,15 +460,16 @@ function renderBookingStatusChart(bookings) {
   bookingStatusChart = new Chart(canvas, {
     type: "bar",
     data: {
-      labels: ["Approved", "Completed", "Cancelled"],
+      labels: ["Approved", "Completed", "Cancelled", "No-Show"],
       datasets: [
         {
           label: "Reservations",
-          data: [counts.approved, counts.completed, counts.cancelled],
+          data: [counts.approved, counts.completed, counts.cancelled, counts.no_show],
           backgroundColor: [
             STATUS_COLORS.approved,
             STATUS_COLORS.completed,
             STATUS_COLORS.cancelled,
+            STATUS_COLORS.no_show,
           ],
           borderRadius: 12,
           borderSkipped: false,
@@ -874,6 +891,7 @@ function renderMonthlyCancellationChart(bookings) {
   const counts = {
     Successful: 0,
     Cancelled: 0,
+    "No-Show": 0,
   };
 
   bookings.forEach((booking) => {
@@ -883,6 +901,8 @@ function renderMonthlyCancellationChart(bookings) {
       counts.Successful += 1;
     } else if (status === "cancelled") {
       counts.Cancelled += 1;
+    } else if (status === "no_show") {
+      counts["No-Show"] += 1;
     }
   });
 
@@ -907,6 +927,7 @@ function renderMonthlyCancellationChart(bookings) {
           backgroundColor: finalLabels.map((label) => {
             if (label === "Successful") return REPORT_COLORS.green;
             if (label === "Cancelled") return REPORT_COLORS.gray;
+            if (label === "No-Show") return REPORT_COLORS.purple;
             return REPORT_COLORS.blue;
           }),
           borderColor: "#FFFFFF",
@@ -1092,10 +1113,10 @@ function getLegendStyle() {
     pointStyle: "circle",
     boxWidth: 8,
     boxHeight: 8,
-    padding: 14,
+    padding: 10,
     color: REPORT_COLORS.text,
     font: {
-      size: 11,
+      size: 10,
       weight: "700",
     },
   };
@@ -1105,7 +1126,7 @@ function getTickStyle() {
   return {
     color: REPORT_COLORS.muted,
     font: {
-      size: 11,
+      size: 10,
       weight: "600",
     },
   };

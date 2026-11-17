@@ -31,9 +31,11 @@
   <link rel="icon" type="image/png" href="../images/arvic-logo.png" />
     <!-- Consistent, centered confirmation for accidental logout clicks. -->
     <link rel="stylesheet" href="../sharedCSS/logout-confirm.css" />
+    <!-- Reports-20: compact screen charts and separate printer-friendly layout. -->
+    <link rel="stylesheet" href="../adminCSS/admin-reports-minimal.css?v=20261117-reports20" />
   </head>
 
-  <body class="has-fixed-navbar">
+  <body class="has-fixed-navbar reports-minimal-page">
     <!-- ======================================================
        ADMIN NAVBAR
     ======================================================= -->
@@ -199,6 +201,9 @@
       <!-- ======================================================
          REPORT CHARTS
       ======================================================= -->
+      <!-- Show one concise state instead of nine oversized empty graphs. -->
+      <p id="reportEmptyOverview" class="report-empty-overview" role="status" hidden></p>
+
       <section class="chart-grid">
         <div class="chart-box">
           <div class="chart-header">
@@ -316,6 +321,11 @@
           </div>
         </div>
       </section>
+
+      <!-- Print uses readable data tables instead of printing oversized chart
+           canvases; the numbers are derived from the SAME chart datasets. -->
+      <section id="reportPrintDetails" class="report-print-details"
+        aria-label="Printed report chart details"></section>
     </main>
 
     <!-- ======================================================
@@ -325,6 +335,7 @@
     <script src="../sharedJS/api-config.js"></script>
     <script src="../js/active-nav.js"></script>
     <script src="../adminJS/admin-reports.js"></script>
+    <script src="../adminJS/admin-reports-presentation.js?v=20261117-reports20"></script>
     <script src="../adminJS/admin-mobile-nav.js"></script>
     <script src="../sharedJS/logout-confirm.js"></script>
   </body>

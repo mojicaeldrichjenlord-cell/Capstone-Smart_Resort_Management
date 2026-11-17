@@ -5,6 +5,9 @@ const ADMIN_WALKIN_SUCCESS_RESET_KEY = "smartresort_admin_walkin_success_reset";
 
 let availableAccommodations = [];
 let bookingItemCounter = 0;
+// Preview-only slot lookups are cancellable and do not create reservations.
+const manualSlotRequests = new WeakMap();
+let manualPaymentChecking = false;
 
 document.addEventListener("DOMContentLoaded", async () => {
   if (!checkAdminAccess()) {
@@ -242,10 +245,292 @@ function setupManualReservationDateRules() {
     reservationType.addEventListener("change", () => {
       applyManualReservationDateRules();
       updateSummary();
+      scheduleAllManualSlotChecks();
     });
   }
 
   applyManualReservationDateRules();
+}
+
+// Stage Booking-17: live Time Slot previews for both Front Desk walk-in and
+// Facebook/Messenger reservations. Reuse the EXISTING read-only conflict API.
+// These previews are advisory; final save still validates on the server.
+function getManualBookingCards() {
+  return [...document.querySelectorAll(".booking-item-card")];
+}
+
+function getManualSlotCandidate(card, slotType) {
+  const id = Number(card.querySelector(".accommodation-value")?.value || 0);
+  const accommodation = getAccommodationById(id);
+  const date = String(card.querySelector(".date-input")?.value || "");
+  const duration = getStayDuration({
+    stay_duration: card.querySelector(".stay-duration-select")?.value || 1,
+  });
+  const slot = getSlotOptions(accommodation).find(item => item.value === slotType);
+  if (!accommodation || !slot || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  const cleanDuration = ["day_extended", "night_extended"].includes(slotType) ? duration : 1;
+  const endDate = calculateCheckOutDate(date, slot.start, slot.end, cleanDuration);
+  return {
+    accommodation_id: id, accommodation_name: accommodation.name,
+    check_in_date: date, slot_type: slotType, stay_duration: cleanDuration,
+    start: date + " " + slot.start, end: endDate + " " + slot.end,
+  };
+}
+
+function getManualLocalConflict(card, candidate) {
+  if (!candidate) return "";
+  for (const other of getManualBookingCards()) {
+    if (other === card) continue;
+    const otherSlot = other.querySelector(".slot-select")?.value || "";
+    const selected = getManualSlotCandidate(other, otherSlot);
+    if (selected && selected.accommodation_id === candidate.accommodation_id &&
+        candidate.start < selected.end && selected.start < candidate.end) {
+      return candidate.accommodation_name +
+        " has overlapping time slots within this manual reservation.";
+    }
+  }
+  return "";
+}
+
+function cancelManualSlotRequest(card) {
+  const active = manualSlotRequests.get(card);
+  if (active?.timer) clearTimeout(active.timer);
+  active?.controller?.abort();
+  manualSlotRequests.delete(card);
+}
+
+function setManualItemAvailability(card, state, message) {
+  if (!card?.isConnected) return;
+  card.dataset.availabilityStatus = state;
+  const note = card.querySelector(".manual-item-availability");
+  if (note) {
+    note.dataset.state = state;
+    note.textContent = message;
+  }
+  updateManualPaymentNavigation();
+}
+
+function updateManualPaymentNavigation() {
+  const cards = getManualBookingCards();
+  const ready = cards.length > 0 && cards.every(
+    card => card.dataset.availabilityStatus === "available"
+  );
+  const nextBtn = document.getElementById("manualNextPaymentBtn");
+  if (nextBtn) {
+    nextBtn.disabled = !ready || manualPaymentChecking;
+    nextBtn.title = nextBtn.disabled
+      ? "Select and verify all accommodation schedules before payment." : "";
+  }
+}
+
+function getManualSlotLabel(state) {
+  if (state === "available") return "Available";
+  if (state === "unavailable") return "Unavailable";
+  if (state === "error") return "Unable to verify";
+  return "Checking...";
+}
+
+function getManualPrecheckState(card, candidate, results) {
+  if (!candidate) return "incomplete";
+  const today = getPhilippineTodayInputDate();
+  const type = getManualReservationType();
+  if (candidate.check_in_date < today ||
+      (type === "walkin" && candidate.check_in_date !== today)) {
+    return "unavailable";
+  }
+  // Use the EXISTING Manila-time guard for same-day expired schedules.
+  const validation = validateManualReservationSchedules([candidate]);
+  if (!validation.valid || getManualLocalConflict(card, candidate)) {
+    return "unavailable";
+  }
+  return results?.[candidate.slot_type] || "checking";
+}
+
+function renderManualSlotStatuses(card, results = null) {
+  if (!card?.isConnected) return;
+  const select = card.querySelector(".slot-select");
+  const hint = card.querySelector(".manual-slot-status");
+  if (!select || !hint) return;
+  const candidateRoom = getAccommodationById(Number(card.querySelector(".accommodation-value")?.value || 0));
+  const date = String(card.querySelector(".date-input")?.value || "");
+  if (!candidateRoom || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    hint.dataset.state = "incomplete";
+    hint.textContent = "Select an accommodation and date to check time slots.";
+    setManualItemAvailability(card, "incomplete", "Choose a time slot to verify availability.");
+    return;
+  }
+  let available = 0, unavailable = 0, errors = 0, pending = 0;
+  const states = {};
+  for (const slot of getSlotOptions(candidateRoom)) {
+    const option = [...select.options].find(item => item.value === slot.value);
+    if (!option) continue;
+    const candidate = getManualSlotCandidate(card, slot.value);
+    const state = getManualPrecheckState(card, candidate, results);
+    states[slot.value] = state;
+    option.textContent = slot.label + " (" + formatTimeDisplay(slot.start) +
+      " - " + formatTimeDisplay(slot.end) + ") — " + getManualSlotLabel(state);
+    option.disabled = state === "unavailable";
+    if (state === "available") available++;
+    else if (state === "unavailable") unavailable++;
+    else if (state === "error") errors++;
+    else pending++;
+  }
+  hint.dataset.state = pending ? "checking" : errors ? "error" :
+    unavailable ? "mixed" : "available";
+  if (pending) hint.textContent = "Checking live time slots for the selected date...";
+  else if (errors === getSlotOptions(candidateRoom).length) {
+    hint.textContent = "Availability could not be verified. Change the selection to retry.";
+  } else {
+    hint.textContent = available + " of 4 slots currently show available." +
+      (errors ? " Some slots could not be verified." : "") +
+      " All schedules will be rechecked before payment.";
+  }
+
+  if (select.value && states[select.value] === "unavailable") {
+    select.value = "";
+    const itemId = Number(card.dataset.itemId);
+    populateStayDurationOptions(itemId);
+    updateItemPreview(itemId);
+    updateSummary();
+    setManualItemAvailability(card, "incomplete",
+      "This time slot is unavailable. Choose a different slot or date.");
+    return;
+  }
+  if (!select.value) {
+    setManualItemAvailability(card, "incomplete",
+      "Select a time slot to continue.");
+    return;
+  }
+  const state = states[select.value] || "checking";
+  const detail = state === "available"
+    ? "Selected schedule currently available. Final verification required."
+    : state === "unavailable" ? "Selected schedule is unavailable."
+    : state === "error" ? "Unable to verify selected schedule. Change the selection to retry."
+    : "Checking selected schedule with the server...";
+  setManualItemAvailability(card, state, detail);
+}
+
+async function requestManualSlotAvailability(candidate, signal) {
+  const response = await fetch(API_BASE + "/bookings/check-item-availability", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Accept": "application/json" },
+    body: JSON.stringify({
+      mode: "add", accommodation_id: candidate.accommodation_id,
+      slot_type: candidate.slot_type, check_in_date: candidate.check_in_date,
+      stay_duration: candidate.stay_duration,
+    }),
+    signal, cache: "no-store",
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.message || "Availability check failed.");
+  return { available: data.available === true,
+    message: String(data.message || "Schedule unavailable.") };
+}
+
+function scheduleManualSlotCheck(card) {
+  if (!card?.isConnected) return;
+  const room = getAccommodationById(Number(card.querySelector(".accommodation-value")?.value || 0));
+  const date = String(card.querySelector(".date-input")?.value || "");
+  const duration = getStayDuration({
+    stay_duration: card.querySelector(".stay-duration-select")?.value || 1,
+  });
+  const type = getManualReservationType();
+  if (!room || !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+      date < getPhilippineTodayInputDate() ||
+      (type === "walkin" && date !== getPhilippineTodayInputDate())) {
+    cancelManualSlotRequest(card);
+    renderManualSlotStatuses(card);
+    return;
+  }
+  const key = JSON.stringify({ id: Number(room.id), date, duration, type });
+  const cached = manualSlotRequests.get(card);
+  // 15-second hint cache saves requests when switching only the selected slot.
+  // A network error is not cached and must never be called "booked".
+  if (cached?.key === key && Date.now() - cached.started < 15000 &&
+      (!cached.results || Object.values(cached.results).every(x => x !== "error"))) {
+    renderManualSlotStatuses(card, cached.results);
+    return;
+  }
+  cancelManualSlotRequest(card);
+  const controller = new AbortController();
+  const request = { key, controller, started: Date.now(), results: null, timer: null };
+  manualSlotRequests.set(card, request);
+  renderManualSlotStatuses(card);
+  request.timer = setTimeout(async () => {
+    const slots = getSlotOptions(room);
+    // Expired same-day slots can be classified locally without any API call.
+    const checks = await Promise.allSettled(slots.map(async slot => {
+      const candidate = getManualSlotCandidate(card, slot.value);
+      if (!candidate || !validateManualReservationSchedules([candidate]).valid) {
+        return "unavailable";
+      }
+      const result = await requestManualSlotAvailability(candidate, controller.signal);
+      return result.available ? "available" : "unavailable";
+    }));
+    if (controller.signal.aborted || !card.isConnected ||
+        manualSlotRequests.get(card) !== request) return;
+    request.results = {};
+    slots.forEach((slot, index) => {
+      const check = checks[index];
+      request.results[slot.value] = check.status === "fulfilled"
+        ? check.value : "error";
+    });
+    renderManualSlotStatuses(card, request.results);
+  }, 300);
+}
+
+function scheduleAllManualSlotChecks() {
+  for (const card of getManualBookingCards()) scheduleManualSlotCheck(card);
+  updateManualPaymentNavigation();
+}
+
+// Prevent navigations based on an old green label: recheck every selected
+// item just before creating the payment draft. This does not create a booking.
+async function verifyManualSlotsBeforePayment(cards) {
+  const signature = JSON.stringify({
+    reservationType: getManualReservationType(),
+    selections: cards.map(card =>
+      getManualSlotCandidate(card, card.querySelector(".slot-select")?.value || "")),
+  });
+  const selections = cards.map(card =>
+    getManualSlotCandidate(card, card.querySelector(".slot-select")?.value || ""));
+  if (selections.some(x => !x)) return false;
+  for (let i = 0; i < cards.length; i++) {
+    if (getManualPrecheckState(cards[i], selections[i], {}) === "unavailable") {
+      setManualItemAvailability(cards[i], "unavailable",
+        "This schedule has ended or overlaps another accommodation item.");
+      return false;
+    }
+  }
+  const results = await Promise.allSettled(
+    selections.map(selection => requestManualSlotAvailability(selection)),
+  );
+  const afterSignature = JSON.stringify({
+    reservationType: getManualReservationType(),
+    selections: cards.map(card =>
+      getManualSlotCandidate(card, card.querySelector(".slot-select")?.value || "")),
+  });
+  if (signature !== afterSignature) {
+    showMessage("Reservation schedule changed during verification. Try again.", "error");
+    scheduleAllManualSlotChecks();
+    return false;
+  }
+  let allowed = true;
+  results.forEach((result, index) => {
+    if (result.status !== "fulfilled") {
+      allowed = false;
+      setManualItemAvailability(cards[index], "error",
+        "Could not verify this schedule. Please retry.");
+      return;
+    }
+    const valid = result.value.available;
+    if (!valid) allowed = false;
+    setManualItemAvailability(cards[index], valid ? "available" : "unavailable",
+      valid ? "Verified before payment." : result.value.message);
+  });
+  if (!allowed) showMessage(
+    "One or more time slots are unavailable or could not be verified.", "error");
+  return allowed;
 }
 
 function getPhilippineTodayInputDate() {
@@ -296,6 +581,40 @@ function applyManualReservationDateRules() {
       updateItemPreview(itemId);
     }
   });
+  scheduleAllManualSlotChecks();
+}
+
+// Bug #006: evaluate FIXED checkout date/time in Philippine time, not only
+// the selected calendar date. A late walk-in remains valid until checkout.
+function validateManualReservationSchedules(items) {
+  return ManualScheduleGuard.validateItems(
+    items, availableAccommodations, getSlotOptions,
+  );
+}
+
+function validateSelectedItemSchedule(itemId) {
+  const card = document.querySelector(
+    `.booking-item-card[data-item-id="${itemId}"]`,
+  );
+  if (!card) return { valid: true };
+
+  const accommodationId = Number(card.querySelector(".accommodation-value")?.value);
+  const slotType = card.querySelector(".slot-select")?.value;
+  const checkInDate = card.querySelector(".date-input")?.value;
+  if (!accommodationId || !slotType || !checkInDate) return { valid: true };
+
+  const stayDuration = Number(card.querySelector(".stay-duration-select")?.value || 1);
+  return validateManualReservationSchedules([{
+    accommodation_id: accommodationId,
+    slot_type: slotType,
+    check_in_date: checkInDate,
+    stay_duration: stayDuration,
+  }]);
+}
+
+function warnIfSelectedScheduleEnded(itemId) {
+  const result = validateSelectedItemSchedule(itemId);
+  if (!result.valid) showMessage(result.message, "error");
 }
 
 function validateManualReservationDates(items, reservationType) {
@@ -354,8 +673,9 @@ function isValidPhilippineMobileNumber(contactNo) {
   return /^09\d{9}$/.test(String(contactNo || "").trim());
 }
 
-function goToPaymentScreen(e) {
+async function goToPaymentScreen(e) {
   e.preventDefault();
+  if (manualPaymentChecking) return;
 
   const first_name = document.getElementById("firstName").value.trim();
   const middle_name = document.getElementById("middleName").value.trim();
@@ -382,6 +702,13 @@ function goToPaymentScreen(e) {
     showMessage("Please add at least one accommodation item.", "error");
     return;
   }
+  const cards = getManualBookingCards();
+  // Previously incomplete cards were omitted from collectBookingItems().
+  // Never proceed with only a subset of the selected accommodations.
+  if (items.length !== cards.length) {
+    showMessage("Select an accommodation, date and time slot for every item.", "error");
+    return;
+  }
 
   const reservationDateValidation =
     validateManualReservationDates(items, reservation_type);
@@ -389,6 +716,43 @@ function goToPaymentScreen(e) {
   if (!reservationDateValidation.valid) {
     showMessage(reservationDateValidation.message, "error");
     applyManualReservationDateRules();
+    return;
+  }
+
+  // Do not write a payment-page draft when ANY selected slot has fully ended.
+  // Re-check at submit time because a valid window can expire while the form
+  // is open. The backend independently rejects expired schedules as well.
+  const scheduleValidation = validateManualReservationSchedules(items);
+
+  if (!scheduleValidation.valid) {
+    showMessage(scheduleValidation.message, "error");
+    const invalidCard = document.querySelectorAll(".booking-item-card")[
+      scheduleValidation.itemIndex
+    ];
+    invalidCard?.querySelector(".slot-select")?.focus();
+    return;
+  }
+
+  // Advisory labels can go stale. Require a fresh conflict check for ALL
+  // selected schedules before writing the manual payment-page draft.
+  manualPaymentChecking = true;
+  updateManualPaymentNavigation();
+  let verified = false;
+  try {
+    verified = await verifyManualSlotsBeforePayment(cards);
+  } catch (error) {
+    console.error("Manual pre-payment schedule verification:", error);
+    showMessage("Unable to verify availability. Please retry.", "error");
+  } finally {
+    manualPaymentChecking = false;
+    updateManualPaymentNavigation();
+  }
+  if (!verified) return;
+  if (JSON.stringify(collectBookingItems()) !== JSON.stringify(items) ||
+      getManualReservationType() !== reservation_type ||
+      !validateManualReservationSchedules(items).valid) {
+    showMessage("Your schedule changed during verification. Please retry.", "error");
+    scheduleAllManualSlotChecks();
     return;
   }
 
@@ -472,11 +836,26 @@ function addBookingItem(preselectedId = null) {
       </div>
 
       <div class="walkin-group">
-        <label>Slot Type</label>
+        <label>Reservation Date</label>
+        <input
+          type="date"
+          class="date-input"
+          data-item-id="${itemId}"
+          min="${today}"
+          value="${today}"
+        />
+      </div>
 
-        <select class="slot-select" data-item-id="${itemId}">
-          <option value="">Select slot</option>
+      <div class="walkin-group">
+        <label for="manualSlot-${itemId}">Time Slot</label>
+        <select id="manualSlot-${itemId}" class="slot-select" data-item-id="${itemId}"
+          aria-describedby="manualSlotStatus-${itemId}">
+          <option value="">Select time slot</option>
         </select>
+        <small class="manual-slot-status" id="manualSlotStatus-${itemId}"
+          role="status" aria-live="polite" data-state="incomplete">
+          Select an accommodation and date to check available slots.
+        </small>
       </div>
 
       <div class="walkin-group">
@@ -487,17 +866,6 @@ function addBookingItem(preselectedId = null) {
         <small class="field-help">
           Day Tour and Night are fixed schedules. Day/Night 22 Hours or 23 Hours can be 1 to 5 days depending on category.
         </small>
-      </div>
-
-      <div class="walkin-group">
-        <label>Reservation Date</label>
-        <input
-          type="date"
-          class="date-input"
-          data-item-id="${itemId}"
-          min="${today}"
-          value="${today}"
-        />
       </div>
 
       <div class="walkin-group">
@@ -515,6 +883,8 @@ function addBookingItem(preselectedId = null) {
     <div class="slot-preview" id="slotPreview-${itemId}">
       Select an accommodation and slot to preview its schedule and price.
     </div>
+    <p class="manual-item-availability" role="status" aria-live="polite"
+      data-state="incomplete">Choose a time slot to verify availability.</p>
   `;
 
   wrap.appendChild(card);
@@ -528,9 +898,11 @@ function addBookingItem(preselectedId = null) {
 
   if (removeBtn) {
     removeBtn.addEventListener("click", () => {
+      cancelManualSlotRequest(card);
       card.remove();
       updateSummary();
       refreshTitles();
+      scheduleAllManualSlotChecks();
     });
   }
 
@@ -538,23 +910,30 @@ function addBookingItem(preselectedId = null) {
     populateStayDurationOptions(itemId);
     updateItemPreview(itemId);
     updateSummary();
+    warnIfSelectedScheduleEnded(itemId);
+    scheduleAllManualSlotChecks();
   });
 
   if (stayDurationSelect) {
     stayDurationSelect.addEventListener("change", () => {
       updateItemPreview(itemId);
       updateSummary();
+      warnIfSelectedScheduleEnded(itemId);
+      scheduleAllManualSlotChecks();
     });
   }
 
   dateInput.addEventListener("input", () => {
     updateItemPreview(itemId);
     updateSummary();
+    scheduleAllManualSlotChecks();
   });
 
   dateInput.addEventListener("change", () => {
     updateItemPreview(itemId);
     updateSummary();
+    warnIfSelectedScheduleEnded(itemId);
+    scheduleAllManualSlotChecks();
   });
 
   if (preselectedId) {
@@ -566,6 +945,7 @@ function addBookingItem(preselectedId = null) {
   updateItemPreview(itemId);
   refreshTitles();
   applyManualReservationDateRules();
+  scheduleAllManualSlotChecks();
 }
 
 function bindAccommodationPicker(card, itemId) {
@@ -680,6 +1060,7 @@ function setAccommodationSelection(card, itemId, accommodationId) {
   populateSlotOptions(itemId);
   updateItemPreview(itemId);
   updateSummary();
+  scheduleAllManualSlotChecks();
 }
 
 function closeAllAccommodationPickers() {
@@ -1006,7 +1387,7 @@ function populateSlotOptions(itemId) {
   const accommodation = getAccommodationById(accommodationValue?.value);
 
   if (!accommodation) {
-    slotSelect.innerHTML = `<option value="">Select slot</option>`;
+    slotSelect.innerHTML = `<option value="">Select time slot</option>`;
     capacityDisplay.value = "-";
     populateStayDurationOptions(itemId);
     return;
@@ -1017,7 +1398,7 @@ function populateSlotOptions(itemId) {
   const options = getSlotOptions(accommodation);
 
   slotSelect.innerHTML = `
-    <option value="">Select slot</option>
+    <option value="">Select time slot</option>
 
     ${options
       .map(
@@ -1098,6 +1479,15 @@ function updateItemPreview(itemId) {
     Check-out Date: ${formatDateDisplay(checkOutDate)}<br>
     Price: ₱${formatMoney(slot.price)}${isLongStaySlot ? ` × ${stayDuration} = ₱${formatMoney(totalPrice)}` : ""}
   `;
+
+  // Inline, persistent warning complements the existing centered toast.
+  // Do not disable the whole form: staff can still select a valid slot.
+  const scheduleCheck = validateSelectedItemSchedule(itemId);
+  if (!scheduleCheck.valid) {
+    preview.innerHTML += `<p role="alert" style="color:#b91c1c;font-weight:600;margin-top:10px;">
+      ${escapeHtml(scheduleCheck.message)}
+    </p>`;
+  }
 }
 
 function collectBookingItems() {

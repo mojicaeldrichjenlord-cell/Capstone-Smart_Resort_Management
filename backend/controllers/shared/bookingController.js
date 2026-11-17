@@ -7,6 +7,7 @@ const { findOverlappingDraftItems } = require("../../utils/reservationOverlap");
 const db = require("../../config/db");
 const { updateAdminBookingStatus } = require("../admin/adminBookingController");
 const fs = require("fs");
+const { getVerifiedImageMime, MAX_PROOF_BYTES } = require("../../utils/paymentProofAccess");
 
 // ============================================================
 // BLOCK: Normalize text
@@ -558,6 +559,24 @@ function getExtensionUnitText(extensionType, amount = 1) {
 // BLOCK: Philippine "now" helper for schedule validation
 // Purpose: Blocks add-on bookings whose selected start date/time is already in the past.
 // ============================================================
+// QA-012: Use Manila calendar dates, not Render/localhost machine timezone,
+// when enforcing the two-day customer online booking policy.
+function getEarliestCustomerCheckInDateKey() {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const values = {};
+  for (const part of parts) values[part.type] = part.value;
+  return new Date(Date.UTC(
+    Number(values.year),
+    Number(values.month) - 1,
+    Number(values.day) + 2,
+  )).toISOString().slice(0, 10);
+}
+
 function getPhilippineNow() {
   return new Date(
     new Date().toLocaleString("en-US", { timeZone: "Asia/Manila" }),
@@ -603,7 +622,7 @@ function isScheduleWindowAlreadyEnded(item) {
 }
 
 function getScheduleEndedMessage(accommodationName = "Selected accommodation") {
-  return `${accommodationName} is no longer available for this time frame because the selected schedule has already ended. Please choose a schedule that has not ended yet.`;
+  return `Time slot already ended for ${accommodationName}. Please choose another time slot or a future date.`;
 }
 
 // ============================================================
@@ -682,7 +701,7 @@ async function checkReservationConflicts(
       INNER JOIN reservations r ON ri.reservation_id = r.id
       INNER JOIN accommodations a ON ri.accommodation_id = a.id
       WHERE ri.accommodation_id = ?
-        AND LOWER(COALESCE(r.reservation_status, 'pending')) NOT IN ('cancelled', 'rejected', 'completed')
+        AND LOWER(COALESCE(r.reservation_status, 'pending')) NOT IN ('cancelled', 'rejected', 'completed', 'no_show')
         AND LOWER(COALESCE(r.payment_status, 'pending')) NOT IN ('rejected', 'refunded')
         AND TIMESTAMP(ri.check_in_date, ri.check_in_time) < TIMESTAMP(?, ?)
         AND TIMESTAMP(?, ?) < TIMESTAMP(ri.check_out_date, ri.check_out_time)
@@ -697,7 +716,7 @@ async function checkReservationConflicts(
 
       throw {
         status: 409,
-        message: `${conflict.accommodation_name} is already reserved for the selected date and time. Please choose another date, slot, or accommodation.`,
+        message: `${conflict.accommodation_name} is already booked for this date and time slot. Please choose another available time slot, date, or accommodation.`,
       };
     }
   }
@@ -866,6 +885,8 @@ async function createReservation({
   created_by = null,
   body,
   autoApprove = false,
+  // Server-derived upload bytes; never accept these from untrusted JSON fields.
+  paymentProofUpload = null,
 }) {
   const {
     first_name,
@@ -1098,11 +1119,24 @@ async function createReservation({
   const reservationItems = [];
   let accommodationTotal = 0;
   let hasOvernightStyle = false;
+  // Never trust only the browser's date input: enforce before any DB write.
+  const earliestCustomerCheckIn = isManualReservation
+    ? null
+    : getEarliestCustomerCheckInDateKey();
 
   for (const rawItem of items) {
     const accommodationId = Number(rawItem.accommodation_id);
     const slotType = normalizeText(rawItem.slot_type || "day_tour");
     const checkInDate = normalizeText(rawItem.check_in_date);
+    if (earliestCustomerCheckIn && (
+      !/^\d{4}-\d{2}-\d{2}$/.test(checkInDate) ||
+      checkInDate < earliestCustomerCheckIn
+    )) {
+      throw {
+        status: 400,
+        message: `Customer reservations must be booked at least 2 days ahead. Earliest check-in date is ${earliestCustomerCheckIn}.`,
+      };
+    }
     const requestedStayDuration = Math.max(
       1,
       Math.min(5, Math.floor(toNumber(rawItem.stay_duration, 1))),
@@ -1432,6 +1466,21 @@ async function createReservation({
 
     const reservationId = reservationResult.insertId;
 
+    // QA-008: Keep valid Front Desk payment-proof bytes in durable, private
+    // MySQL storage in the SAME transaction as the reservation creation.
+    // Render's ephemeral uploads folder must not be the only copy.
+    if (paymentProofUpload) {
+      if (!Buffer.isBuffer(paymentProofUpload.buffer) ||
+          !paymentProofUpload.buffer.length ||
+          paymentProofUpload.buffer.length > MAX_PROOF_BYTES ||
+          !getVerifiedImageMime(paymentProofUpload.buffer)) {
+        throw { status: 415, message: "Invalid payment proof image." };
+      }
+      await connection.query(
+        "INSERT INTO reservation_payment_proofs (reservation_id, mime_type, image_data) VALUES (?, ?, ?)",
+        [reservationId, getVerifiedImageMime(paymentProofUpload.buffer), paymentProofUpload.buffer],
+      );
+    }
 
     for (const item of reservationItems) {
       await connection.query(
@@ -1548,6 +1597,11 @@ exports.createBooking = async (req, res) => {
 exports.createWalkInBooking = async (req, res) => {
   try {
     const parsedBody = parseRequestReservationBody(req);
+    // Read the already-validated upload from the private temporary file.
+    // The binary is stored in Aiven/MySQL before the booking is committed.
+    const uploadedBytes = req.file?.path
+      ? await fs.promises.readFile(req.file.path)
+      : null;
     const created_by = Number(parsedBody.created_by);
 
     if (!created_by) {
@@ -1563,6 +1617,7 @@ exports.createWalkInBooking = async (req, res) => {
       created_by,
       body: parsedBody,
       autoApprove: true,
+      paymentProofUpload: uploadedBytes ? { buffer: uploadedBytes } : null,
     });
 
     return res.status(201).json({
@@ -1571,16 +1626,25 @@ exports.createWalkInBooking = async (req, res) => {
       reservationCode: result.reservationCode,
       createdBy: result.createdBy,
       proofPath: parsedBody.proof_of_payment || null,
-      proofImageDataSaved: Boolean(parsedBody.proof_image_data),
+      proofImageDataSaved: Boolean(uploadedBytes || parsedBody.proof_image_data),
       isCheckedIn: Boolean(result.isCheckedIn),
     });
   } catch (error) {
     console.error("createWalkInBooking error:", error);
-
+    if (error.code === "ER_NO_SUCH_TABLE") {
+      return res.status(503).json({
+        message: "Secure payment proof storage is not initialized. Apply reservation_payment_proofs.sql before accepting e-wallet reservations.",
+      });
+    }
     return res.status(error.status || 500).json({
       message: error.message || "Failed to create manual reservation.",
-      error: error.message,
     });
+  } finally {
+    // The permanent copy is in MySQL. Remove the temporary upload on BOTH
+    // success and failure; never leave confidential payment files in Render.
+    if (req.file?.path) {
+      await fs.promises.unlink(req.file.path).catch(() => {});
+    }
   }
 };
 
@@ -2508,6 +2572,15 @@ exports.updatePaymentStatus = async (req, res) => {
     }
 
     const reservation = rows[0];
+    // A terminal No-Show cannot be revived through a payment-status route.
+    // Reconciliation of recorded payments requires a separate audited process.
+    if (["no_show", "completed", "cancelled", "rejected"].includes(
+      String(reservation.reservation_status || "").toLowerCase()
+    )) {
+      return res.status(409).json({
+        message: "This reservation is closed. Payment history cannot be reset through status review.",
+      });
+    }
     const accommodationTotal = Number(reservation.accommodation_total || 0);
     const requiredDownpayment = Number(
       reservation.required_downpayment || accommodationTotal * 0.5,
@@ -2540,7 +2613,7 @@ exports.updatePaymentStatus = async (req, res) => {
       remainingBalance = accommodationTotal;
 
       if (
-        !["cancelled", "completed", "rejected"].includes(nextReservationStatus)
+        !["cancelled", "completed", "rejected", "no_show"].includes(nextReservationStatus)
       ) {
         nextReservationStatus = "pending";
       }
@@ -2615,7 +2688,7 @@ exports.checkInBooking = async (req, res) => {
     const reservation = rows[0];
     const status = String(reservation.reservation_status || "").toLowerCase();
 
-    if (["cancelled", "rejected", "completed"].includes(status)) {
+    if (["cancelled", "rejected", "completed", "no_show"].includes(status)) {
       return res.status(400).json({
         message: "This reservation can no longer be checked in.",
       });
@@ -2989,7 +3062,7 @@ exports.addAccommodationToReservation = async (req, res) => {
       reservation.reservation_status || "",
     ).toLowerCase();
 
-    if (["cancelled", "rejected", "completed"].includes(reservationStatus)) {
+    if (["cancelled", "rejected", "completed", "no_show"].includes(reservationStatus)) {
       throw {
         status: 400,
         message:
@@ -3290,7 +3363,7 @@ exports.extendReservationItem = async (req, res) => {
       item.reservation_status || "",
     ).toLowerCase();
 
-    if (["cancelled", "completed", "rejected"].includes(reservationStatus)) {
+    if (["cancelled", "completed", "rejected", "no_show"].includes(reservationStatus)) {
       throw {
         status: 400,
         message: "This reservation can no longer be extended.",
@@ -3603,7 +3676,7 @@ exports.requestBookingModification = async (req, res) => {
     const reservation = reservationRows[0];
     const status = String(reservation.reservation_status || "").toLowerCase();
 
-    if (["cancelled", "rejected", "completed"].includes(status)) {
+    if (["cancelled", "rejected", "completed", "no_show"].includes(status)) {
       throw {
         status: 400,
         message: "This reservation can no longer be modified.",

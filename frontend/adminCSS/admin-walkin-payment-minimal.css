@@ -1,0 +1,403 @@
+/*
+ * STAGE PAYMENT-19 — MANUAL RESERVATION COASTAL MINIMAL
+ * Shared Admin / Front Desk manual-payment HTML presentation only.
+ * Loaded AFTER legacy admin-walkin-payment.css and role-nav CSS.
+ * No JS/payment/role/date/proof rules are modified by these styles.
+ * Fully scoped to body.manual-payment-page to avoid affecting other roles.
+ */
+.manual-payment-page {
+  --manual-page: #f8fafc;
+  --manual-card: #ffffff;
+  --manual-text: #0f172a;
+  --manual-muted: #64748b;
+  --manual-border: #e2e8f0;
+  --manual-teal: #0f766e;
+  --manual-teal-tint: #f0fdfa;
+  background: var(--manual-page);
+  color: var(--manual-text);
+}
+.manual-payment-page .payment-wrapper {
+  width: min(1160px, calc(100% - 48px));
+  max-width: 1160px;
+  margin: 0 auto 64px;
+}
+.manual-payment-page .back-btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin: 10px 0 14px;
+  padding: 8px 0;
+  background: transparent;
+  color: #475569;
+  font-size: .9rem;
+  font-weight: 650;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.manual-payment-page .back-btn:hover {
+  color: var(--manual-teal);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.manual-payment-page .payment-hero {
+  margin: 0 0 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--manual-text);
+  box-shadow: none;
+}
+.manual-payment-page .manual-payment-eyebrow {
+  margin: 0 0 6px;
+  color: var(--manual-teal);
+  font-size: .73rem;
+  font-weight: 750;
+  letter-spacing: .07em;
+  line-height: 1.5;
+}
+.manual-payment-page .payment-hero h1 {
+  margin: 0 0 8px;
+  color: var(--manual-text);
+  font-size: clamp(1.65rem, 2.6vw, 2rem);
+  font-weight: 750;
+  line-height: 1.2;
+  letter-spacing: -.035em;
+}
+.manual-payment-page .payment-hero .manual-payment-intro {
+  margin: 0;
+  max-width: 680px;
+  color: var(--manual-muted);
+  font-size: .94rem;
+  line-height: 1.6;
+  opacity: 1;
+}
+.manual-payment-page .payment-card {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.manual-payment-page .payment-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.28fr) minmax(0, .88fr);
+  grid-template-areas: "summary breakdown" "details breakdown";
+  gap: 18px;
+  align-items: start;
+}
+.manual-payment-page .manual-payment-summary { grid-area: summary; }
+.manual-payment-page .manual-payment-details { grid-area: details; }
+.manual-payment-page .manual-payment-breakdown { grid-area: breakdown; }
+
+.manual-payment-page .payment-grid > .section-box {
+  min-width: 0;
+  margin: 0;
+  padding: 23px 24px;
+  border: 1px solid var(--manual-border);
+  border-radius: 17px;
+  background: var(--manual-card);
+  color: var(--manual-text);
+  box-shadow: 0 3px 16px rgba(15, 23, 42, .035);
+}
+.manual-payment-page .section-box h2 {
+  margin: 0 0 17px;
+  color: var(--manual-text);
+  font-size: 1.06rem;
+  font-weight: 750;
+  line-height: 1.4;
+  letter-spacing: -.016em;
+}
+
+/* Selected accommodation and guest information: plain rows, no colored nests. */
+.manual-payment-page .summary-list { gap: 0; }
+.manual-payment-page .summary-item {
+  margin: 0;
+  padding: 12px 0 14px;
+  border: 0;
+  border-bottom: 1px solid var(--manual-border);
+  border-radius: 0;
+  background: transparent;
+  color: #475569;
+  font-size: .88rem;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.manual-payment-page .summary-item:first-child { padding-top: 0; }
+.manual-payment-page .summary-item:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+.manual-payment-page .summary-item strong {
+  color: var(--manual-text);
+  font-weight: 750;
+  font-size: .98rem;
+}
+
+/* Payment method/type controls keep all existing IDs and JS-driven states. */
+.manual-payment-page .payment-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 14px;
+}
+.manual-payment-page .payment-form-group { min-width: 0; gap: 7px; }
+.manual-payment-page .payment-form-group label {
+  color: #334155;
+  font-size: .87rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.manual-payment-page .payment-form-group input,
+.manual-payment-page .payment-form-group select,
+.manual-payment-page .payment-form-group textarea {
+  min-width: 0;
+  width: 100%;
+  min-height: 46px;
+  padding: 11px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 11px;
+  background: #fff;
+  color: var(--manual-text);
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1.4;
+}
+.manual-payment-page .payment-form-group textarea {
+  min-height: 86px;
+  resize: vertical;
+}
+.manual-payment-page .payment-form-group input[type="file"] {
+  min-height: 46px;
+  font-size: .86rem;
+}
+.manual-payment-page .payment-form-group input:disabled,
+.manual-payment-page .payment-form-group select:disabled {
+  background: #f1f5f9;
+  color: #475569;
+  cursor: not-allowed;
+}
+.manual-payment-page .field-help {
+  color: var(--manual-muted);
+  font-size: .83rem;
+  font-weight: 400;
+  line-height: 1.55;
+}
+.manual-payment-page .proof-preview {
+  max-width: 280px;
+  height: auto;
+  border: 1px solid var(--manual-border);
+  border-radius: 11px;
+  background: #fff;
+}
+.manual-payment-page .payment-form-group input:focus-visible,
+.manual-payment-page .payment-form-group select:focus-visible,
+.manual-payment-page .payment-form-group textarea:focus-visible,
+.manual-payment-page .back-btn:focus-visible,
+.manual-payment-page .payment-actions button:focus-visible,
+.manual-payment-page .payment-actions a:focus-visible {
+  outline: 3px solid #5eead4;
+  outline-offset: 2px;
+  box-shadow: none;
+}
+
+.manual-payment-page .payment-actions {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+.manual-payment-page #submitPaymentBtn {
+  flex: 1 1 260px;
+  min-height: 48px;
+  padding: 11px 16px;
+  border: 0;
+  border-radius: 11px;
+  background: var(--manual-teal);
+  color: #fff;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+  box-shadow: none;
+}
+.manual-payment-page #submitPaymentBtn:hover:not(:disabled) {
+  background: #115e59;
+}
+.manual-payment-page #submitPaymentBtn:disabled {
+  opacity: .58;
+  cursor: not-allowed;
+}
+.manual-payment-page .payment-actions .btn-secondary {
+  display: inline-flex;
+  flex: 0 1 auto;
+  min-height: 48px;
+  padding: 11px 16px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #cbd5e1;
+  border-radius: 11px;
+  background: #fff;
+  color: #334155;
+  font-size: .9rem;
+  font-weight: 650;
+  text-decoration: none;
+}
+.manual-payment-page .payment-actions .btn-secondary:hover { background: #f8fafc; }
+.manual-payment-page .message { line-height: 1.6; }
+
+/* Payment breakdown: white and slate instead of dark navy.
+   JS still toggles individual rows for walk-in vs Facebook/Messenger. */
+.manual-payment-page .payment-breakdown {
+  display: block;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--manual-text);
+}
+.manual-payment-page .payment-row {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 0;
+  padding: 12px 0;
+  border: 0;
+  border-bottom: 1px solid var(--manual-border);
+  font-size: .87rem;
+  line-height: 1.5;
+}
+.manual-payment-page .payment-row:last-child {
+  margin: 0;
+  padding-top: 13px;
+  border-top: 0;
+  font-weight: 700;
+}
+.manual-payment-page .payment-row span {
+  min-width: 0;
+  color: #475569;
+}
+.manual-payment-page .payment-row strong {
+  color: var(--manual-text);
+  text-align: right;
+  overflow-wrap: anywhere;
+  font-weight: 750;
+  font-size: .9rem;
+  font-variant-numeric: tabular-nums;
+}
+.manual-payment-page #paymentTotalDueRow,
+.manual-payment-page #paymentTotalCollectedRow {
+  border-bottom: 0;
+  font-weight: 750;
+}
+.manual-payment-page #paymentTotalDueRow span,
+.manual-payment-page #paymentTotalCollectedRow span { font-weight: 700; }
+
+/* The dynamic "Amount to Pay Now" element is injected by the existing JS.
+   Higher-specificity rules intentionally override its legacy style tag,
+   without editing any business logic or the generated live amounts. */
+.manual-payment-page .payment-due-highlight {
+  padding: 17px 16px;
+  margin: 0 0 12px;
+  border: 1px solid #99f6e4;
+  border-radius: 12px;
+  background: var(--manual-teal-tint);
+  color: var(--manual-text);
+  box-shadow: none;
+}
+.manual-payment-page .payment-due-highlight__label {
+  color: #115e59;
+  font-size: .75rem;
+  font-weight: 750;
+  letter-spacing: .035em;
+  line-height: 1.5;
+}
+.manual-payment-page .payment-due-highlight__amount {
+  margin: 4px 0 5px;
+  color: var(--manual-teal);
+  font-size: clamp(1.55rem, 2.6vw, 2rem);
+  font-weight: 800;
+  line-height: 1.2;
+}
+.manual-payment-page .payment-due-highlight__description {
+  color: #115e59;
+  font-size: .84rem;
+  font-weight: 600;
+  line-height: 1.55;
+}
+.manual-payment-page .payment-due-highlight__later {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #ccfbf1;
+  color: #475569;
+  font-size: .83rem;
+  line-height: 1.6;
+}
+
+/* Cash/GCash/Maya rules remain readable but no longer look like errors. */
+.manual-payment-page .payment-note,
+.manual-payment-page .payment-note.success-note {
+  margin-top: 15px;
+  padding: 13px 14px;
+  border: 1px solid var(--manual-border);
+  border-radius: 11px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: .83rem;
+  line-height: 1.65;
+}
+.manual-payment-page .payment-note strong { color: var(--manual-text); }
+.manual-payment-page .payment-note.success-note {
+  border-color: #ccfbf1;
+  background: #f0fdfa;
+  color: #115e59;
+}
+.manual-payment-page .payment-note.success-note strong { color: #115e59; }
+
+@media (max-width: 960px) {
+  /* Always show the amount/rules before staff chooses a method on mobile. */
+  .manual-payment-page .payment-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "summary" "breakdown" "details";
+    gap: 14px;
+  }
+  .manual-payment-page .payment-wrapper {
+    width: min(720px, calc(100% - 30px));
+  }
+}
+@media (max-width: 560px) {
+  .manual-payment-page .payment-wrapper {
+    width: calc(100% - 24px);
+    margin-bottom: 38px;
+  }
+  .manual-payment-page .payment-hero h1 { font-size: 1.63rem; }
+  .manual-payment-page .payment-hero { margin-bottom: 16px; }
+  .manual-payment-page .payment-grid > .section-box {
+    padding: 18px 15px;
+    border-radius: 14px;
+  }
+  .manual-payment-page .payment-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 15px;
+  }
+  .manual-payment-page .payment-actions { flex-direction: column; }
+  .manual-payment-page #submitPaymentBtn,
+  .manual-payment-page .payment-actions .btn-secondary {
+    flex: none;
+    width: 100%;
+  }
+  .manual-payment-page .payment-row { gap: 10px; }
+  .manual-payment-page .payment-row span,
+  .manual-payment-page .payment-row strong { font-size: .82rem; }
+  .manual-payment-page .payment-due-highlight { padding: 14px 12px; }
+  .manual-payment-page .payment-due-highlight__amount { font-size: 1.6rem; }
+  .manual-payment-page .payment-form-group input,
+  .manual-payment-page .payment-form-group select,
+  .manual-payment-page .payment-form-group textarea { font-size: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .manual-payment-page .payment-actions button,
+  .manual-payment-page .back-btn { transition: none; }
+}

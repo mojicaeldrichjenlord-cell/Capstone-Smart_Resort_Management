@@ -332,7 +332,7 @@ async function cancelBooking(bookingId) {
 function isCancellationAllowed(booking) {
   const status = String(booking.status || "").toLowerCase();
 
-  if (["cancelled", "rejected", "completed"].includes(status)) {
+  if (["cancelled", "rejected", "completed", "no_show"].includes(status)) {
     return false;
   }
 
@@ -399,7 +399,7 @@ function getStatusBadgeStyles(status) {
     return "background:#fee2e2;color:#991b1b;border:1px solid #fecaca;";
   }
 
-  if (status === "cancelled") {
+  if (status === "cancelled" || status === "no_show") {
     return "background:#e5e7eb;color:#374151;border:1px solid #d1d5db;";
   }
 
@@ -609,6 +609,7 @@ function formatReservationStatus(status) {
   if (value === "cancelled") return "Cancelled";
   if (value === "completed") return "Completed";
   if (value === "rejected") return "Rejected";
+  if (value === "no_show") return "No-Show";
 
   return capitalize(value.replaceAll("_", " "));
 }
