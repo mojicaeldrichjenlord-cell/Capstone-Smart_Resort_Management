@@ -45,6 +45,10 @@ function guestCountFromText(value) {
 function isVerifiedPreviewRequest(message) {
   const text = String(message || "");
   if (hasPreviewWords(text)) return true;
+  // "May CR ba sa Pool Shade?" remains an amenity question, not a
+  // discovery request. Explicit photos/previews still take priority.
+  if (/\b(?:magkano|presyo|price|rates?|how much|cr|bathroom|toilet|aircon|air condition|amenit(?:y|ies)|inclusions?|kitchen|wifi|parking|free entrance)\b/i.test(text))
+    return false;
   // A specific large-group accommodation recommendation should also show
   // options, even if the customer did not literally say "preview".
   const category = requestedCategory(text);
