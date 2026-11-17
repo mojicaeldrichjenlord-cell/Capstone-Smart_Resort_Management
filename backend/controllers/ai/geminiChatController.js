@@ -13,6 +13,8 @@ const { isFreeEntranceQuestion, explicitEntranceRoomName, verifiedFreeEntranceRe
 const { wantsFocusedRoomOverview, focusedRoomOverview } = require("./aiAccommodationDetails");
 const { isVerifiedPreviewRequest, selectVerifiedPreviews, verifiedPreviewReply } =
   require("./aiVerifiedPreview");
+const { isRoomPaymentInquiry, resolvePaymentRoom, paymentReply } =
+  require("./aiFocusedPaymentReply");
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -1024,6 +1026,35 @@ exports.chatWithGemini = async (req, res) => {
         catalog_recommendations: [],
         alternative_dates: [],
         booking_preview: null,
+      });
+    }
+
+    // Price/payment follow-ups must use the selected accommodation's CURRENT
+    // DB rates. "Payment options" is not a request for unrelated cheap
+    // cottages; don't send recommendation cards. Never promise a live slot,
+    // quote an entrance fee as part of the 50% deposit or create a booking.
+    if (isRoomPaymentInquiry(message)) {
+      const savedContext = req.body.context &&
+        typeof req.body.context === "object" && !Array.isArray(req.body.context)
+        ? req.body.context : {};
+      const recent = normalizeRecentTurns(req.body.recent_turns);
+      const catalog = await getAccommodationCatalog();
+      const room = resolvePaymentRoom(catalog, message, savedContext, recent);
+      const language = normalizeLanguageStyle(req.body.voice_language) ||
+        detectLanguageFromMessage(message) ||
+        normalizeLanguageStyle(req.body.language_style) ||
+        normalizeLanguageStyle(savedContext.language_style) || "english";
+      const nextContext = mergeContext(savedContext, {
+        language_style: language,
+        ...(room ? { room_id: room.id, room_name: room.room_name } : {}),
+      });
+      return res.status(200).json({
+        success: true, mode: "verified_accommodation_payment",
+        reply: paymentReply(message, nextContext, room, language),
+        extracted_context: nextContext,
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null,
+        recommendation_cards: [],
       });
     }
 
