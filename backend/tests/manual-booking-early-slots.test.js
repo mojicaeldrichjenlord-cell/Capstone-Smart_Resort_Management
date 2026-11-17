@@ -263,7 +263,7 @@ test("After removal, re-added item keeps stable identity and populates its own s
   const document = {
     querySelectorAll: selector => selector === ".booking-item-card" ? cards : [],
     querySelector: selector => {
-      const id = /data-item-id="(\\d+)"/.exec(selector)?.[1];
+      const id = /data-item-id="(\d+)"/.exec(selector)?.[1];
       return cards.find(c => c.dataset.itemId === id) || null;
     },
   };
