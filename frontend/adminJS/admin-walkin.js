@@ -353,6 +353,25 @@ function renderManualSlotStatuses(card, results = null) {
   if (!select || !hint) return;
   const candidateRoom = getAccommodationById(Number(card.querySelector(".accommodation-value")?.value || 0));
   const date = String(card.querySelector(".date-input")?.value || "");
+  // The room may be selected while the native dropdown still contains only
+  // its placeholder after dynamic item insertion or a stale card lookup.
+  // Restore four real slot choices before labeling their availability.
+  if (candidateRoom) {
+    const expected = getSlotOptions(candidateRoom);
+    const actual = new Set([...select.options].map(option => option.value));
+    if (expected.some(slot => !actual.has(slot.value))) {
+      const previousSlot = select.value;
+      populateSlotOptions(Number(card.dataset.itemId), card);
+      if (expected.some(slot => slot.value === previousSlot)) {
+        select.value = previousSlot;
+        populateStayDurationOptions(Number(card.dataset.itemId), card);
+      }
+    }
+    const capacity = card.querySelector(".capacity-display");
+    if (capacity && (!capacity.value || capacity.value === "-")) {
+      capacity.value = candidateRoom.max_capacity || 0;
+    }
+  }
   if (!candidateRoom || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
     hint.dataset.state = "incomplete";
     hint.textContent = "Select an accommodation and date to check time slots.";
@@ -578,7 +597,7 @@ function applyManualReservationDateRules() {
     const itemId = Number(card?.dataset?.itemId || 0);
 
     if (itemId) {
-      updateItemPreview(itemId);
+      updateItemPreview(itemId, card);
     }
   });
   scheduleAllManualSlotChecks();
@@ -907,8 +926,8 @@ function addBookingItem(preselectedId = null) {
   }
 
   slotSelect.addEventListener("change", () => {
-    populateStayDurationOptions(itemId);
-    updateItemPreview(itemId);
+    populateStayDurationOptions(itemId, card);
+    updateItemPreview(itemId, card);
     updateSummary();
     warnIfSelectedScheduleEnded(itemId);
     scheduleAllManualSlotChecks();
@@ -916,7 +935,7 @@ function addBookingItem(preselectedId = null) {
 
   if (stayDurationSelect) {
     stayDurationSelect.addEventListener("change", () => {
-      updateItemPreview(itemId);
+      updateItemPreview(itemId, card);
       updateSummary();
       warnIfSelectedScheduleEnded(itemId);
       scheduleAllManualSlotChecks();
@@ -924,13 +943,13 @@ function addBookingItem(preselectedId = null) {
   }
 
   dateInput.addEventListener("input", () => {
-    updateItemPreview(itemId);
+    updateItemPreview(itemId, card);
     updateSummary();
     scheduleAllManualSlotChecks();
   });
 
   dateInput.addEventListener("change", () => {
-    updateItemPreview(itemId);
+    updateItemPreview(itemId, card);
     updateSummary();
     warnIfSelectedScheduleEnded(itemId);
     scheduleAllManualSlotChecks();
@@ -940,9 +959,9 @@ function addBookingItem(preselectedId = null) {
     setAccommodationSelection(card, itemId, preselectedId);
   }
 
-  populateSlotOptions(itemId);
-  populateStayDurationOptions(itemId);
-  updateItemPreview(itemId);
+  populateSlotOptions(itemId, card);
+  populateStayDurationOptions(itemId, card);
+  updateItemPreview(itemId, card);
   refreshTitles();
   applyManualReservationDateRules();
   scheduleAllManualSlotChecks();
@@ -1057,8 +1076,8 @@ function setAccommodationSelection(card, itemId, accommodationId) {
     label.textContent = `${accommodation.name} (${accommodation.category_name})`;
   }
 
-  populateSlotOptions(itemId);
-  updateItemPreview(itemId);
+  populateSlotOptions(itemId, card);
+  updateItemPreview(itemId, card);
   updateSummary();
   scheduleAllManualSlotChecks();
 }
@@ -1087,8 +1106,8 @@ function refreshAllAccommodationPickers() {
     if (!itemId) return;
 
     renderAccommodationOptions(card, itemId, "");
-    populateSlotOptions(itemId);
-    updateItemPreview(itemId);
+    populateSlotOptions(itemId, card);
+    updateItemPreview(itemId, card);
   });
 }
 
@@ -1208,15 +1227,15 @@ function restoreDraftIfAny() {
         const slotSelect = card.querySelector(".slot-select");
         const dateInput = card.querySelector(".date-input");
 
-        setAccommodationSelection(card, index + 1, Number(item.accommodation_id) || null);
+        setAccommodationSelection(card, Number(card.dataset.itemId), Number(item.accommodation_id) || null);
 
         slotSelect.value = item.slot_type || "";
-        populateStayDurationOptions(index + 1);
+        populateStayDurationOptions(Number(card.dataset.itemId), card);
         const stayDurationSelect = card.querySelector(".stay-duration-select");
         if (stayDurationSelect) stayDurationSelect.value = String(item.stay_duration || 1);
         dateInput.value = item.check_in_date || dateInput.value;
 
-        updateItemPreview(index + 1);
+        updateItemPreview(Number(card.dataset.itemId), card);
       });
     }
 
@@ -1228,28 +1247,12 @@ function restoreDraftIfAny() {
 }
 
 function refreshTitles() {
-  const cards = [...document.querySelectorAll(".booking-item-card")];
-
-  cards.forEach((card, index) => {
-    const newItemId = index + 1;
-
+  // Cards keep stable internal IDs even when their displayed order changes.
+  // Rewriting data-item-id would invalidate event handlers that captured the
+  // original ID, causing a newly added card's slots/capacity not to update.
+  document.querySelectorAll(".booking-item-card").forEach((card, index) => {
     const title = card.querySelector(".booking-item-title");
-
-    if (title) {
-      title.textContent = `Accommodation Item ${newItemId}`;
-    }
-
-    card.dataset.itemId = String(newItemId);
-
-    card.querySelectorAll("[data-item-id]").forEach((element) => {
-      element.dataset.itemId = String(newItemId);
-    });
-
-    const preview = card.querySelector(".slot-preview");
-
-    if (preview) {
-      preview.id = `slotPreview-${newItemId}`;
-    }
+    if (title) title.textContent = `Accommodation Item ${index + 1}`;
   });
 }
 
@@ -1350,8 +1353,8 @@ function getAllowedStayDurations(slotType) {
     : [1];
 }
 
-function populateStayDurationOptions(itemId) {
-  const card = document.querySelector(`.booking-item-card[data-item-id="${itemId}"]`);
+function populateStayDurationOptions(itemId, cardOverride = null) {
+  const card = cardOverride || document.querySelector(`.booking-item-card[data-item-id="${itemId}"]`);
   if (!card) return;
 
   const slotType = card.querySelector(".slot-select")?.value || "";
@@ -1376,20 +1379,23 @@ function populateStayDurationOptions(itemId) {
   staySelect.disabled = !canExtendStay;
 }
 
-function populateSlotOptions(itemId) {
-  const card = document.querySelector(`.booking-item-card[data-item-id="${itemId}"]`);
+function populateSlotOptions(itemId, cardOverride = null) {
+  // Prefer the actual card that triggered selection; never accidentally
+  // populate another item after add/remove/reorder.
+  const card = cardOverride || document.querySelector(`.booking-item-card[data-item-id="${itemId}"]`);
   if (!card) return;
 
   const accommodationValue = card.querySelector(".accommodation-value");
   const slotSelect = card.querySelector(".slot-select");
   const capacityDisplay = card.querySelector(".capacity-display");
 
+  if (!slotSelect || !capacityDisplay) return;
   const accommodation = getAccommodationById(accommodationValue?.value);
 
   if (!accommodation) {
     slotSelect.innerHTML = `<option value="">Select time slot</option>`;
     capacityDisplay.value = "-";
-    populateStayDurationOptions(itemId);
+    populateStayDurationOptions(itemId, card);
     return;
   }
 
@@ -1411,11 +1417,11 @@ function populateSlotOptions(itemId) {
       .join("")}
   `;
 
-  populateStayDurationOptions(itemId);
+  populateStayDurationOptions(itemId, card);
 }
 
-function updateItemPreview(itemId) {
-  const card = document.querySelector(
+function updateItemPreview(itemId, cardOverride = null) {
+  const card = cardOverride || document.querySelector(
     `.booking-item-card[data-item-id="${itemId}"]`
   );
 
@@ -1425,7 +1431,8 @@ function updateItemPreview(itemId) {
   const slotSelect = card.querySelector(".slot-select");
   const stayDurationSelect = card.querySelector(".stay-duration-select");
   const dateInput = card.querySelector(".date-input");
-  const preview = document.getElementById(`slotPreview-${itemId}`);
+  // Scope preview updates to this card (global ID lookup is fragile).
+  const preview = card.querySelector(".slot-preview");
 
   const accommodation = getAccommodationById(accommodationValue?.value);
 
