@@ -701,6 +701,136 @@ const AI_ROOM_IMAGE_FALLBACK = "data:image/svg+xml;charset=UTF-8," + encodeURICo
   '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360"><rect width="640" height="360" fill="#e2e8f0"/><text x="320" y="185" text-anchor="middle" font-family="Arial" font-size="24" fill="#475569">Photo unavailable</text></svg>'
 );
 
+// Verified image paths from the actual Git-tracked accommodation assets.
+// Resolve Windows/DB casing differences to their exact Vercel filenames.
+const AI_VERIFIED_STATIC_IMAGE_PATHS = [
+  "images/accommodations/Big-Nipa-Hut/Big-Nipa-Hut-10.jpg",
+  "images/accommodations/Big-Nipa-Hut/Big-Nipa-Hut-11.jpg",
+  "images/accommodations/Big-Nipa-Hut/Big-Nipa-Hut-12.jpg",
+  "images/accommodations/Big-Nipa-Hut/Big-Nipa-Hut-13.jpg",
+  "images/accommodations/Big-Nipa-Hut/Big-Nipa-Hut-14.jpg",
+  "images/accommodations/Big-Nipa-Hut/Big-Nipa-Hut-15.jpg",
+  "images/accommodations/Big-Nipa-Hut/Big-Nipa-Hut-16.jpg",
+  "images/accommodations/Big-Nipa-Hut/Big-Nipa-Hut-2.jpg",
+  "images/accommodations/Big-Nipa-Hut/Big-Nipa-Hut-3.jpg",
+  "images/accommodations/Big-Nipa-Hut/Big-Nipa-Hut-4.jpg",
+  "images/accommodations/Big-Nipa-Hut/Big-Nipa-Hut-5.jpg",
+  "images/accommodations/Big-Shade/Big-Shade-2.jpg",
+  "images/accommodations/Big-Shade/Big-Shade-4.jpg",
+  "images/accommodations/Big-Shade/Big-Shade-6.jpg",
+  "images/accommodations/Big-Shade/Big-Shade-7.jpg",
+  "images/accommodations/Big-Shade/Big-Shade-8.jpg",
+  "images/accommodations/Big-Shade/Big-Shade-9.jpg",
+  "images/accommodations/Double-Room/Double-Room-1.jpg",
+  "images/accommodations/Double-Room/Double-Room-2.jpg",
+  "images/accommodations/Double-Room/Double-Room-3.jpg",
+  "images/accommodations/Double-Room/Double-Room-4.jpg",
+  "images/accommodations/Double-Room/Double-Room-Cover.jpg",
+  "images/accommodations/Family-Room-A/family-room-a-1.jpg",
+  "images/accommodations/Family-Room-A/family-room-a-2.jpg",
+  "images/accommodations/Family-Room-A/family-room-a-3.jpg",
+  "images/accommodations/Family-Room-A/family-room-a-4.jpg",
+  "images/accommodations/Family-Room-A/family-room-a-5.jpg",
+  "images/accommodations/Family-Room-A/family-room-a-6.jpg",
+  "images/accommodations/Family-Room-A/family-room-a-cover.jpg",
+  "images/accommodations/Family-Room-B/family-room-b-1.jpg",
+  "images/accommodations/Family-Room-B/family-room-b-2.jpg",
+  "images/accommodations/Family-Room-B/family-room-b-3.jpg",
+  "images/accommodations/Family-Room-B/family-room-b-4.jpg",
+  "images/accommodations/Family-Room-B/family-room-b-5.jpg",
+  "images/accommodations/Family-Room-B/family-room-b-6.jpg",
+  "images/accommodations/Family-Room-B/family-room-b-7.jpg",
+  "images/accommodations/Family-Room-B/family-room-b-cover.jpg",
+  "images/accommodations/Function-Area/Beach-Pavillion.jpg",
+  "images/accommodations/Function-Area/Pool-Pavillion.jpg",
+  "images/accommodations/Pool-Shade/Pool-Shade-A.jpg",
+  "images/accommodations/Pool-Shade/Pool-Shade-C.jpg",
+  "images/accommodations/Pool-Shade/Pool-Shade-D.jpg",
+  "images/accommodations/Pool-Shade/Pool-Shade-E.jpg",
+  "images/accommodations/Pool-Shade/Pool-Shade-G.jpg",
+  "images/accommodations/Pool-Shade/Pool-Shade-H.jpg",
+  "images/accommodations/Single-Room-Cottage/single-room-1.jpg",
+  "images/accommodations/Single-Room-Cottage/single-room-2.jpg",
+  "images/accommodations/Single-Room-Cottage/single-room-cottage-1.jpg",
+  "images/accommodations/Single-Room-Cottage/single-room-cottage-2.jpg",
+  "images/accommodations/Single-Room-Cottage/single-room-cottage-3.jpg",
+  "images/accommodations/Single-Room-Cottage/single-room-cottage-4.jpg",
+  "images/accommodations/Single-Room-Cottage/single-room-cottage-5.jpg",
+  "images/accommodations/Single-Room-Cottage/single-room-cover.jpg",
+  "images/accommodations/Single-Room-Poolside/Single-Room-Poolside-1.jpg",
+  "images/accommodations/Single-Room-Poolside/Single-Room-Poolside-2.jpg",
+  "images/accommodations/Single-Room-Poolside/Single-Room-Poolside-3.jpg",
+  "images/accommodations/Single-Room-Poolside/Single-Room-Poolside-A.jpg",
+  "images/accommodations/Single-Room-Poolside/Single-Room-Poolside-B.jpg",
+  "images/accommodations/Single-Room-Poolside/Single-Room-Poolside-C.jpg",
+  "images/accommodations/Single-Room-Poolside/Single-Room-Poolside-Cover.jpg",
+  "images/accommodations/Single-Room-Poolside/Single-Room-Poolside-D.jpg",
+  "images/accommodations/Single-Room-Poolside/Single-Room-Poolside-E.jpg",
+  "images/accommodations/Single-Room-Poolside/Single-Room-Poolside-F.jpg",
+  "images/accommodations/Small-Nipa-Hut/Small-Nipa-Hut-2.jpg",
+  "images/accommodations/Small-Nipa-Hut/Small-Nipa-Hut-3.jpg",
+  "images/accommodations/Small-Nipa-Hut/Small-Nipa-Hut-4.jpg",
+  "images/accommodations/Small-Nipa-Hut/Small-Nipa-Hut-7.jpg",
+  "images/accommodations/Small-Nipa-Hut/Small-Nipa-Hut-8.jpg",
+  "images/accommodations/Small-Shade/Small-Shade-1.jpg",
+  "images/accommodations/Small-Shade/Small-Shade-10.jpg",
+  "images/accommodations/Small-Shade/Small-Shade-10A.jpg",
+  "images/accommodations/Small-Shade/Small-Shade-11.jpg",
+  "images/accommodations/Small-Shade/Small-Shade-11A.jpg",
+  "images/accommodations/Small-Shade/Small-Shade-12.jpg",
+  "images/accommodations/Small-Shade/Small-Shade-12A.jpg",
+  "images/accommodations/Small-Shade/Small-Shade-13.jpg",
+  "images/accommodations/Small-Shade/Small-Shade-13A.jpg",
+  "images/accommodations/Small-Shade/Small-Shade-14.jpg",
+  "images/accommodations/Small-Shade/Small-Shade-14A.jpg",
+  "images/accommodations/Small-Shade/Small-Shade-1A.jpg",
+  "images/accommodations/Small-Shade/Small-Shade-3.jpg",
+  "images/accommodations/Small-Shade/Small-Shade-3A.jpg",
+  "images/accommodations/Small-Shade/Small-Shade-5.jpg",
+  "images/accommodations/Small-Shade/Small-Shade-5A.jpg"
+];
+const AI_STATIC_IMAGE_CASE = new Map(
+  AI_VERIFIED_STATIC_IMAGE_PATHS.map(path => [path.toLowerCase(), path])
+);
+
+// Name-specific fallback for legacy DB cover paths. Never borrow a different
+// accommodation's photo or guess that a non-existent asset is present.
+function verifiedAiRoomStaticPhoto(room) {
+  const name = String(room?.name || "").normalize("NFKC").toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ").trim();
+  let candidate = "";
+  let match;
+  if ((match = name.match(/^family room ([ab])$/))) {
+    const letter = match[1];
+    candidate = "images/accommodations/Family-Room-" + letter.toUpperCase() +
+      "/family-room-" + letter + "-cover.jpg";
+  } else if ((match = name.match(/^double room ([1-4])$/))) {
+    candidate = "images/accommodations/Double-Room/Double-Room-" + match[1] + ".jpg";
+  } else if (name === "double room") {
+    candidate = "images/accommodations/Double-Room/Double-Room-Cover.jpg";
+  } else if ((match = name.match(/^single room cottage ([1-5])$/))) {
+    candidate = "images/accommodations/Single-Room-Cottage/single-room-cottage-" + match[1] + ".jpg";
+  } else if ((match = name.match(/^single room pool side ([a-f])$/))) {
+    candidate = "images/accommodations/Single-Room-Poolside/Single-Room-Poolside-" +
+      match[1].toUpperCase() + ".jpg";
+  } else if ((match = name.match(/^big shade (\d+) (?:cottage)?$/))) {
+    candidate = "images/accommodations/Big-Shade/Big-Shade-" + match[1] + ".jpg";
+  } else if ((match = name.match(/^small shade (\d+a?) (?:cottage)?$/))) {
+    candidate = "images/accommodations/Small-Shade/Small-Shade-" + match[1].toUpperCase() + ".jpg";
+  } else if ((match = name.match(/^big nipa hut (\d+)$/))) {
+    candidate = "images/accommodations/Big-Nipa-Hut/Big-Nipa-Hut-" + match[1] + ".jpg";
+  } else if ((match = name.match(/^small nipa hut (\d+)$/))) {
+    candidate = "images/accommodations/Small-Nipa-Hut/Small-Nipa-Hut-" + match[1] + ".jpg";
+  } else if ((match = name.match(/^pool shade ([a-z])$/))) {
+    candidate = "images/accommodations/Pool-Shade/Pool-Shade-" + match[1].toUpperCase() + ".jpg";
+  } else if (name === "beach pavilion" || name === "beach pavillion") {
+    candidate = "images/accommodations/Function-Area/Beach-Pavillion.jpg";
+  } else if (name === "pool pavilion" || name === "pool pavillion") {
+    candidate = "images/accommodations/Function-Area/Pool-Pavillion.jpg";
+  }
+  return AI_STATIC_IMAGE_CASE.get(candidate.toLowerCase()) || "";
+}
+
 function resolveAiRoomImage(value) {
   const image = String(value || "").trim();
   const base = AI_API_BASE.replace(/\/api\/?$/, "");
@@ -727,12 +857,14 @@ function resolveAiRoomImage(value) {
     const staticPath = cottage
       ? (cottage[1] || "") + "images/accommodations/Single-Room-Cottage/single-room-cottage-" + cottage[2] + ".jpg"
       : clean;
-
+    const withoutFrontend = staticPath.replace(/^frontend\//i, "");
+    const canonicalPath = AI_STATIC_IMAGE_CASE.get(withoutFrontend.toLowerCase()) ||
+      withoutFrontend;
     // Match Customer Accommodations: root-relative on Vercel, /frontend/
     // prefix in the local project-root VS Code Live Server.
     const pathname = typeof window !== "undefined" ? window.location.pathname : "";
     const prefix = /^\/frontend\//i.test(pathname) ? "/frontend/" : "/";
-    return prefix + staticPath.replace(/^frontend\//i, "");
+    return prefix + canonicalPath;
   }
   return AI_ROOM_IMAGE_FALLBACK;
 }
@@ -747,6 +879,7 @@ function setAiRecommendationPhoto(img, room) {
   const attempted = new Set();
   const candidates = [];
   let detailChecked = false;
+  let triedVerifiedStatic = false;
 
   function addCandidate(value) {
     const src = resolveAiRoomImage(value);
@@ -786,6 +919,16 @@ function setAiRecommendationPhoto(img, room) {
       // A response image may be blank or too short to contain real data.
       void loadRoomImages();
       return;
+    }
+    if (!triedVerifiedStatic) {
+      triedVerifiedStatic = true;
+      // Use ONLY the verified asset corresponding to this exact listing,
+      // after trying its actual DB cover and read-only gallery.
+      addCandidate(verifiedAiRoomStaticPhoto(room));
+      if (candidates.length) {
+        showNext();
+        return;
+      }
     }
     img.onerror = null;
     img.src = AI_ROOM_IMAGE_FALLBACK;
