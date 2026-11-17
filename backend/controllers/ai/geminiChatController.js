@@ -8,6 +8,7 @@ const { normalizeRecentTurns, wantsAccommodationCards, verifiedAccommodationCard
   require("./aiConversationStyle");
 const { requestedAmenity, amenityReply } = require("./aiAccommodationAmenities");
 const { generalCategoryAmenitiesReply } = require("./aiAccommodationCategoryPolicy");
+const { isFreeEntranceQuestion, explicitEntranceRoomName, verifiedFreeEntranceReply } = require("./aiAccommodationEntrance");
 const { wantsFocusedRoomOverview, focusedRoomOverview } = require("./aiAccommodationDetails");
 
 const ai = new GoogleGenAI({
@@ -1071,6 +1072,62 @@ exports.chatWithGemini = async (req, res) => {
         matched_rooms: [], catalog_recommendations: [],
         alternative_dates: [], booking_preview: null, recommendation_cards: [],
       });
+    }
+
+    // FREE ENTRANCE — answer from the CURRENT database free_entrance_pax,
+    // never from memory, the room capacity, the listed amenities, or Gemini.
+    // This is a read-only shortcut; bookings still enforce entrance fees.
+    if (isFreeEntranceQuestion(message)) {
+      const explicitName = explicitEntranceRoomName(message);
+      const rawSelectedId = req.body?.context?.room_id ?? req.body?.room_id;
+      const selectedId = Number(rawSelectedId);
+      const validSelectedId = Number.isSafeInteger(selectedId) && selectedId > 0;
+      const selectedName = String(
+        req.body?.context?.room_name ?? req.body?.room_name ?? ""
+      ).trim();
+      const hasSelectedName = selectedName.length > 0 && selectedName.length <= 110;
+      // Explicitly named accommodation overrides an older focused room.
+      // If the user names an unrecognized room, do not silently answer for
+      // some OTHER selected accommodation.
+      const namesAnotherRoom = /\\b(?:single|double|family)\\s+room\\b/i.test(message) &&
+        !explicitName;
+      if (!namesAnotherRoom && (explicitName || validSelectedId || hasSelectedName)) {
+        const sql = "SELECT id, name AS room_name, free_entrance_pax " +
+          "FROM accommodations WHERE " +
+          (explicitName ? "name = ? LIMIT 2" :
+            validSelectedId ? "id = ? LIMIT 1" : "name = ? LIMIT 2");
+        const [freeRows] = await db.promise().query(sql, [
+          explicitName || (validSelectedId ? selectedId : selectedName),
+        ]);
+        const record = (explicitName || !validSelectedId)
+          ? (freeRows.length === 1 ? freeRows[0] : null)
+          : freeRows[0];
+        // Room IDs can be reassigned: do not trust old selected names.
+        if (record && (explicitName ||
+            !hasSelectedName ||
+            String(record.room_name).trim().toLowerCase() === selectedName.toLowerCase())) {
+          const language = normalizeLanguageStyle(req.body.voice_language) ||
+            (/\\b(?:ilang|ilan|may|meron|ba|po|kasama|libreng?|sa|ng)\\b/i.test(message)
+              ? "taglish" : null) ||
+            detectLanguageFromMessage(message) ||
+            normalizeLanguageStyle(req.body.language_style) ||
+            normalizeLanguageStyle(req.body.context?.language_style) || "english";
+          const savedContext = req.body.context &&
+            typeof req.body.context === "object" && !Array.isArray(req.body.context)
+            ? req.body.context : {};
+          return res.status(200).json({
+            success: true,
+            mode: "verified_accommodation_free_entrance",
+            reply: verifiedFreeEntranceReply(record, language),
+            extracted_context: mergeContext(savedContext, {
+              room_id: record.id, room_name: record.room_name,
+              language_style: language,
+            }),
+            matched_rooms: [], catalog_recommendations: [],
+            alternative_dates: [], booking_preview: null, recommendation_cards: [],
+          });
+        }
+      }
     }
 
     // Amenity questions about the selected room use the FRESH Admin-managed
