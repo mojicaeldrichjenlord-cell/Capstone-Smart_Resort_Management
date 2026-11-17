@@ -1595,7 +1595,26 @@ exports.chatWithGemini = async (req, res) => {
       mergedContext.language_style === "tagalog"
         ? "Reply in natural Tagalog."
         : mergedContext.language_style === "taglish"
-        ? "Reply in natural Taglish (Filipino and English)."
+        ? [
+          "Reply in casual, everyday Filipino-English Taglish used by friendly",
+          "Philippine resort front-desk staff. Simple, natural, warm, and polite;",
+          "not formal Tagalog and not a literal Filipino translation of English.",
+          "Use normal words like room, booking, schedule, available, preview,",
+          "payment, downpayment, balance, check-in, overnight, rate, and details.",
+          "Address guests politely with po and kayo when natural, but avoid",
+          "repeating ninyo or po unnaturally in every clause.",
+          "Avoid stiff or deep words like maaari, inyong, natitirang halaga,",
+          "nakasaad, sa pamamagitan ng, matutulungan namin kayong pumili,",
+          "nararapat, and a robotic scripted sales question after every answer.",
+          "Examples of tone ONLY (not facts):",
+          "'Yes po, may private CR yung room na yun.'",
+          "'Ito po yung preview. Click niyo lang yung View Details for photos.'",
+          "'₱X po yung listed overnight rate; ₱Y ang estimated downpayment.'",
+          "Answer the guest's actual question first. Use 1-2 short sentences",
+          "for normal chat or voice; payment breakdowns may need 3.",
+          "Never alter verified room details, pricing, payment policies,",
+          "booking constraints, or safety limitations for a casual tone."
+        ].join(" ")
         : mergedContext.language_style === "spanish"
         ? "Reply entirely in natural Spanish."
         : mergedContext.language_style === "mandarin"
@@ -1635,8 +1654,9 @@ Current resort date: ${resortToday} (Asia/Manila, Philippines).
 - Never use old example dates (for example, a year that has already passed).
 - Prefer asking for the guest's actual check-in date without inventing sample dates.
 - If a date example is essential, use an explicitly hypothetical FUTURE date after the current resort date.
-- For Tagalog or Taglish, consistently address guests politely using "po", "kayo", and "ninyo"; do not casually switch to "mo" or "ka".
-- When answering in Tagalog or Taglish, use short, natural customer-service phrasing instead of mixed formal/informal wording.
+- For Tagalog: use polite, clear Filipino.
+- For Taglish: use simple everyday Filipino plus familiar English service/booking terms. Polite "po" and "kayo" are enough; natural "niyo" or "yung" are fine. Never force deep Tagalog or excessively repeat "ninyo".
+- Never change the source facts, numeric amounts, room identities, or availability status just to sound casual.
 
 ${fixedVoiceLanguage ? `
 LIVE SPOKEN CONVERSATION (important):
