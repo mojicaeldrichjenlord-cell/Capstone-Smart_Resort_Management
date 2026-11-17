@@ -21,6 +21,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupLogout();
   loadProfile(user.id);
   setupPasswordForm(user.id);
+  setupResortPricingSettings();
 });
 
 function getAuthorizedAdminProfileUser() {
@@ -203,7 +204,96 @@ function setupPasswordForm(userId) {
 }
 
 // ============================================================
-// SECTION 5: Message helper
+// SECTION 5: Admin-controlled resort pricing (persistent MySQL).
+// Only signed Admin sessions may update this server-owned value.
+// Front Desk uses a separate read-only API and cannot alter rate.
+// ============================================================
+function setupResortPricingSettings() {
+  const form = document.getElementById("extraGuestRateForm");
+  const input = document.getElementById("adminExtraGuestRate");
+  const saveBtn = document.getElementById("saveAdminExtraGuestRate");
+  const status = document.getElementById("adminExtraGuestRateStatus");
+  if (!form || !input || !saveBtn) return;
+
+  let latestSavedRate = null;
+  function setStatus(message) {
+    if (status) status.textContent = message;
+  }
+  function getAdminToken() {
+    const token = sessionStorage.getItem("adminToken");
+    if (!token) throw new Error("Admin session expired. Please log in again.");
+    return token;
+  }
+
+  async function loadRate() {
+    input.disabled = true;
+    saveBtn.disabled = true;
+    setStatus("Loading current resort pricing...");
+    try {
+      const response = await fetch(`${API_BASE}/guest-rate/admin`, {
+        headers: { Authorization: `Bearer ${getAdminToken()}` },
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Rate unavailable.");
+      const rate = Number(data.extra_guest_rate);
+      if (!Number.isFinite(rate) || rate < 0 || rate > 100000) {
+        throw new Error("Invalid stored guest rate.");
+      }
+      latestSavedRate = rate;
+      input.value = rate.toFixed(2);
+      input.disabled = false;
+      saveBtn.disabled = false;
+      setStatus(`Current Extra Guest Rate: ₱${rate.toFixed(2)} per pax.`);
+    } catch (error) {
+      setStatus("Rate unavailable. Saving disabled.");
+      showMessage(error.message || "Unable to load resort pricing.", "error");
+    }
+  }
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const newRate = Number(input.value);
+    if (!input.value.trim() || !Number.isFinite(newRate) ||
+        newRate < 0 || newRate > 100000 ||
+        Math.round(newRate * 100) !== newRate * 100) {
+      showMessage("Enter a rate from ₱0 to ₱100,000 with up to 2 decimals.", "error");
+      return;
+    }
+    if (latestSavedRate !== null && newRate === latestSavedRate) {
+      showMessage("Extra guest rate is already up to date.", "success");
+      return;
+    }
+    saveBtn.disabled = true;
+    input.disabled = true;
+    setStatus("Saving rate...");
+    try {
+      const response = await fetch(`${API_BASE}/guest-rate/admin`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getAdminToken()}`,
+        },
+        body: JSON.stringify({ extra_guest_rate: newRate }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || "Unable to save rate.");
+      latestSavedRate = Number(data.extra_guest_rate);
+      input.value = latestSavedRate.toFixed(2);
+      showMessage(data.message || "Resort rate updated.", "success");
+      setStatus(`Current Extra Guest Rate: ₱${latestSavedRate.toFixed(2)} per pax.`);
+    } catch (error) {
+      showMessage(error.message || "Unable to save resort pricing.", "error");
+      setStatus("Rate not saved. Check resort pricing storage and try again.");
+    } finally {
+      input.disabled = false;
+      saveBtn.disabled = false;
+    }
+  });
+  void loadRate();
+}
+
+// ============================================================
+// SECTION 6: Message helper
 // Uses toast if available, otherwise alert.
 // ============================================================
 
