@@ -11,6 +11,8 @@ const { generalCategoryAmenitiesReply } = require("./aiAccommodationCategoryPoli
 const { isNaturalRoomDetailsQuestion, naturalRoomDetailsReply } = require("./aiNaturalRoomDetails");
 const { isFreeEntranceQuestion, explicitEntranceRoomName, verifiedFreeEntranceReply } = require("./aiAccommodationEntrance");
 const { wantsFocusedRoomOverview, focusedRoomOverview } = require("./aiAccommodationDetails");
+const { isVerifiedPreviewRequest, selectVerifiedPreviews, verifiedPreviewReply } =
+  require("./aiVerifiedPreview");
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -1047,6 +1049,45 @@ exports.chatWithGemini = async (req, res) => {
         extracted_context: policyContext,
         matched_rooms: [], catalog_recommendations: [],
         alternative_dates: [], booking_preview: null,
+      });
+    }
+
+    // Natural "may preview ba?", named-room photos and capacity/category
+    // recommendations are served from FRESH DB listings. Never ask Gemini to
+    // invent photos, room IDs or prices, and never create a reservation here.
+    // This also handles large-group cottage questions with honest Function
+    // Area alternatives when no cottage has the requested listed capacity.
+    if (isVerifiedPreviewRequest(message)) {
+      const savedContext = req.body.context &&
+        typeof req.body.context === "object" && !Array.isArray(req.body.context)
+        ? req.body.context : {};
+      const language = normalizeLanguageStyle(req.body.voice_language) ||
+        (/\b(?:may|anong|ano|mga|para|sa|po|patingin|pakita|larawan|litrato|tao)\b/i.test(String(message))
+          ? "taglish" : null) ||
+        detectLanguageFromMessage(message) ||
+        normalizeLanguageStyle(req.body.language_style) ||
+        normalizeLanguageStyle(savedContext.language_style) || "english";
+      const previewCatalog = await getAccommodationCatalog();
+      const selection = selectVerifiedPreviews(
+        previewCatalog, message, normalizeRecentTurns(req.body.recent_turns), savedContext,
+      );
+      const nextContext = { ...savedContext, language_style: language };
+      if (selection.specific && selection.rows.length === 1) {
+        nextContext.room_id = selection.rows[0].id;
+        nextContext.room_name = selection.rows[0].room_name;
+      } else if (selection.category) {
+        // A new category search must not remain locked to an older room.
+        delete nextContext.room_id;
+        delete nextContext.room_name;
+      }
+      if (selection.requestedGuests) nextContext.guests = selection.requestedGuests;
+      return res.status(200).json({
+        success: true, mode: "verified_accommodation_preview",
+        reply: verifiedPreviewReply(selection, language),
+        extracted_context: nextContext,
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null,
+        recommendation_cards: verifiedAccommodationCards(selection.rows, false),
       });
     }
 
