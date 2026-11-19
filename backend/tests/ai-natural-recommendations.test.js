@@ -374,3 +374,47 @@ test("AI-LIVE-05 cheapest follow-up uses recent category without stale group fil
   const group = pickCheapestRows(rows, targeted);
   assert.equal(group.items[0].room.id, 3);
 });
+
+
+// UI-27 is presentation-only, including truly clickable starter questions.
+// These checks prevent accidentally reintroducing the high-floating window,
+// missing the mobile viewport constraint or displaying fake read-only chips.
+test("UI-27 customer chatbot docks to lower-right and keeps a responsive branded header", () => {
+  const css = fs.readFileSync(
+    path.join(__dirname, "../../frontend/sharedCSS/ai-chat-airy.css"), "utf8");
+  assert.match(css, /UI-27 — Docked resort concierge/);
+  assert.match(css, /bottom:\s*max\(8px, env\(safe-area-inset-bottom\)\)/);
+  assert.match(css, /right:\s*10px/);
+  assert.match(css, /box-shadow:\s*0 8px 30px rgba\(18, 43, 60, \.14\)/);
+  assert.match(css, /linear-gradient\(112deg, #172554 0%, #164766 57%, #0f766e 100%\)/);
+  assert.match(css, /\.ai-assistant-brand/);
+  assert.match(css, /@media \(max-width: 560px\)/);
+  assert.match(css, /top: max\(8px, env\(safe-area-inset-top\)\)/);
+  assert.match(css, /\.ai-quick-question:hover/);
+  for (const page of ["index.html", "rooms.html"]) {
+    const html = fs.readFileSync(
+      path.join(__dirname, "../../frontend/customerHTML", page), "utf8");
+    assert.match(html, /class="ai-assistant-brand"/, page);
+    assert.match(html, /Arvic Seaside Resort AI Assistant/, page);
+    assert.match(html, /ai-chat-airy\.css\?v=20261119-ui27/, page);
+    assert.match(html, /ai-chat\.js\?v=20261119-ui27/, page);
+    assert.match(html, /id="aiChatMaximize"/, page);
+    assert.match(html, /id="aiChatClose"/, page);
+    assert.match(html, /id="aiMicBtn"/, page);
+  }
+});
+
+test("UI-27 starter chips are real message actions and never pollute restored chat history", () => {
+  const src = fs.readFileSync(
+    path.join(__dirname, "../../frontend/js/ai-chat.js"), "utf8");
+  assert.match(src, /function appendAiStarterSuggestions\(messages\)/);
+  assert.match(src, /button\.addEventListener\("click", \(\) => \{/);
+  assert.match(src, /input\.value = question/);
+  assert.match(src, /wrapper\.remove\(\);\s*sendAiMessage\(\)/);
+  assert.match(src, /document\.getElementById\("aiQuickQuestions"\)\?\.remove\(\)/);
+  assert.match(src, /if \(!history\.length\) \{/);
+  assert.match(src, /appendAiStarterSuggestions\(messages\)/);
+  assert.match(src, /restoreChatHistory\(\)/);
+  // No live server, database, wallet or Gemini call is created by page init.
+  assert.doesNotMatch(src, /appendAiStarterSuggestions\(messages\)[\s\S]{0,80}fetch\(/);
+});
