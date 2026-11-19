@@ -69,6 +69,34 @@ substitute("../config/db", {
         }
         if (/FROM accommodations a\b/i.test(sql) &&
             /NOT EXISTS\b/i.test(sql)) return [returnedRooms];
+        // Exact cheapest-price path: mock the SAME category/status/slot and
+        // SQL ordering requirements, not the normal 150-row catalog.
+        if (/FROM accommodations a\b/i.test(sql) &&
+            /ORDER BY (?:LEAST\(|CASE WHEN a\.(?:day_price|overnight_price) > 0)/i.test(sql) &&
+            /LIMIT 6\b/i.test(sql)) {
+          const categories = sql.includes("IN (")
+            ? params.filter(x => ["room", "cottage", "function area"].includes(x))
+            : [];
+          const lastParam = params.at(-1);
+          const hasGuests = /a\.max_capacity >= \?/i.test(sql);
+          const requiredGuests = hasGuests ? Number(lastParam) : 0;
+          const dayOnly = /AND a\.day_price > 0 ORDER BY/i.test(sql);
+          const nightOnly = /AND a\.overnight_price > 0 ORDER BY/i.test(sql);
+          const rate = row => {
+            const day = Number(row.day_price) > 0 ? Number(row.day_price) : Infinity;
+            const night = Number(row.overnight_price) > 0
+              ? Number(row.overnight_price) : Infinity;
+            return dayOnly ? day : nightOnly ? night : Math.min(day, night);
+          };
+          return [catalogRows.filter(room =>
+            String(room.status).toLowerCase() === "available" &&
+            (!categories.length ||
+              categories.includes(String(room.category_name).toLowerCase())) &&
+            (!hasGuests || Number(room.capacity) >= requiredGuests) &&
+            Number.isFinite(rate(room)))
+            .sort((a,b) => rate(a) - rate(b) || Number(a.id) - Number(b.id))
+            .slice(0, 6)];
+        }
         // Simulate the fresh read-only grouped COUNT(*) endpoint. This mock
         // uses ALL current catalogRows, not the unrelated 150-card preview cap.
         if (/COUNT\(\*\) AS accommodation_count/i.test(sql) &&
@@ -203,6 +231,136 @@ test("AI chat with missing message is rejected without DB access", async () => {
 // AI-LIVE-04: A "how many" question must never be misrouted to photo previews.
 // Count ALL current DB records (including maintenance) and distinguish them
 // from admin-listed status and still-unverified date/time slots.
+// AI-LIVE-05: The screenshot's cottage count -> cheapest follow-up must use
+// a fresh per-category DB sort. A cheap ROOM must never leak into cottages,
+// and overnight must not be quoted from the Day Tour field.
+test("AI-LIVE-05 count 45 cottages then cheapest follows cottage scope and exact prices", async () => {
+  catalogRows = Array.from({ length: 45 }, (_, i) => ({
+    ...exampleRoom, id: 100 + i, room_name: "Cottage " + (i + 1),
+    category_name: "Cottage", capacity: 10,
+    day_price: 2500 + i, overnight_price: 3500 + i,
+  }));
+  catalogRows.push(
+    { ...exampleRoom, id: 45, room_name: "Small Nipa Hut 2",
+      category_name: "Cottage", day_price: 800, overnight_price: 950 },
+    { ...exampleRoom, id: 46, room_name: "Cheap Unrelated Room",
+      category_name: "Room", day_price: 300, overnight_price: 400 },
+    { ...exampleRoom, id: 47, room_name: "Maintenance Cottage",
+      category_name: "Cottage", status: "maintenance",
+      day_price: 100, overnight_price: 150 },
+  );
+  // One cottage counted separately was substituted with the cheap Nipa Hut.
+  catalogRows.splice(0, 1);
+  const first = await post("/api/ai/chat", {
+    message: "Ilang cottages meron kayo?",
+  });
+  assert.equal(first.body.mode, "verified_accommodation_count");
+  assert.match(first.body.reply, /45 cottages/i);
+  queries = [];
+
+  const follow = await post("/api/ai/chat", {
+    message: "Ano naman ang pinakamura sa mga yun?",
+    context: first.body.extracted_context,
+    recent_turns: [
+      { role: "user", text: "Ilang cottages meron kayo?" },
+      { role: "assistant", text: first.body.reply },
+    ],
+  });
+  assert.equal(follow.status, 200);
+  assert.equal(follow.body.mode, "verified_cheapest_accommodation");
+  assert.match(follow.body.reply, /Small Nipa Hut 2/);
+  assert.match(follow.body.reply, /₱800\.00.*Day Tour/i);
+  assert.match(follow.body.reply, /Overnight: ₱950\.00/i);
+  assert.doesNotMatch(follow.body.reply,
+    /Cheap Unrelated Room|Maintenance Cottage|check.in|kailan.*balak/i);
+  assert.deepEqual(follow.body.recommendation_cards.map(x=>x.id), [45]);
+  assert.equal(follow.body.recommendation_cards[0].day_price, 800);
+  assert.equal(follow.body.recommendation_cards[0].overnight_price, 950);
+  assert.equal(follow.body.recommendation_cards[0].availability_verified, false);
+  assert.equal(follow.body.extracted_context.room_id, 45);
+  assert.equal(queries.length, 1);
+  assert.ok(queries.every(q => /^SELECT\b/i.test(q.sql)));
+  assert.match(queries[0].sql, /ORDER BY LEAST\(/i);
+  assert.match(queries[0].sql, /LIMIT 6\b/i);
+  assert.doesNotMatch(queries[0].sql, /reservation_items|LIMIT 150/i);
+  assert.equal(modelCalls, 0);
+});
+
+test("AI-LIVE-05 named cheapest replies reread Admin pricing, no cached ₱800", async () => {
+  catalogRows = [
+    { ...exampleRoom, id: 10, room_name: "Small Nipa Hut 1",
+      category_name: "Cottage", day_price: 800, overnight_price: 1600 },
+    { ...exampleRoom, id: 11, room_name: "Small Nipa Hut 2",
+      category_name: "Cottage", day_price: 900, overnight_price: 1000 },
+  ];
+  const payload = { message: "What's the cheapest cottage?" };
+  const first = await post("/api/ai/chat", payload);
+  assert.match(first.body.reply, /Small Nipa Hut 1/);
+  assert.match(first.body.reply, /₱800\.00/);
+  catalogRows[0].day_price = 1300;
+  queries = [];
+  const second = await post("/api/ai/chat", payload);
+  assert.equal(second.body.mode, "verified_cheapest_accommodation");
+  assert.match(second.body.reply, /Small Nipa Hut 2/);
+  assert.match(second.body.reply, /₱900\.00/);
+  assert.doesNotMatch(second.body.reply, /Small Nipa Hut 1|₱800\.00/);
+  assert.deepEqual(second.body.recommendation_cards.map(x=>x.id), [11]);
+  assert.equal(queries.length, 1);
+  assert.equal(modelCalls, 0);
+});
+
+test("AI-LIVE-05 overnight cheapest ignores cheaper Day Tour and zero prices", async () => {
+  catalogRows = [
+    { ...exampleRoom, id: 12, room_name: "Cheap Day Room",
+      category_name: "Room", day_price: 100, overnight_price: 4200 },
+    { ...exampleRoom, id: 13, room_name: "Cheapest Night Room",
+      category_name: "Room", day_price: 3000, overnight_price: 900 },
+    { ...exampleRoom, id: 14, room_name: "Unpriced Room",
+      category_name: "Room", day_price: 0, overnight_price: null },
+  ];
+  const response = await post("/api/ai/chat", {
+    message: "Which room has the cheapest overnight rate?",
+  });
+  assert.equal(response.body.mode, "verified_cheapest_accommodation");
+  assert.match(response.body.reply, /Cheapest Night Room/);
+  assert.match(response.body.reply, /₱900\.00.*Overnight/i);
+  assert.doesNotMatch(response.body.reply, /Cheap Day Room|Unpriced Room/i);
+  assert.deepEqual(response.body.recommendation_cards.map(x=>x.id), [13]);
+  assert.equal(modelCalls, 0);
+});
+
+test("AI-LIVE-05 same-priced listings never select an arbitrary old room", async () => {
+  catalogRows = [
+    { ...exampleRoom, id: 10, room_name: "Small Nipa Hut 1",
+      category_name: "Cottage", day_price: 800, overnight_price: 1200 },
+    { ...exampleRoom, id: 11, room_name: "Small Nipa Hut 2",
+      category_name: "Cottage", day_price: 800, overnight_price: 1500 },
+  ];
+  const response = await post("/api/ai/chat", {
+    message: "Ano pinakamurang cottage niyo?",
+    context: { room_id: 61, room_name: "Family Room A" },
+  });
+  assert.equal(response.body.mode, "verified_cheapest_accommodation");
+  assert.deepEqual(response.body.recommendation_cards.map(x=>x.id), [10,11]);
+  assert.equal(Object.hasOwn(response.body.extracted_context,"room_id"),false);
+  assert.equal(Object.hasOwn(response.body.extracted_context,"room_name"),false);
+  assert.doesNotMatch(response.body.reply, /Family Room A/);
+  assert.equal(response.body.booking_preview, null);
+  assert.equal(modelCalls, 0);
+});
+
+test("AI-LIVE-05 unknown scope asks rooms or cottages without spending credits", async () => {
+  const response = await post("/api/ai/chat", {
+    message: "Ano naman pinakamura sa mga yun?",
+    context: { room_id: 61, room_name: "Family Room A" },
+  });
+  assert.equal(response.body.mode, "verified_cheapest_accommodation");
+  assert.match(response.body.reply, /rooms, cottages, o function areas/i);
+  assert.equal(queries.length, 0);
+  assert.equal(modelCalls, 0);
+  assert.equal(response.body.booking_preview, null);
+});
+
 test("AI-LIVE-04 Ilang rooms meron kayo returns a count, not room cards", async () => {
   catalogRows = [
     { ...exampleRoom, id: 81, room_name: "Family Room A", category_name: "Room" },
