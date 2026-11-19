@@ -482,3 +482,51 @@ body.customer-manager-tone .ai-chat-window .ai-chat-header,
 @media (prefers-reduced-motion: reduce) {
   .ai-chat-window .ai-recommendation-link { transition: none; }
 }
+
+
+/* New-chat quick questions: intentional, clickable examples rather than a
+   blank canvas. Never displayed over existing restored conversations. */
+.ai-chat-window .ai-quick-questions {
+  margin: 9px 0 14px;
+  padding: 10px 11px;
+  max-width: 100%;
+  border: 1px solid #d9e8e5;
+  border-radius: 13px;
+  background: linear-gradient(130deg, #eff9f7, #f6fbfd);
+}
+.ai-chat-window .ai-quick-questions-label {
+  margin: 0 0 8px;
+  color: #54716f;
+  font-size: .70rem;
+  font-weight: 700;
+  letter-spacing: .01em;
+}
+.ai-chat-window .ai-quick-questions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.ai-chat-window .ai-quick-question {
+  appearance: none;
+  border: 1px solid #bcdcd5;
+  background: #fff;
+  color: #155e59;
+  border-radius: 999px;
+  padding: 7px 11px;
+  font: inherit;
+  font-size: .73rem;
+  font-weight: 650;
+  line-height: 1.25;
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease;
+}
+.ai-chat-window .ai-quick-question:hover {
+  border-color: #0f766e;
+  background: #e5f5f0;
+}
+@media (max-width: 355px) {
+  .ai-chat-window .ai-quick-question { padding: 7px 9px; font-size: .70rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ai-chat-window .ai-quick-question { transition: none; }
+}
