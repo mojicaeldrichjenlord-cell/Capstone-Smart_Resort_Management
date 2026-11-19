@@ -250,7 +250,7 @@ test("AI-LIVE-05 count 45 cottages then cheapest follows cottage scope and exact
       day_price: 100, overnight_price: 150 },
   );
   // One cottage counted separately was substituted with the cheap Nipa Hut.
-  catalogRows.splice(0, 1);
+  catalogRows.splice(0, 2);
   const first = await post("/api/ai/chat", {
     message: "Ilang cottages meron kayo?",
   });
