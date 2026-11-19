@@ -19,7 +19,7 @@
     <!-- Stage UI-22: visual-only muted Customer theme, loaded last. -->
   <link rel="stylesheet" href="../customerCSS/customer-manager-tone.css?v=20261119-ui22" />
     <!-- UI-26: Light, airy shared AI chat skin; load AFTER customer theme. -->
-    <link rel="stylesheet" href="../sharedCSS/ai-chat-airy.css?v=20261119-ui26" />
+    <link rel="stylesheet" href="../sharedCSS/ai-chat-airy.css?v=20261119-ui27" />
 </head>
 
   <body class="customer-manager-tone">
@@ -280,7 +280,14 @@
 
     <div id="aiChatWindow" class="ai-chat-window">
       <div class="ai-chat-header">
-        <h3>Arvic Seaside Resort AI Assistant</h3>
+        <!-- UI-27: Branded concierge identity. Keep existing title and controls. -->
+        <div class="ai-assistant-brand">
+          <span class="ai-assistant-mark" aria-hidden="true">✦</span>
+          <div class="ai-assistant-heading">
+            <h3>Arvic Seaside Resort AI Assistant</h3>
+            <span class="ai-assistant-caption">Your resort concierge · Here to help</span>
+          </div>
+        </div>
 
         <div class="ai-chat-header-actions">
           <button id="aiNewChatBtn" class="ai-chat-header-btn" title="New Chat" type="button">
