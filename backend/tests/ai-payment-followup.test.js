@@ -110,6 +110,10 @@ test("Unknown, zero and invalid rates do not turn into zero-amount quotations", 
 test("Extended/multiple nights are not priced as a single overnight stay", () => {
   assert.equal(getPaymentStayKind("Overnight 2 nights",{}),null);
   assert.equal(getPaymentStayKind("23 hours overnight",{}),null);
+  // A numbered accommodation name is not a request for that many days.
+  assert.equal(getPaymentStayKind("Small Nipa Hut 20 day tour downpayment",{}),"day");
+  assert.equal(getPaymentStayKind("Small Nipa Hut 2 day tour price",{}),"day");
+  assert.equal(getPaymentStayKind("20 days",{}),null);
   assert.equal(getPaymentStayKind("Day Tour",{}),"day");
   assert.equal(getPaymentStayKind("What will I pay?",{slot_preference:"night"}),"overnight");
 });
