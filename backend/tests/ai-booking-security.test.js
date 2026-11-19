@@ -69,6 +69,24 @@ substitute("../config/db", {
         }
         if (/FROM accommodations a\b/i.test(sql) &&
             /NOT EXISTS\b/i.test(sql)) return [returnedRooms];
+        // Simulate the fresh read-only grouped COUNT(*) endpoint. This mock
+        // uses ALL current catalogRows, not the unrelated 150-card preview cap.
+        if (/COUNT\(\*\) AS accommodation_count/i.test(sql) &&
+            /GROUP BY c\.name/i.test(sql)) {
+          const subtype = params?.[0]
+            ? String(params[0]).toLowerCase().replace(/%/g, "") : "";
+          const tally = new Map();
+          for (const room of catalogRows) {
+            if (subtype && !String(room.room_name).toLowerCase().includes(subtype)) continue;
+            const category_name = room.category_name || null;
+            const listing_status = String(room.status || "").trim().toLowerCase();
+            const key = String(category_name) + "|" + listing_status;
+            const prior = tally.get(key);
+            if (prior) prior.accommodation_count++;
+            else tally.set(key, { category_name, listing_status, accommodation_count: 1 });
+          }
+          return [[...tally.values()]];
+        }
         if (/FROM accommodations a\b/i.test(sql) &&
             /LIMIT 150\b/i.test(sql)) return [catalogRows];
         if (/FROM accommodations a\b/i.test(sql) &&
@@ -182,6 +200,80 @@ test("AI chat with missing message is rejected without DB access", async () => {
   assert.equal(queries.length, 0);
   assert.equal(modelCalls, 0);
 });
+// AI-LIVE-04: A "how many" question must never be misrouted to photo previews.
+// Count ALL current DB records (including maintenance) and distinguish them
+// from admin-listed status and still-unverified date/time slots.
+test("AI-LIVE-04 Ilang rooms meron kayo returns a count, not room cards", async () => {
+  catalogRows = [
+    { ...exampleRoom, id: 81, room_name: "Family Room A", category_name: "Room" },
+    { ...exampleRoom, id: 82, room_name: "Family Room B", category_name: "Room" },
+    { ...exampleRoom, id: 83, room_name: "Double Room 1", category_name: "Room", status: "maintenance" },
+    { ...exampleRoom, id: 84, room_name: "Big Nipa Hut 1", category_name: "Cottage" },
+    { ...exampleRoom, id: 85, room_name: "Function Area A", category_name: "Function Area" },
+  ];
+  const result = await post("/api/ai/chat", {
+    message: "ilang rooms meron kayo?",
+    context: { room_id: 84, room_name: "Big Nipa Hut 1", language_style: "english" },
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.mode, "verified_accommodation_count");
+  assert.match(result.body.reply, /3 rooms/i);
+  assert.match(result.body.reply, /2 marked available/i);
+  assert.match(result.body.reply, /date at time/i);
+  assert.doesNotMatch(result.body.reply, /Nipa Hut|5 accommodations|room preview/i);
+  assert.deepEqual(result.body.recommendation_cards, []);
+  assert.deepEqual(result.body.catalog_recommendations, []);
+  assert.equal(result.body.booking_preview, null);
+  assert.equal(result.body.extracted_context.room_id, 84); // Never steal focus.
+  assert.equal(queries.length, 1);
+  assert.match(queries[0].sql, /COUNT\(\*\) AS accommodation_count/i);
+  assert.match(queries[0].sql, /GROUP BY c\.name/i);
+  assert.doesNotMatch(queries[0].sql, /LIMIT 150|reservation_items/i);
+  assert.equal(modelCalls, 0);
+});
+
+test("Inventory counting always re-reads Admin state and never caps at 150", async () => {
+  catalogRows = Array.from({ length: 160 }, (_, index) => ({
+    ...exampleRoom, id: 200 + index, room_name: "Room " + index, category_name: "Room",
+  }));
+  const first = await post("/api/ai/chat", { message: "How many rooms do you have?" });
+  assert.equal(first.body.mode, "verified_accommodation_count");
+  assert.match(first.body.reply, /160 rooms/);
+  assert.equal(modelCalls, 0);
+  catalogRows.push({ ...exampleRoom, id: 1000, room_name: "New Room", category_name: "Room" });
+  queries = [];
+  const second = await post("/api/ai/chat", { message: "Ilang kwarto meron kayo?" });
+  assert.equal(second.body.mode, "verified_accommodation_count");
+  assert.match(second.body.reply, /161 rooms/);
+  assert.equal(queries.length, 1);
+  assert.equal(modelCalls, 0);
+});
+
+test("Count questions distinguish room, cottage, function and available listing statuses", async () => {
+  catalogRows = [
+    { ...exampleRoom, id: 10, room_name: "Family Room B", category_name: "Room" },
+    { ...exampleRoom, id: 11, room_name: "Single Room Cottage 1", category_name: "Room", status: "maintenance" },
+    { ...exampleRoom, id: 12, room_name: "Small Nipa Hut 2", category_name: "Cottage" },
+    { ...exampleRoom, id: 13, room_name: "Function Area A", category_name: "Function Area" },
+  ];
+  const cases = [
+    ["Ilang available na rooms meron kayo?", /1 room.*marked available/i],
+    ["Ilang cottages at rooms?", /2 rooms.*1 cottage/i],
+    ["How many accommodations are listed?", /4 accommodations/i],
+    ["Ilan pong family rooms?", /1 family room/i],
+    ["How many function areas are there?", /1 function area/i],
+  ];
+  for (const [message, expected] of cases) {
+    queries = [];
+    const result = await post("/api/ai/chat", { message });
+    assert.equal(result.body.mode, "verified_accommodation_count", message);
+    assert.match(result.body.reply, expected, message);
+    assert.equal(queries.length, 1, message);
+    assert.ok(queries.every(q => /^SELECT\b/i.test(q.sql)), message);
+    assert.equal(modelCalls, 0, message);
+  }
+});
+
 test("Undated room discovery uses fresh DB preview without claiming slot availability", async () => {
   const result = await post("/api/ai/chat", { message: "What rooms are available?" });
   assert.equal(result.status, 200);
