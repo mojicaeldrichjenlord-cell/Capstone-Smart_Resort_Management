@@ -5,7 +5,8 @@ const { generateGemini, geminiPublicError, geminiErrorStatus } = require("./gemi
 const { matchGeneralPolicyQuestion, inferPolicyLanguage, getPolicyReply, policyPromptLines } = require("./resortPolicyKnowledge");
 const {
   matchResortInquiry, guessInquiryLanguage, getResortInquiryReply,
-  resortInquiryPromptLines,
+  resortInquiryPromptLines, matchUnverifiedResortPolicy,
+  getUnverifiedResortPolicyReply,
 } = require("./resortInquiryKnowledge");
 const { validateAiStayWindow, calendarDayDifference, addCalendarDays } = require("./resortStayWindow");
 const { normalizeRecentTurns, wantsAccommodationCards, verifiedAccommodationCards, tidyAssistantReply } =
@@ -1054,6 +1055,34 @@ exports.chatWithGemini = async (req, res) => {
         inquiry_topic: resortInquiry.topic,
         reply: getResortInquiryReply(resortInquiry, language),
         extracted_context: mergeContext(saved, { language_style: language }),
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null,
+        recommendation_cards: [],
+      });
+    }
+
+    // Unapproved general resort policies: reply honestly without Gemini,
+    // never turn an unverified Wi-Fi, pet or corkage question into a claim.
+    // Named-room questions continue to fresh accommodation data instead.
+    const savedInquiryContext = req.body.context &&
+      typeof req.body.context === "object" && !Array.isArray(req.body.context)
+      ? req.body.context : {};
+    const unverifiedPolicy = matchUnverifiedResortPolicy(
+      message, savedInquiryContext
+    );
+    if (unverifiedPolicy) {
+      const language = normalizeLanguageStyle(req.body.voice_language) ||
+        guessInquiryLanguage(message) ||
+        detectLanguageFromMessage(message) ||
+        normalizeLanguageStyle(req.body.language_style) ||
+        normalizeLanguageStyle(savedInquiryContext.language_style) || "english";
+      return res.status(200).json({
+        success: true, mode: "unverified_resort_policy",
+        inquiry_topic: unverifiedPolicy.kind,
+        reply: getUnverifiedResortPolicyReply(unverifiedPolicy, language),
+        extracted_context: mergeContext(savedInquiryContext, {
+          language_style: language,
+        }),
         matched_rooms: [], catalog_recommendations: [],
         alternative_dates: [], booking_preview: null,
         recommendation_cards: [],
