@@ -1,0 +1,115 @@
+/*
+ * STAGE UI-23 — Front Desk muted palette shared with Admin, Customer, Manager.
+ *
+ * Opt-in only via body.frontdesk-manager-tone, including the two role-aware
+ * manual reservation pages located under adminHTML. This stylesheet is
+ * strictly visual: it does not change responsive layout, form/slot behavior,
+ * role-aware navigation, receipt printing, validation, or payment logic.
+ * Do not style state-dependent badges, payment alerts, or guest-status colors.
+ */
+@media screen {
+  body.frontdesk-manager-tone {
+    --navy: #172554;
+    --navy-2: #1e3a5f;
+    --teal: #0f766e;
+    --teal-dark: #115e59;
+    --seafoam: #f1f5f9;
+    --sky: #f8fafc;
+    --line: #e2e8f0;
+    color: #0f172a;
+    background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%) !important;
+  }
+
+  /* Shared Front Desk and role-aware manual reservation navbar. */
+  body.frontdesk-manager-tone .navbar {
+    background: linear-gradient(135deg, #172554 0%, #0f766e 100%) !important;
+    background-image: linear-gradient(135deg, #172554 0%, #0f766e 100%) !important;
+    border-bottom-color: rgba(255, 255, 255, 0.12) !important;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12) !important;
+  }
+  body.frontdesk-manager-tone .navbar nav a.active-nav {
+    background: rgba(255, 255, 255, 0.17) !important;
+    background-image: none !important;
+    color: #fff !important;
+    box-shadow: none !important;
+  }
+  body.frontdesk-manager-tone .navbar nav a:hover {
+    background-color: rgba(255, 255, 255, 0.13);
+  }
+
+  /* Consistent subdued hero — preserve each page's dimensions and layout. */
+  body.frontdesk-manager-tone :is(
+    .frontdesk-hero,
+    .frontdesk-reservations-hero,
+    .payments-hero,
+    .guests-hero,
+    .walkin-hero
+  ) {
+    background: linear-gradient(135deg, #172554 0%, #0f766e 100%) !important;
+    background-image: linear-gradient(135deg, #172554 0%, #0f766e 100%) !important;
+    color: #fff !important;
+    box-shadow: 0 16px 34px rgba(15, 23, 42, 0.12) !important;
+  }
+  /* Manual Payment has a deliberately flat, minimalist heading.
+     Leave .payment-hero and its form grid untouched. */
+  body.frontdesk-manager-tone.manual-payment-page {
+    --manual-page: #f8fafc;
+    --manual-teal: #0f766e;
+    --manual-border: #e2e8f0;
+  }
+
+  /* Neutral white operational panels, like the Manager's cards. */
+  body.frontdesk-manager-tone :is(
+    .frontdesk-card,
+    .frontdesk-account-card,
+    .summary-card,
+    .frontdesk-panel,
+    .payment-summary-card,
+    .payments-panel,
+    .guest-summary-card,
+    .guests-panel,
+    .walkin-card,
+    .receipt-preview-card
+  ),
+  body.frontdesk-manager-tone:not(.manual-payment-page) .section-box {
+    background: #fff !important;
+    background-image: none !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05) !important;
+  }
+
+  /* Status/alert styles remain readable: no overrides on .attention,
+     .ready labels, payment badges, or payment-policy notes. */
+  body.frontdesk-manager-tone :is(
+    .frontdesk-card-number,
+    .summary-card strong,
+    .payment-summary-card:not(.attention) strong,
+    .guest-summary-card:not(.attention) strong
+  ) {
+    color: #0f766e;
+  }
+  body.frontdesk-manager-tone :is(
+    .btn-primary,
+    .frontdesk-card-action,
+    .refresh-btn,
+    .page-btn.primary,
+    .pricing-guide-btn,
+    .print-btn
+  ) {
+    background: #0f766e !important;
+    background-image: none !important;
+    color: #fff !important;
+    box-shadow: none !important;
+  }
+  body.frontdesk-manager-tone :is(
+    .navbar nav a,
+    .btn-primary,
+    .frontdesk-card-action,
+    .refresh-btn,
+    .page-btn,
+    .print-btn
+  ):focus-visible {
+    outline: 3px solid #5eead4;
+    outline-offset: 3px;
+  }
+}
