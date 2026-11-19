@@ -75,7 +75,7 @@
   body.admin-manager-tone :is(.overview-value, .stat-card p) {
     color: #0f766e;
   }
-  body.admin-manager-tone .reports-minimal-page {
+  body.admin-manager-tone.reports-minimal-page {
     --report-page: #f8fafc;
     --report-border: #e2e8f0;
     --report-teal: #0f766e;
