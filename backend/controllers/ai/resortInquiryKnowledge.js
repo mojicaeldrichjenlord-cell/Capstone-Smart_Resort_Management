@@ -136,6 +136,50 @@ function getResortInquiryReply(match, language) {
   return SHORT_ANSWERS[match.topic][locale];
 }
 
+/*
+ * Some resort-wide policies have no approved answer yet. Handle short direct
+ * inquiries conservatively rather than asking Gemini to guess a yes/no.
+ * Room-specific amenities are deliberately excluded so DB-backed responses
+ * remain authoritative for the selected accommodation.
+ */
+function matchUnverifiedResortPolicy(message, context = {}) {
+  const t = normalizeQuestion(message);
+  if (!t || t.length > 350) return null;
+  const wifi = /\b(?:wi-?fi|wireless\s+internet|internet\s+connection)\b/i.test(t);
+  const pets = /\b(?:pets?|pet[ -]?friendly|dogs?|cats?|alagang\s+hayop)\b/i.test(t);
+  const food = /\b(?:corkage|outside\s+food|bring\s+(?:my|our|your|own)\s+food|dalang\s+pagkain|magdala\s+ng\s+pagkain)\b/i.test(t);
+  if (![wifi,pets,food].some(Boolean)) return null;
+  if (/\b(?:family\s+room|double\s+room|single\s+room|nipa\s+hut|cottage|pavilion|pool\s+shade|booking\s+code|transaction|payment\s+status)\b/i.test(t)) return null;
+  // A customer asking "May Wi-Fi dito?" while a room is focused needs a
+  // fresh per-room lookup / grounded Gemini answer, not a property-wide FAQ.
+  const focused = Number(context?.room_id) > 0 || Boolean(String(context?.room_name || "").trim());
+  if (wifi && focused &&
+      /\b(?:dito|ito|iyan|this|that|sa\s+room|sa\s+kwarto|sa\s+kuwarto|included|meron\s+ba)\b/i.test(t)) return null;
+  const park = /\b(?:parking|park|paradahan|mag[ -]?park)\b/i.test(t);
+  // Generic refund/booking/pricing requests have their own verified handlers.
+  if (/\b(?:refund|cancellation|cancel|downpayment|booking\s+status|room\s+price|room\s+rate)\b/i.test(t)) return null;
+  return { kind: wifi ? "wifi" : pets ? "pets" : "food", mentionsParking: park };
+}
+
+function getUnverifiedResortPolicyReply(match, language) {
+  if (!match) return null;
+  const locale = ["english","tagalog","taglish"].includes(language) ? language : "english";
+  const subject = {
+    wifi: { english: "Wi-Fi availability", tagalog: "Wi-Fi", taglish: "Wi-Fi" },
+    pets: { english: "the pet policy", tagalog: "pet policy", taglish: "pet policy" },
+    food: { english: "the outside food/corkage policy", tagalog: "outside food/corkage policy", taglish: "outside food/corkage policy" },
+  }[match.kind]?.[locale];
+  const parking = match.mentionsParking;
+  if (locale === "taglish") return (parking ? "Free po ang parking para sa kahit anong vehicle. " : "") +
+    "Hindi pa po confirmed yung " + subject + " ng resort. " +
+    "Pa-check po sa Front Desk: 0956-912-5625.";
+  if (locale === "tagalog") return (parking ? "Libre po ang parking para sa anumang sasakyan. " : "") +
+    "Hindi pa po kumpirmado ang " + subject + " ng resort. " +
+    "Magtanong po sa Front Desk: 0956-912-5625.";
+  return (parking ? "Parking is free for any vehicle. " : "") +
+    subject + " hasn't been confirmed by the resort. Please contact Front Desk at 0956-912-5625.";
+}
+
 function resortInquiryPromptLines() {
   return [
     "CLIENT-VERIFIED / OFFICIALLY PUBLISHED RESORT-WIDE FACTS:",
@@ -152,4 +196,5 @@ function resortInquiryPromptLines() {
 module.exports = {
   RESORT_INQUIRY_FACTS, matchResortInquiry,
   guessInquiryLanguage, getResortInquiryReply, resortInquiryPromptLines,
+  matchUnverifiedResortPolicy, getUnverifiedResortPolicyReply,
 };
