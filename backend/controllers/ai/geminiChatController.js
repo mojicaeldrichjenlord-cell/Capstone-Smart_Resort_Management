@@ -1353,6 +1353,44 @@ exports.chatWithGemini = async (req, res) => {
       }
     }
 
+    // No verified focus (or stale/renamed room): never let Gemini guess the
+    // identity from older suggestions and accidentally answer for another
+    // accommodation. A short clarification is safer and uses zero credits.
+    // The normal one-card preview path above now saves the selected room ID,
+    // so "may CR ba sya?" goes through the fresh read-only amenity lookup.
+    if (amenityKind) {
+      const saved = req.body.context && typeof req.body.context === "object" &&
+        !Array.isArray(req.body.context) ? req.body.context : {};
+      const language = normalizeLanguageStyle(req.body.voice_language) ||
+        (/\b(?:may|meron|ba|bang|yung|po|sya|siya|niya|nya)\b/i.test(message)
+          ? "taglish" : null) ||
+        detectLanguageFromMessage(message) ||
+        normalizeLanguageStyle(saved.language_style) || "english";
+      const needsReselect = Boolean(
+        explicitlyNamedAmenityRoom || unresolvedNamedAmenityRoom ||
+        hasFocusedId || canResolveByName
+      );
+      const filipino = language === "tagalog" || language === "taglish";
+      const reply = needsReselect
+        ? (filipino
+          ? "Hindi ko po ma-verify yung selected accommodation. Paki-select ulit sa room preview para tama ang details na ma-check ko."
+          : "I can't verify that selected accommodation. Please select its room preview again so I can check the correct details.")
+        : (filipino
+          ? "Aling room po ang tinutukoy niyo? Paki-select yung accommodation preview para ma-check ko ang exact details."
+          : "Which accommodation do you mean? Please select its preview so I can check the correct details.");
+      return res.status(200).json({
+        success: true, mode: "accommodation_selection_needed",
+        reply,
+        extracted_context: mergeContext(saved, {
+          language_style: language,
+          // Do not echo a mismatched ID/name in this response.
+        }),
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null,
+        recommendation_cards: [],
+      });
+    }
+
     // Natural open-ended room details: "anong meron sa Family Room B",
     // "what does this room have?", etc. Answer from one EXACT fresh DB
     // accommodation; never infer amenities from another room's listing.
