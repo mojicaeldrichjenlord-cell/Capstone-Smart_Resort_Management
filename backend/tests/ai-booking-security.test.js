@@ -172,19 +172,22 @@ test("AI chat with missing message is rejected without DB access", async () => {
   assert.equal(queries.length, 0);
   assert.equal(modelCalls, 0);
 });
-test("Incomplete booking details use fresh catalog but never claim date availability", async () => {
+test("Undated room discovery uses fresh DB preview without claiming slot availability", async () => {
   const result = await post("/api/ai/chat", { message: "What rooms are available?" });
   assert.equal(result.status, 200);
+  assert.equal(result.body.mode, "verified_accommodation_preview");
   assert.equal(result.body.booking_preview, null);
+  assert.deepEqual(result.body.matched_rooms, []);
+  assert.deepEqual(result.body.catalog_recommendations, []);
+  assert.equal(result.body.recommendation_cards[0].id, 61);
+  assert.equal(result.body.recommendation_cards[0].availability_verified, false);
   assert.equal(queries.length, 1);
   assert.match(queries[0].sql, /FROM accommodations a/);
   assert.match(queries[0].sql, /LIMIT 150/);
   assert.doesNotMatch(queries[0].sql, /reservation_items/);
-  assert.equal(result.body.catalog_recommendations[0].availability_verified, false);
-  assert.match(modelPrompts[1], /Fresh general accommodation catalog/);
-  assert.match(modelPrompts[1], /NOT a verified booking slot/);
-  assert.equal(modelCalls, 2);
+  assert.equal(modelCalls, 0); // Pure DB preview is cheaper than a generic Gemini catalog.
 });
+
 test("Invalid same-day reversed times never query availability", async () => {
   const result = await post("/api/ai/chat", {
     ...futureContext, check_in_time: "17:00:00", check_out_time: "07:00:00",
@@ -386,10 +389,11 @@ test("AI reply actions offer English and Tagalog, not Taglish translation", () =
 });
 
 
-test("Newly created Admin accommodation appears in the next catalog query", async () => {
-  let result = await post("/api/ai/chat", { message: "What cottages do you have?" });
-  assert.equal(result.status, 200);
-  assert.equal(result.body.catalog_recommendations.length, 0);
+test("New Admin accommodation appears immediately in the verified preview catalog", async () => {
+  const initial = await post("/api/ai/chat", { message: "What cottages do you have?" });
+  assert.equal(initial.status, 200);
+  assert.equal(initial.body.mode, "verified_accommodation_preview");
+  assert.deepEqual(initial.body.recommendation_cards, []);
   assert.equal(queries.length, 1);
 
   catalogRows = [{
@@ -398,17 +402,19 @@ test("Newly created Admin accommodation appears in the next catalog query", asyn
     day_price: 2500, overnight_price: 3800,
   }];
   queries = [];
-  result = await post("/api/ai/chat", {
-    message: "Any cottages for 10 guests?",
-    guests: 10,
+  const result = await post("/api/ai/chat", {
+    message: "Any cottages for 10 guests?", guests: 10,
   });
   assert.equal(result.status, 200);
+  assert.equal(result.body.mode, "verified_accommodation_preview");
   assert.equal(result.body.booking_preview, null);
-  assert.equal(result.body.catalog_recommendations[0].id, 102);
-  assert.equal(result.body.catalog_recommendations[0].name, "New Family Cottage");
-  assert.equal(result.body.catalog_recommendations[0].availability_verified, false);
-  assert.match(modelPrompts.at(-1), /New Family Cottage/);
+  assert.equal(result.body.extracted_context.guests, 10);
+  assert.equal(result.body.recommendation_cards[0].id, 102);
+  assert.equal(result.body.recommendation_cards[0].name, "New Family Cottage");
+  assert.equal(result.body.recommendation_cards[0].availability_verified, false);
+  assert.deepEqual(result.body.catalog_recommendations, []);
   assert.equal(queries.length, 1);
+  assert.equal(modelCalls, 0);
 });
 
 test("Admin price update is reflected immediately without stale AI cache", async () => {
@@ -650,14 +656,16 @@ test("Simple accommodation catalog inquiry uses ONE Gemini call, still fresh fro
   assert.equal(result.body.catalog_recommendations[0].availability_verified, false);
 });
 
-test("Plain cottage catalog without dates uses one Gemini reply request", async () => {
+test("Undated cottage catalog uses one fresh DB read and zero Gemini credits", async () => {
   const result = await post("/api/ai/chat", {
     message: "What cottages do you have?",
   });
   assert.equal(result.status, 200);
-  assert.equal(modelCalls, 1);
+  assert.equal(result.body.mode, "verified_accommodation_preview");
+  assert.equal(modelCalls, 0);
   assert.equal(queries.length, 1);
   assert.equal(result.body.booking_preview, null);
+  assert.deepEqual(result.body.recommendation_cards, []); // Mock catalog only has a Room.
 });
 
 test("Explicit booking windows still take the safe extraction and slot-check flow", async () => {
@@ -669,15 +677,19 @@ test("Explicit booking windows still take the safe extraction and slot-check flo
   assert.equal(result.body.booking_preview.room_id, 61);
 });
 
-test("Saved guests disable the catalog fast path so user follow-ups are interpreted", async () => {
+test("Undated preview retains saved guest count and excludes undersized cottages", async () => {
   const result = await post("/api/ai/chat", {
     message: "What cottages do you have?",
     context: { guests: 10 },
   });
   assert.equal(result.status, 200);
-  assert.equal(modelCalls, 2);
+  assert.equal(result.body.mode, "verified_accommodation_preview");
+  assert.equal(result.body.extracted_context.guests, 10);
+  assert.equal(modelCalls, 0);
   assert.equal(queries.length, 1);
+  assert.deepEqual(result.body.recommendation_cards, []);
   assert.deepEqual(result.body.catalog_recommendations, []);
+  assert.equal(result.body.booking_preview, null);
 });
 
 test("Voice catalog reply remains fixed-language without intent extraction", async () => {
@@ -976,7 +988,7 @@ test("Named cottage deposit quotes a fresh verified price without paid Gemini", 
   assert.equal(result.body.extracted_context.room_id, 81);
   assert.match(result.body.reply, /₱800\.00/);
   assert.match(result.body.reply, /₱400\.00/);
-  assert.match(result.body.reply, /booking page/i);
+  assert.match(result.body.reply, /booking(?:\/payment)? page/i);
   assert.equal(result.body.booking_preview, null);
   assert.equal(modelCalls, 0);
   assert.equal(queries.length, 1);
