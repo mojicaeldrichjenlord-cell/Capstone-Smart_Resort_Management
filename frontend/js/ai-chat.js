@@ -98,6 +98,8 @@ async function sendAiMessage(options = {}) {
     saveAiContext(current);
   }
   const recentTurns = getAiRecentConversationTurns(message);
+  // Starter prompts are visual shortcuts only, never conversation memory.
+  document.getElementById("aiQuickQuestions")?.remove();
   appendAiMessage("user", message);
   input.value = "";
 
@@ -357,6 +359,8 @@ function restoreChatHistory() {
       appendAiSystemNote(`Saved details from this chat: ${summary}`, false);
     }
 
+    // Only on an empty chat. Do not reinsert hints into restored user history.
+    appendAiStarterSuggestions(messages);
     return;
   }
 
@@ -373,6 +377,45 @@ function restoreChatHistory() {
   });
 
   messages.scrollTop = messages.scrollHeight;
+}
+
+// UI-27: Helpful first-use examples make the chat feel like a concierge.
+// Buttons use the EXISTING sendAiMessage route, so there are no special
+// offline rules, fabricated answers, or extra network calls on page load.
+function appendAiStarterSuggestions(messages) {
+  if (!messages || document.getElementById("aiQuickQuestions")) return;
+  const wrapper = document.createElement("div");
+  wrapper.id = "aiQuickQuestions";
+  wrapper.className = "ai-quick-questions";
+  const label = document.createElement("p");
+  label.className = "ai-quick-questions-label";
+  label.textContent = "You can ask me about";
+  wrapper.appendChild(label);
+  const prompts = [
+    ["Parking", "May free parking ba kayo?"],
+    ["Cottages", "Ilang cottages meron kayo?"],
+    ["Find a room", "Anong magandang room para sa 10 guests?"],
+  ];
+  const row = document.createElement("div");
+  row.className = "ai-quick-questions-row";
+  for (const [name, question] of prompts) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "ai-quick-question";
+    button.textContent = name;
+    button.title = question;
+    button.setAttribute("aria-label", "Ask: " + question);
+    button.addEventListener("click", () => {
+      const input = document.getElementById("aiChatInput");
+      if (!input || aiMessageInFlight) return;
+      input.value = question;
+      wrapper.remove();
+      sendAiMessage();
+    });
+    row.appendChild(button);
+  }
+  wrapper.appendChild(row);
+  messages.appendChild(wrapper);
 }
 
 function clearAiConversation() {
