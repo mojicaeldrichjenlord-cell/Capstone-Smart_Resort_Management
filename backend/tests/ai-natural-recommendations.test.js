@@ -396,7 +396,7 @@ test("UI-27 customer chatbot docks to lower-right and keeps a responsive branded
       path.join(__dirname, "../../frontend/customerHTML", page), "utf8");
     assert.match(html, /class="ai-assistant-brand"/, page);
     assert.match(html, /Arvic Seaside Resort AI Assistant/, page);
-    assert.match(html, /ai-chat-airy\.css\?v=20261119-ui27/, page);
+    assert.match(html, /ai-chat-airy\.css\?v=20261119-ui28/, page);
     assert.match(html, /ai-chat\.js\?v=20261119-ui27/, page);
     assert.match(html, /id="aiChatMaximize"/, page);
     assert.match(html, /id="aiChatClose"/, page);
@@ -417,4 +417,30 @@ test("UI-27 starter chips are real message actions and never pollute restored ch
   assert.match(src, /restoreChatHistory\(\)/);
   // No live server, database, wallet or Gemini call is created by page init.
   assert.doesNotMatch(src, /appendAiStarterSuggestions\(messages\)[\s\S]{0,80}fetch\(/);
+});
+
+
+test("UI-28 open voice settings remain compact while preserving voice controls and important errors", () => {
+  const css = fs.readFileSync(
+    path.join(__dirname, "../../frontend/sharedCSS/ai-chat-airy.css"), "utf8");
+  const voice = fs.readFileSync(
+    path.join(__dirname, "../../frontend/js/ai-voice.js"), "utf8");
+  assert.match(css, /UI-28 — Compact expanded voice settings/);
+  assert.match(css, /max-height: min\(132px, 26dvh\)/);
+  assert.match(css, /\.ai-voice-panel \.ai-voice-actions:first-child/);
+  assert.match(css, /grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1\.18fr\)/);
+  assert.match(css, /#aiVoiceLanguage/);
+  assert.match(css, /#aiVoiceLive/);
+  assert.match(css, /#aiVoiceStatus/);
+  assert.match(css, /overflow-y: auto/);
+  assert.match(voice, /Gemini mic ready · transcription uses credits/);
+  assert.match(voice, /Microphone access unavailable\. Check browser permission/);
+  assert.match(voice, /Voice transcription unavailable\. Please use text chat/);
+  assert.match(voice, /id="aiVoiceInterrupt"/);
+  for (const page of ["index.html", "rooms.html"]) {
+    const html = fs.readFileSync(
+      path.join(__dirname, "../../frontend/customerHTML", page), "utf8");
+    assert.match(html, /ai-chat-airy\.css\?v=20261119-ui28/);
+    assert.match(html, /ai-voice\.js\?v=20261119-gemini-default-compact28/);
+  }
 });
