@@ -1,0 +1,108 @@
+/*
+ * STAGE UI-21 — Admin muted palette aligned with the Manager UI.
+ * Visual-only, screen-only theme. No layout, permissions, booking, report,
+ * payment, print, or responsive behavior is changed.
+ *
+ * Applied only on pages explicitly marked body.admin-manager-tone.
+ * The shared style.css intentionally has !important bright gradients;
+ * these narrower selectors override them ONLY for Admin pages.
+ */
+@media screen {
+  body.admin-manager-tone {
+    --navy: #172554;
+    --navy-2: #1e3a5f;
+    --teal: #0f766e;
+    --teal-dark: #115e59;
+    --seafoam: #f1f5f9;
+    --sky: #f8fafc;
+    --line: #e2e8f0;
+    color: #0f172a;
+    background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%) !important;
+  }
+
+  /* Same quiet navy-to-teal header used by Manager. */
+  body.admin-manager-tone .navbar {
+    background: linear-gradient(135deg, #172554 0%, #0f766e 100%) !important;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  }
+  body.admin-manager-tone .navbar nav a.active-nav {
+    background: rgba(255, 255, 255, 0.17) !important;
+    color: #fff !important;
+    box-shadow: none !important;
+  }
+  body.admin-manager-tone .navbar nav a:hover {
+    background: rgba(255, 255, 255, 0.13) !important;
+  }
+
+  /* Admin hero banners: preserve each page's original size and spacing. */
+  body.admin-manager-tone :is(
+    .admin-hero,
+    .rooms-admin-hero,
+    .map-editor-hero,
+    .staff-hero,
+    .profile-hero
+  ) {
+    background: linear-gradient(135deg, #172554 0%, #0f766e 100%) !important;
+    background-image: linear-gradient(135deg, #172554 0%, #0f766e 100%) !important;
+    color: #fff !important;
+    box-shadow: 0 16px 34px rgba(15, 23, 42, 0.12) !important;
+  }
+
+  /* White/slate surfaces like Manager's cards, rather than aqua gradients. */
+  body.admin-manager-tone :is(
+    .overview-card,
+    .admin-panel,
+    .reservation-card,
+    .admin-table-wrap,
+    .rooms-list-panel,
+    .editor-card,
+    .editor-panel,
+    .profile-card,
+    .staff-card,
+    .reports-panel,
+    .stat-card,
+    .report-charge-card,
+    .receipt-preview-card
+  ) {
+    background: #fff !important;
+    background-image: none !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05) !important;
+  }
+
+  /* Preserve functional status/warning colors; only general accents change. */
+  body.admin-manager-tone :is(.overview-value, .stat-card p) {
+    color: #0f766e;
+  }
+  body.admin-manager-tone.reports-minimal-page {
+    --report-page: #f8fafc;
+    --report-border: #e2e8f0;
+    --report-teal: #0f766e;
+  }
+  body.admin-manager-tone :is(
+    .hero-btn.primary,
+    .refresh-btn,
+    .btn-primary,
+    .staff-primary,
+    .editor-btn.primary
+  ) {
+    background: #0f766e !important;
+    background-image: none !important;
+    color: #fff !important;
+    box-shadow: none !important;
+  }
+
+  /* Readable muted focus treatment for mouse, touch and keyboard. */
+  body.admin-manager-tone :is(
+    .navbar nav a,
+    .hero-btn,
+    .refresh-btn,
+    .btn-primary,
+    .staff-primary,
+    .editor-btn
+  ):focus-visible {
+    outline: 3px solid #5eead4;
+    outline-offset: 3px;
+  }
+}

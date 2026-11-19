@@ -3,6 +3,11 @@ const db = require("../../config/db");
 const { generateGemini, geminiPublicError, geminiErrorStatus } = require("./geminiResilience");
 // Verified policy knowledge uses no paid Gemini calls or customer booking writes.
 const { matchGeneralPolicyQuestion, inferPolicyLanguage, getPolicyReply, policyPromptLines } = require("./resortPolicyKnowledge");
+const {
+  matchResortInquiry, guessInquiryLanguage, getResortInquiryReply,
+  resortInquiryPromptLines, matchUnverifiedResortPolicy,
+  getUnverifiedResortPolicyReply,
+} = require("./resortInquiryKnowledge");
 const { validateAiStayWindow, calendarDayDifference, addCalendarDays } = require("./resortStayWindow");
 const { normalizeRecentTurns, wantsAccommodationCards, verifiedAccommodationCards, tidyAssistantReply } =
   require("./aiConversationStyle");
@@ -15,6 +20,11 @@ const { isVerifiedPreviewRequest, selectVerifiedPreviews, verifiedPreviewReply }
   require("./aiVerifiedPreview");
 const { isRoomPaymentInquiry, resolvePaymentRoom, paymentReply } =
   require("./aiFocusedPaymentReply");
+const {
+  matchAccommodationCountQuestion, countSummary, countReply,
+} = require("./aiAccommodationCounts");
+const { matchCheapestInquiry, pickCheapestRows, cheapestReply } =
+  require("./aiAffordableFollowup");
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -741,9 +751,9 @@ function getQuotaBookingGuidance(language) {
 // Direct short answer for one stable numeric policy; no Gemini credits.
 function getNaturalDownpaymentReply(language) {
   return {
-    english: "The online downpayment is 50% of the accommodation price via PayPal. Entrance fees are separate; you'll see the final amount before paying.",
-    tagalog: "50% po ng accommodation price ang online downpayment sa PayPal. Hiwalay po ang entrance fee; makikita ang final amount bago magbayad.",
-    taglish: "50% po ng accommodation price ang online downpayment via PayPal. Separate po ang entrance fee; final amount nasa booking page.",
+    english: "The online downpayment is 50% of the final accommodation price via PayPal. The remaining 50% and separate entrance fees are paid onsite; check the final amount on the booking page.",
+    tagalog: "50% po ng final accommodation price ang online downpayment sa PayPal. Sa resort babayaran ang natitirang 50% at hiwalay na entrance fee; nasa booking page ang final amount.",
+    taglish: "50% po ng final accommodation price ang online downpayment via PayPal. Yung remaining 50% at separate entrance fees ay onsite babayaran; final amount nasa booking page.",
     spanish: "El anticipo en línea es el 50 % del alojamiento por PayPal. La entrada se paga aparte; verá el total antes de pagar.",
     mandarin: "在线订金为住宿费用的 50%，通过 PayPal 支付。门票另计，最终金额在付款页确认。",
   }[language] || "The online downpayment is 50% of the accommodation price via PayPal; entrance fees are separate.";
@@ -849,7 +859,7 @@ async function buildQuotaLimitedAccommodationReply(payload, requestCatalog = nul
   const intro = {
     english: "Our AI service is temporarily limited, but these accommodation details come directly from the resort database.",
     tagalog: "Pansamantalang limitado ang AI, pero galing mismo sa resort database ang impormasyong ito.",
-    taglish: "Medyo limited po yung AI ngayon, pero galing pa rin sa resort database yung room details na ito.",
+    taglish: "Temporarily limited ang AI po ngayon, pero verified sa resort database yung room details na ito.",
     spanish: "La IA está temporalmente limitada, pero estos datos provienen directamente de la base de datos del resort.",
     mandarin: "AI 服务暂时受限，但以下住宿信息直接来自度假村数据库。",
   }[language];
@@ -958,8 +968,10 @@ async function buildQuotaLimitedAccommodationReply(payload, requestCatalog = nul
     ? quotaEstimatedDownpayment(language, stayKind, listedRate) : "";
   const details = roomLines.length ? roomLines.join("\n") :
     hasPaymentHelp ? "" : words.none;
+  // An upstream quota/error must be disclosed in the guest's chosen
+  // language. Never silently pretend a database-only fallback is Gemini.
   const reply = [
-    limitedResults, details,
+    intro, limitedResults, details,
     hasPaymentHelp ? getQuotaBookingGuidance(language) : "",
     estimate,
     roomLines.length ? caution : "",
@@ -1026,6 +1038,173 @@ exports.chatWithGemini = async (req, res) => {
         catalog_recommendations: [],
         alternative_dates: [],
         booking_preview: null,
+      });
+    }
+
+    // Client-verified resort inquiries: free parking for every vehicle type,
+    // published location/opening hours, contact numbers and existence of pool.
+    // Only an unambiguous single resort-wide topic uses this fast path. Room-
+    // specific, mixed and unknown questions continue to fresh DB + grounded
+    // Gemini reasoning; this shortcut makes no reservation/payment changes.
+    const resortInquiry = matchResortInquiry(message);
+    if (resortInquiry) {
+      const language = normalizeLanguageStyle(req.body.voice_language) ||
+        guessInquiryLanguage(message) ||
+        detectLanguageFromMessage(message) ||
+        normalizeLanguageStyle(req.body.language_style) ||
+        normalizeLanguageStyle(req.body.context?.language_style) ||
+        "english";
+      const saved = req.body.context && typeof req.body.context === "object" &&
+        !Array.isArray(req.body.context) ? req.body.context : {};
+      return res.status(200).json({
+        success: true,
+        mode: "verified_resort_inquiry",
+        inquiry_topic: resortInquiry.topic,
+        reply: getResortInquiryReply(resortInquiry, language),
+        extracted_context: mergeContext(saved, { language_style: language }),
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null,
+        recommendation_cards: [],
+      });
+    }
+
+    // Unapproved general resort policies: reply honestly without Gemini,
+    // never turn an unverified Wi-Fi, pet or corkage question into a claim.
+    // Named-room questions continue to fresh accommodation data instead.
+    const savedInquiryContext = req.body.context &&
+      typeof req.body.context === "object" && !Array.isArray(req.body.context)
+      ? req.body.context : {};
+    const unverifiedPolicy = matchUnverifiedResortPolicy(
+      message, savedInquiryContext
+    );
+    if (unverifiedPolicy) {
+      const language = normalizeLanguageStyle(req.body.voice_language) ||
+        guessInquiryLanguage(message) ||
+        detectLanguageFromMessage(message) ||
+        normalizeLanguageStyle(req.body.language_style) ||
+        normalizeLanguageStyle(savedInquiryContext.language_style) || "english";
+      return res.status(200).json({
+        success: true, mode: "unverified_resort_policy",
+        inquiry_topic: unverifiedPolicy.kind,
+        reply: getUnverifiedResortPolicyReply(unverifiedPolicy, language),
+        extracted_context: mergeContext(savedInquiryContext, {
+          language_style: language,
+        }),
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null,
+        recommendation_cards: [],
+      });
+    }
+
+    // Simple inventory COUNT intent comes before previews and rate/payment
+    // routing. "Ilang rooms?" asks for a number, not preview cards or prices.
+    // One FRESH aggregate query covers all DB rows (not the 150-row preview
+    // limit); it only reads listed inventory, never reservation date/slot data.
+    const countIntent = matchAccommodationCountQuestion(message);
+    if (countIntent) {
+      const saved = req.body.context && typeof req.body.context === "object" &&
+        !Array.isArray(req.body.context) ? req.body.context : {};
+      const language = normalizeLanguageStyle(req.body.voice_language) ||
+        guessInquiryLanguage(message) || detectLanguageFromMessage(message) ||
+        normalizeLanguageStyle(req.body.language_style) ||
+        normalizeLanguageStyle(saved.language_style) || "taglish";
+      const sql = "SELECT c.name AS category_name, " +
+        "LOWER(TRIM(COALESCE(a.status, ''))) AS listing_status, " +
+        "COUNT(*) AS accommodation_count " +
+        "FROM accommodations a " +
+        "LEFT JOIN accommodation_categories c ON c.id = a.category_id " +
+        (countIntent.subtype ? "WHERE LOWER(a.name) LIKE ? " : "") +
+        "GROUP BY c.name, LOWER(TRIM(COALESCE(a.status, ''))) " +
+        "ORDER BY c.name";
+      const params = countIntent.subtype
+        ? ["%" + countIntent.subtype + " room%"] : [];
+      const [countRows] = await db.promise().query(sql, params);
+      const counts = countSummary(countRows, countIntent);
+      return res.status(200).json({
+        success: true, mode: "verified_accommodation_count",
+        reply: countReply(counts, countIntent, language),
+        extracted_context: mergeContext(saved, { language_style: language }),
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null,
+        recommendation_cards: [],
+      });
+    }
+
+    // AI-LIVE-05: Price superlatives are NOT payment/deposit questions.
+    // Keep "ano naman ang pinakamura sa mga yun?" tied to the latest
+    // category question (e.g., cottages) while rereading ADMIN prices.
+    // One small read-only sorted query replaces a hallucination-prone
+    // Gemini reply and never checks or changes bookings/payments.
+    const savedCheapestContext = req.body.context && typeof req.body.context === "object" &&
+      !Array.isArray(req.body.context) ? req.body.context : {};
+    const cheapestIntent = matchCheapestInquiry(
+      message, normalizeRecentTurns(req.body.recent_turns), savedCheapestContext
+    );
+    if (cheapestIntent) {
+      const language = normalizeLanguageStyle(req.body.voice_language) ||
+        detectLanguageFromMessage(message) || guessInquiryLanguage(message) ||
+        normalizeLanguageStyle(req.body.language_style) ||
+        normalizeLanguageStyle(savedCheapestContext.language_style) || "taglish";
+      let priceSelection = { lowest: null, items: [] };
+      // If neither the new message nor the immediately preceding user
+      // question names a category, ask once; NEVER use a stale room choice.
+      if (cheapestIntent.scopes.length) {
+        const params = [];
+        const categories = [];
+        if (!cheapestIntent.scopes.includes("all")) {
+          const names = { room: "room", cottage: "cottage",
+            function: "function area" };
+          for (const scope of cheapestIntent.scopes) {
+            if (names[scope]) categories.push(names[scope]);
+          }
+        }
+        const categoryWhere = categories.length
+          ? " AND LOWER(TRIM(COALESCE(c.name, ''))) IN (" +
+            categories.map(() => "?").join(", ") + ")" : "";
+        params.push(...categories);
+        const guestWhere = cheapestIntent.guests > 0
+          ? " AND a.max_capacity >= ?" : "";
+        if (cheapestIntent.guests > 0) params.push(cheapestIntent.guests);
+        const dayPrice = "CASE WHEN a.day_price > 0 THEN a.day_price ELSE 999999999 END";
+        const nightPrice = "CASE WHEN a.overnight_price > 0 THEN a.overnight_price ELSE 999999999 END";
+        const orderRate = cheapestIntent.stay === "day" ? dayPrice :
+          cheapestIntent.stay === "night" ? nightPrice :
+          "LEAST(" + dayPrice + ", " + nightPrice + ")";
+        const slotWhere = cheapestIntent.stay === "day"
+          ? " AND a.day_price > 0" :
+          cheapestIntent.stay === "night" ? " AND a.overnight_price > 0" :
+          " AND (a.day_price > 0 OR a.overnight_price > 0)";
+        const sql = "SELECT a.id, a.name AS room_name, a.image, a.description, " +
+          "a.amenities, a.status, a.max_capacity AS capacity, " +
+          "a.day_price, a.overnight_price, a.extended_price, " +
+          "c.name AS category_name FROM accommodations a " +
+          "LEFT JOIN accommodation_categories c ON c.id = a.category_id " +
+          "WHERE LOWER(TRIM(COALESCE(a.status, ''))) = 'available'" +
+          categoryWhere + guestWhere + slotWhere +
+          " ORDER BY " + orderRate + " ASC, a.id ASC LIMIT 6";
+        const [priceRows] = await db.promise().query(sql, params);
+        priceSelection = pickCheapestRows(priceRows, cheapestIntent);
+      }
+      const recommended = priceSelection.items.map(x => x.room);
+      const cards = verifiedAccommodationCards(recommended, false);
+      const resultContext = mergeContext(savedCheapestContext, {
+        language_style: language,
+        ...(recommended.length === 1 ? {
+          room_id: recommended[0].id, room_name: recommended[0].room_name,
+        } : {}),
+      });
+      if (recommended.length !== 1) {
+        delete resultContext.room_id;
+        delete resultContext.room_name;
+      }
+      return res.status(200).json({
+        success: true,
+        mode: "verified_cheapest_accommodation",
+        reply: cheapestReply(priceSelection, cheapestIntent, language),
+        extracted_context: resultContext,
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null,
+        recommendation_cards: cards,
       });
     }
 
@@ -1103,11 +1282,17 @@ exports.chatWithGemini = async (req, res) => {
         previewCatalog, message, normalizeRecentTurns(req.body.recent_turns), savedContext,
       );
       const nextContext = { ...savedContext, language_style: language };
-      if (selection.specific && selection.rows.length === 1) {
+      // A ONE-card recommendation is an unambiguous accommodation for
+      // conversational follow-ups (e.g., "May CR ba sya?"). Focus it even
+      // when the customer asked generically for a 20-guest room. Previously
+      // only explicitly named rooms were focused, leaving an unrelated older
+      // Nipa Hut selected after recommending Family Room B.
+      if (selection.rows.length === 1) {
         nextContext.room_id = selection.rows[0].id;
         nextContext.room_name = selection.rows[0].room_name;
-      } else if (selection.category) {
-        // A new category search must not remain locked to an older room.
+      } else {
+        // Zero/multiple cards are NOT a room choice. Never keep stale
+        // selections or arbitrarily pick the first of several previews.
         delete nextContext.room_id;
         delete nextContext.room_name;
       }
@@ -1283,6 +1468,45 @@ exports.chatWithGemini = async (req, res) => {
           });
         }
       }
+    }
+
+    // No verified focus (or stale/renamed room): never let Gemini guess the
+    // identity from older suggestions and accidentally answer for another
+    // accommodation. A short clarification is safer and uses zero credits.
+    // The normal one-card preview path above now saves the selected room ID,
+    // so "may CR ba sya?" goes through the fresh read-only amenity lookup.
+    if (amenityKind) {
+      const saved = req.body.context && typeof req.body.context === "object" &&
+        !Array.isArray(req.body.context) ? req.body.context : {};
+      // The client also clears its local focus for this response mode.
+      const safeSaved = { ...saved };
+      delete safeSaved.room_id;
+      delete safeSaved.room_name;
+      const language = normalizeLanguageStyle(req.body.voice_language) ||
+        (/\b(?:may|meron|ba|bang|yung|po|sya|siya|niya|nya)\b/i.test(message)
+          ? "taglish" : null) ||
+        detectLanguageFromMessage(message) ||
+        normalizeLanguageStyle(saved.language_style) || "english";
+      const needsReselect = Boolean(
+        explicitlyNamedAmenityRoom || unresolvedNamedAmenityRoom ||
+        hasFocusedId || canResolveByName
+      );
+      const filipino = language === "tagalog" || language === "taglish";
+      const reply = needsReselect
+        ? (filipino
+          ? "Hindi ko po ma-verify yung selected accommodation. Paki-select ulit sa room preview para tama ang details na ma-check ko."
+          : "I can't verify that selected accommodation. Please select its room preview again so I can check the correct details.")
+        : (filipino
+          ? "Aling room po ang tinutukoy niyo? Paki-select yung accommodation preview para ma-check ko ang exact details."
+          : "Which accommodation do you mean? Please select its preview so I can check the correct details.");
+      return res.status(200).json({
+        success: true, mode: "accommodation_selection_needed",
+        reply,
+        extracted_context: mergeContext(safeSaved, { language_style: language }),
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null,
+        recommendation_cards: [],
+      });
     }
 
     // Natural open-ended room details: "anong meron sa Family Room B",
@@ -1674,6 +1898,7 @@ LIVE SPOKEN CONVERSATION (important):
 Important rules:
 Verified resort operations and policies (NEVER contradict these facts):
 ${policyPromptLines()}
+${resortInquiryPromptLines()}
 - Fixed resort payment policy: online reservations require a PayPal downpayment equal to 50% of the FINAL accommodation price; entrance fees are EXCLUDED from that downpayment. The remaining 50% of accommodation price plus entrance fees and applicable charges are paid onsite.
 - When asked for the general online downpayment percentage, say 50% directly; NEVER say the percentage is unknown or only confirmed on the booking page. The booking page confirms the final peso amount for the selected accommodation and schedule.
 - Only use the room/system data provided below.

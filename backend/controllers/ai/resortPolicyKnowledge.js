@@ -75,29 +75,32 @@ const ANSWERS = Object.freeze({
 // POLICY_FACTS unchanged for reasoning and safety; speak concisely by default.
 const NATURAL_POLICY_REPLIES = Object.freeze({
   booking: {
-    english: "I can help you choose a room, but the booking and payment happen on the secure booking page. What date are you planning?",
+    english: "I can help you choose a room, but I cannot confirm or pay for a reservation in chat. Please use the secure booking page to complete it.",
     tagalog: "Matutulungan ko po kayong pumili. Sa booking page po ang final reservation at payment. Anong date po ang balak ninyo?",
     taglish: "Tulungan ko po kayong pumili! Sa booking page po ang actual reservation at payment. Anong date po ang balak ninyo?",
   },
   schedule: {
-    english: "We have fixed Day Tour and Night slots, not custom check-in times. Exact hours depend on the accommodation. Day Tour or Night?",
-    tagalog: "Fixed Day Tour at Night schedule po tayo, hindi custom ang oras. Depende sa accommodation ang exact time. Day Tour po ba o Night?",
-    taglish: "Fixed Day Tour at Night slots po tayo, hindi custom ang check-in time. Depende sa accommodation ang exact hours. Day Tour po ba o Night?",
+    // Show the actual verified slot hours when a guest asks about schedules.
+    // A vague "depends on the room" answer misses the customer's question.
+    // Do not change booking slot calculation or promise live availability here.
+    english: "We have fixed Day Tour and Night slots, not custom check-in times. Rooms: 7 AM-5 PM or 7 PM-5 AM; cottages/huts/shades: 6 AM-5 PM or 6 PM-5 AM; function areas: 8 AM-6 PM or 8 PM-6 AM. Extended slots are separate. Exact options depend on your accommodation and the booking page.",
+    tagalog: "Fixed Day Tour at Night slots po, hindi custom ang check-in time. Sa rooms: 7 AM-5 PM o 7 PM-5 AM; cottages/huts/shades: 6 AM-5 PM o 6 PM-5 AM; function areas: 8 AM-6 PM o 8 PM-6 AM. May separate extended slots din po. Check niyo lang ang exact schedule sa booking page.",
+    taglish: "Fixed Day Tour at Night slots po tayo, hindi custom ang check-in time. Rooms: 7 AM-5 PM o 7 PM-5 AM; cottages/huts/shades: 6 AM-5 PM o 6 PM-5 AM; function areas: 8 AM-6 PM o 8 PM-6 AM. May separate extended slots din. Exact options po sa booking page.",
   },
   entrance: {
-    english: "Entrance fees are separate from the 50% accommodation downpayment. The booking page shows an estimate; Front Desk confirms the final amount onsite.",
+    english: "Entrance fees are separate from the accommodation downpayment. The booking page shows an estimate; Front Desk confirms the final entrance amount onsite.",
     tagalog: "Hiwalay po ang entrance fee sa 50% accommodation downpayment. Estimate muna ang nasa booking page; sa Front Desk po ang final amount.",
     taglish: "Separate po ang entrance fee sa 50% accommodation downpayment. Estimate muna sa booking page; Front Desk po ang magko-confirm onsite.",
   },
   walkin: {
-    english: "Yes, Front Desk handles same-day walk-ins if a slot is available. You can settle the accommodation payment onsite.",
+    english: "Yes, Front Desk handles same-day walk-ins, subject to availability. Accommodation payment is settled onsite; please confirm the slot with Front Desk.",
     tagalog: "Opo, puwedeng same-day walk-in basta may available na slot. Sa Front Desk po ang accommodation payment.",
-    taglish: "Yes po, puwedeng same-day walk-in if may available na slot. Sa Front Desk po ang payment.",
+    taglish: "Yes po, puwedeng same-day walk-in, subject to availability. Onsite po ang accommodation payment sa Front Desk; pa-confirm po muna ang slot.",
   },
   cancellation: {
-    english: "You can cancel an eligible booking in My Bookings at least one day before check-in. Cancellation doesn't automatically refund a payment.",
-    tagalog: "Puwede po kayong mag-cancel ng eligible booking sa My Bookings at least isang araw bago ang check-in. Hindi po automatic ang refund.",
-    taglish: "Puwede po mag-cancel ng eligible booking sa My Bookings at least one day before check-in. Hindi po automatic ang refund.",
+    english: "You can cancel a pending or approved booking in My Bookings at least 1 day before check-in, if you haven't checked in. Cancellation doesn't automatically refund a payment.",
+    tagalog: "Puwede po kayong mag-cancel ng pending o approved booking sa My Bookings at least 1 day before check-in, basta hindi pa naka-check-in. Hindi po automatic ang refund.",
+    taglish: "Puwede po mag-cancel ng pending or approved booking sa My Bookings at least 1 day before check-in, kung hindi pa naka-check-in. Hindi po automatic ang refund.",
   },
 });
 

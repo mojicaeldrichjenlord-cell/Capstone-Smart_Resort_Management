@@ -22,9 +22,11 @@
   <link rel="icon" type="image/png" href="../images/arvic-logo.png" />
     <!-- Consistent, centered confirmation for accidental logout clicks. -->
     <link rel="stylesheet" href="../sharedCSS/logout-confirm.css" />
-  </head>
+    <!-- UI-23: muted Front Desk theme; screen-only, loaded after page styles. -->
+  <link rel="stylesheet" href="../frontdeskCSS/frontdesk-manager-tone.css?v=20261119-ui23" />
+</head>
 
-  <body class="has-fixed-navbar">
+  <body class="has-fixed-navbar frontdesk-manager-tone">
     <!-- ======================================================
        ROLE-AWARE NAVBAR
        Administrator sees the full admin navigation.

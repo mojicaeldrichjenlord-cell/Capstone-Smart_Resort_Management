@@ -243,3 +243,204 @@ test("Amenity route preserves single-topic DB response even when room ID is miss
   assert.doesNotMatch(pathSource, /INSERT INTO|UPDATE accommodations|DELETE FROM|generateGemini\(/i);
   assert.match(source, /If asked about ONE amenity/);
 });
+
+// UI-26: Static presentation/voice-default regressions. This deliberately
+// does not initialize a browser, record audio, contact Gemini or touch MySQL.
+test("UI-26 Gemini is the default mic transcription without an input-mode dropdown", () => {
+  const voice = fs.readFileSync(
+    path.join(__dirname, "../../frontend/js/ai-voice.js"), "utf8");
+  assert.match(voice, /inputMode: "accurate"/);
+  assert.match(voice, /state\.inputMode = "accurate"/);
+  assert.match(voice, /return startRecordedInput\(kind\)/);
+  assert.match(voice, /return beginRecognition\(kind\)/); // Device fallback.
+  assert.doesNotMatch(voice, /'<select id="aiVoiceInputMode"/);
+  assert.doesNotMatch(voice, /'<label for="aiVoiceInputMode"/);
+  assert.doesNotMatch(voice, /localStorage\.getItem\(INPUT_MODE_KEY\)/);
+  assert.match(voice, /uses Gemini credits/);
+  assert.match(voice, /#aiVoiceLanguage/);
+  assert.match(voice, /#aiVoiceLive/);
+  assert.match(voice, /microphone\.addEventListener\("click", toggleDictation\)/);
+});
+
+test("UI-26 airy chatbot theme loads after Customer theme on both pages", () => {
+  const css = fs.readFileSync(
+    path.join(__dirname, "../../frontend/sharedCSS/ai-chat-airy.css"), "utf8");
+  assert.match(css, /body\.customer-manager-tone \.ai-chat-window \.ai-chat-header/);
+  assert.match(css, /background: #ffffff !important/);
+  assert.match(css, /#0f766e/);
+  assert.match(css, /grid-template-columns: repeat\(auto-fit, minmax\(min\(100%, 285px\), 1fr\)\)/);
+  for (const page of ["index.html", "rooms.html"]) {
+    const html = fs.readFileSync(
+      path.join(__dirname, "../../frontend/customerHTML", page), "utf8");
+    const mainTheme = html.indexOf("customer-manager-tone.css");
+    const assistantTheme = html.indexOf("ai-chat-airy.css");
+    assert.ok(mainTheme !== -1 && assistantTheme > mainTheme, page);
+    assert.match(html, /ai-voice\.js\?v=20261119-gemini-default/);
+    assert.match(html, /id="aiMicBtn"/);
+    assert.match(html, /id="aiChatSendBtn"|id="aiSendBtn"/);
+  }
+});
+
+// AI-LIVE-04: "Ilang rooms?" must mean a number, not preview cards.
+// This classifier is deliberately narrow; date availability and guest capacity
+// still use the booking-aware flow, and card discovery remains supported.
+test("AI-LIVE-04 natural count intent handles Taglish, English and category questions", () => {
+  const { matchAccommodationCountQuestion } =
+    require("../controllers/ai/aiAccommodationCounts");
+  for (const [question, scopes, subtype] of [
+    ["ilang rooms meron kayo?", ["room"], null],
+    ["How many rooms do you have?", ["room"], null],
+    ["Ilang kwarto meron kayo?", ["room"], null],
+    ["Ilan pong Family Rooms?", ["room"], "family"],
+    ["How many double rooms are there?", ["room"], "double"],
+    ["Ilang cottages at rooms mayroon kayo?", ["room", "cottage"], null],
+    ["How many function areas?", ["function"], null],
+    ["How many accommodations are listed?", ["all"], null],
+  ]) {
+    const result = matchAccommodationCountQuestion(question);
+    assert.deepEqual(result?.scopes, scopes, question);
+    assert.equal(result?.subtype, subtype, question);
+  }
+  assert.equal(matchAccommodationCountQuestion("Ilang available na rooms?").availableOnly, true);
+  for (const question of [
+    "anong mga rooms meron kayo?",
+    "Can you show me the rooms?",
+    "What are the room rates?",
+    "Ilang guests kasya sa Family Room B?",
+    "Ilang rooms available tomorrow?",
+    "Ilang parking slots meron?",
+    "Ilang free entrance sa Family Room B?",
+    "How many room types do you have?",
+  ]) {
+    assert.equal(matchAccommodationCountQuestion(question), null, question);
+  }
+});
+
+test("AI-LIVE-04 inventory summaries distinguish Room category and unverified slots", () => {
+  const { countSummary, countReply } =
+    require("../controllers/ai/aiAccommodationCounts");
+  const records = [
+    { category_name: "Room", listing_status: "available", accommodation_count: 7 },
+    { category_name: "Room", listing_status: "maintenance", accommodation_count: 2 },
+    { category_name: "Cottage", listing_status: "available", accommodation_count: 16 },
+    { category_name: "Function Area", listing_status: "available", accommodation_count: 3 },
+  ];
+  const intent = { scopes: ["room"], subtype: null, availableOnly: false };
+  const summary = countSummary(records, intent);
+  assert.equal(summary.room.total, 9);
+  assert.equal(summary.room.listed, 7);
+  assert.equal(summary.total, 9);
+  assert.equal(summary.listed, 7);
+  const reply = countReply(summary, intent, "taglish");
+  assert.match(reply, /9 rooms/);
+  assert.match(reply, /7 marked available/);
+  assert.match(reply, /date at time/);
+  assert.doesNotMatch(reply, /16 cottages|booked|confirmed reservation/i);
+  const available = countReply(summary, { ...intent, availableOnly: true }, "english");
+  assert.match(available, /7 rooms/);
+  assert.doesNotMatch(available, /9 rooms/);
+});
+
+
+test("AI-LIVE-05 cheapest follow-up uses recent category without stale group filter", () => {
+  const { matchCheapestInquiry, pickCheapestRows, cheapestReply } =
+    require("../controllers/ai/aiAffordableFollowup");
+  const turns = [
+    { role: "user", text: "Ilang cottages meron kayo?" },
+    { role: "assistant", text: "May 45 cottages po kami." },
+  ];
+  const broad = matchCheapestInquiry(
+    "Ano naman ang pinakamura sa mga yun?", turns,
+    { guests: 20, room_id: 61, room_name: "Old Family Room" });
+  assert.deepEqual(broad.scopes, ["cottage"]);
+  assert.equal(broad.guests, 0); // Count question reset category scope, not party-size filter.
+  const targeted = matchCheapestInquiry(
+    "Ano ang pinakamurang cottage para sa amin?", turns, { guests: 20 });
+  assert.equal(targeted.guests, 20);
+  const exactGroup = matchCheapestInquiry(
+    "Cheapest cottage for 8 guests?", turns, { guests: 20 });
+  assert.equal(exactGroup.guests, 8);
+  const rows = [
+    { id: 1, room_name: "Single Room Cottage", category_name: "Room",
+      status: "available", capacity: 4, day_price: 400 },
+    { id: 2, room_name: "Small Nipa Hut 1", category_name: "Cottage",
+      status: "available", capacity: 4, day_price: 800, overnight_price: 900 },
+    { id: 3, room_name: "Big Nipa Hut 1", category_name: "Cottage",
+      status: "available", capacity: 25, day_price: 1500, overnight_price: 2000 },
+  ];
+  const overall = pickCheapestRows(rows, broad);
+  assert.equal(overall.items[0].room.id, 2); // Room-category name is not a cottage.
+  assert.match(cheapestReply(overall, broad, "taglish"), /₱800\.00/);
+  const group = pickCheapestRows(rows, targeted);
+  assert.equal(group.items[0].room.id, 3);
+});
+
+
+// UI-27 is presentation-only, including truly clickable starter questions.
+// These checks prevent accidentally reintroducing the high-floating window,
+// missing the mobile viewport constraint or displaying fake read-only chips.
+test("UI-27 customer chatbot docks to lower-right and keeps a responsive branded header", () => {
+  const css = fs.readFileSync(
+    path.join(__dirname, "../../frontend/sharedCSS/ai-chat-airy.css"), "utf8");
+  assert.match(css, /UI-27 — Docked resort concierge/);
+  assert.match(css, /bottom:\s*max\(8px, env\(safe-area-inset-bottom\)\)/);
+  assert.match(css, /right:\s*10px/);
+  assert.match(css, /box-shadow:\s*0 8px 30px rgba\(18, 43, 60, \.14\)/);
+  assert.match(css, /linear-gradient\(112deg, #172554 0%, #164766 57%, #0f766e 100%\)/);
+  assert.match(css, /\.ai-assistant-brand/);
+  assert.match(css, /@media \(max-width: 560px\)/);
+  assert.match(css, /top: max\(8px, env\(safe-area-inset-top\)\)/);
+  assert.match(css, /\.ai-quick-question:hover/);
+  for (const page of ["index.html", "rooms.html"]) {
+    const html = fs.readFileSync(
+      path.join(__dirname, "../../frontend/customerHTML", page), "utf8");
+    assert.match(html, /class="ai-assistant-brand"/, page);
+    assert.match(html, /Arvic Seaside Resort AI Assistant/, page);
+    assert.match(html, /ai-chat-airy\.css\?v=20261119-ui28/, page);
+    assert.match(html, /ai-chat\.js\?v=20261119-ui27/, page);
+    assert.match(html, /id="aiChatMaximize"/, page);
+    assert.match(html, /id="aiChatClose"/, page);
+    assert.match(html, /id="aiMicBtn"/, page);
+  }
+});
+
+test("UI-27 starter chips are real message actions and never pollute restored chat history", () => {
+  const src = fs.readFileSync(
+    path.join(__dirname, "../../frontend/js/ai-chat.js"), "utf8");
+  assert.match(src, /function appendAiStarterSuggestions\(messages\)/);
+  assert.match(src, /button\.addEventListener\("click", \(\) => \{/);
+  assert.match(src, /input\.value = question/);
+  assert.match(src, /wrapper\.remove\(\);\s*sendAiMessage\(\)/);
+  assert.match(src, /document\.getElementById\("aiQuickQuestions"\)\?\.remove\(\)/);
+  assert.match(src, /if \(!history\.length\) \{/);
+  assert.match(src, /appendAiStarterSuggestions\(messages\)/);
+  assert.match(src, /restoreChatHistory\(\)/);
+  // No live server, database, wallet or Gemini call is created by page init.
+  assert.doesNotMatch(src, /appendAiStarterSuggestions\(messages\)[\s\S]{0,80}fetch\(/);
+});
+
+
+test("UI-28 open voice settings remain compact while preserving voice controls and important errors", () => {
+  const css = fs.readFileSync(
+    path.join(__dirname, "../../frontend/sharedCSS/ai-chat-airy.css"), "utf8");
+  const voice = fs.readFileSync(
+    path.join(__dirname, "../../frontend/js/ai-voice.js"), "utf8");
+  assert.match(css, /UI-28 — Compact expanded voice settings/);
+  assert.match(css, /max-height: min\(132px, 26dvh\)/);
+  assert.match(css, /\.ai-voice-panel \.ai-voice-actions:first-child/);
+  assert.match(css, /grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1\.18fr\)/);
+  assert.match(css, /#aiVoiceLanguage/);
+  assert.match(css, /#aiVoiceLive/);
+  assert.match(css, /#aiVoiceStatus/);
+  assert.match(css, /overflow-y: auto/);
+  assert.match(voice, /Gemini mic ready · transcription uses credits/);
+  assert.match(voice, /Microphone access unavailable\. Check browser permission/);
+  assert.match(voice, /Voice transcription unavailable\. Please use text chat/);
+  assert.match(voice, /id="aiVoiceInterrupt"/);
+  for (const page of ["index.html", "rooms.html"]) {
+    const html = fs.readFileSync(
+      path.join(__dirname, "../../frontend/customerHTML", page), "utf8");
+    assert.match(html, /ai-chat-airy\.css\?v=20261119-ui28/);
+    assert.match(html, /ai-voice\.js\?v=20261119-gemini-default-compact28/);
+  }
+});

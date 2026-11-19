@@ -16,9 +16,13 @@
     <link rel="stylesheet" href="../sharedCSS/ai-chat-layout.css?v=20261116-chatv2" />
       <!-- Consistent, centered confirmation for accidental logout clicks. -->
     <link rel="stylesheet" href="../sharedCSS/logout-confirm.css" />
-  </head>
+    <!-- Stage UI-22: visual-only muted Customer theme, loaded last. -->
+  <link rel="stylesheet" href="../customerCSS/customer-manager-tone.css?v=20261119-ui22" />
+    <!-- UI-26: Light, airy shared AI chat skin; load AFTER customer theme. -->
+    <link rel="stylesheet" href="../sharedCSS/ai-chat-airy.css?v=20261119-ui28" />
+</head>
 
-  <body>
+  <body class="customer-manager-tone">
     <!-- ======================================================
        CUSTOMER NAVBAR
        Same Resort Map navbar style on all customer pages.
@@ -276,7 +280,14 @@
 
     <div id="aiChatWindow" class="ai-chat-window">
       <div class="ai-chat-header">
-        <h3>Arvic Seaside Resort AI Assistant</h3>
+        <!-- UI-27: Branded concierge identity. Keep existing title and controls. -->
+        <div class="ai-assistant-brand">
+          <span class="ai-assistant-mark" aria-hidden="true">✦</span>
+          <div class="ai-assistant-heading">
+            <h3>Arvic Seaside Resort AI Assistant</h3>
+            <span class="ai-assistant-caption">Your resort concierge · Here to help</span>
+          </div>
+        </div>
 
         <div class="ai-chat-header-actions">
           <button id="aiNewChatBtn" class="ai-chat-header-btn" title="New Chat" type="button">
@@ -325,8 +336,8 @@
     <script src="../sharedJS/toast.js"></script>
     <script src="../sharedJS/api-config.js"></script>
     <script src="../customerJS/index.js"></script>
-    <script src="../js/ai-chat.js"></script>
-    <script src="../js/ai-voice.js?v=20261117-accurate2"></script>
+    <script src="../js/ai-chat.js?v=20261119-ui27"></script>
+    <script src="../js/ai-voice.js?v=20261119-gemini-default-compact28"></script>
     <script src="../js/ai-chat-polish.js?v=20261116-chatv2"></script>
     <script>
       const menuToggle = document.getElementById("menuToggle");

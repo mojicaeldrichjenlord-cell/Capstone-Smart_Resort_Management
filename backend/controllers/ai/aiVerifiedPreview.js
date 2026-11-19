@@ -44,6 +44,13 @@ function guestCountFromText(value) {
 
 function isVerifiedPreviewRequest(message) {
   const text = String(message || "");
+  // A preview shortcut does not filter by price or verify booking dates.
+  // Route budget- and date-constrained requests to the full data-aware flow;
+  // otherwise a 10-person budget search can show unaffordable listings or
+  // a Saturday availability request can look like a confirmed booking slot.
+  if (/\b(?:budget|under|below|less\s+than|up\s+to|maximum|not\s+more\s+than)\b|₱|\bphp\s*\d/i.test(text) ||
+      /\b(?:on|this|next)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|week|month)\b|\b(?:tomorrow|bukas|today|tonight|specific\s+date|available\s+(?:on|for))\b/i.test(text) ||
+      /\b\d{4}-\d{1,2}-\d{1,2}\b/.test(text)) return false;
   if (hasPreviewWords(text)) return true;
   // "May CR ba sa Pool Shade?" remains an amenity question, not a
   // discovery request. Explicit photos/previews still take priority.
@@ -118,7 +125,13 @@ function selectVerifiedPreviews(catalog, message, recentTurns = [], context = {}
   if (category && explicitName && !categoryMatches(explicitName, category)) {
     explicitName = null;
   }
-  const requestedGuests = guestCountFromText(current) || guestCountFromText(source) || 0;
+  // Follow-up catalog questions must keep a previously confirmed guest
+  // count. An explicit new count in this message still takes priority.
+  const savedGuests = Number(context?.guests);
+  const validSavedGuests = Number.isSafeInteger(savedGuests) && savedGuests > 0 &&
+    savedGuests <= 200 ? savedGuests : 0;
+  const requestedGuests = guestCountFromText(current) ||
+    guestCountFromText(source) || validSavedGuests;
 
   let matches = [];
   let alternative = false;

@@ -1,0 +1,96 @@
+name: AI Mock Regression - testing branch
+
+on:
+  push:
+    branches: [testing]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/ai-regression-testing.yml'
+  workflow_dispatch:
+
+# No production secrets. The mocked test report is committed only to testing.
+permissions:
+  contents: write
+
+concurrency:
+  group: ai-regression-testing
+  cancel-in-progress: true
+
+jobs:
+  mocked-ai-regression:
+    name: Mocked AI tests (no production secrets)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout testing source
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        run: npm ci --no-audit --no-fund
+
+      # Mocks @google/genai and MySQL. No API key, DB or PayPal secret provided.
+      - name: Run isolated AI regression suite
+        id: regression
+        shell: bash
+        run: |
+          set +e
+          node --test \
+            tests/ai-resort-inquiries.test.js \
+            tests/ai-offline-policy.test.js \
+            tests/ai-booking-security.test.js \
+            tests/ai-payment-followup.test.js \
+            tests/ai-refund-facebook-contact.test.js \
+            tests/ai-natural-recommendations.test.js \
+            tests/ai-taglish-tone.test.js \
+            > "$RUNNER_TEMP/ai-regression.log" 2>&1
+          status=$?
+          cat "$RUNNER_TEMP/ai-regression.log"
+          echo "exit_code=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      # Store the actual test output for review; report-only bot commits do
+      # not trigger workflows and do not change production deployment.
+      - name: Save mocked QA report on testing branch
+        if: always() && github.ref == 'refs/heads/testing'
+        shell: bash
+        run: |
+          mkdir -p ../docs
+          {
+            echo "# AI Mock Regression — testing branch"
+            echo ""
+            echo "Source commit: ${GITHUB_SHA}"
+            echo "Exit code: ${{ steps.regression.outputs.exit_code }}"
+            echo ""
+            echo "No live Gemini, PayPal or production MySQL credentials."
+            echo ""
+            echo "---"
+            if [ -f "$RUNNER_TEMP/ai-regression.log" ]; then
+              sed -n '1,2200p' "$RUNNER_TEMP/ai-regression.log" | cut -c 1-450 | sed 's/^/    /'
+            else
+              echo 'Test command did not execute; inspect workflow install steps.'
+            fi
+          } > ../docs/AI_REGRESSION_CI_LOG.md
+          cd ..
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/AI_REGRESSION_CI_LOG.md
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(testing): update automated mocked AI QA log [skip ci]"
+            git push origin HEAD:testing
+          fi
+
+      - name: Fail workflow when regression fails
+        if: steps.regression.outputs.exit_code != '0'
+        run: exit 1
