@@ -10,6 +10,10 @@ function isRoomPaymentInquiry(message) {
   if (!text.trim()) return false;
   const isPayment = /\b(?:payments?|pay(?:ing)?|paypal|down[\s-]?payment|deposits?|balance|total|amount|cost|prices?|rates?|presyo|magkano|babayaran|bayaran|magbayad|ibabayad|bayad)\b/i.test(text);
   if (!isPayment) return false;
+  // Resort-wide parking questions (including "magkano parking fee") are
+  // not accommodation deposits/rates. Mixed room + parking inquiries must
+  // use grounded resort + fresh room data, not the room-only payment reply.
+  if (/\b(?:parking|park|paradahan|mag[ -]?park|car\s*park)\b/i.test(text)) return false;
   // Entrance-only fees are a separate policy, not an accommodation quote.
   if (/\bentrance\b/i.test(text) &&
       !/\b(?:down[\s-]?payment|payment|total|lahat|overall|babayaran|magbayad|balance|accommodation|room)\b/i.test(text)) return false;
