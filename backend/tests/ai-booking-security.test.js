@@ -349,6 +349,41 @@ test("AI-LIVE-05 same-priced listings never select an arbitrary old room", async
   assert.equal(modelCalls, 0);
 });
 
+test("AI-LIVE-05 selected cheapest room remains focused for a CR follow-up", async () => {
+  catalogRows = [
+    { ...exampleRoom, id: 92, room_name: "Big Nipa Hut",
+      category_name: "Cottage", day_price: 500 },
+    { ...exampleRoom, id: 93, room_name: "Family Room B",
+      category_name: "Room", day_price: 4000, overnight_price: 4500 },
+    { ...exampleRoom, id: 94, room_name: "Double Room 1",
+      category_name: "Room", day_price: 2000, overnight_price: 2700,
+      amenities: "Private CR, aircon", description: "Double room" },
+  ];
+  const first = await post("/api/ai/chat", {
+    message: "What's the cheapest room?",
+    context: { room_id: 92, room_name: "Big Nipa Hut" },
+  });
+  assert.equal(first.body.mode, "verified_cheapest_accommodation");
+  assert.equal(first.body.extracted_context.room_id, 94);
+  assert.equal(first.body.extracted_context.room_name, "Double Room 1");
+  assert.deepEqual(first.body.recommendation_cards.map(x => x.id), [94]);
+  queries = [];
+  const second = await post("/api/ai/chat", {
+    message: "may cr ba siya?",
+    context: first.body.extracted_context,
+    recent_turns: [
+      { role: "user", text: "What's the cheapest room?" },
+      { role: "assistant", text: first.body.reply },
+    ],
+  });
+  assert.equal(second.body.mode, "verified_accommodation_amenity");
+  assert.match(second.body.reply, /may sariling CR ang Double Room 1/i);
+  assert.doesNotMatch(second.body.reply, /Big Nipa Hut|Family Room B|date|check.in/i);
+  assert.deepEqual(queries[0].params, [94]);
+  assert.equal(queries.length, 1);
+  assert.equal(modelCalls, 0);
+});
+
 test("AI-LIVE-05 unknown scope asks rooms or cottages without spending credits", async () => {
   const response = await post("/api/ai/chat", {
     message: "Ano naman pinakamura sa mga yun?",
