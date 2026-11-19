@@ -75,6 +75,16 @@ substitute("../config/db", {
             /LOWER\(a\.name\) LIKE \?/i.test(sql)) {
           return [roomLookup ? [roomLookup] : []];
         }
+        // Focused amenity/overview lookups must use a single fresh row by
+        // immutable ID, never grab a similar or older accommodation.
+        if (/FROM accommodations a\b/i.test(sql) &&
+            /LEFT JOIN accommodation_categories c\b/i.test(sql) &&
+            /WHERE a\.id = \? LIMIT 1\b/i.test(sql) &&
+            /a\.description, a\.amenities/i.test(sql)) {
+          const record = catalogRows.find(room =>
+            Number(room.id) === Number(params?.[0]));
+          return [record ? [record] : []];
+        }
         if (/FROM reservation_items ri\b/i.test(sql)) return [[]];
         throw new Error("Unexpected SQL in AI integration test: " + sql);
       },
@@ -186,6 +196,89 @@ test("Undated room discovery uses fresh DB preview without claiming slot availab
   assert.match(queries[0].sql, /LIMIT 150/);
   assert.doesNotMatch(queries[0].sql, /reservation_items/);
   assert.equal(modelCalls, 0); // Pure DB preview is cheaper than a generic Gemini catalog.
+});
+
+// AI-LIVE-03: Reproduce real chat: recommend a single Family Room B for
+// 20 guests, then "may CR ba sya?". Prior Big Nipa Hut must never leak.
+test("AI-LIVE-03 focused single preview carries through CR follow-up using fresh DB", async () => {
+  catalogRows = [
+    { ...exampleRoom, id: 78, room_name: "Big Nipa Hut",
+      category_name: "Cottage", capacity: 25, amenities: "",
+      description: "Open-air cottage" },
+    { ...exampleRoom, id: 100, room_name: "Family Room B",
+      category_name: "Room", capacity: 20,
+      amenities: "Private CR, aircon", description: "Two-bedroom family room" },
+    { ...exampleRoom, id: 101, room_name: "Family Room A",
+      category_name: "Room", capacity: 7 },
+  ];
+  const question = "anong magandang room para sa 20 guests?";
+  const first = await post("/api/ai/chat", {
+    message: question,
+    context: { room_id: 78, room_name: "Big Nipa Hut", language_style: "taglish" },
+  });
+  assert.equal(first.status, 200);
+  assert.equal(first.body.mode, "verified_accommodation_preview");
+  assert.deepEqual(first.body.recommendation_cards.map(room => room.id), [100]);
+  assert.equal(first.body.extracted_context.room_id, 100);
+  assert.equal(first.body.extracted_context.room_name, "Family Room B");
+  assert.equal(first.body.extracted_context.guests, 20);
+  assert.equal(modelCalls, 0);
+  assert.equal(queries.length, 1);
+
+  queries = [];
+  const second = await post("/api/ai/chat", {
+    message: "may cr ba sya?",
+    context: first.body.extracted_context,
+    recent_turns: [
+      { role: "user", text: question },
+      { role: "assistant", text: first.body.reply },
+    ],
+  });
+  assert.equal(second.status, 200);
+  assert.equal(second.body.mode, "verified_accommodation_amenity");
+  assert.equal(second.body.extracted_context.room_id, 100);
+  assert.match(second.body.reply, /may sariling CR ang Family Room B/i);
+  assert.doesNotMatch(second.body.reply, /Big Nipa Hut|check.in date|anong date|balak.*check.in/i);
+  assert.deepEqual(second.body.recommendation_cards, []);
+  assert.equal(second.body.booking_preview, null);
+  assert.equal(queries.length, 1);
+  assert.deepEqual(queries[0].params, [100]);
+  assert.match(queries[0].sql, /^SELECT\b/);
+  assert.equal(modelCalls, 0);
+});
+
+test("AI-LIVE-03 multiple possible rooms never inherit old focus or invent CR", async () => {
+  catalogRows = [
+    { ...exampleRoom, id: 78, room_name: "Big Nipa Hut",
+      category_name: "Cottage", capacity: 25 },
+    { ...exampleRoom, id: 100, room_name: "Family Room B",
+      category_name: "Room", capacity: 20 },
+    { ...exampleRoom, id: 101, room_name: "Family Room C",
+      category_name: "Room", capacity: 22 },
+  ];
+  const first = await post("/api/ai/chat", {
+    message: "anong magandang room para sa 20 guests?",
+    context: { room_id: 78, room_name: "Big Nipa Hut" },
+  });
+  assert.equal(first.status, 200);
+  assert.equal(first.body.mode, "verified_accommodation_preview");
+  assert.deepEqual(first.body.recommendation_cards.map(room => room.id), [100, 101]);
+  assert.equal(Object.hasOwn(first.body.extracted_context, "room_id"), false);
+  assert.equal(Object.hasOwn(first.body.extracted_context, "room_name"), false);
+
+  queries = [];
+  modelCalls = 0;
+  const second = await post("/api/ai/chat", {
+    message: "may cr ba sya?",
+    context: first.body.extracted_context,
+  });
+  assert.equal(second.status, 200);
+  assert.equal(second.body.mode, "accommodation_selection_needed");
+  assert.match(second.body.reply, /Aling room po/);
+  assert.doesNotMatch(second.body.reply, /Big Nipa Hut|May sariling CR|anong date/i);
+  assert.equal(queries.length, 0);
+  assert.equal(modelCalls, 0);
+  assert.equal(second.body.booking_preview, null);
 });
 
 test("Invalid same-day reversed times never query availability", async () => {
