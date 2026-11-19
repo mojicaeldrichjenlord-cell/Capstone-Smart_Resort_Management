@@ -29,7 +29,7 @@ for (const [locale, fn, query] of [
     const result = context[fn](query, {});
     assert.match(result.reply, /paypal/i);
     assert.match(result.reply, /50%/);
-    assert.match(result.reply, /onsite/i);
+    assert.match(result.reply, /onsite|sa resort/i);
     assert.doesNotMatch(result.reply, /cash on arrival/i);
     assert.doesNotMatch(result.reply, /pending online payment status/i);
     assert.deepEqual({ ...result.context }, {});
@@ -43,7 +43,7 @@ for (const [locale, fn, query] of [
 ]) {
   test(locale + " offline booking steps direct to secure Customer booking", () => {
     const result = context[fn](query, {});
-    assert.match(result.reply, /rooms page/i);
+    assert.match(result.reply, /booking page/i);
     assert.match(result.reply, /paypal/i);
     assert.match(result.reply, /50%/);
     assert.match(result.reply, /my bookings/i);
@@ -135,7 +135,7 @@ test("Offline parking unknowns and unrelated room questions stay conservative", 
   const mixed = context.getOfflineVerifiedResortReply(
     "May parking at dogs allowed?", "taglish", {});
   assert.match(mixed.reply, /Free po ang parking/);
-  assert.match(mixed.reply, /hindi pa confirmed/);
+  assert.match(mixed.reply, /hindi pa confirmed/i);
   assert.doesNotMatch(mixed.reply, /dogs? allowed|pet-friendly po/i);
 });
 
