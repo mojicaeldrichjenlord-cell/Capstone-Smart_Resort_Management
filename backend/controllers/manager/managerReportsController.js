@@ -1,8 +1,5 @@
-// Read-only Manager Reports.
-// Important financial semantics: reservations.paid_amount is a cumulative
-// booking snapshot, NOT a dated payment ledger. Do not add it to booking_charges
-// or label a sum as net cash revenue. Refunds/reconciliation require a
-// separately audited ledger. No guest PII is returned.
+// Read-only operational Manager Reports. All financial statements, paid
+// charges and revenue data are Admin-only. No guest PII is returned.
 const db = require("../../config/db");
 
 const MAX_DAYS = 366;
@@ -29,21 +26,14 @@ function phpToday() {
   const values = Object.fromEntries(parts.map(x => [x.type, x.value]));
   return values.year + "-" + values.month + "-" + values.day;
 }
-// Snapshot amounts are not net revenue; preserve separate accounting meanings.
-function finiteMoney(value) {
-  const n = Number(value);
-  return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : 0;
-}
 function count(value) {
   const n = Number(value);
   return Number.isSafeInteger(n) && n >= 0 ? n : 0;
 }
 
-// Aggregates only: one inclusive creation-date range and separate paid-charge dates.
+// Aggregates only: one inclusive creation-date range for operational counts.
 // Read-only MySQL expressions must match their GROUP BY under ONLY_FULL_GROUP_BY.
-// Build read-only aggregate operational reports for a validated Manila-date range.
-// Reservation paid_amount is a cumulative snapshot; do not present it as net cash received.
-// Limit requested dates and exclude personal guest records from Manager report responses.
+// Limit requested dates and exclude financial and personal guest data.
 exports.getManagerReports = async (req, res) => {
   const today = parseDay(phpToday());
   const requestedTo = req.query.to === undefined ? dayText(today) : req.query.to;
@@ -76,10 +66,7 @@ exports.getManagerReports = async (req, res) => {
       "COALESCE(SUM(CASE WHEN reservation_status = 'rejected' THEN 1 ELSE 0 END),0) AS rejected, " +
       "COALESCE(SUM(CASE WHEN LOWER(booking_source) = 'online' THEN 1 ELSE 0 END),0) AS online, " +
       "COALESCE(SUM(CASE WHEN LOWER(booking_source) = 'manual' THEN 1 ELSE 0 END),0) AS manual_reservations, " +
-      "COALESCE(SUM(COALESCE(guest_count,0)),0) AS booked_guests, " +
-      "COALESCE(SUM(CASE WHEN reservation_status NOT IN ('cancelled','rejected') " +
-      "THEN COALESCE(accommodation_total,0) ELSE 0 END),0) AS active_booked_accommodation_value, " +
-      "COALESCE(SUM(COALESCE(paid_amount,0)),0) AS recorded_accommodation_payments " +
+      "COALESCE(SUM(COALESCE(guest_count,0)),0) AS booked_guests " +
       "FROM reservations WHERE created_at >= ? AND created_at < ?",
       dates,
     );
@@ -105,14 +92,7 @@ exports.getManagerReports = async (req, res) => {
       "ORDER BY booked_items DESC, accommodation_name ASC LIMIT 12",
       dates,
     );
-    const [chargeRows] = await db.promise().query(
-      "SELECT COUNT(*) AS paid_charge_rows, " +
-      "COALESCE(SUM(COALESCE(charge_amount,0)),0) AS recorded_paid_charges " +
-      "FROM booking_charges WHERE COALESCE(is_paid,0) = 1 " +
-      "AND paid_at >= ? AND paid_at < ?",
-      dates,
-    );
-    const s = summaries[0] || {}, ch = chargeRows[0] || {};
+    const s = summaries[0] || {};
     return res.status(200).json({
       success: true,
       period: { from: dayText(from), to: dayText(to), days },
@@ -122,12 +102,6 @@ exports.getManagerReports = async (req, res) => {
         completed: count(s.completed), cancelled: count(s.cancelled),
         rejected: count(s.rejected), online: count(s.online),
         manual: count(s.manual_reservations), booked_guests: count(s.booked_guests),
-        active_booked_accommodation_value:
-          finiteMoney(s.active_booked_accommodation_value),
-        recorded_accommodation_payments:
-          finiteMoney(s.recorded_accommodation_payments),
-        recorded_paid_charges: finiteMoney(ch.recorded_paid_charges),
-        paid_charge_rows: count(ch.paid_charge_rows),
       },
       trends: trendRows.map(row => ({
         date: row.date instanceof Date ? dayText(row.date) : String(row.date).slice(0,10),
@@ -143,11 +117,7 @@ exports.getManagerReports = async (req, res) => {
       })),
       definitions: {
         reservation_period: "Reservations created during selected dates, not stays occurring during dates.",
-        booked_value: "Accommodation totals for non-cancelled/non-rejected reservations created in range. Not cash revenue.",
-        recorded_payments: "Cumulative reservations.paid_amount snapshot for bookings created in range. Not date-of-payment collections or refund-adjusted revenue.",
-        paid_charges: "booking_charges rows paid during range, separate from accommodation payments. Do not add blindly to other amounts.",
         accommodation_performance: "Reservation-item counts for non-cancelled/non-rejected bookings created in range. Counts are not nights, actual occupancy or unique guests.",
-        reconciliation: "No combined net-revenue figure is presented; refunds, discounts, entrance reconciliation and legacy extra-bed collections require audited reconciliation.",
       },
     });
   } catch (error) {
