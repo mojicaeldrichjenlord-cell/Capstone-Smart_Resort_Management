@@ -90,8 +90,10 @@ function resolvePaymentRoom(catalog, message, context = {}, recentTurns = []) {
 
 function getPaymentStayKind(message, context = {}) {
   const text = norm(message);
+  // "Small Nipa Hut 20 day tour" is a named room plus a Day Tour slot,
+  // NOT a 20-day reservation. Still refuse multi-night price estimates.
   if (/\b(?:22 hours?|23 hours?|extended|multi day|multi night|several nights?)\b/.test(text) ||
-      /\b(?:[2-9]|[1-9][0-9]+)\s*(?:nights?|days?|gabi|araw)\b/.test(text)) return null;
+      /\b(?:[2-9]|[1-9][0-9]+)\s*(?:nights?|days?(?!\s*tour\b)|gabi|araw)\b/.test(text)) return null;
   const overnight = /\b(?:overnight|night|gabi)\b/.test(text);
   const daytime = /\b(?:day tour|daytime|morning|umaga)\b/.test(text);
   if (overnight && daytime) return null;
