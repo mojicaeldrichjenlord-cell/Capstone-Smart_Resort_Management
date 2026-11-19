@@ -299,7 +299,8 @@ test("Taglish and Spanish voice preferences use the selected fixed reply languag
   });
   assert.equal(taglish.status, 200);
   assert.equal(taglish.body.extracted_context.language_style, "taglish");
-  assert.match(modelPrompts[1], /Reply in natural Taglish/);
+  assert.match(modelPrompts[1], /Reply in casual, everyday Filipino-English Taglish/);
+  assert.match(modelPrompts[1], /LIVE SPOKEN CONVERSATION/);
   modelCalls = 0;
   successfulModelCalls = 0;
   injectedFailures = 0;
@@ -719,9 +720,11 @@ test("Quota fallback does not issue a second catalog SQL read after optimized Ge
   injectedFailures = 1;
   injectedStatus = 429;
   const response = await post("/api/ai/chat", {
-    message: "What rooms do you offer?",
+    message: "What accommodations do you offer?",
   });
   assert.equal(response.status, 200);
+  // Generic accommodation catalog needs Gemini; explicit room-photo
+  // discovery now correctly takes a separate zero-credit preview route.
   assert.equal(response.body.mode, "database_fallback");
   assert.equal(response.body.catalog_recommendations[0].availability_verified, false);
   assert.equal(queries.length, 1);
@@ -1269,9 +1272,12 @@ test("Multi-facility resort question uses grounded Gemini policy without unneces
   });
   assert.equal(r.status, 200);
   assert.notEqual(r.body.mode, "verified_resort_inquiry");
-  // The resort-wide parking fact comes from policy knowledge, not a room
-  // inventory/availability lookup. Never waste DB reads for unrelated FAQ.
-  assert.equal(queries.length, 0);
+  // The broader facilities question may read one fresh accommodation
+  // catalog in addition to resort policy knowledge. Enforce read-only SQL;
+  // it must not treat the result as a confirmed room booking slot.
+  assert.equal(queries.length, 1);
+  assert.ok(queries.every(q => /^SELECT\b/i.test(q.sql)));
+  assert.equal(r.body.booking_preview, null);
   assert.ok(modelCalls > 0);
   assert.match(modelPrompts.at(-1), /FREE on-site parking for ANY type of vehicle/);
   assert.match(modelPrompts.at(-1), /For unverified pet rules, Wi-Fi/);
