@@ -559,9 +559,8 @@
     if (controls?.lang) controls.lang.value = language;
     if (controls?.inputMode) controls.inputMode.value = state.inputMode;
     updateControls();
-    status("Voice language: " + getLocale().label +
-      (canRecord() ? ". Gemini mic transcription uses credits." :
-        ". Browser voice fallback is active on this device."));
+    status((canRecord() ? "Gemini mic ready · credits apply" :
+      "Browser mic fallback active") + " · " + getLocale().label);
   }
 
   function scheduleListen(session) {
@@ -844,9 +843,9 @@
       '<button id="aiVoiceInterrupt" type="button" hidden>Interrupt AI</button>',
       '</div>',
       '<p id="aiVoiceStatus" role="status" aria-live="polite">',
-      'Gemini voice input · Uses credits for audio transcription. Mic for dictation, or start hands-free.</p>',
+      'Gemini mic ready · transcription uses credits.</p>',
       '<p id="aiVoiceInfo" class="ai-voice-info" aria-live="polite">',
-      'Voice output: waiting for device voices. Quality depends on installed voices.</p>',
+      'Voice output: detecting device voice…</p>',
     ].join("");
     messages.parentNode.insertBefore(panel, messages);
 
@@ -891,13 +890,11 @@
     if (!canSpeak()) {
       status("Voice input unavailable in this browser. Text chat still works.");
     } else if (canRecord()) {
-      status("Gemini voice input ready · uses credits for audio transcription. " +
-        "Tap 🎤 to dictate, or Start Conversation for hands-free.");
+      status("Gemini mic ready · transcription uses credits.");
     } else {
       // Preserve a working voice option on devices without AudioContext.
       // Never claim Gemini transcription is running when only browser STT works.
-      status("Browser voice recognition fallback active on this device. " +
-        "Tap 🎤 to dictate, or Start Conversation for hands-free.");
+      status("Browser voice recognition fallback active on this device.");
     }
     updateControls();
   }
