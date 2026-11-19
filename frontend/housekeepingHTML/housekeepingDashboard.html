@@ -15,9 +15,20 @@
     <a class="hk-skip" href="#mainContent">Skip to main content</a>
     <!-- Role header: identity is loaded from the signed /housekeeping/me API. -->
     <header class="hk-navbar">
-      <div>
-        <strong>Arvic Seaside</strong>
-        <span>Housekeeping Staff</span>
+      <!-- Match the resort's Admin / Front Desk branding without using their
+           fixed-position navbar: Housekeeping keeps its accessible sticky header. -->
+      <div class="hk-brand">
+        <img
+          class="hk-brand-logo"
+          src="../images/arvic-logo.png"
+          alt="Arvic Seaside resort logo"
+          width="54"
+          height="54"
+        />
+        <div class="hk-brand-copy">
+          <strong class="hk-brand-name">Arvic Seaside</strong>
+          <span class="hk-brand-role">Housekeeping Staff</span>
+        </div>
       </div>
 
       <button type="button" id="logoutBtn">Logout</button>
