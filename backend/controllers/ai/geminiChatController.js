@@ -1165,11 +1165,17 @@ exports.chatWithGemini = async (req, res) => {
         previewCatalog, message, normalizeRecentTurns(req.body.recent_turns), savedContext,
       );
       const nextContext = { ...savedContext, language_style: language };
-      if (selection.specific && selection.rows.length === 1) {
+      // A ONE-card recommendation is an unambiguous accommodation for
+      // conversational follow-ups (e.g., "May CR ba sya?"). Focus it even
+      // when the customer asked generically for a 20-guest room. Previously
+      // only explicitly named rooms were focused, leaving an unrelated older
+      // Nipa Hut selected after recommending Family Room B.
+      if (selection.rows.length === 1) {
         nextContext.room_id = selection.rows[0].id;
         nextContext.room_name = selection.rows[0].room_name;
-      } else if (selection.category) {
-        // A new category search must not remain locked to an older room.
+      } else {
+        // Zero/multiple cards are NOT a room choice. Never keep stale
+        // selections or arbitrarily pick the first of several previews.
         delete nextContext.room_id;
         delete nextContext.room_name;
       }
