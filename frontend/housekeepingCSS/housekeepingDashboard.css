@@ -13,25 +13,55 @@ body {
     #f8fafc;
 }
 
+/* Brand/nav proportions match Admin & Front Desk's 54px logo + 16px padding
+   (~86px overall), while retaining Housekeeping's sticky top navigation. */
 .hk-navbar {
-  min-height: 74px;
-  padding: 0 5%;
+  min-height: 86px;
+  padding: 12px 34px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 16px;
   color: #fff;
-  background: #0f766e;
+  background: linear-gradient(135deg, #172554 0%, #0f766e 100%);
 }
 
-.hk-navbar > div {
+.hk-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.hk-brand-logo {
+  display: block;
+  width: 54px;
+  height: 54px;
+  flex: 0 0 auto;
+  padding: 4px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  object-fit: contain;
+}
+
+.hk-brand-copy {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
-.hk-navbar span {
-  margin-top: 2px;
-  font-size: 0.75rem;
-  opacity: 0.78;
+.hk-brand-name {
+  color: #fff;
+  font-size: 1.45rem;
+  font-weight: 900;
+  letter-spacing: 0.2px;
+  line-height: 1.2;
+}
+
+.hk-brand-role {
+  margin-top: 3px;
+  font-size: 0.77rem;
+  color: rgba(255, 255, 255, 0.82);
 }
 
 .hk-navbar button {
@@ -42,6 +72,29 @@ body {
   border-radius: 999px;
   font-weight: 800;
   cursor: pointer;
+}
+
+/* Smaller tablets/phones use the same 48px logo as the other roles.
+   Keep the logout button visible; do not let the brand overflow. */
+@media (max-width: 900px) {
+  .hk-navbar {
+    min-height: 72px;
+    padding: 8px 14px;
+    gap: 10px;
+  }
+  .hk-brand-logo {
+    width: 48px;
+    height: 48px;
+  }
+  .hk-brand-name {
+    font-size: 1.2rem;
+  }
+  .hk-brand-role {
+    font-size: 0.72rem;
+  }
+  .hk-navbar button {
+    flex-shrink: 0;
+  }
 }
 
 .hk-page {
