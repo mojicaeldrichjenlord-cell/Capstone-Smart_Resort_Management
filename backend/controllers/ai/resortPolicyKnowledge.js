@@ -80,9 +80,12 @@ const NATURAL_POLICY_REPLIES = Object.freeze({
     taglish: "Tulungan ko po kayong pumili! Sa booking page po ang actual reservation at payment. Anong date po ang balak ninyo?",
   },
   schedule: {
-    english: "We have fixed Day Tour and Night slots, not custom check-in times. Exact hours depend on the accommodation. Day Tour or Night?",
-    tagalog: "Fixed Day Tour at Night schedule po tayo, hindi custom ang oras. Depende sa accommodation ang exact time. Day Tour po ba o Night?",
-    taglish: "Fixed Day Tour at Night slots po tayo, hindi custom ang check-in time. Depende sa accommodation ang exact hours. Day Tour po ba o Night?",
+    // Show the actual verified slot hours when a guest asks about schedules.
+    // A vague "depends on the room" answer misses the customer's question.
+    // Do not change booking slot calculation or promise live availability here.
+    english: "We have fixed Day Tour and Night slots, not custom check-in times. Rooms: 7 AM-5 PM or 7 PM-5 AM; cottages/huts/shades: 6 AM-5 PM or 6 PM-5 AM; function areas: 8 AM-6 PM or 8 PM-6 AM. Extended slots are separate. Exact options depend on your accommodation and the booking page.",
+    tagalog: "Fixed Day Tour at Night slots po, hindi custom ang check-in time. Sa rooms: 7 AM-5 PM o 7 PM-5 AM; cottages/huts/shades: 6 AM-5 PM o 6 PM-5 AM; function areas: 8 AM-6 PM o 8 PM-6 AM. May separate extended slots din po. Check niyo lang ang exact schedule sa booking page.",
+    taglish: "Fixed Day Tour at Night slots po tayo, hindi custom ang check-in time. Rooms: 7 AM-5 PM o 7 PM-5 AM; cottages/huts/shades: 6 AM-5 PM o 6 PM-5 AM; function areas: 8 AM-6 PM o 8 PM-6 AM. May separate extended slots din. Exact options po sa booking page.",
   },
   entrance: {
     english: "Entrance fees are separate from the 50% accommodation downpayment. The booking page shows an estimate; Front Desk confirms the final amount onsite.",
