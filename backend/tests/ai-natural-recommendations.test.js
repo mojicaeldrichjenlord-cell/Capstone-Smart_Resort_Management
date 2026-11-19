@@ -243,3 +243,40 @@ test("Amenity route preserves single-topic DB response even when room ID is miss
   assert.doesNotMatch(pathSource, /INSERT INTO|UPDATE accommodations|DELETE FROM|generateGemini\(/i);
   assert.match(source, /If asked about ONE amenity/);
 });
+
+// UI-26: Static presentation/voice-default regressions. This deliberately
+// does not initialize a browser, record audio, contact Gemini or touch MySQL.
+test("UI-26 Gemini is the default mic transcription without an input-mode dropdown", () => {
+  const voice = fs.readFileSync(
+    path.join(__dirname, "../../frontend/js/ai-voice.js"), "utf8");
+  assert.match(voice, /inputMode: "accurate"/);
+  assert.match(voice, /state\.inputMode = "accurate"/);
+  assert.match(voice, /return startRecordedInput\(kind\)/);
+  assert.match(voice, /return beginRecognition\(kind\)/); // Device fallback.
+  assert.doesNotMatch(voice, /'<select id="aiVoiceInputMode"/);
+  assert.doesNotMatch(voice, /'<label for="aiVoiceInputMode"/);
+  assert.doesNotMatch(voice, /localStorage\.getItem\(INPUT_MODE_KEY\)/);
+  assert.match(voice, /uses Gemini credits/);
+  assert.match(voice, /#aiVoiceLanguage/);
+  assert.match(voice, /#aiVoiceLive/);
+  assert.match(voice, /microphone\.addEventListener\("click", toggleDictation\)/);
+});
+
+test("UI-26 airy chatbot theme loads after Customer theme on both pages", () => {
+  const css = fs.readFileSync(
+    path.join(__dirname, "../../frontend/sharedCSS/ai-chat-airy.css"), "utf8");
+  assert.match(css, /body\.customer-manager-tone \.ai-chat-window \.ai-chat-header/);
+  assert.match(css, /background: #ffffff !important/);
+  assert.match(css, /#0f766e/);
+  assert.match(css, /grid-template-columns: repeat\(auto-fit, minmax\(min\(100%, 285px\), 1fr\)\)/);
+  for (const page of ["index.html", "rooms.html"]) {
+    const html = fs.readFileSync(
+      path.join(__dirname, "../../frontend/customerHTML", page), "utf8");
+    const mainTheme = html.indexOf("customer-manager-tone.css");
+    const assistantTheme = html.indexOf("ai-chat-airy.css");
+    assert.ok(mainTheme !== -1 && assistantTheme > mainTheme, page);
+    assert.match(html, /ai-voice\.js\?v=20261119-gemini-default/);
+    assert.match(html, /id="aiMicBtn"/);
+    assert.match(html, /id="aiChatSendBtn"|id="aiSendBtn"/);
+  }
+});
