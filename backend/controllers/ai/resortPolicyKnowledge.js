@@ -75,7 +75,7 @@ const ANSWERS = Object.freeze({
 // POLICY_FACTS unchanged for reasoning and safety; speak concisely by default.
 const NATURAL_POLICY_REPLIES = Object.freeze({
   booking: {
-    english: "I can help you choose a room, but the booking and payment happen on the secure booking page. What date are you planning?",
+    english: "I can help you choose a room, but I cannot confirm or pay for a reservation in chat. Please use the secure booking page to complete it.",
     tagalog: "Matutulungan ko po kayong pumili. Sa booking page po ang final reservation at payment. Anong date po ang balak ninyo?",
     taglish: "Tulungan ko po kayong pumili! Sa booking page po ang actual reservation at payment. Anong date po ang balak ninyo?",
   },
