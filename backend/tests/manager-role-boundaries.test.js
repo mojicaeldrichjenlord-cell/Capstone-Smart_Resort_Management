@@ -185,7 +185,9 @@ test("verified Manager reads aggregated operational data only", async () => {
   assert.equal(result.data.summary.total_reservations, 14);
   assert.equal(result.data.summary.pending_reservations, 4);
   assert.equal(result.data.summary.total_accommodations, 61);
-  assert.equal(result.data.summary.recorded_reservation_payments, 12500);
+  assert.equal(result.data.summary.recorded_reservation_payments, undefined);
+  assert.doesNotMatch(JSON.stringify(result.data), /12500|recorded_reservation_payments|revenue/i);
+  assert.ok(sqlCalls.every(item => !/\bpaid_amount\b|\baccommodation_total\b|\bbooking_charges\b/i.test(item.sql)), "Manager overview SQL cannot fetch financial amounts");
   assert.equal(result.data.recent_activity.length, 1);
   assert.equal(result.data.recent_activity[0].reservation_code, "R-100");
   assert.equal(result.data.recent_activity[0].first_name, undefined);

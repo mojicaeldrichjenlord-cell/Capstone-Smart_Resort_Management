@@ -130,23 +130,27 @@ async function get(path = "/reports?from=2026-10-01&to=2026-10-31", token = mana
 const reads = () => calls.filter(x => !/FROM users WHERE id = \?/i.test(x.sql));
 const sample = async () => get();
 
-test("Manager reports: protected, sanitized summary and separate cash metrics", async () => {
+test("Manager reports return only operational counts, never financial fields", async () => {
   const result = await sample();
   assert.equal(result.status, 200);
   assert.equal(result.body.summary.total_reservations, 6);
   assert.equal(result.body.summary.pending, 2);
-  assert.equal(result.body.summary.recorded_accommodation_payments, 6400);
-  assert.equal(result.body.summary.active_booked_accommodation_value, 16000);
-  assert.equal(result.body.summary.recorded_paid_charges, 900);
-  assert.equal(result.body.summary.net_revenue, undefined);
+  assert.equal(result.body.summary.online, 4);
+  assert.equal(result.body.summary.booked_guests, 22);
+  for (const key of ["recorded_accommodation_payments", "active_booked_accommodation_value",
+    "recorded_paid_charges", "paid_charge_rows", "net_revenue"]) {
+    assert.equal(result.body.summary[key], undefined, "Manager cannot read " + key);
+  }
   assert.equal(result.body.trends.length, 2);
   assert.equal(result.body.accommodations[0].booked_items, 3);
   assert.equal(result.body.accommodations[0].reservations, 2);
-  assert.doesNotMatch(JSON.stringify(result.body), /PRIVATE_GUEST|PRIVATE_PHONE/);
-  assert.equal(reads().length, 4);
+  assert.doesNotMatch(JSON.stringify(result.body), /PRIVATE_GUEST|PRIVATE_PHONE|6400\.00|16000\.00|900\.00/);
+  assert.equal(reads().length, 3);
   assert.ok(calls.every(c => /^SELECT\b/i.test(c.sql)));
+  assert.ok(reads().every(c =>
+    !/\bpaid_amount\b|\baccommodation_total\b|\bbooking_charges\b|\bcharge_amount\b/i.test(c.sql)));
 });
-test("Reservation creation period uses inclusive end date without scanning payment date", async () => {
+test("Reservation creation period uses inclusive end date without financial SQL", async () => {
   const result = await sample();
   assert.equal(result.status, 200);
   assert.deepEqual(result.body.period, {
@@ -157,17 +161,13 @@ test("Reservation creation period uses inclusive end date without scanning payme
     assert.match(record.sql, />= \? AND .+ < \?/);
   }
   const metric = reads()[0].sql;
-  assert.match(metric, /SUM\(COALESCE\(paid_amount,0\)\)/);
-  assert.match(metric, /reservation_status NOT IN \('cancelled','rejected'\)/);
-  assert.doesNotMatch(metric, /JOIN reservation_items/);
+  assert.match(metric, /AS booked_guests/);
+  assert.doesNotMatch(metric, /\bpaid_amount\b|\baccommodation_total\b|JOIN reservation_items/);
 });
-test("Paid booking charges are aggregated in a SEPARATE SQL query", async () => {
+test("Manager reports never query paid charges or financial ledgers", async () => {
   await sample();
-  const charge = reads().find(r => /FROM booking_charges WHERE/i.test(r.sql));
-  assert.ok(charge);
-  assert.match(charge.sql, /COALESCE\(is_paid,0\) = 1/);
-  assert.match(charge.sql, /paid_at >= \? AND paid_at < \?/);
-  assert.match(charge.sql, /SUM\(COALESCE\(charge_amount,0\)\)/);
+  assert.ok(reads().every(r => !/booking_charges|paid_amount|accommodation_total|charge_amount/i.test(r.sql)));
+  assert.equal(reads().length, 3);
 });
 test("Accommodation performance counts items and distinct reservations, not sum payments", async () => {
   await sample();
@@ -179,18 +179,19 @@ test("Accommodation performance counts items and distinct reservations, not sum 
   assert.doesNotMatch(performance.sql, /paid_amount|SUM\(.*accommodation_total/);
   assert.match(performance.sql, /LIMIT 12/);
 });
-test("Report wording never misrepresents cumulative paid_amount as net revenue", async () => {
+test("Manager report definitions contain no revenue/payment summaries", async () => {
   const result = await sample();
-  assert.match(result.body.definitions.recorded_payments, /Cumulative/);
-  assert.match(result.body.definitions.recorded_payments, /Not date-of-payment/);
-  assert.match(result.body.definitions.paid_charges, /separate/);
-  assert.match(result.body.definitions.reconciliation, /No combined net-revenue/);
+  assert.match(result.body.definitions.reservation_period, /Reservations created/);
+  assert.match(result.body.definitions.accommodation_performance, /Reservation-item counts/);
+  for (const field of ["booked_value", "recorded_payments", "paid_charges", "reconciliation"]) {
+    assert.equal(result.body.definitions[field], undefined);
+  }
 });
 test("Missing dates default to local Philippine last 30 days", async () => {
   const result = await get("/reports");
   assert.equal(result.status, 200);
   assert.equal(result.body.period.days, 30);
-  assert.equal(reads().length, 4);
+  assert.equal(reads().length, 3);
 });
 for (const [label, suffix, expectedStatus] of [
   ["malformed from", "?from=2026/10/01&to=2026-10-31", 400],
@@ -246,7 +247,7 @@ test("Demoted Manager cannot access reports despite signed token", async () => {
   assert.equal(result.status, 403);
   assert.equal(reads().length, 0);
 });
-test("Reports UI references Manager token and renders untrusted accommodation names safely", () => {
+test("Reports UI renders only operational analytics using Manager token", () => {
   const fs = require("node:fs");
   const path = require("node:path");
   const script = fs.readFileSync(path.resolve(
@@ -257,8 +258,10 @@ test("Reports UI references Manager token and renders untrusted accommodation na
   assert.match(script, /\/manager\//);
   assert.match(script, /textContent/);
   assert.doesNotMatch(script, /innerHTML/);
-  assert.match(html, /financial/i);
-  assert.match(html, /Do not add them together as revenue/);
+  assert.match(html, /Reservation Summary/);
+  assert.match(html, /Reservation Trend/);
+  assert.doesNotMatch(html, /Financial Snapshots|Booked Accommodation Value|Paid Booking Charges/);
+  assert.doesNotMatch(script, /reportBookedValue|reportPayments|reportCharges|currency\(/);
 });
 
 

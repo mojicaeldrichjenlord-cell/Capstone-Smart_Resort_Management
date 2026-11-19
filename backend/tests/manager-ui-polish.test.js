@@ -85,14 +85,17 @@ test("Reservation action buttons have explicit labels and statuses use chips", (
   assert.match(src, /timeZone:\s*"UTC"/);
 });
 
-test("Manager labels avoid calling aggregate snapshot revenue or overnight occupancy", () => {
+test("Manager UI shows operational summaries only, without financial snapshot cards", () => {
   const dashboard = html("managerDashboard.html");
   const reports = html("managerReports.html");
-  assert.match(dashboard, /recorded accommodation payments/);
-  assert.match(dashboard, /checked-in reservations/);
+  const overviewJS = js("managerDashboard.js");
+  const reportsJS = js("managerReports.js");
+  assert.match(dashboard, /checked-in guests/);
   assert.match(reports, /Days with no bookings are omitted/);
-  assert.match(reports, /Do not add them together as revenue/);
-  assert.match(reports, /Refund-adjusted net collections are not calculated/);
+  assert.match(reports, /Total Reservations/);
+  for (const source of [dashboard, reports, overviewJS, reportsJS]) {
+    assert.doesNotMatch(source, /recordedPayments|reportBookedValue|reportPayments|reportCharges|Financial Snapshots|Recorded Reservation Payments|Paid Booking Charges|₱/i);
+  }
 });
 
 test("Manager reports and reservation actions remain behind Manager authentication", () => {
