@@ -107,3 +107,45 @@ test("Offline slot preference never appears as a confirmed custom-time window", 
   assert.doesNotMatch(selected.reply, /N\/A/);
   assert.doesNotMatch(selected.reply, /confirmed.*reservation/i);
 });
+
+
+test("Offline assistant answers free parking for any vehicle without inventing entrance fees", () => {
+  const reply = context.getOfflineVerifiedResortReply(
+    "May free parking ba para sa van at bus?", "taglish", {}
+  );
+  assert.match(reply.reply, /free parking/i);
+  assert.match(reply.reply, /motor, kotse, van, o bus/);
+  assert.doesNotMatch(reply.reply, /free entrance|libreng entrance/i);
+
+  const mixed = context.getOfflineVerifiedResortReply(
+    "May parking ba at libre rin ba entrance?", "taglish", {}
+  );
+  assert.match(mixed.reply, /Free po ang parking/);
+  assert.match(mixed.reply, /Separate naman po ang entrance fee/);
+  assert.doesNotMatch(mixed.reply, /free entrance/i);
+});
+
+test("Offline parking unknowns and unrelated room questions stay conservative", () => {
+  const uncertain = context.getOfflineVerifiedResortReply(
+    "May security guard sa parking?", "taglish", {}
+  );
+  assert.match(uncertain.reply, /hindi pa confirmed/);
+  assert.equal(context.getOfflineVerifiedResortReply(
+    "May private parking ba ang Family Room B?", "taglish", {}), null);
+  assert.equal(context.getOfflineVerifiedResortReply(
+    "May parking at dogs allowed?", "taglish", {}), null);
+});
+
+test("Offline location, hours, contacts and pool answers use published resort facts", () => {
+  const asks = [
+    ["Where is the resort located?", /Mahogany Street/],
+    ["Are you open 24 hours?", /fixed booking slots/],
+    ["What is your contact number?", /0956-912-5625/],
+    ["Do you have a swimming pool?", /has a swimming pool/],
+  ];
+  for (const [question, expected] of asks) {
+    const result = context.getOfflineVerifiedResortReply(question, "english", {});
+    assert.ok(result, question);
+    assert.match(result.reply, expected);
+  }
+});
