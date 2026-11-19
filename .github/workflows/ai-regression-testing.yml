@@ -1,0 +1,48 @@
+name: AI Mock Regression - testing branch
+
+on:
+  push:
+    branches:
+      - testing
+    paths:
+      - 'backend/**'
+      - '.github/workflows/ai-regression-testing.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  mocked-ai-regression:
+    name: Mocked AI tests (no production secrets)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Checkout testing source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        run: npm ci --no-audit --no-fund
+
+      # These suites stub @google/genai and the MySQL connector. No app server,
+      # production DB, live Gemini API key or PayPal configuration is loaded.
+      - name: Run isolated AI regression suite
+        run: |
+          node --test \
+            tests/ai-resort-inquiries.test.js \
+            tests/ai-offline-policy.test.js \
+            tests/ai-booking-security.test.js \
+            tests/ai-payment-followup.test.js \
+            tests/ai-refund-facebook-contact.test.js \
+            tests/ai-natural-recommendations.test.js \
+            tests/ai-taglish-tone.test.js
