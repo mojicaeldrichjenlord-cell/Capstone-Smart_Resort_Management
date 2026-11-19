@@ -138,6 +138,39 @@ test("Open-ended Gemini prompt always gets grounded resort facts and unknown-pol
   assert.doesNotMatch(prompt, /guest has a confirmed booking/);
 });
 
+test("Unknown general resort policies never become fabricated Wi-Fi, pet or corkage claims", () => {
+  const {
+    matchUnverifiedResortPolicy, getUnverifiedResortPolicyReply,
+  } = require("../controllers/ai/resortInquiryKnowledge");
+  for (const [q,kind] of [
+    ["May WiFi ba kayo?", "wifi"],
+    ["Pet-friendly ba kayo?", "pets"],
+    ["Pwede magdala ng food?", "food"],
+    ["May corkage fee?", "food"],
+    ["Can I bring my own food?", "food"],
+  ]) {
+    const m = matchUnverifiedResortPolicy(q, {});
+    assert.equal(m?.kind, kind, q);
+    const answer = getUnverifiedResortPolicyReply(m, "taglish");
+    assert.match(answer, /Hindi pa po confirmed/);
+    assert.match(answer, /0956-912-5625/);
+    assert.doesNotMatch(answer, /allowed|yes.*wifi|free.*wifi|no.*pets/i);
+  }
+});
+
+test("Room-specific Wi-Fi inquiries stay on the data-aware AI path", () => {
+  const { matchUnverifiedResortPolicy } =
+    require("../controllers/ai/resortInquiryKnowledge");
+  assert.equal(matchUnverifiedResortPolicy("May WiFi sa Family Room B?"), null);
+  assert.equal(matchUnverifiedResortPolicy("Do your rooms have WiFi?"), null);
+  assert.equal(matchUnverifiedResortPolicy("May WiFi dito?", {
+    room_id: 100, room_name: "Family Room B",
+  }), null);
+  const mixed = matchUnverifiedResortPolicy("May free parking at WiFi kayo?");
+  assert.equal(mixed?.kind, "wifi");
+  assert.equal(mixed.mentionsParking, true);
+});
+
 test("Non-inquiry statements and unrelated content cannot trigger a canned resort FAQ", () => {
   for (const question of ["", "Thanks", "Magkano po ang Family Room B?", "refund", "Find a cottage for 7 pax"]) {
     assert.equal(matchResortInquiry(question), null, question);
