@@ -26,6 +26,29 @@ test("A spoken overnight amount + payment options query is not a room search", (
   assert.equal(wantsAccommodationCards("Show me room options","ask_recommendation"),true);
 });
 
+// General rate-list questions must reach the fresh catalog/AI prompt,
+ // instead of asking "which room?" before showing any current rate.
+test("General accommodation rate inquiries do not become room payment follow-ups", () => {
+  for (const message of [
+    "What room rates do you offer?",
+    "What are your cottage prices?",
+    "Show all accommodation prices",
+    "Ano po ang mga available na kwarto at cottage? Magkano po ang day tour?",
+    "Magkano po ang kwarto at paano mag-reserve?",
+  ]) {
+    assert.equal(isRoomPaymentInquiry(message), false, message);
+  }
+  // The focused read-only price/payment flow is intentionally unchanged.
+  for (const message of [
+    "Magkano overnight sa Family Room A?",
+    "What are the rates for Family Room B?",
+    "What is the rate for the selected room?",
+    "What payment methods can I use?",
+  ]) {
+    assert.equal(isRoomPaymentInquiry(message), true, message);
+  }
+});
+
 test("Focused Family Room B quote is DB-backed, payment method is explicit and no Nipa Hut appears", () => {
   const context={room_id:100,room_name:"Family Room B"};
   const room=resolvePaymentRoom(catalog,paymentQuestion,context);
