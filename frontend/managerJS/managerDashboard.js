@@ -45,7 +45,7 @@ document.addEventListener("DOMContentLoaded", () => {
     accommodationCount: "total_accommodations",
   };
 
-  // Fetch fresh backend aggregates rather than deriving financial counts in browser.
+  // Fetch only operational counts from the Manager backend.
   async function loadOverview() {
     if (refresh) refresh.disabled = true;
     if (status) status.textContent = "Loading current resort overview…";
@@ -57,14 +57,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       document.getElementById("availableListings").textContent =
         "Listed as available: " + formatNumber(data.summary?.listed_available);
-      const recorded = Number(data.summary?.recorded_reservation_payments);
-      document.getElementById("recordedPayments").textContent =
-        Number.isFinite(recorded)
-          ? "₱" + recorded.toLocaleString("en-PH", {
-              minimumFractionDigits: 2, maximumFractionDigits: 2,
-            })
-          : "—";
-
       const tbody = document.getElementById("recentActivity");
       if (tbody) {
         tbody.replaceChildren();
