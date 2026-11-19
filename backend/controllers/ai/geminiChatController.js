@@ -854,7 +854,7 @@ async function buildQuotaLimitedAccommodationReply(payload, requestCatalog = nul
   const intro = {
     english: "Our AI service is temporarily limited, but these accommodation details come directly from the resort database.",
     tagalog: "Pansamantalang limitado ang AI, pero galing mismo sa resort database ang impormasyong ito.",
-    taglish: "Medyo limited po yung AI ngayon, pero galing pa rin sa resort database yung room details na ito.",
+    taglish: "Temporarily limited ang AI po ngayon, pero verified sa resort database yung room details na ito.",
     spanish: "La IA está temporalmente limitada, pero estos datos provienen directamente de la base de datos del resort.",
     mandarin: "AI 服务暂时受限，但以下住宿信息直接来自度假村数据库。",
   }[language];
@@ -963,8 +963,10 @@ async function buildQuotaLimitedAccommodationReply(payload, requestCatalog = nul
     ? quotaEstimatedDownpayment(language, stayKind, listedRate) : "";
   const details = roomLines.length ? roomLines.join("\n") :
     hasPaymentHelp ? "" : words.none;
+  // An upstream quota/error must be disclosed in the guest's chosen
+  // language. Never silently pretend a database-only fallback is Gemini.
   const reply = [
-    limitedResults, details,
+    intro, limitedResults, details,
     hasPaymentHelp ? getQuotaBookingGuidance(language) : "",
     estimate,
     roomLines.length ? caution : "",
