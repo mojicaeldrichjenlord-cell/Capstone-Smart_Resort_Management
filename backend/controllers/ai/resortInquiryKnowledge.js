@@ -92,8 +92,8 @@ function matchResortInquiry(message) {
   const pool = /\b(?:swimming\s+pool|pool\s+(?:area|facility)|may\s+(?:ba\s+)?pool|meron\s+(?:ba\s+)?pool|have\s+(?:a\s+)?pool|piscina)\b/i.test(t);
   // A compound parking + entrance-fee question needs BOTH independent facts.
   // Do not confuse the physical entrance to the parking lot with admission.
-  const entranceFee = /\\b(?:entrance\\s+(?:fee|charge|payment|ticket|libre|free)|free\\s+entrance|libre(?:ng)?(?:\\s+rin)?(?:\\s+ba)?\\s+(?:ang\\s+)?entrance|bayad\\s+sa\\s+pasok)\\b/i.test(t);
-  if (parking && entranceFee && !/\\b(?:pets?|dogs?|cats?|wi-?fi|corkage|outside\\s+food|swimming\\s+pool|refund)\\b/i.test(t))
+  const entranceFee = /\b(?:entrance\s+(?:fee|charge|payment|ticket|libre|free)|free\s+entrance|libre(?:ng)?(?:\s+rin)?(?:\s+ba)?\s+(?:ang\s+)?entrance|bayad\s+sa\s+pasok)\b/i.test(t);
+  if (parking && entranceFee && !/\b(?:pets?|dogs?|cats?|wi-?fi|corkage|outside\s+food|swimming\s+pool|refund)\b/i.test(t))
     return { topic: "parkingEntrance", qualified: false };
   const topics = Object.entries({ parking, location, openingHours: hours, contact, pool })
     .filter(([,yes]) => yes).map(([name]) => name);
