@@ -23,6 +23,8 @@ const { isRoomPaymentInquiry, resolvePaymentRoom, paymentReply } =
 const {
   matchAccommodationCountQuestion, countSummary, countReply,
 } = require("./aiAccommodationCounts");
+const { matchCheapestInquiry, pickCheapestRows, cheapestReply } =
+  require("./aiAffordableFollowup");
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -1125,6 +1127,84 @@ exports.chatWithGemini = async (req, res) => {
         matched_rooms: [], catalog_recommendations: [],
         alternative_dates: [], booking_preview: null,
         recommendation_cards: [],
+      });
+    }
+
+    // AI-LIVE-05: Price superlatives are NOT payment/deposit questions.
+    // Keep "ano naman ang pinakamura sa mga yun?" tied to the latest
+    // category question (e.g., cottages) while rereading ADMIN prices.
+    // One small read-only sorted query replaces a hallucination-prone
+    // Gemini reply and never checks or changes bookings/payments.
+    const savedCheapestContext = req.body.context && typeof req.body.context === "object" &&
+      !Array.isArray(req.body.context) ? req.body.context : {};
+    const cheapestIntent = matchCheapestInquiry(
+      message, normalizeRecentTurns(req.body.recent_turns), savedCheapestContext
+    );
+    if (cheapestIntent) {
+      const language = normalizeLanguageStyle(req.body.voice_language) ||
+        detectLanguageFromMessage(message) || guessInquiryLanguage(message) ||
+        normalizeLanguageStyle(req.body.language_style) ||
+        normalizeLanguageStyle(savedCheapestContext.language_style) || "taglish";
+      let priceSelection = { lowest: null, items: [] };
+      // If neither the new message nor the immediately preceding user
+      // question names a category, ask once; NEVER use a stale room choice.
+      if (cheapestIntent.scopes.length) {
+        const params = [];
+        const categories = [];
+        if (!cheapestIntent.scopes.includes("all")) {
+          const names = { room: "room", cottage: "cottage",
+            function: "function area" };
+          for (const scope of cheapestIntent.scopes) {
+            if (names[scope]) categories.push(names[scope]);
+          }
+        }
+        const categoryWhere = categories.length
+          ? " AND LOWER(TRIM(COALESCE(c.name, ''))) IN (" +
+            categories.map(() => "?").join(", ") + ")" : "";
+        params.push(...categories);
+        const guestWhere = cheapestIntent.guests > 0
+          ? " AND a.max_capacity >= ?" : "";
+        if (cheapestIntent.guests > 0) params.push(cheapestIntent.guests);
+        const dayPrice = "CASE WHEN a.day_price > 0 THEN a.day_price ELSE 999999999 END";
+        const nightPrice = "CASE WHEN a.overnight_price > 0 THEN a.overnight_price ELSE 999999999 END";
+        const orderRate = cheapestIntent.stay === "day" ? dayPrice :
+          cheapestIntent.stay === "night" ? nightPrice :
+          "LEAST(" + dayPrice + ", " + nightPrice + ")";
+        const slotWhere = cheapestIntent.stay === "day"
+          ? " AND a.day_price > 0" :
+          cheapestIntent.stay === "night" ? " AND a.overnight_price > 0" :
+          " AND (a.day_price > 0 OR a.overnight_price > 0)";
+        const sql = "SELECT a.id, a.name AS room_name, a.image, a.description, " +
+          "a.amenities, a.status, a.max_capacity AS capacity, " +
+          "a.day_price, a.overnight_price, a.extended_price, " +
+          "c.name AS category_name FROM accommodations a " +
+          "LEFT JOIN accommodation_categories c ON c.id = a.category_id " +
+          "WHERE LOWER(TRIM(COALESCE(a.status, ''))) = 'available'" +
+          categoryWhere + guestWhere + slotWhere +
+          " ORDER BY " + orderRate + " ASC, a.id ASC LIMIT 6";
+        const [priceRows] = await db.promise().query(sql, params);
+        priceSelection = pickCheapestRows(priceRows, cheapestIntent);
+      }
+      const recommended = priceSelection.items.map(x => x.room);
+      const cards = verifiedAccommodationCards(recommended, false);
+      const resultContext = mergeContext(savedCheapestContext, {
+        language_style: language,
+        ...(recommended.length === 1 ? {
+          room_id: recommended[0].id, room_name: recommended[0].room_name,
+        } : {}),
+      });
+      if (recommended.length !== 1) {
+        delete resultContext.room_id;
+        delete resultContext.room_name;
+      }
+      return res.status(200).json({
+        success: true,
+        mode: "verified_cheapest_accommodation",
+        reply: cheapestReply(priceSelection, cheapestIntent, language),
+        extracted_context: resultContext,
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null,
+        recommendation_cards: cards,
       });
     }
 
