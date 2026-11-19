@@ -73,7 +73,7 @@ test("Landing video remains and AI chatbot controls remain on Customer Home", ()
   assert.match(landing, /class="hero-video"/);
   assert.match(landing, /drone-landing\.mp4/);
   assert.match(landing, /landingMenuToggle/);
-  assert.match(home, /ai-chat-widget\.js/);
+  assert.match(home, /id="aiChatWindow"/);
   assert.match(home, /ai-voice\.js/);
   assert.match(home, /id="mobileNav"/);
 });
