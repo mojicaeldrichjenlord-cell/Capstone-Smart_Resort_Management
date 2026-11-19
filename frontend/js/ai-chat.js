@@ -1099,8 +1099,10 @@ function getOfflineFallbackReply(message, storedContext = {}, pageContext = {}) 
 
   // Resort-wide verified facts are still available when Gemini/network fails.
   // This helper never creates a booking or infers any unconfirmed policy.
+  const inquiryLanguage = /\b(?:may|meron|kayo|ba|bang|po|opo|libre|libreng|magkano|pwede|puwede|saan|sasakyan)\b/i.test(String(message))
+    ? "taglish" : detectedLanguage;
   const verifiedResortReply = getOfflineVerifiedResortReply(
-    message, detectedLanguage, merged
+    message, inquiryLanguage, merged
   );
   if (verifiedResortReply) return verifiedResortReply;
 
@@ -1136,6 +1138,18 @@ function getOfflineVerifiedResortReply(message, language, context) {
   const reply = (english, tagalog, taglish) =>
     ({ english, tagalog, taglish })[lang];
   const withReply = answer => ({ modeNotice: notice, reply: answer, context });
+
+  // Unsupported general policies are handled conservatively even offline.
+  // A statement that parking is free does not prove that pets or Wi-Fi are allowed.
+  const unknownPolicy = /\b(?:pets?|dogs?|cats?|wi-?fi|internet|corkage|outside\s+food|bring\s+food)\b/i.test(t);
+  if (unknownPolicy) return withReply(reply(
+    (park ? "Parking is free for all vehicles. " : "") +
+      "That other resort policy hasn't been verified. Please ask Front Desk at 0956-912-5625.",
+    (park ? "Libre po ang parking. " : "") +
+      "Hindi pa confirmed ang iba pang policy na iyon. Pakitanong po sa Front Desk: 0956-912-5625.",
+    (park ? "Free po ang parking. " : "") +
+      "Hindi pa confirmed yung iba pang policy. Pa-check po sa Front Desk: 0956-912-5625."
+  ));
 
   // Don't answer only one part of a complex question or promise a room-specific perk.
   if (/\b(?:family\s+room|double\s+room|single\s+room|nipa\s+hut|pool\s+shade|pavilion|cottage|facilities|amenities|pets?|dogs?|cats?|wi-?fi|corkage|outside\s+food|room\s+rate)\b/i.test(t)) return null;
