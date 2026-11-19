@@ -4,7 +4,7 @@
 // A price is a current ADMIN LISTED price, never confirmed slot availability.
 const { categoryGroup, matchAccommodationCountQuestion } = require("./aiAccommodationCounts");
 
-const superlative = /\b(?:pinaka\s*mura|pinakamura|cheapest|least\s+expensive|lowest\s+(?:listed\s+)?(?:price|rate|cost)|most\s+affordable|pinakamababang\s+(?:presyo|rate))\b/i;
+const superlative = /\b(?:pinaka\s*mura(?:ng)?|cheapest|least\s+expensive|lowest\s+(?:listed\s+)?(?:price|rate|cost)|most\s+affordable|pinakamababang\s+(?:presyo|rate))\b/i;
 const unrelated = /\b(?:refund|discount|promo|voucher|payment|downpayment|deposit|balance|cancellation|cancel|parking|entrance\s+fee|wi-?fi)\b/i;
 const calendar = /\b(?:tomorrow|bukas|today|tonight|ngayon|sa\s+petsa|on\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)|this\s+(?:week|month)|next\s+(?:week|month)|check[ -]?in|check[ -]?out|reservation\s+date)\b/i;
 const wordSets = Object.freeze({
