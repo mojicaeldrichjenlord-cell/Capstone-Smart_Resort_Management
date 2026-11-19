@@ -132,8 +132,11 @@ test("Offline parking unknowns and unrelated room questions stay conservative", 
   assert.match(uncertain.reply, /hindi pa confirmed/);
   assert.equal(context.getOfflineVerifiedResortReply(
     "May private parking ba ang Family Room B?", "taglish", {}), null);
-  assert.equal(context.getOfflineVerifiedResortReply(
-    "May parking at dogs allowed?", "taglish", {}), null);
+  const mixed = context.getOfflineVerifiedResortReply(
+    "May parking at dogs allowed?", "taglish", {});
+  assert.match(mixed.reply, /Free po ang parking/);
+  assert.match(mixed.reply, /hindi pa confirmed/);
+  assert.doesNotMatch(mixed.reply, /dogs? allowed|pet-friendly po/i);
 });
 
 test("Offline location, hours, contacts and pool answers use published resort facts", () => {
