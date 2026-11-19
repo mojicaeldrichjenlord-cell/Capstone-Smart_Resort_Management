@@ -1225,7 +1225,7 @@ function getEnglishFallbackReply(text, merged) {
   if (text.includes("how to book") || text.includes("book room") || text.includes("booking process")) {
     return {
       modeNotice: "AI is temporarily unavailable. Offline assistant mode is active.",
-      reply: "Choose a room, date and fixed Day Tour or Night slot on the booking page. Pay the 50% accommodation downpayment through PayPal; entrance fees are paid onsite.",
+      reply: "Choose a room, date and fixed Day Tour or Night slot on the booking page. Pay the 50% accommodation downpayment through PayPal; entrance fees are paid onsite. After confirmation, check the reservation in My Bookings.",
       context: merged,
     };
   }
@@ -1311,7 +1311,7 @@ function getTagalogFallbackReply(text, merged) {
   if (text.includes("paano mag book") || text.includes("paano mag-book") || text.includes("booking process") || text.includes("mag book")) {
     return {
       modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
-      reply: "Pumili po ng accommodation, date at fixed Day Tour o Night slot sa booking page. Ang downpayment ay 50% via PayPal; hiwalay po ang entrance fee.",
+      reply: "Pumili po ng accommodation, date at fixed Day Tour o Night slot sa booking page. Ang downpayment ay 50% via PayPal; hiwalay po ang entrance fee. Kapag confirmed na, makikita ang reservation sa My Bookings.",
       context: merged,
     };
   }
@@ -1397,7 +1397,7 @@ function getTaglishFallbackReply(text, merged) {
   if (text.includes("how to book") || text.includes("paano mag book") || text.includes("paano mag-book") || text.includes("booking process")) {
     return {
       modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
-      reply: "Pili po ng accommodation, date, at Day Tour o Night slot sa booking page. 50% po ang downpayment via PayPal; hiwalay ang entrance fee.",
+      reply: "Pili po ng accommodation, date, at Day Tour o Night slot sa booking page. 50% po ang downpayment via PayPal; hiwalay ang entrance fee. Kapag confirmed na, check niyo po sa My Bookings.",
       context: merged,
     };
   }
