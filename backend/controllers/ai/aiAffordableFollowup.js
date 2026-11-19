@@ -29,8 +29,14 @@ function recentScope(recentTurns) {
   return count?.scopes?.length ? count.scopes : explicitScopes(recentUser.text);
 }
 function guestCount(text, context) {
-  const found = String(text || "").match(/\b(\d{1,3})\s*(?:na\s*)?(?:guests?|pax|tao|people|persons?)\b/i);
-  const n = found ? Number(found[1]) : Number(context?.guests);
+  const current = String(text || "");
+  const found = current.match(/\b(\d{1,3})\s*(?:na\s*)?(?:guests?|pax|tao|people|persons?)\b/i);
+  // A previously saved 20-person group MUST NOT silently narrow the answer
+  // to "cheapest cottage" after a new, resort-wide inventory-count question.
+  // Only reuse old guests when the new message explicitly refers to that group.
+  const refersToGroup = /\b(?:for\s+(?:us|our\s+(?:group|party))|para\s+sa\s+(?:amin|group\s+namin)|kasya\s+sa\s+amin|for\s+our\s+guests)\b/i.test(current);
+  const n = found ? Number(found[1]) :
+    refersToGroup ? Number(context?.guests) : 0;
   return Number.isSafeInteger(n) && n > 0 && n <= 200 ? n : 0;
 }
 function matchCheapestInquiry(message, recentTurns = [], context = {}) {
