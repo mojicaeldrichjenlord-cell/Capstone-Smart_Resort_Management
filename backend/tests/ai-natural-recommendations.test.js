@@ -340,3 +340,37 @@ test("AI-LIVE-04 inventory summaries distinguish Room category and unverified sl
   assert.match(available, /7 rooms/);
   assert.doesNotMatch(available, /9 rooms/);
 });
+
+
+test("AI-LIVE-05 cheapest follow-up uses recent category without stale group filter", () => {
+  const { matchCheapestInquiry, pickCheapestRows, cheapestReply } =
+    require("../controllers/ai/aiAffordableFollowup");
+  const turns = [
+    { role: "user", text: "Ilang cottages meron kayo?" },
+    { role: "assistant", text: "May 45 cottages po kami." },
+  ];
+  const broad = matchCheapestInquiry(
+    "Ano naman ang pinakamura sa mga yun?", turns,
+    { guests: 20, room_id: 61, room_name: "Old Family Room" });
+  assert.deepEqual(broad.scopes, ["cottage"]);
+  assert.equal(broad.guests, 0); // Count question reset category scope, not party-size filter.
+  const targeted = matchCheapestInquiry(
+    "Ano ang pinakamurang cottage para sa amin?", turns, { guests: 20 });
+  assert.equal(targeted.guests, 20);
+  const exactGroup = matchCheapestInquiry(
+    "Cheapest cottage for 8 guests?", turns, { guests: 20 });
+  assert.equal(exactGroup.guests, 8);
+  const rows = [
+    { id: 1, room_name: "Single Room Cottage", category_name: "Room",
+      status: "available", capacity: 4, day_price: 400 },
+    { id: 2, room_name: "Small Nipa Hut 1", category_name: "Cottage",
+      status: "available", capacity: 4, day_price: 800, overnight_price: 900 },
+    { id: 3, room_name: "Big Nipa Hut 1", category_name: "Cottage",
+      status: "available", capacity: 25, day_price: 1500, overnight_price: 2000 },
+  ];
+  const overall = pickCheapestRows(rows, broad);
+  assert.equal(overall.items[0].room.id, 2); // Room-category name is not a cottage.
+  assert.match(cheapestReply(overall, broad, "taglish"), /₱800\.00/);
+  const group = pickCheapestRows(rows, targeted);
+  assert.equal(group.items[0].room.id, 3);
+});
