@@ -147,9 +147,9 @@ function matchUnverifiedResortPolicy(message, context = {}) {
   if (!t || t.length > 350) return null;
   const wifi = /\b(?:wi-?fi|wireless\s+internet|internet\s+connection)\b/i.test(t);
   const pets = /\b(?:pets?|pet[ -]?friendly|dogs?|cats?|alagang\s+hayop)\b/i.test(t);
-  const food = /\b(?:corkage|outside\s+food|bring\s+(?:my|our|your|own)\s+food|dalang\s+pagkain|magdala\s+ng\s+pagkain)\b/i.test(t);
+  const food = /\b(?:corkage|outside\s+food|bring\s+(?:(?:my|our|your|own)\s+)?food|own\s+food|dalang\s+(?:pagkain|food)|magdala\s+ng\s+(?:pagkain|food))\b/i.test(t);
   if (![wifi,pets,food].some(Boolean)) return null;
-  if (/\b(?:family\s+room|double\s+room|single\s+room|nipa\s+hut|cottage|pavilion|pool\s+shade|booking\s+code|transaction|payment\s+status)\b/i.test(t)) return null;
+  if (/\b(?:family\s+room|double\s+room|single\s+room|rooms?|kwarto|kuwarto|accommodations?|nipa\s+hut|cottage|pavilion|pool\s+shade|booking\s+code|transaction|payment\s+status)\b/i.test(t)) return null;
   // A customer asking "May Wi-Fi dito?" while a room is focused needs a
   // fresh per-room lookup / grounded Gemini answer, not a property-wide FAQ.
   const focused = Number(context?.room_id) > 0 || Boolean(String(context?.room_name || "").trim());
