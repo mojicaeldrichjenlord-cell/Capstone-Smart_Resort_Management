@@ -64,9 +64,9 @@
     .frontdesk-account-card,
     .summary-card,
     .frontdesk-panel,
-    .payment-summary-card,
+    .payment-summary-card:not(.attention),
     .payments-panel,
-    .guest-summary-card,
+    .guest-summary-card:not(.attention):not(.ready),
     .guests-panel,
     .walkin-card,
     .receipt-preview-card
