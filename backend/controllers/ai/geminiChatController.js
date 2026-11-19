@@ -1361,6 +1361,10 @@ exports.chatWithGemini = async (req, res) => {
     if (amenityKind) {
       const saved = req.body.context && typeof req.body.context === "object" &&
         !Array.isArray(req.body.context) ? req.body.context : {};
+      // The client also clears its local focus for this response mode.
+      const safeSaved = { ...saved };
+      delete safeSaved.room_id;
+      delete safeSaved.room_name;
       const language = normalizeLanguageStyle(req.body.voice_language) ||
         (/\b(?:may|meron|ba|bang|yung|po|sya|siya|niya|nya)\b/i.test(message)
           ? "taglish" : null) ||
@@ -1381,10 +1385,7 @@ exports.chatWithGemini = async (req, res) => {
       return res.status(200).json({
         success: true, mode: "accommodation_selection_needed",
         reply,
-        extracted_context: mergeContext(saved, {
-          language_style: language,
-          // Do not echo a mismatched ID/name in this response.
-        }),
+        extracted_context: mergeContext(safeSaved, { language_style: language }),
         matched_rooms: [], catalog_recommendations: [],
         alternative_dates: [], booking_preview: null,
         recommendation_cards: [],
