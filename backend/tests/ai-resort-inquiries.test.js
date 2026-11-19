@@ -62,9 +62,23 @@ test("Unverified parking capacity, reservations and security never become confir
   }
 });
 
-test("Mixed or room-specific inquiries do not produce an incomplete generic answer", () => {
+test("Parking + entrance admission questions answer both fees separately", () => {
   for (const question of [
     "May parking ba at libre rin ba entrance?",
+    "Free parking and entrance fee?",
+    "May parking fee at entrance fee ba?",
+  ]) {
+    const topic = matchResortInquiry(question);
+    assert.equal(topic?.topic, "parkingEntrance", question);
+    const reply = getResortInquiryReply(topic, "taglish");
+    assert.match(reply, /Free po ang parking/);
+    assert.match(reply, /Separate naman po ang entrance fee/);
+    assert.doesNotMatch(reply, /libreng entrance|free entrance/i);
+  }
+});
+
+test("Mixed or room-specific inquiries do not produce an incomplete generic answer", () => {
+  for (const question of [
     "May parking at allowed ba dogs?",
     "May sariling private parking ang Family Room B?",
     "May parking ba sa Single Room Cottage 1?",
