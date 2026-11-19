@@ -141,11 +141,13 @@ async function sendAiMessage(options = {}) {
 
     if (data.extracted_context) {
       const merged = mergeContext(getStoredAiContext(), data.extracted_context);
-      // A category preview (e.g. Pool Shade) must genuinely clear the old
-      // selected room. mergeContext uses nullish fallbacks and would otherwise
-      // resurrect an earlier Nipa Hut / Family Room after category switching.
-      if (data.mode === "verified_accommodation_preview" &&
-          !Object.prototype.hasOwnProperty.call(data.extracted_context, "room_id")) {
+      // Keep ONE-card recommendations focused for follow-up amenity questions.
+      // If a new search has zero/multiple results, or the backend cannot verify
+      // an old selected room, clear the stale context instead of resurrecting
+      // an unrelated Nipa Hut (mergeContext uses nullish fallbacks).
+      if ((data.mode === "verified_accommodation_preview" &&
+            !Object.prototype.hasOwnProperty.call(data.extracted_context, "room_id")) ||
+          data.mode === "accommodation_selection_needed") {
         delete merged.room_id;
         delete merged.room_name;
       }
