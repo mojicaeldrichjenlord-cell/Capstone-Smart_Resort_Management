@@ -90,6 +90,11 @@ function matchResortInquiry(message) {
   const hours = /\b(?:operating\s+hours?|opening\s+hours?|business\s+hours?|open\s+(?:24\s*(?:\/\s*7|hours?)|everyday|on\s+(?:sunday|saturday|weekends?))|what\s+time\s+(?:do\s+you\s+)?open|anong\s+oras\s+(?:bukas|open)|bukas\s+ba\s+(?:kayo|ang\s+resort)|oras\s+ng\s+resort)\b/i.test(t);
   const contact = /\b(?:contact\s+(?:number|details?|info)|phone\s+(?:number|contact)|telephone|hotline|tawag(?:an)?\s+(?:ko\s+)?(?:sa\s+)?(?:resort|inyo|kayo)|numero\s+ng\s+(?:resort|contact)|number\s+(?:niyo|nyo|ninyo)|contact\s+kayo)\b/i.test(t);
   const pool = /\b(?:swimming\s+pool|pool\s+(?:area|facility)|may\s+(?:ba\s+)?pool|meron\s+(?:ba\s+)?pool|have\s+(?:a\s+)?pool|piscina)\b/i.test(t);
+  // Prevent a resort-wide answer falsely promising a specific room amenity.
+  if (/\b(?:family\s+room|double\s+room|single\s+room|nipa\s+hut|pool\s+shade|pavilion|cottage|private\s+(?:parking|pool)|dedicated\s+parking)\b/i.test(t)) return null;
+  // Open-ended multi-facility questions need complete grounded reasoning,
+  // not a one-line parking or pool answer that ignores other services.
+  if (/\b(?:facilities|amenities|other\s+services|what\s+else|all\s+services|all\s+facilities)\b/i.test(t)) return null;
   // A compound parking + entrance-fee question needs BOTH independent facts.
   // Do not confuse the physical entrance to the parking lot with admission.
   const entranceFee = /\b(?:entrance\s+(?:fee|charge|payment|ticket|libre|free)|free\s+entrance|libre(?:ng)?(?:\s+rin)?(?:\s+ba)?\s+(?:ang\s+)?entrance|bayad\s+sa\s+pasok)\b/i.test(t);
@@ -100,13 +105,11 @@ function matchResortInquiry(message) {
   if (topics.length !== 1) return null;
   const topic = topics[0];
 
-  // Prevent a resort-wide answer falsely promising a specific room amenity.
-  if (/\b(?:family\s+room|double\s+room|single\s+room|nipa\s+hut|pool\s+shade|pavilion|cottage|private\s+(?:parking|pool)|dedicated\s+parking)\b/i.test(t)) return null;
   // Other guest questions have independent policies; don't silently ignore them.
   if (/\b(?:pets?|dogs?|cats?|wifi|wi-fi|internet|corkage|outside\s+food|bring\s+food|entrance\s+(?:fee|charge|payment|ticket|libre|free)|free\s+entrance|libre(?:ng)?(?:\s+rin)?(?:\s+ba)?\s+(?:ang\s+)?entrance|refund|refunds?|reservation\s+status|booking\s+code|paid\s+already|room\s+rate|price\s+of)\b/i.test(t)) return null;
 
   const parkingUnknown = topic === "parking" &&
-    /\b(?:secure|security|cctv|guard(?:ed)?|covered|roof|shade|reserved?|reserve|dedicated|exclusive|slots?|spaces?|capacity|how\s+many|ilang|full|available\s+(?:on|today|tomorrow)|overnight\s+parking\s+hours?|parking\s+hours?|entrance|exit|where\s+exactly|saan\s+exactly)\b/i.test(t);
+    /\b(?:secure|security|cctv|guard(?:ed)?|covered|roof|shade|reserved?|reserve|dedicated|exclusive|slots?|spaces?|capacity|how\s+many|ilang|\d{2,}\s*(?:vehicles?|cars?|vans?|buses|sasakyan)|full|available\s+(?:on|today|tomorrow)|overnight\s+parking\s+hours?|parking\s+hours?|entrance|exit|where\s+exactly|saan\s+exactly)\b/i.test(t);
   if (parkingUnknown) return { topic, qualified: true };
 
   // Resort's opening hours are not check-in/out schedules.
