@@ -22,6 +22,7 @@ test("Owner-confirmed free parking covers natural Taglish and English paraphrase
     "Libre po ba parking?",
     "Magkano parking fee ng sasakyan?",
     "May parking kayo para sa motor at van?",
+    "May parking space ba for vans?",
     "Pwede mag-park ng bus?",
     "Is parking free for motorcycles?",
     "Can I park a bus at the resort?",
@@ -52,6 +53,7 @@ test("Unverified parking capacity, reservations and security never become confir
     "May CCTV sa parking?",
     "Is the parking guarded?",
     "Ilang parking slots meron?",
+    "Kaya ba ng parking yung 100 na tao?",
     "Can I reserve a parking space?",
     "Saan exactly ang parking entrance?",
   ]) {
