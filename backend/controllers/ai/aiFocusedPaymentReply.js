@@ -5,11 +5,32 @@
 const norm = value => String(value || "").normalize("NFKC")
   .toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
+// Broad inventory/rate questions must use the fresh accommodation catalog,
+// not a selected-room payment breakdown. This preserves comparisons and the
+// exact Admin-managed rates in the AI prompt (without changing any payment).
+function isGeneralInventoryRateQuestion(text) {
+  const inventory = /\b(?:rooms?|accommodations?|cottages?|pavilions?|huts?|shades?|function\s+areas?|kwarto|kuwarto|kubo)\b/i.test(text);
+  const pricing = /\b(?:rates?|prices?|costs?|presyo|magkano)\b/i.test(text);
+  if (!inventory || !pricing) return false;
+
+  // An explicitly selected room or actual payment/deposit question still
+  // belongs to the focused read-only payment handler.
+  if (/\b(?:family|single|double)\s+room\s+(?:[a-z]|\d+)\b|\bnipa\s+hut\s*\d+\b/i.test(text) ||
+      /\b(?:down[\s-]?payment|deposits?|balance|payments?|pay(?:ing)?|paypal|babayaran|bayaran|magbayad|ibabayad)\b/i.test(text)) {
+    return false;
+  }
+
+  return /\b(?:offer|available|list|show|compare|options?|all|different|various|mga)\b/i.test(text) ||
+    /\b(?:paano\s+mag[ -]?reserve|how\s+to\s+(?:reserve|book))\b/i.test(text) ||
+    /\b(?:rooms?|accommodations?|cottages?|pavilions?|huts?|shades?)\s+(?:rates|prices|costs)\b/i.test(text);
+}
+
 function isRoomPaymentInquiry(message) {
   const text = String(message || "");
   if (!text.trim()) return false;
   const isPayment = /\b(?:payments?|pay(?:ing)?|paypal|down[\s-]?payment|deposits?|balance|total|amount|cost|prices?|rates?|presyo|magkano|babayaran|bayaran|magbayad|ibabayad|bayad)\b/i.test(text);
   if (!isPayment) return false;
+  if (isGeneralInventoryRateQuestion(text)) return false;
   // Resort-wide parking questions (including "magkano parking fee") are
   // not accommodation deposits/rates. Mixed room + parking inquiries must
   // use grounded resort + fresh room data, not the room-only payment reply.
