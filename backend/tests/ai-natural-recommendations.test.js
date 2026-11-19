@@ -280,3 +280,63 @@ test("UI-26 airy chatbot theme loads after Customer theme on both pages", () => 
     assert.match(html, /id="aiChatSendBtn"|id="aiSendBtn"/);
   }
 });
+
+// AI-LIVE-04: "Ilang rooms?" must mean a number, not preview cards.
+// This classifier is deliberately narrow; date availability and guest capacity
+// still use the booking-aware flow, and card discovery remains supported.
+test("AI-LIVE-04 natural count intent handles Taglish, English and category questions", () => {
+  const { matchAccommodationCountQuestion } =
+    require("../controllers/ai/aiAccommodationCounts");
+  for (const [question, scopes, subtype] of [
+    ["ilang rooms meron kayo?", ["room"], null],
+    ["How many rooms do you have?", ["room"], null],
+    ["Ilang kwarto meron kayo?", ["room"], null],
+    ["Ilan pong Family Rooms?", ["room"], "family"],
+    ["How many double rooms are there?", ["room"], "double"],
+    ["Ilang cottages at rooms mayroon kayo?", ["room", "cottage"], null],
+    ["How many function areas?", ["function"], null],
+    ["How many accommodations are listed?", ["all"], null],
+  ]) {
+    const result = matchAccommodationCountQuestion(question);
+    assert.deepEqual(result?.scopes, scopes, question);
+    assert.equal(result?.subtype, subtype, question);
+  }
+  assert.equal(matchAccommodationCountQuestion("Ilang available na rooms?").availableOnly, true);
+  for (const question of [
+    "anong mga rooms meron kayo?",
+    "Can you show me the rooms?",
+    "What are the room rates?",
+    "Ilang guests kasya sa Family Room B?",
+    "Ilang rooms available tomorrow?",
+    "Ilang parking slots meron?",
+    "Ilang free entrance sa Family Room B?",
+    "How many room types do you have?",
+  ]) {
+    assert.equal(matchAccommodationCountQuestion(question), null, question);
+  }
+});
+
+test("AI-LIVE-04 inventory summaries distinguish Room category and unverified slots", () => {
+  const { countSummary, countReply } =
+    require("../controllers/ai/aiAccommodationCounts");
+  const records = [
+    { category_name: "Room", listing_status: "available", accommodation_count: 7 },
+    { category_name: "Room", listing_status: "maintenance", accommodation_count: 2 },
+    { category_name: "Cottage", listing_status: "available", accommodation_count: 16 },
+    { category_name: "Function Area", listing_status: "available", accommodation_count: 3 },
+  ];
+  const intent = { scopes: ["room"], subtype: null, availableOnly: false };
+  const summary = countSummary(records, intent);
+  assert.equal(summary.room.total, 9);
+  assert.equal(summary.room.listed, 7);
+  assert.equal(summary.total, 9);
+  assert.equal(summary.listed, 7);
+  const reply = countReply(summary, intent, "taglish");
+  assert.match(reply, /9 rooms/);
+  assert.match(reply, /7 marked available/);
+  assert.match(reply, /date at time/);
+  assert.doesNotMatch(reply, /16 cottages|booked|confirmed reservation/i);
+  const available = countReply(summary, { ...intent, availableOnly: true }, "english");
+  assert.match(available, /7 rooms/);
+  assert.doesNotMatch(available, /9 rooms/);
+});
