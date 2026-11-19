@@ -1194,3 +1194,49 @@ test("Fresh positive accommodation rate stays numerically exact in AI prompt", a
   assert.match(modelPrompts.at(-1), /Overnight: PHP 4,300\.00/);
   assert.match(modelPrompts.at(-1), /Extended: PHP 5,000\.00/);
 });
+
+
+// Stage AI-RESORT-01: all of these are real HTTP-handler tests with fake
+// Gemini/MySQL fixtures, so routing regressions cannot hide behind unit tests.
+test("Parking fee question bypasses room-payment resolver and makes zero paid or SQL calls", async () => {
+  const r = await post("/api/ai/chat", {
+    message: "Magkano po parking fee para sa van?",
+    context: {room_id: 61, room_name: "Family Room A", language_style: "taglish"},
+  });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.mode, "verified_resort_inquiry");
+  assert.equal(r.body.inquiry_topic, "parking");
+  assert.match(r.body.reply, /free parking|Walang parking fee/i);
+  assert.deepEqual(r.body.recommendation_cards, []);
+  assert.equal(r.body.extracted_context.room_id, 61, "should preserve focus without using it for parking");
+  assert.equal(modelCalls, 0);
+  assert.equal(queries.length, 0);
+});
+
+test("Parking + entrance question explains fee distinction without room suggestions", async () => {
+  const r = await post("/api/ai/chat", {
+    message: "May parking ba at libre rin ba entrance?",
+    voice_language: "taglish",
+  });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.mode, "verified_resort_inquiry");
+  assert.equal(r.body.inquiry_topic, "parkingEntrance");
+  assert.match(r.body.reply, /Free po ang parking/);
+  assert.match(r.body.reply, /Separate naman po ang entrance fee/);
+  assert.deepEqual(r.body.recommendation_cards, []);
+  assert.equal(modelCalls, 0);
+  assert.equal(queries.length, 0);
+});
+
+test("General room query still uses DB and Gemini with verified parking knowledge", async () => {
+  const r = await post("/api/ai/chat", {
+    message: "What facilities does the resort have, including any parking?",
+  });
+  assert.equal(r.status, 200);
+  // The generic open-ended request is not limited to the parking canned reply.
+  assert.notEqual(r.body.mode, "verified_resort_inquiry");
+  assert.ok(queries.length > 0);
+  assert.ok(modelCalls > 0);
+  assert.match(modelPrompts.at(-1), /FREE on-site parking for ANY type of vehicle/);
+  assert.match(modelPrompts.at(-1), /For unverified pet rules, Wi-Fi/);
+});
