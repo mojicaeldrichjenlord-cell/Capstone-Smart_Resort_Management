@@ -145,7 +145,8 @@ async function sendAiMessage(options = {}) {
       // If a new search has zero/multiple results, or the backend cannot verify
       // an old selected room, clear the stale context instead of resurrecting
       // an unrelated Nipa Hut (mergeContext uses nullish fallbacks).
-      if ((data.mode === "verified_accommodation_preview" &&
+      if (((data.mode === "verified_accommodation_preview" ||
+             data.mode === "verified_cheapest_accommodation") &&
             !Object.prototype.hasOwnProperty.call(data.extracted_context, "room_id")) ||
           data.mode === "accommodation_selection_needed") {
         delete merged.room_id;
