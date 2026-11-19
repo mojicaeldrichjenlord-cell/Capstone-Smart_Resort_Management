@@ -95,6 +95,21 @@ test("AI renderer escapes untrusted HTML and does not make arbitrary links", () 
   assert.doesNotMatch(html, /href="tel:/);
 });
 
+
+test("Natural Filipino and Taglish schedule FAQ still gives exact category slots", () => {
+  for (const language of ["tagalog", "taglish"]) {
+    const reply = getPolicyReply("schedule", language);
+    for (const slot of ["7 AM-5 PM", "7 PM-5 AM", "6 AM-5 PM", "6 PM-5 AM", "8 AM-6 PM", "8 PM-6 AM"]) {
+      assert.ok(reply.includes(slot), language + " missing " + slot);
+    }
+    assert.match(reply, /Day Tour/);
+    assert.match(reply, /Night/);
+    assert.match(reply, /hindi custom/i);
+    assert.match(reply, /booking page/i);
+    assert.doesNotMatch(reply, /2 PM.*12 PM/i);
+  }
+});
+
 test("Fixed resort schedule FAQ avoids custom check-in hours", () => {
   assert.equal(matchGeneralPolicyQuestion("What are your check-in times?"), "schedule");
   assert.equal(matchGeneralPolicyQuestion("Anong oras ng check-out?"), "schedule");
