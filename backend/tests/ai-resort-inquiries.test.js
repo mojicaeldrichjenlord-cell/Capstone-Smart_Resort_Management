@@ -19,6 +19,10 @@ const home = fs.readFileSync(path.resolve(__dirname,
 test("Owner-confirmed free parking covers natural Taglish and English paraphrases", () => {
   for (const question of [
     "May parking ba kayo?",
+    // Actual customer wording from AI-LIVE-01: a van/bus is a permitted
+    // vehicle type, not a request for unverified parking capacity.
+    "May parking po ba kayo? Libre ba kahit van o bus?",
+    "Pwede po bang mag-park ng bus at van? May bayad ba?",
     "Libre po ba parking?",
     "Magkano parking fee ng sasakyan?",
     "May parking kayo para sa motor at van?",
@@ -36,6 +40,20 @@ test("Owner-confirmed free parking covers natural Taglish and English paraphrase
     assert.match(reply, /free|libre|libreng|gratis/i, question);
     assert.doesNotMatch(reply, /free (?:entrance|room)|unlimited|guaranteed slot/i);
   }
+});
+
+// Actual localhost report: free parking for vans and buses must be answered
+// directly, with no invented vehicle-size approval checks or slot guarantees.
+test("AI-LIVE-01 exact van and bus inquiry answers verified policy directly", () => {
+  const q = "May parking po ba kayo? Libre ba kahit van o bus?";
+  const match = matchResortInquiry(q);
+  assert.deepEqual(match, { topic: "parking", qualified: false });
+  const reply = getResortInquiryReply(match, guessInquiryLanguage(q));
+  assert.match(reply, /free parking/i);
+  assert.match(reply, /van/i);
+  assert.match(reply, /bus/i);
+  assert.match(reply, /Walang parking fee/i);
+  assert.doesNotMatch(reply, /check|confirm|kasya|capacity|available slot|reservation/i);
 });
 
 test("Parking answer in Taglish is short, natural, and limited to confirmed policy", () => {
