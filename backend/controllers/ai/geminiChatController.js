@@ -3,6 +3,10 @@ const db = require("../../config/db");
 const { generateGemini, geminiPublicError, geminiErrorStatus } = require("./geminiResilience");
 // Verified policy knowledge uses no paid Gemini calls or customer booking writes.
 const { matchGeneralPolicyQuestion, inferPolicyLanguage, getPolicyReply, policyPromptLines } = require("./resortPolicyKnowledge");
+const {
+  matchResortInquiry, guessInquiryLanguage, getResortInquiryReply,
+  resortInquiryPromptLines,
+} = require("./resortInquiryKnowledge");
 const { validateAiStayWindow, calendarDayDifference, addCalendarDays } = require("./resortStayWindow");
 const { normalizeRecentTurns, wantsAccommodationCards, verifiedAccommodationCards, tidyAssistantReply } =
   require("./aiConversationStyle");
@@ -1058,6 +1062,33 @@ exports.chatWithGemini = async (req, res) => {
       });
     }
 
+    // Client-verified resort inquiries: free parking for every vehicle type,
+    // published location/opening hours, contact numbers and existence of pool.
+    // Only an unambiguous single resort-wide topic uses this fast path. Room-
+    // specific, mixed and unknown questions continue to fresh DB + grounded
+    // Gemini reasoning; this shortcut makes no reservation/payment changes.
+    const resortInquiry = matchResortInquiry(message);
+    if (resortInquiry) {
+      const language = normalizeLanguageStyle(req.body.voice_language) ||
+        guessInquiryLanguage(message) ||
+        detectLanguageFromMessage(message) ||
+        normalizeLanguageStyle(req.body.language_style) ||
+        normalizeLanguageStyle(req.body.context?.language_style) ||
+        "english";
+      const saved = req.body.context && typeof req.body.context === "object" &&
+        !Array.isArray(req.body.context) ? req.body.context : {};
+      return res.status(200).json({
+        success: true,
+        mode: "verified_resort_inquiry",
+        inquiry_topic: resortInquiry.topic,
+        reply: getResortInquiryReply(resortInquiry, language),
+        extracted_context: mergeContext(saved, { language_style: language }),
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null,
+        recommendation_cards: [],
+      });
+    }
+
     // Fixed resort-policy FAQ: avoid hallucinations and save paid credits.
     // This is only for generic rules, never personal refunds, booking status,
     // dates, prices or room availability. No real transaction is performed.
@@ -1674,6 +1705,7 @@ LIVE SPOKEN CONVERSATION (important):
 Important rules:
 Verified resort operations and policies (NEVER contradict these facts):
 ${policyPromptLines()}
+${resortInquiryPromptLines()}
 - Fixed resort payment policy: online reservations require a PayPal downpayment equal to 50% of the FINAL accommodation price; entrance fees are EXCLUDED from that downpayment. The remaining 50% of accommodation price plus entrance fees and applicable charges are paid onsite.
 - When asked for the general online downpayment percentage, say 50% directly; NEVER say the percentage is unknown or only confirmed on the booking page. The booking page confirms the final peso amount for the selected accommodation and schedule.
 - Only use the room/system data provided below.
