@@ -35,7 +35,7 @@ document.addEventListener("DOMContentLoaded", () => {
   toInput.value = currentDate;
   fromInput.value = start.toISOString().slice(0, 10);
 
-  // Only request read-only Manager reports, never payment updates.
+  // Request only operational Manager reports; finance belongs to Admin.
   async function request(path) {
     const response = await fetch(API_BASE + "/manager/" + path, {
       headers: { Authorization: "Bearer " + token }, cache: "no-store",
@@ -51,9 +51,6 @@ document.addEventListener("DOMContentLoaded", () => {
     return data;
   }
   const count = n => Number(n || 0).toLocaleString("en-PH", { maximumFractionDigits: 0 });
-  const currency = n => "₱" + Number(n || 0).toLocaleString("en-PH", {
-    minimumFractionDigits: 2, maximumFractionDigits: 2,
-  });
   // Safe UI update: text values are never interpreted as HTML.
   function set(id, content) {
     const el = document.getElementById(id);
@@ -74,9 +71,6 @@ document.addEventListener("DOMContentLoaded", () => {
     set("reportClosed", count(s.cancelled) + " / " + count(s.rejected));
     set("reportGuests", count(s.booked_guests));
     set("reportSources", count(s.online) + " / " + count(s.manual));
-    set("reportBookedValue", currency(s.active_booked_accommodation_value));
-    set("reportPayments", currency(s.recorded_accommodation_payments));
-    set("reportCharges", currency(s.recorded_paid_charges));
   }
   // Show daily booking CREATION trend, not nightly hotel occupancy.
   function renderTrend(data) {
@@ -126,7 +120,7 @@ document.addEventListener("DOMContentLoaded", () => {
       trend.appendChild(line);
     }
   }
-  // Rank by booked reservation items, not payment revenue.
+  // Rank by booked reservation items, not by monetary amounts.
   function renderAccommodations(data) {
     table.replaceChildren();
     const rooms = Array.isArray(data.accommodations) ? data.accommodations : [];
