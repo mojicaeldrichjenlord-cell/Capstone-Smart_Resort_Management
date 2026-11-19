@@ -1,10 +1,10 @@
 // Arvic AI Voice Assistant: optional Azure Blessica for Taglish plus browser fallback.
 // Voice Message: transcribe -> review/edit -> press Send.
 // Live Conversation: listen -> existing Gemini chat -> speak -> listen again.
-// Accurate voice input records short WAV clips for signed Gemini transcription;
-// Fast voice input uses browser SpeechRecognition when available.
-// Cloud input is explicit in the UI, is not stored by this application, and
-// remains separate from optional Azure Blessica speech output.
+// Gemini-first mic input records short WAV clips for signed transcription.
+// Browser SpeechRecognition is a fallback ONLY when recording is unsupported.
+// No mode dropdown; voice controls remain visible and clarify credit usage.
+// Optional Azure Blessica output remains a separate existing feature.
 (() => {
   "use strict";
 
@@ -15,7 +15,6 @@
     mandarin: { stt: "zh-CN", tts: "zh-CN", label: "中文 (Mandarin)" },
   });
   const KEY = "smartresort_ai_voice_language_v1";
-  const INPUT_MODE_KEY = "arvic_ai_voice_input_mode_v1";
   const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
   // Web Speech can be denied by Safari even when the iPhone mic is allowed.
   const isIOS = /iPhone|iPad|iPod/i.test(window.navigator?.userAgent || "") ||
@@ -30,8 +29,7 @@
   const canSpeak = () => Boolean(SpeechRecognitionAPI || canRecord());
   const state = {
     language: "english",
-    inputMode: "fast",
-    inputModeExplicit: false,
+    inputMode: "accurate", // Gemini-first for all supported languages/devices.
     live: false,
     mode: "idle",
     recognizer: null,
@@ -527,9 +525,7 @@
     if (state.mode === "dictation" || state.mode === "dictation-transcribing") {
       stopRecognition(true); cancelRecordedInput(); state.mode = "idle";
     }
-    state.inputMode = mode;
-    state.inputModeExplicit = true;
-    try { localStorage.setItem(INPUT_MODE_KEY, mode); } catch (_) { /* private mode */ }
+    state.inputMode = mode; // Legacy programmatic API; no user-visible selector.
     if (controls?.inputMode) controls.inputMode.value = mode;
     updateControls();
     status(mode === "accurate"
@@ -557,11 +553,8 @@
       stopRecognition(true); cancelRecordedInput(); state.mode = "idle";
     }
     state.language = language;
-    if (!state.inputModeExplicit) {
-      // Mixed Filipino/English needs higher quality STT by default when audio
-      // recording is available; other locales retain faster browser input.
-      state.inputMode = language === "taglish" && canRecord() ? "accurate" : "fast";
-    }
+    // Changing the voice language never silently changes the Gemini-first
+    // input preference. Unsupported browsers still use the existing fallback.
     try { localStorage.setItem(KEY, language); } catch (_) { /* private mode */ }
     if (controls?.lang) controls.lang.value = language;
     if (controls?.inputMode) controls.inputMode.value = state.inputMode;
@@ -843,18 +836,13 @@
       '</select>',
       '<button id="aiVoiceLive" type="button" aria-pressed="false">Start Conversation</button>',
       '</div>',
-      '<div class="ai-voice-actions">',
-      '<label for="aiVoiceInputMode">Voice input</label>',
-      '<select id="aiVoiceInputMode" aria-label="Choose voice recognition mode">',
-      '<option value="accurate">Accurate (Gemini)</option>',
-      '<option value="fast">Fast (browser)</option>',
-      '</select>',
-      '</div>',
+      // A single microphone mode keeps the UI simple. Gemini is the default;
+      // if recording is unsupported, the existing browser fallback is used.
       '<div class="ai-voice-actions">',
       '<button id="aiVoiceInterrupt" type="button" hidden>Interrupt AI</button>',
       '</div>',
       '<p id="aiVoiceStatus" role="status" aria-live="polite">',
-      '🎤 Dictate with the mic, or start hands-free conversation.</p>',
+      'Gemini voice input · Uses credits for audio transcription. Mic for dictation, or start hands-free.</p>',
       '<p id="aiVoiceInfo" class="ai-voice-info" aria-live="polite">',
       'Voice output: waiting for device voices. Quality depends on installed voices.</p>',
     ].join("");
@@ -864,7 +852,7 @@
       panel,
       mic: microphone,
       lang: panel.querySelector("#aiVoiceLanguage"),
-      inputMode: panel.querySelector("#aiVoiceInputMode"),
+
       live: panel.querySelector("#aiVoiceLive"),
       interrupt: panel.querySelector("#aiVoiceInterrupt"),
       status: panel.querySelector("#aiVoiceStatus"),
@@ -874,14 +862,10 @@
       try { return localStorage.getItem(KEY); } catch (_) { return null; }
     })();
     state.language = Object.hasOwn(LOCALES, saved) ? saved : "english";
-    const preferredMode = (() => {
-      try { return localStorage.getItem(INPUT_MODE_KEY); } catch (_) { return null; }
-    })();
-    state.inputModeExplicit = preferredMode === "accurate" || preferredMode === "fast";
-    state.inputMode = state.inputModeExplicit ? preferredMode
-      : (state.language === "taglish" && canRecord() ? "accurate" : "fast");
+    // Ignore earlier Fast/browser preferences: Gemini transcription is now
+    // the default across sessions, with browser STT as a device fallback.
+    state.inputMode = "accurate";
     controls.lang.value = state.language;
-    controls.inputMode.value = state.inputMode;
     // Safari/Android may populate voices lazily; warm the list before Read Aloud.
     // Still synthesize synchronously when the user taps to preserve iOS gestures.
     window.speechSynthesis?.getVoices?.();
@@ -892,7 +876,6 @@
     });
     controls.interrupt.addEventListener("click", interruptConversation);
     controls.lang.addEventListener("change", () => setLanguage(controls.lang.value));
-    controls.inputMode.addEventListener("change", () => setInputMode(controls.inputMode.value));
 
     document.getElementById("aiChatClose")?.addEventListener("click", () =>
       stopConversation("Voice controls stopped when the assistant closed."));
@@ -906,11 +889,8 @@
     if (!canSpeak()) {
       status("Voice input unavailable in this browser. Text chat still works.");
     } else {
-      status("Voice language: " + getLocale().label +
-        ". 🎤 = dictate and review; Start Conversation = talk hands-free. " +
-        (state.inputMode === "accurate"
-          ? "Accurate input uploads short microphone audio to Gemini for transcription and uses credits."
-          : "Fast input uses browser recognition when available."));
+      status("Gemini voice input is ready. 🎤 = dictate and review; " +
+        "Start Conversation = hands-free. Short audio is sent for transcription and uses Gemini credits.");
     }
     updateControls();
   }
