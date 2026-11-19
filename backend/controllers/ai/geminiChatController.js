@@ -746,9 +746,9 @@ function getQuotaBookingGuidance(language) {
 // Direct short answer for one stable numeric policy; no Gemini credits.
 function getNaturalDownpaymentReply(language) {
   return {
-    english: "The online downpayment is 50% of the accommodation price via PayPal. Entrance fees are separate; you'll see the final amount before paying.",
-    tagalog: "50% po ng accommodation price ang online downpayment sa PayPal. Hiwalay po ang entrance fee; makikita ang final amount bago magbayad.",
-    taglish: "50% po ng accommodation price ang online downpayment via PayPal. Separate po ang entrance fee; final amount nasa booking page.",
+    english: "The online downpayment is 50% of the final accommodation price via PayPal. The remaining 50% and separate entrance fees are paid onsite; check the final amount on the booking page.",
+    tagalog: "50% po ng final accommodation price ang online downpayment sa PayPal. Sa resort babayaran ang natitirang 50% at hiwalay na entrance fee; nasa booking page ang final amount.",
+    taglish: "50% po ng final accommodation price ang online downpayment via PayPal. Yung remaining 50% at separate entrance fees ay onsite babayaran; final amount nasa booking page.",
     spanish: "El anticipo en línea es el 50 % del alojamiento por PayPal. La entrada se paga aparte; verá el total antes de pagar.",
     mandarin: "在线订金为住宿费用的 50%，通过 PayPal 支付。门票另计，最终金额在付款页确认。",
   }[language] || "The online downpayment is 50% of the accommodation price via PayPal; entrance fees are separate.";
