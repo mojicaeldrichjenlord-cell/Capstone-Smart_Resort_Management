@@ -1,0 +1,132 @@
+/*
+ * STAGE UI-22 — Customer muted palette, aligned with Admin and Manager.
+ *
+ * Opt-in via body.customer-manager-tone; this file is loaded last on
+ * Customer HTML pages only. Appearance-only styles; does not change
+ * booking, PayPal, AI prompts, voice recognition, or responsive layout.
+ * Printing and receipt exports retain existing styles.
+ */
+@media screen {
+  body.customer-manager-tone {
+    --navy: #172554;
+    --navy-2: #1e3a5f;
+    --teal: #0f766e;
+    --teal-dark: #115e59;
+    --seafoam: #f1f5f9;
+    --sky: #f8fafc;
+    --line: #e2e8f0;
+    color: #0f172a;
+    background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%) !important;
+  }
+
+  /* Muted shared navbar, without changing sticky/scroll/mobile behavior. */
+  body.customer-manager-tone .navbar,
+  body.customer-manager-tone .landing-navbar {
+    background: linear-gradient(135deg, #172554 0%, #0f766e 100%) !important;
+    background-image: linear-gradient(135deg, #172554 0%, #0f766e 100%) !important;
+    border-bottom-color: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12) !important;
+  }
+  body.customer-manager-tone .navbar nav a.active-nav,
+  body.customer-manager-tone .navbar nav a.active {
+    background: rgba(255, 255, 255, 0.17) !important;
+    background-image: none !important;
+    color: #fff !important;
+    box-shadow: none !important;
+  }
+  body.customer-manager-tone .navbar nav a:hover,
+  body.customer-manager-tone .landing-nav-links a:hover {
+    background-color: rgba(255, 255, 255, 0.12);
+  }
+  body.customer-manager-tone .navbar .menu-toggle,
+  body.customer-manager-tone .landing-menu-toggle,
+  body.customer-manager-tone .landing-nav-links .nav-register {
+    background: #0f766e !important;
+    background-image: none !important;
+    color: #fff !important;
+    box-shadow: none !important;
+  }
+
+  /*
+   * Customer signed-in heroes match the Manager's navy/teal gradient.
+   * Leave the PUBLIC landing's drone video and overlay untouched.
+   */
+  body.customer-manager-tone :is(
+    .hero-section,
+    .page-header,
+    .map-hero,
+    .pricing-guide-card
+  ) {
+    background: linear-gradient(135deg, #172554 0%, #0f766e 100%) !important;
+    background-image: linear-gradient(135deg, #172554 0%, #0f766e 100%) !important;
+    color: #fff !important;
+    box-shadow: 0 16px 34px rgba(15, 23, 42, 0.12) !important;
+  }
+  body.customer-manager-tone .hero-section::after {
+    background: rgba(255, 255, 255, 0.06);
+  }
+  body.customer-manager-tone .landing-hero-overlay {
+    /* Do not replace the drone video or its contrast-protecting overlay. */
+    background: linear-gradient(90deg, rgba(15, 23, 42, 0.74), rgba(15, 23, 42, 0.22));
+  }
+
+  /* Neutral content surfaces, like Manager's operational cards. */
+  body.customer-manager-tone :is(
+    .welcome-box,
+    .home-card,
+    .category-filter-panel,
+    .room-card,
+    .booking-card,
+    .bookings-shell,
+    .profile-card,
+    .map-filter-panel,
+    .receipt-shell
+  ) {
+    background: #fff !important;
+    background-image: none !important;
+    border-color: #e2e8f0 !important;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05) !important;
+  }
+  /* Checkout-minimal intentionally uses a transparent wrapper and white subcards. */
+  body.customer-manager-tone.customer-payment-page {
+    --checkout-page: #f8fafc;
+    --checkout-teal: #0f766e;
+    --checkout-teal-tint: #f0fdfa;
+  }
+
+  /* Keep disabled, error, success and payment status indicators meaningful. */
+  body.customer-manager-tone :is(
+    .btn-primary,
+    .category-filter-btn.active,
+    .map-filter-btn.active,
+    .pricing-guide-btn,
+    .map-link-btn
+  ) {
+    background: #0f766e !important;
+    background-image: none !important;
+    color: #fff !important;
+    box-shadow: none !important;
+  }
+  body.customer-manager-tone :is(
+    .btn-primary,
+    .category-filter-btn,
+    .map-filter-btn,
+    .pricing-guide-btn,
+    .map-link-btn
+  ):focus-visible {
+    outline: 3px solid #5eead4;
+    outline-offset: 3px;
+  }
+
+  /* Chat is still the same working chatbot; only the accent color changes. */
+  body.customer-manager-tone .ai-chat-toggle,
+  body.customer-manager-tone .ai-chat-window .ai-chat-send,
+  body.customer-manager-tone .ai-chat-window .ai-message.user .ai-bubble {
+    background: #0f766e !important;
+    background-image: none !important;
+    color: #fff !important;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-chat-header {
+    background: #172554 !important;
+  }
+}
