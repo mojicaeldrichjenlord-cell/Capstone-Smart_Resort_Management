@@ -1266,7 +1266,7 @@ test("Parking + entrance question explains fee distinction without room suggesti
   assert.equal(queries.length, 0);
 });
 
-test("Multi-facility resort question uses grounded Gemini policy without unnecessary catalog SQL", async () => {
+test("Multi-facility resort question stays grounded with read-only catalog SQL", async () => {
   const r = await post("/api/ai/chat", {
     message: "What facilities does the resort have, including any parking?",
   });
