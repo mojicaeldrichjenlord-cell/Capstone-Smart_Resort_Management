@@ -1251,6 +1251,28 @@ test("Parking fee question bypasses room-payment resolver and makes zero paid or
   assert.equal(queries.length, 0);
 });
 
+// AI-LIVE-01: A van or bus is covered by the owner-confirmed free parking
+// policy. This exact question must NEVER reach Gemini, an SQL lookup, or a
+// speculative "check whether your vehicle will fit" reply.
+test("Actual customer van/bus parking question uses verified zero-credit FAQ", async () => {
+  const r = await post("/api/ai/chat", {
+    message: "May parking po ba kayo? Libre ba kahit van o bus?",
+    context: { room_id: 61, room_name: "Family Room A", language_style: "english" },
+  });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.mode, "verified_resort_inquiry");
+  assert.equal(r.body.inquiry_topic, "parking");
+  assert.equal(r.body.extracted_context.room_id, 61);
+  assert.match(r.body.reply, /free parking/i);
+  assert.match(r.body.reply, /van/i);
+  assert.match(r.body.reply, /bus/i);
+  assert.match(r.body.reply, /Walang parking fee/i);
+  assert.doesNotMatch(r.body.reply, /check|confirm|kasya|capacity|available slot/i);
+  assert.deepEqual(r.body.recommendation_cards, []);
+  assert.equal(modelCalls, 0);
+  assert.equal(queries.length, 0);
+});
+
 test("Parking + entrance question explains fee distinction without room suggestions", async () => {
   const r = await post("/api/ai/chat", {
     message: "May parking ba at libre rin ba entrance?",
