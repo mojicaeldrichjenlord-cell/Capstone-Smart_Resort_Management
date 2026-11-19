@@ -495,7 +495,8 @@ test("HTTP 429 on accommodation inquiry returns actual live catalog without Gemi
   assert.equal(result.body.mode, "database_fallback");
   assert.match(result.body.reply, /Family Room A/);
   assert.match(result.body.reply, /3,500/);
-  assert.match(result.body.reply, /Please provide check-in\/out dates/i);
+  assert.match(result.body.reply, /Please (?:provide check-in\/out|choose) dates/i);
+  assert.match(result.body.reply, /fixed Day Tour/i);
   assert.equal(result.body.catalog_recommendations[0].availability_verified, false);
   assert.equal(result.body.booking_preview, null);
   assert.equal(queries.length, 1);
@@ -618,7 +619,8 @@ test("Quota fallback never guesses check-in dates from free-text", async () => {
   assert.equal(result.body.extracted_context.check_in, null);
   assert.equal(result.body.extracted_context.check_out, null);
   assert.equal(result.body.catalog_recommendations[0].availability_verified, false);
-  assert.match(result.body.reply, /Please provide check-in\/out dates/i);
+  assert.match(result.body.reply, /Please (?:provide check-in\/out|choose) dates/i);
+  assert.match(result.body.reply, /fixed Day Tour/i);
   assert.equal(queries.length, 1);
   assert.doesNotMatch(queries[0].sql, /reservation_items/);
 });
@@ -1261,19 +1263,19 @@ test("Parking + entrance question explains fee distinction without room suggesti
   assert.equal(queries.length, 0);
 });
 
-test("General room query still uses DB and Gemini with verified parking knowledge", async () => {
+test("Multi-facility resort question uses grounded Gemini policy without unnecessary catalog SQL", async () => {
   const r = await post("/api/ai/chat", {
     message: "What facilities does the resort have, including any parking?",
   });
   assert.equal(r.status, 200);
-  // The generic open-ended request is not limited to the parking canned reply.
   assert.notEqual(r.body.mode, "verified_resort_inquiry");
-  assert.ok(queries.length > 0);
+  // The resort-wide parking fact comes from policy knowledge, not a room
+  // inventory/availability lookup. Never waste DB reads for unrelated FAQ.
+  assert.equal(queries.length, 0);
   assert.ok(modelCalls > 0);
   assert.match(modelPrompts.at(-1), /FREE on-site parking for ANY type of vehicle/);
   assert.match(modelPrompts.at(-1), /For unverified pet rules, Wi-Fi/);
 });
-
 
 test("Unverified resort-wide Wi-Fi and pet policies do not spend credits or pretend to be confirmed", async () => {
   for (const message of ["May WiFi ba kayo?", "Pet-friendly ba kayo?", "Pwede outside food?"]) {
