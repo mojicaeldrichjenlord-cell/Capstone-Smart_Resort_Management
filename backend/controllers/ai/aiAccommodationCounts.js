@@ -30,7 +30,10 @@ function matchAccommodationCountQuestion(message) {
        /\bdouble\s+rooms?\b/.test(text) ? "double" :
        /\bsingle\s+rooms?\b/.test(text) ? "single" : null)
     : null;
-  return { scopes, subtype };
+  // "Ilang available rooms?" means Admin listing status, NOT free slots on
+  // a particular booking date (date-bound questions are excluded above).
+  const availableOnly = /\b(?:available|bookable|bakante|bakanteng)\b/i.test(text);
+  return { scopes, subtype, availableOnly };
 }
 
 function categoryGroup(category) {
@@ -81,8 +84,12 @@ function countReply(summary, intent, language = "taglish") {
     const name = names[kind];
     return n === 1 ? name : name + "s";
   };
+  const selectedCount = kind => {
+    const source = kind === "all" ? summary : summary[kind];
+    return intent?.availableOnly ? (source?.listed || 0) : (source?.total || 0);
+  };
   const items = scopes.map(kind => {
-    const n = kind === "all" ? summary.total : summary[kind]?.total || 0;
+    const n = selectedCount(kind);
     return n + " " + plural(kind, n);
   });
   const nounList = items.length > 1 ? items.slice(0, -1).join(", ") +
@@ -99,11 +106,21 @@ function countReply(summary, intent, language = "taglish") {
         ? "Wala pong nakatalang ganitong accommodation sa system ngayon. Maaari pong magtanong sa Front Desk."
         : "Wala pong naka-list na matching accommodation sa system ngayon. Paki-confirm po sa Front Desk.";
   }
+  if (intent?.availableOnly) {
+    return english
+      ? "Currently " + nounList + " are marked available in the listing. " + suffix
+      : pureTagalog
+        ? "Sa kasalukuyang listahan, " + nounList + " ang nakatalang available. " + suffix
+        : "Sa current listing, " + nounList + " ang marked available po. " + suffix;
+  }
+  const statusNote = summary.listed < summary.total
+    ? (english ? " (" + summary.listed + " marked available)"
+      : " (" + summary.listed + " marked available)") : "";
   return english
-    ? "The resort currently has " + nounList + " listed. " + suffix
+    ? "The resort currently has " + nounList + " listed" + statusNote + ". " + suffix
     : pureTagalog
-      ? "May " + nounList + " pong nakalista sa resort ngayon. " + suffix
-      : "May " + nounList + " po kami sa current listing. " + suffix;
+      ? "May " + nounList + " pong nakalista sa resort ngayon" + statusNote + ". " + suffix
+      : "May " + nounList + " po kami sa current listing" + statusNote + ". " + suffix;
 }
 
 module.exports = {
