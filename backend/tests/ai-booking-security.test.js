@@ -1240,3 +1240,26 @@ test("General room query still uses DB and Gemini with verified parking knowledg
   assert.match(modelPrompts.at(-1), /FREE on-site parking for ANY type of vehicle/);
   assert.match(modelPrompts.at(-1), /For unverified pet rules, Wi-Fi/);
 });
+
+
+test("Unverified resort-wide Wi-Fi and pet policies do not spend credits or pretend to be confirmed", async () => {
+  for (const message of ["May WiFi ba kayo?", "Pet-friendly ba kayo?", "Pwede outside food?"]) {
+    const r = await post("/api/ai/chat", { message, voice_language: "taglish" });
+    assert.equal(r.status, 200, message);
+    assert.equal(r.body.mode, "unverified_resort_policy", message);
+    assert.match(r.body.reply, /hindi pa po confirmed/i);
+    assert.deepEqual(r.body.recommendation_cards, []);
+  }
+  assert.equal(modelCalls, 0);
+  assert.equal(queries.length, 0);
+});
+
+test("Focused-room Wi-Fi follow-up is not overridden by unknown resort-wide policy", async () => {
+  const r = await post("/api/ai/chat", {
+    message: "May WiFi dito?", voice_language: "taglish",
+    context: { room_id: 61, room_name: "Family Room A" }
+  });
+  assert.equal(r.status, 200);
+  assert.notEqual(r.body.mode, "unverified_resort_policy");
+  assert.ok(modelCalls >= 1);
+});
