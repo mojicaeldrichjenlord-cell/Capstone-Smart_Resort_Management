@@ -27,6 +27,13 @@ const SHORT_ANSWERS = Object.freeze({
     spanish: "Sí, el resort ofrece estacionamiento gratis para todo tipo de vehículos, como motos, coches, furgonetas y autobuses.",
     mandarin: "有的！度假村为各种车辆提供免费停车，包括摩托车、汽车、面包车和巴士。",
   },
+  parkingEntrance: {
+    english: "Parking is free for any vehicle. Entrance fees are separate from accommodation payments, and Front Desk confirms the applicable entrance charges onsite.",
+    taglish: "Free po ang parking para sa kahit anong vehicle. Separate naman po ang entrance fee; sa Front Desk kino-confirm ang applicable entrance charges onsite.",
+    tagalog: "Libre po ang paradahan para sa anumang sasakyan. Hiwalay po ang entrance fee, at sa Front Desk kinukumpirma ang kaukulang bayad.",
+    spanish: "El estacionamiento es gratis para cualquier vehículo. La entrada se cobra aparte y recepción confirma la tarifa aplicable.",
+    mandarin: "各种车辆均可免费停车。入场费另计，具体金额请向前台确认。",
+  },
   location: {
     english: "We're at 17 Mahogany Street, Brgy. Bagong Karsada, Naic, Cavite.",
     taglish: "Nasa 17 Mahogany Street, Brgy. Bagong Karsada, Naic, Cavite po ang resort.",
@@ -83,6 +90,11 @@ function matchResortInquiry(message) {
   const hours = /\b(?:operating\s+hours?|opening\s+hours?|business\s+hours?|open\s+(?:24\s*(?:\/\s*7|hours?)|everyday|on\s+(?:sunday|saturday|weekends?))|what\s+time\s+(?:do\s+you\s+)?open|anong\s+oras\s+(?:bukas|open)|bukas\s+ba\s+(?:kayo|ang\s+resort)|oras\s+ng\s+resort)\b/i.test(t);
   const contact = /\b(?:contact\s+(?:number|details?|info)|phone\s+(?:number|contact)|telephone|hotline|tawag(?:an)?\s+(?:ko\s+)?(?:sa\s+)?(?:resort|inyo|kayo)|numero\s+ng\s+(?:resort|contact)|number\s+(?:niyo|nyo|ninyo)|contact\s+kayo)\b/i.test(t);
   const pool = /\b(?:swimming\s+pool|pool\s+(?:area|facility)|may\s+(?:ba\s+)?pool|meron\s+(?:ba\s+)?pool|have\s+(?:a\s+)?pool|piscina)\b/i.test(t);
+  // A compound parking + entrance-fee question needs BOTH independent facts.
+  // Do not confuse the physical entrance to the parking lot with admission.
+  const entranceFee = /\\b(?:entrance\\s+(?:fee|charge|payment|ticket|libre|free)|free\\s+entrance|libre(?:ng)?(?:\\s+rin)?(?:\\s+ba)?\\s+(?:ang\\s+)?entrance|bayad\\s+sa\\s+pasok)\\b/i.test(t);
+  if (parking && entranceFee && !/\\b(?:pets?|dogs?|cats?|wi-?fi|corkage|outside\\s+food|swimming\\s+pool|refund)\\b/i.test(t))
+    return { topic: "parkingEntrance", qualified: false };
   const topics = Object.entries({ parking, location, openingHours: hours, contact, pool })
     .filter(([,yes]) => yes).map(([name]) => name);
   if (topics.length !== 1) return null;
