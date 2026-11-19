@@ -1097,6 +1097,13 @@ function getOfflineFallbackReply(message, storedContext = {}, pageContext = {}) 
 
   const merged = mergeContext(context, extracted);
 
+  // Resort-wide verified facts are still available when Gemini/network fails.
+  // This helper never creates a booking or infers any unconfirmed policy.
+  const verifiedResortReply = getOfflineVerifiedResortReply(
+    message, detectedLanguage, merged
+  );
+  if (verifiedResortReply) return verifiedResortReply;
+
   if (detectedLanguage === "tagalog") {
     return getTagalogFallbackReply(text, merged);
   }
@@ -1106,6 +1113,73 @@ function getOfflineFallbackReply(message, storedContext = {}, pageContext = {}) 
   }
 
   return getEnglishFallbackReply(text, merged);
+}
+
+// Keep this tiny offline mirror aligned with backend/resortInquiryKnowledge.js.
+// Source of truth for free parking: client confirmation, November 19, 2026.
+// For unknown parking security, slot/capacity, pool fees and pets, don't invent.
+function getOfflineVerifiedResortReply(message, language, context) {
+  const t = String(message || "").normalize("NFKC").toLowerCase().trim();
+  if (!t || t.length > 600) return null;
+  const park = /\b(?:parking|park|car\s*park|paradahan|mag[ -]?park)\b/i.test(t);
+  const address = /\b(?:address|located|location|nasaan\s+(?:ang\s+)?resort|saan\s+(?:kayo|ang\s+resort))\b/i.test(t);
+  const hours = /\b(?:open\s+(?:24\s*(?:\/\s*7|hours?)|everyday)|operating\s+hours?|opening\s+hours?|bukas\s+ba\s+kayo)\b/i.test(t);
+  const contact = /\b(?:contact\s+(?:number|details?)|phone\s+number|hotline|numero\s+ng\s+resort)\b/i.test(t);
+  const pool = /\b(?:swimming\s+pool|may\s+(?:ba\s+)?pool|have\s+(?:a\s+)?pool)\b/i.test(t);
+  const entry = /\b(?:entrance\s+(?:fee|charge|payment)|free\s+entrance|libre(?:ng)?(?:\s+rin)?(?:\s+ba)?\s+(?:ang\s+)?entrance)\b/i.test(t);
+  const lang = ["english", "tagalog", "taglish"].includes(language) ? language : "english";
+  const notice = lang === "english"
+    ? "AI is temporarily unavailable. Offline assistant mode is active."
+    : lang === "tagalog"
+      ? "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna."
+      : "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.";
+  const reply = (english, tagalog, taglish) =>
+    ({ english, tagalog, taglish })[lang];
+  const withReply = answer => ({ modeNotice: notice, reply: answer, context });
+
+  // Don't answer only one part of a complex question or promise a room-specific perk.
+  if (/\b(?:family\s+room|double\s+room|single\s+room|nipa\s+hut|pool\s+shade|pavilion|cottage|facilities|amenities|pets?|dogs?|cats?|wi-?fi|corkage|outside\s+food|room\s+rate)\b/i.test(t)) return null;
+  if ([park, address, hours, contact, pool].filter(Boolean).length !== 1) return null;
+
+  if (park && entry) return withReply(reply(
+    "Parking is free for any vehicle. Entrance fees are separate and confirmed by Front Desk.",
+    "Libre po ang parking para sa anumang sasakyan. Hiwalay po ang entrance fee, at Front Desk ang magko-confirm.",
+    "Free po ang parking for any vehicle. Separate naman po ang entrance fee; Front Desk ang magko-confirm onsite."
+  ));
+  if (entry) return null;
+  if (park) {
+    const unknown = /\b(?:secure|security|cctv|guard(?:ed)?|covered|roof|shade|reserve|reserved|slots?|spaces?|capacity|how\s+many|ilang|where|saan|entrance|exit|parking\s+hours?)\b/i.test(t);
+    return withReply(unknown ? reply(
+      "Parking is free for all vehicle types, but that specific parking detail isn't verified. Please confirm with Front Desk at 0956-912-5625.",
+      "Libre po ang parking, pero hindi pa confirmed ang specific detail. Pakitanong po sa Front Desk: 0956-912-5625.",
+      "Free po ang parking, pero hindi pa confirmed yung detail na iyon. Pa-check sa Front Desk: 0956-912-5625."
+    ) : reply(
+      "Yes! Free parking is available for every vehicle type, including motorcycles, cars, vans, and buses.",
+      "Opo, libre ang parking para sa anumang sasakyan, kasama ang motor, kotse, van at bus.",
+      "Yes po, may free parking para sa kahit anong vehicle—motor, kotse, van, o bus. Walang parking fee."
+    ));
+  }
+  if (address) return withReply(reply(
+    "We're at 17 Mahogany Street, Brgy. Bagong Karsada, Naic, Cavite.",
+    "Nasa 17 Mahogany Street, Brgy. Bagong Karsada, Naic, Cavite po ang resort.",
+    "Nasa 17 Mahogany Street, Brgy. Bagong Karsada, Naic, Cavite po ang resort."
+  ));
+  if (hours && !/check[ -]?(?:in|out)|booking\s+time/i.test(t)) return withReply(reply(
+    "The resort is open 24 hours, Monday to Sunday. Accommodation check-in and check-out use fixed booking slots.",
+    "Bukas po ang resort nang 24 oras araw-araw, pero fixed pa rin ang accommodation check-in at check-out.",
+    "Open po ang resort 24 hours, Monday to Sunday. Fixed booking slots pa rin po ang check-in at check-out."
+  ));
+  if (contact) return withReply(reply(
+    "Resort contact numbers: 0956-912-5625 and 0967-817-0662.",
+    "Maaaring tumawag sa 0956-912-5625 o 0967-817-0662.",
+    "Pwede niyo pong tawagan ang resort sa 0956-912-5625 o 0967-817-0662."
+  ));
+  if (pool) return withReply(reply(
+    "Yes, the resort has a swimming pool. Pool fees and rules must be confirmed with Front Desk.",
+    "Opo, may swimming pool ang resort. I-confirm po sa Front Desk ang fees at rules.",
+    "Yes po, may swimming pool! For fees and rules, pa-confirm po sa Front Desk."
+  ));
+  return null;
 }
 
 // Stage 85-D: Offline guidance mirrors the verified PayPal-only customer online flow.
