@@ -824,7 +824,8 @@ test("Tagalog replies and translations request consistently polite customer tone
     message: "Magkano po ang kwarto at paano mag-reserve?",
   });
   assert.equal(reply.status, 200);
-  assert.match(modelPrompts.at(-1), /consistently address guests politely/);
+  // Assert the current polite-Filipino safety instruction, not retired phrasing.
+  assert.match(modelPrompts.at(-1), /For Tagalog: use polite, clear Filipino/);
   assert.match(modelPrompts.at(-1), /exact Day Tour\/Overnight\/Extended rate/);
   modelPrompts = [];
   const translated = await post("/api/ai/translate", {
@@ -872,7 +873,9 @@ test("Local policy answers Filipino paunang bayad without listing rooms", async 
   assert.equal(modelCalls, 0);
 });
 
-test("Quota fallback quotes only the exactly named cottage and its 50% estimate", async () => {
+// A current verified room payment can be answered from SQL without Gemini.
+// An injected 429 does not require calling the model or reverting to fallback.
+test("Named cottage deposit is verified locally without Gemini even during quota outage", async () => {
   injectedFailures = 1;
   injectedStatus = 429;
   catalogRows = [
@@ -887,20 +890,24 @@ test("Quota fallback quotes only the exactly named cottage and its 50% estimate"
     message: "Magkano po ang day tour ng Small Nipa Hut 2? Paano po mag-book online at magkano ang downpayment?",
   });
   assert.equal(result.status, 200);
-  assert.equal(result.body.mode, "database_fallback");
+  assert.equal(result.body.mode, "verified_accommodation_payment");
+  assert.equal(result.body.extracted_context.room_id, 81);
   assert.match(result.body.reply, /Small Nipa Hut 2/);
-  assert.match(result.body.reply, /PHP 800\.00/);
-  assert.match(result.body.reply, /PHP 400\.00/);
+  assert.match(result.body.reply, /₱800\.00/);
+  assert.match(result.body.reply, /₱400\.00/);
   assert.match(result.body.reply, /PayPal/);
+  assert.match(result.body.reply, /entrance fees/i);
+  assert.match(result.body.reply, /booking page/i);
   assert.doesNotMatch(result.body.reply, /Small Nipa Hut 20|TEST ROOM/);
-  assert.deepEqual(result.body.catalog_recommendations.map(room => room.id), [81]);
-  assert.equal(result.body.catalog_recommendations[0].availability_verified, false);
+  assert.deepEqual(result.body.catalog_recommendations, []);
+  assert.deepEqual(result.body.recommendation_cards, []);
   assert.equal(result.body.booking_preview, null);
   assert.equal(queries.length, 1);
   assert.ok(queries.every(q => /^SELECT\b/i.test(q.sql)));
+  assert.equal(modelCalls, 0);
 });
 
-test("Quota fallback does not mistake Hut 2 for Hut 20", async () => {
+test("Focused payment never mistakes Nipa Hut 20 for Hut 2", async () => {
   injectedFailures = 1;
   injectedStatus = 429;
   catalogRows = [
@@ -913,9 +920,16 @@ test("Quota fallback does not mistake Hut 2 for Hut 20", async () => {
     message: "How much is the Small Nipa Hut 20 day tour downpayment?",
   });
   assert.equal(result.status, 200);
-  assert.deepEqual(result.body.catalog_recommendations.map(room => room.id), [82]);
-  assert.match(result.body.reply, /PHP 600\.00/);
-  assert.doesNotMatch(result.body.reply, /Small Nipa Hut 2 —/);
+  assert.equal(result.body.mode, "verified_accommodation_payment");
+  assert.equal(result.body.extracted_context.room_id, 82);
+  assert.deepEqual(result.body.catalog_recommendations, []);
+  assert.match(result.body.reply, /Small Nipa Hut 20/);
+  assert.match(result.body.reply, /₱1,200\.00/);
+  assert.match(result.body.reply, /₱600\.00/);
+  assert.doesNotMatch(result.body.reply, /Small Nipa Hut 2(?:\s|—|,|\.)/);
+  assert.equal(result.body.booking_preview, null);
+  assert.equal(queries.length, 1);
+  assert.equal(modelCalls, 0);
 });
 
 test("Local policy answers plain English online booking deposit without SQL", async () => {
@@ -951,17 +965,24 @@ test("Observed English question gets correct fixed 50% policy using zero API cal
   assert.equal(modelCalls, 0);
   assert.equal(result.body.booking_preview, null);
 });
-test("Named cottage deposit still checks a fresh database price instead of inventing an amount", async () => {
+test("Named cottage deposit quotes a fresh verified price without paid Gemini", async () => {
   catalogRows = [{ ...exampleRoom, id: 81, room_name: "Small Nipa Hut 2",
     category_name: "Cottage", day_price: 800 }];
   const result = await post("/api/ai/chat", {
     message: "How much is the Small Nipa Hut 2 day tour downpayment?",
   });
   assert.equal(result.status, 200);
-  assert.notEqual(result.body.mode, "policy_answer");
-  assert.ok(modelCalls >= 1);
-  assert.ok(queries.some(q => /FROM accommodations/.test(q.sql)));
+  assert.equal(result.body.mode, "verified_accommodation_payment");
+  assert.equal(result.body.extracted_context.room_id, 81);
+  assert.match(result.body.reply, /₱800\.00/);
+  assert.match(result.body.reply, /₱400\.00/);
+  assert.match(result.body.reply, /booking page/i);
+  assert.equal(result.body.booking_preview, null);
+  assert.equal(modelCalls, 0);
+  assert.equal(queries.length, 1);
+  assert.ok(queries.every(q => /^SELECT\b/i.test(q.sql)));
 });
+
 test("Cancellation plus refund question is handled accurately without Gemini", async () => {
   const result = await post("/api/ai/chat", {
     message: "Can I cancel my booking and get a refund?",
