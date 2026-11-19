@@ -20,6 +20,9 @@ const { isVerifiedPreviewRequest, selectVerifiedPreviews, verifiedPreviewReply }
   require("./aiVerifiedPreview");
 const { isRoomPaymentInquiry, resolvePaymentRoom, paymentReply } =
   require("./aiFocusedPaymentReply");
+const {
+  matchAccommodationCountQuestion, countSummary, countReply,
+} = require("./aiAccommodationCounts");
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -1085,6 +1088,40 @@ exports.chatWithGemini = async (req, res) => {
         extracted_context: mergeContext(savedInquiryContext, {
           language_style: language,
         }),
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null,
+        recommendation_cards: [],
+      });
+    }
+
+    // Simple inventory COUNT intent comes before previews and rate/payment
+    // routing. "Ilang rooms?" asks for a number, not preview cards or prices.
+    // One FRESH aggregate query covers all DB rows (not the 150-row preview
+    // limit); it only reads listed inventory, never reservation date/slot data.
+    const countIntent = matchAccommodationCountQuestion(message);
+    if (countIntent) {
+      const saved = req.body.context && typeof req.body.context === "object" &&
+        !Array.isArray(req.body.context) ? req.body.context : {};
+      const language = normalizeLanguageStyle(req.body.voice_language) ||
+        guessInquiryLanguage(message) || detectLanguageFromMessage(message) ||
+        normalizeLanguageStyle(req.body.language_style) ||
+        normalizeLanguageStyle(saved.language_style) || "taglish";
+      const sql = "SELECT c.name AS category_name, " +
+        "LOWER(TRIM(COALESCE(a.status, ''))) AS listing_status, " +
+        "COUNT(*) AS accommodation_count " +
+        "FROM accommodations a " +
+        "LEFT JOIN accommodation_categories c ON c.id = a.category_id " +
+        (countIntent.subtype ? "WHERE LOWER(a.name) LIKE ? " : "") +
+        "GROUP BY c.name, LOWER(TRIM(COALESCE(a.status, ''))) " +
+        "ORDER BY c.name";
+      const params = countIntent.subtype
+        ? ["%" + countIntent.subtype + " room%"] : [];
+      const [countRows] = await db.promise().query(sql, params);
+      const counts = countSummary(countRows, countIntent);
+      return res.status(200).json({
+        success: true, mode: "verified_accommodation_count",
+        reply: countReply(counts, countIntent, language),
+        extracted_context: mergeContext(saved, { language_style: language }),
         matched_rooms: [], catalog_recommendations: [],
         alternative_dates: [], booking_preview: null,
         recommendation_cards: [],
