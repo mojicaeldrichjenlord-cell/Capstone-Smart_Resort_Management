@@ -1,0 +1,268 @@
+/*
+ * UI-26: Airy Customer AI Assistant skin — presentation only.
+ * Shared by Customer Home and Accommodations. Loaded AFTER the Customer
+ * manager-tone theme; no chat/voice/booking logic or room facts are changed.
+ * Brand palette: navy #172554, teal #0f766e, slate #f8fafc, white.
+ */
+.ai-chat-window {
+  --ai-ink: #172554;
+  --ai-text: #233449;
+  --ai-muted: #64748b;
+  --ai-line: #e2e8f0;
+  --ai-teal: #0f766e;
+  --ai-pale: #eef9f7;
+  width: min(455px, calc(100vw - 24px));
+  height: min(665px, calc(100dvh - 100px));
+  background: #fff;
+  border: 1px solid #dbe6ed;
+  border-radius: 20px;
+  box-shadow: 0 22px 64px rgba(16, 36, 57, .17), 0 4px 14px rgba(16, 36, 57, .06);
+}
+
+/* Brighter, calmly branded header. Use higher specificity than the shared
+   Customer tone override (which previously forced a dark navy header). */
+body.customer-manager-tone .ai-chat-window .ai-chat-header,
+.ai-chat-window .ai-chat-header {
+  min-height: 63px;
+  padding: 12px 16px;
+  color: var(--ai-ink);
+  background: #ffffff !important;
+  border-bottom: 1px solid var(--ai-line);
+}
+.ai-chat-window .ai-chat-header h3 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--ai-ink);
+  font-size: .93rem;
+  letter-spacing: -.01em;
+  font-weight: 750;
+  line-height: 1.35;
+}
+.ai-chat-window .ai-chat-header h3::before {
+  content: "";
+  flex: 0 0 9px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #0d9488;
+  box-shadow: 0 0 0 4px #e2f6f1;
+}
+.ai-chat-window .ai-chat-header-btn {
+  color: #334155;
+  background: #f8fafc;
+  border: 1px solid #e3eaf1;
+  border-radius: 10px;
+  min-width: 35px;
+  height: 35px;
+  transition: background .15s ease, border-color .15s ease;
+}
+.ai-chat-window .ai-chat-header-btn:hover {
+  background: #eef9f7;
+  border-color: #c6e4df;
+}
+.ai-chat-window .ai-chat-header-btn:active { background: #dff3ef; }
+
+/* Collapsed by default; opening voice reveals one language selector and
+   Start Conversation, never the old Fast/Accurate input provider dropdown. */
+.ai-chat-window .ai-voice-options-toggle {
+  min-height: 38px;
+  padding: 8px 16px;
+  background: #f4faf9;
+  border-bottom: 1px solid #dfedea;
+  color: #0f625c;
+  font-size: .79rem;
+  font-weight: 700;
+}
+.ai-chat-window .ai-voice-options-toggle[aria-expanded="true"] {
+  background: #eaf7f4;
+}
+.ai-chat-window .ai-voice-panel {
+  padding: 12px 16px;
+  background: #fff;
+  border-bottom: 1px solid var(--ai-line);
+  max-height: min(185px, 32dvh);
+}
+.ai-chat-window .ai-voice-actions { gap: 9px; }
+.ai-chat-window .ai-voice-actions label {
+  font-size: .78rem;
+  color: #475569;
+}
+.ai-chat-window .ai-voice-actions select {
+  border: 1px solid #cbdde1;
+  border-radius: 10px;
+  padding-inline: 10px;
+}
+.ai-chat-window .ai-voice-actions #aiVoiceLive {
+  flex: 1 1 180px;
+  background: var(--ai-teal);
+  border-color: var(--ai-teal);
+  border-radius: 10px;
+}
+.ai-chat-window .ai-voice-actions #aiVoiceLive:hover { background: #115e59; }
+.ai-chat-window .ai-voice-actions #aiVoiceLive.active {
+  background: #b91c1c;
+  border-color: #b91c1c;
+}
+.ai-chat-window #aiVoiceStatus,
+.ai-chat-window .ai-voice-info {
+  color: var(--ai-muted);
+  font-size: .74rem;
+  line-height: 1.4;
+}
+
+/* Clean conversation canvas and distinct low-noise message bubbles. */
+.ai-chat-window .ai-chat-messages,
+.ai-chat-window.maximized .ai-chat-messages {
+  background: #f8fafc;
+  padding: 17px 15px 20px;
+  scrollbar-color: #cbd5e1 transparent;
+}
+.ai-chat-window .ai-message { margin-bottom: 15px; }
+.ai-chat-window .ai-bubble {
+  max-width: 92%;
+  padding: 11px 14px;
+  line-height: 1.55;
+  font-size: .89rem;
+  border-radius: 16px;
+}
+.ai-chat-window .ai-message.assistant .ai-bubble {
+  color: var(--ai-text);
+  background: #ffffff;
+  border: 1px solid var(--ai-line);
+  border-bottom-left-radius: 5px;
+  box-shadow: 0 2px 9px rgba(30, 56, 79, .035);
+}
+body.customer-manager-tone .ai-chat-window .ai-message.user .ai-bubble,
+.ai-chat-window .ai-message.user .ai-bubble {
+  color: #fff;
+  background: #0f766e !important;
+  border-bottom-right-radius: 5px;
+}
+.ai-chat-window .ai-reply-actions { gap: 6px; margin-top: 7px; }
+.ai-chat-window .ai-reply-actions button {
+  background: #ffffff !important;
+  color: #475569 !important;
+  border-color: #dbe6ed !important;
+  border-radius: 9px !important;
+  font-size: .72rem !important;
+}
+.ai-chat-window .ai-reply-actions button:hover {
+  background: #eef9f7 !important;
+  color: #115e59 !important;
+}
+
+/* Recommendation cards: more space per photo, title and action. Two columns
+   in a maximized chat instead of squeezing three tiny cards into one row. */
+.ai-chat-window .ai-recommendations { margin: 10px 0 17px; }
+.ai-chat-window .ai-recommendations-caption {
+  color: #64748b;
+  font-size: .76rem;
+  margin-bottom: 11px;
+}
+.ai-chat-window .ai-recommendations-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 285px), 1fr));
+  gap: 13px;
+}
+.ai-chat-window .ai-recommendation-card {
+  border: 1px solid #e2eaf0;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 6px 20px rgba(21, 50, 65, .055);
+}
+.ai-chat-window .ai-recommendation-photo { height: 150px; }
+.ai-chat-window .ai-recommendation-body { padding: 12px 13px 13px; }
+.ai-chat-window .ai-recommendation-body strong {
+  font-size: .92rem;
+  color: #182d43;
+}
+.ai-chat-window .ai-recommendation-body p {
+  font-size: .8rem;
+  line-height: 1.45;
+}
+.ai-chat-window .ai-recommendation-body .ai-recommendation-price { color: #0f766e; }
+.ai-chat-window .ai-recommendation-actions { gap: 7px; margin-top: 12px; }
+.ai-chat-window .ai-recommendation-link {
+  min-height: 37px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 calc(50% - 4px);
+  border: 1px solid #cbdde1;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #155e59;
+  padding: 8px 10px;
+  font-size: .76rem;
+}
+.ai-chat-window .ai-recommendation-link.primary {
+  border-color: #0f766e;
+  background: #0f766e;
+  color: #fff;
+}
+.ai-chat-window .ai-recommendation-link:last-child {
+  flex-basis: 100%;
+  background: #ecf8f5;
+  border-color: #cde7e1;
+}
+.ai-chat-window .ai-recommendation-link.primary:hover { background: #115e59; }
+
+/* Fixed composer with comfortable thumb targets and clear focus states. */
+.ai-chat-window .ai-chat-input-area {
+  gap: 8px;
+  padding: 12px 14px;
+  background: #fff;
+  border-top: 1px solid #e2e8f0;
+  box-shadow: 0 -3px 14px rgba(15, 23, 42, .025);
+}
+.ai-chat-window .ai-chat-input-area input {
+  height: 45px;
+  border-color: #cbdde1;
+  border-radius: 12px;
+  color: #172554;
+  background: #fff;
+}
+.ai-chat-window .ai-chat-input-area input::placeholder { color: #8493a6; }
+.ai-chat-window .ai-chat-input-area input:focus {
+  outline: none;
+  border-color: #0f766e;
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, .13);
+}
+.ai-chat-window .ai-chat-mic-btn {
+  width: 45px;
+  min-width: 45px;
+  flex-basis: 45px;
+  height: 45px;
+  background: #e9f4f1;
+  color: #115e59;
+  border: 1px solid #d6eae5;
+  border-radius: 12px;
+}
+body.customer-manager-tone .ai-chat-window .ai-chat-send,
+.ai-chat-window .ai-chat-send {
+  height: 45px;
+  min-width: 60px;
+  background: #0f766e !important;
+  color: #fff !important;
+  border-radius: 12px;
+}
+.ai-chat-window :is(button, a, select, input):focus-visible {
+  outline: 3px solid #38bdf8;
+  outline-offset: 2px;
+}
+@media (max-width: 560px) {
+  .ai-chat-window, .ai-chat-window.maximized {
+    width: auto;
+    height: auto;
+    border-radius: 16px;
+  }
+  .ai-chat-window .ai-chat-header { min-height: 59px; padding: 10px 12px; }
+  .ai-chat-window .ai-chat-header h3 { font-size: .82rem; gap: 7px; }
+  .ai-chat-window .ai-chat-header h3::before { flex-basis: 7px; width: 7px; height: 7px; }
+  .ai-chat-window .ai-chat-messages { padding: 12px 10px 16px; }
+  .ai-chat-window .ai-chat-input-area { padding: 10px; gap: 6px; }
+  .ai-chat-window .ai-recommendation-photo { height: 140px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ai-chat-window .ai-chat-header-btn { transition: none; }
+}
