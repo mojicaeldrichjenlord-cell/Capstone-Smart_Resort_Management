@@ -1033,6 +1033,33 @@ exports.chatWithGemini = async (req, res) => {
       });
     }
 
+    // Client-verified resort inquiries: free parking for every vehicle type,
+    // published location/opening hours, contact numbers and existence of pool.
+    // Only an unambiguous single resort-wide topic uses this fast path. Room-
+    // specific, mixed and unknown questions continue to fresh DB + grounded
+    // Gemini reasoning; this shortcut makes no reservation/payment changes.
+    const resortInquiry = matchResortInquiry(message);
+    if (resortInquiry) {
+      const language = normalizeLanguageStyle(req.body.voice_language) ||
+        guessInquiryLanguage(message) ||
+        detectLanguageFromMessage(message) ||
+        normalizeLanguageStyle(req.body.language_style) ||
+        normalizeLanguageStyle(req.body.context?.language_style) ||
+        "english";
+      const saved = req.body.context && typeof req.body.context === "object" &&
+        !Array.isArray(req.body.context) ? req.body.context : {};
+      return res.status(200).json({
+        success: true,
+        mode: "verified_resort_inquiry",
+        inquiry_topic: resortInquiry.topic,
+        reply: getResortInquiryReply(resortInquiry, language),
+        extracted_context: mergeContext(saved, { language_style: language }),
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null,
+        recommendation_cards: [],
+      });
+    }
+
     // Price/payment follow-ups must use the selected accommodation's CURRENT
     // DB rates. "Payment options" is not a request for unrelated cheap
     // cottages; don't send recommendation cards. Never promise a live slot,
@@ -1056,33 +1083,6 @@ exports.chatWithGemini = async (req, res) => {
         success: true, mode: "verified_accommodation_payment",
         reply: paymentReply(message, nextContext, room, language),
         extracted_context: nextContext,
-        matched_rooms: [], catalog_recommendations: [],
-        alternative_dates: [], booking_preview: null,
-        recommendation_cards: [],
-      });
-    }
-
-    // Client-verified resort inquiries: free parking for every vehicle type,
-    // published location/opening hours, contact numbers and existence of pool.
-    // Only an unambiguous single resort-wide topic uses this fast path. Room-
-    // specific, mixed and unknown questions continue to fresh DB + grounded
-    // Gemini reasoning; this shortcut makes no reservation/payment changes.
-    const resortInquiry = matchResortInquiry(message);
-    if (resortInquiry) {
-      const language = normalizeLanguageStyle(req.body.voice_language) ||
-        guessInquiryLanguage(message) ||
-        detectLanguageFromMessage(message) ||
-        normalizeLanguageStyle(req.body.language_style) ||
-        normalizeLanguageStyle(req.body.context?.language_style) ||
-        "english";
-      const saved = req.body.context && typeof req.body.context === "object" &&
-        !Array.isArray(req.body.context) ? req.body.context : {};
-      return res.status(200).json({
-        success: true,
-        mode: "verified_resort_inquiry",
-        inquiry_topic: resortInquiry.topic,
-        reply: getResortInquiryReply(resortInquiry, language),
-        extracted_context: mergeContext(saved, { language_style: language }),
         matched_rooms: [], catalog_recommendations: [],
         alternative_dates: [], booking_preview: null,
         recommendation_cards: [],
