@@ -40,7 +40,7 @@ jobs:
       - name: Install backend dependencies
         run: npm ci --no-audit --no-fund
 
-      # Mocks @google/genai and MySQL. No API key, DB or PayPal secret provided.
+      # Mocked AI suites plus static receipt UI checks. No API, DB or PayPal secrets.
       - name: Run isolated AI regression suite
         id: regression
         shell: bash
@@ -54,6 +54,7 @@ jobs:
             tests/ai-refund-facebook-contact.test.js \
             tests/ai-natural-recommendations.test.js \
             tests/ai-taglish-tone.test.js \
+            tests/customer-receipt-ui29.test.js \
             > "$RUNNER_TEMP/ai-regression.log" 2>&1
           status=$?
           cat "$RUNNER_TEMP/ai-regression.log"
