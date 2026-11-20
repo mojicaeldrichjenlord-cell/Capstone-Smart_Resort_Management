@@ -3,6 +3,10 @@
     {
       "source": "/",
       "destination": "/customerHTML/landing.html"
+    },
+    {
+      "source": "/landing.html",
+      "destination": "/customerHTML/landing.html"
     }
   ]
 }

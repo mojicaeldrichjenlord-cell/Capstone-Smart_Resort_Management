@@ -300,6 +300,14 @@ body.customer-manager-tone .receipt-shell {
 @media (max-width: 480px) {
   .receipt-page-wrapper { width: calc(100% - 18px); margin: 12px auto 25px; }
   .receipt-hero { flex-direction: column; gap: 13px; padding: 18px 15px; }
+  /* UI-32: In a vertical flex container, the desktop 340px flex-basis
+     becomes vertical height! Reset it so the code sits under the heading
+     without a huge empty space on phones. */
+  .receipt-hero .receipt-title {
+    flex: 0 0 auto;
+    width: 100%;
+    min-height: 0;
+  }
   .receipt-code-box {
     align-self: stretch;
     width: 100%;

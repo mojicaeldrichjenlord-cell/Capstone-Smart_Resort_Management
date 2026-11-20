@@ -21,7 +21,7 @@ test("UI-29 receipt has one back control and one accessible main heading", () =>
   assert.doesNotMatch(html, /class="page-header"|class="receipt-actions"/);
   assert.match(html, /class="receipt-shell"/);
   assert.match(html, /id="receiptBox"/);
-  assert.match(html, /booking-receipt\.css\?v=20261120-ui29/);
+  assert.match(html, /booking-receipt\.css\?v=20261120-ui32/);
   assert.match(html, /customer-manager-tone\.css\?v=20261119-ui22/);
   assert.match(html, /customerJS\/booking-receipt\.js/);
   assert.match(js, /<h1>\$\{isCompleted \? "Final Receipt" : "Reservation Receipt"\}<\/h1>/);
