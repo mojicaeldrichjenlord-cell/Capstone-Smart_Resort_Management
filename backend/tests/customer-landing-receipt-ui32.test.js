@@ -101,7 +101,7 @@ test("UI-33 customer checkout and landing policy agree on PayPal capture and 50%
   assert.match(checkout, /<option value="paypal" selected>PayPal<\/option>/);
   assert.match(checkout, /50% accommodation\s+downpayment/i);
   assert.match(checkout, /Entrance fees, the remaining accommodation\s+balance/i);
-  assert.match(checkout, /successfully captured downpayment/i);
+  assert.match(checkout, /successful captured downpayment/i);
   assert.match(checkout, /50% downpayment of the\s+accommodation price through PayPal/i);
   assert.doesNotMatch(checkout, /GCash and Maya proof of payment must be verified/i);
 });
