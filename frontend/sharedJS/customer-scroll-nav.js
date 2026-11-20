@@ -103,9 +103,54 @@
     accumulated = 0;
   });
 
+  // UI-30: Same-page navigation should return to the page heading, not
+  // silently remain halfway down. Handles desktop links and mobile hamburger
+  // taps without reloading; different-page links retain native navigation.
+  const menuToggle = navbar.querySelector("#menuToggle");
+  const mobileNav = navbar.querySelector("#mobileNav");
+  function syncMenuAccessibility() {
+    menuToggle?.setAttribute("aria-expanded",
+      mobileNav?.classList.contains("show") ? "true" : "false");
+  }
+  function closeMobileMenu() {
+    if (!mobileNav?.classList.contains("show")) return;
+    mobileNav.classList.remove("show");
+    if (menuToggle) menuToggle.textContent = "☰";
+    syncMenuAccessibility();
+    syncSpacerHeight();
+  }
+
+  navbar.addEventListener("click", event => {
+    const link = event.target.closest("a[href]");
+    if (!link || !navbar.contains(link) || event.defaultPrevented ||
+        event.button !== 0 || event.metaKey || event.ctrlKey ||
+        event.shiftKey || event.altKey || link.target === "_blank" ||
+        link.hasAttribute("download")) return;
+    const target = new URL(link.href, window.location.href);
+    const current = new URL(window.location.href);
+    if (target.origin !== current.origin ||
+        target.pathname !== current.pathname ||
+        target.search !== current.search ||
+        target.hash) return;
+    // Do not bypass booking/payment's existing leave-confirmation safeguard.
+    if (link.classList.contains("confirm-transaction-exit")) return;
+    event.preventDefault();
+    closeMobileMenu();
+    showNavbar();
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    window.scrollTo({ top: 0, left: 0, behavior: reducedMotion ? "instant" : "smooth" });
+    lastY = 0;
+    direction = 0;
+    accumulated = 0;
+  });
+
   // Keyboard users and customers tapping the hamburger never lose the menu.
   navbar.addEventListener("focusin", showNavbar);
-  navbar.querySelector("#menuToggle")?.addEventListener("click", showNavbar);
+  menuToggle?.addEventListener("click", () => {
+    showNavbar();
+    syncMenuAccessibility();
+  });
 
+  syncMenuAccessibility();
   syncSpacerHeight();
 })();
