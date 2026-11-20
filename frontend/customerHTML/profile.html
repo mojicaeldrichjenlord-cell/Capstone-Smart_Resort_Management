@@ -15,7 +15,6 @@
     ======================================================= -->
     <link rel="stylesheet" href="../sharedCSS/global.css" />
     <link rel="stylesheet" href="../css/style.css" />
-    <link rel="stylesheet" href="../customerCSS/profile.css" />
     <link rel="stylesheet" href="../sharedCSS/customer-navbar.css?v=20261120-ui30" />
       <!-- Consistent, centered confirmation for accidental logout clicks. -->
     <link rel="stylesheet" href="../sharedCSS/logout-confirm.css" />
@@ -25,6 +24,8 @@
     <link rel="stylesheet" href="../sharedCSS/ai-chat-layout.css?v=20261120-ui30" />
     <!-- Stage UI-22: visual-only muted Customer theme, loaded last. -->
   <link rel="stylesheet" href="../customerCSS/customer-manager-tone.css?v=20261119-ui22" />
+    <!-- UI-31: Profile-specific final layer overrides shared hero/card styling only here. -->
+    <link rel="stylesheet" href="../customerCSS/profile.css?v=20261120-ui31" />
 </head>
 
   <body class="customer-manager-tone">
@@ -48,62 +49,73 @@
       </nav>
     </header>
 
-    <!-- ======================================================
-       PAGE HEADER
-    ======================================================= -->
-    <section class="page-header">
-      <h1>My Profile</h1>
-      <p>View your account details and manage your password.</p>
-    </section>
-
-    <!-- ======================================================
-       MAIN PROFILE CONTENT
-    ======================================================= -->
+    <!-- UI-31: Compact account heading; no oversized banner or duplicate hero. -->
     <main class="profile-wrapper">
       <div class="top-page-actions">
         <a href="index.html" class="back-btn">← Back to Home</a>
       </div>
 
-      <section class="profile-card">
-        <h2>Profile Information</h2>
+      <header class="profile-intro">
+        <p class="profile-eyebrow">CUSTOMER ACCOUNT</p>
+        <h1>My Profile</h1>
+        <p>View your account information and manage your password.</p>
+      </header>
+
+      <section class="profile-card" aria-labelledby="profileDetailsTitle">
+        <div class="profile-card-heading">
+          <div>
+            <h2 id="profileDetailsTitle">Personal Information</h2>
+            <p>Your details as saved in your customer account.</p>
+          </div>
+          <span class="profile-readonly-tag">Read only</span>
+        </div>
 
         <div class="profile-form-grid">
           <div class="profile-form-group">
-            <label>Full Name</label>
+            <span class="profile-field-label">Full Name</span>
             <div class="profile-readonly" id="profileFullname">Loading...</div>
           </div>
 
           <div class="profile-form-group">
-            <label>Email</label>
+            <span class="profile-field-label">Email</span>
             <div class="profile-readonly" id="profileEmail">Loading...</div>
           </div>
 
           <div class="profile-form-group">
-            <label>Phone Number</label>
+            <span class="profile-field-label">Phone Number</span>
             <div class="profile-readonly" id="profilePhone">Loading...</div>
           </div>
 
           <div class="profile-form-group full-width">
-            <label>Home Address</label>
+            <span class="profile-field-label">Home Address</span>
             <div class="profile-readonly" id="profileAddress">Loading...</div>
           </div>
         </div>
       </section>
 
-      <section class="profile-card">
-        <h2>Change Password</h2>
+      <section class="profile-card profile-security-card" aria-labelledby="profileSecurityTitle">
+        <div class="profile-card-heading">
+          <div>
+            <h2 id="profileSecurityTitle">Password & Security</h2>
+            <p>Enter your current password to set a new one.</p>
+          </div>
+        </div>
 
         <form id="changePasswordForm" class="password-form">
-          <div class="profile-form-group">
+          <div class="password-form-grid">
+          <div class="profile-form-group full-width">
             <label for="currentPassword">Current Password</label>
 
             <div class="password-group">
-              <input type="password" id="currentPassword" required />
+              <input type="password" id="currentPassword" autocomplete="current-password" required />
 
               <button
                 type="button"
                 class="toggle-password"
                 data-target="currentPassword"
+                aria-controls="currentPassword"
+                aria-label="Show current password"
+                aria-pressed="false"
               >
                 Show
               </button>
@@ -114,12 +126,15 @@
             <label for="newPassword">New Password</label>
 
             <div class="password-group">
-              <input type="password" id="newPassword" required />
+              <input type="password" id="newPassword" autocomplete="new-password" required />
 
               <button
                 type="button"
                 class="toggle-password"
                 data-target="newPassword"
+                aria-controls="newPassword"
+                aria-label="Show new password"
+                aria-pressed="false"
               >
                 Show
               </button>
@@ -130,21 +145,28 @@
             <label for="confirmNewPassword">Confirm New Password</label>
 
             <div class="password-group">
-              <input type="password" id="confirmNewPassword" required />
+              <input type="password" id="confirmNewPassword" autocomplete="new-password" required />
 
               <button
                 type="button"
                 class="toggle-password"
                 data-target="confirmNewPassword"
+                aria-controls="confirmNewPassword"
+                aria-label="Show new password confirmation"
+                aria-pressed="false"
               >
                 Show
               </button>
             </div>
           </div>
 
-          <button type="submit" class="profile-submit-btn">
-            Change Password
-          </button>
+          </div>
+          <div class="password-form-footer">
+            <p class="password-help">Use at least 8 characters for your new password.</p>
+            <button type="submit" class="profile-submit-btn">
+              Update Password
+            </button>
+          </div>
         </form>
       </section>
     </main>
