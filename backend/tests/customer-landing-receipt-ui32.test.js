@@ -74,3 +74,34 @@ test("UI-32 receipt changes remain presentation-only and preserve amount breakdo
   assert.match(receiptCss, /@media print/);
   assert.match(receiptCss, /\.payment-summary > \.amount-row:last-child/);
 });
+
+
+// UI-33: The public policy and actual secure checkout must describe the same
+// currently implemented payment flow. These tests never capture money.
+test("UI-33 landing policies describe PayPal-only online deposit and no proof upload", () => {
+  const section = landing.match(/<section id="policies"[\s\S]*?<\/section>/)?.[0] || "";
+  assert.ok(section, "Landing policies section missing");
+  assert.match(section, /50% downpayment of the\s+accommodation price through PayPal/i);
+  assert.match(section, /Entrance fees are separate/i);
+  assert.match(section, /successful captured payment/i);
+  assert.match(section, /automatically records the downpayment and confirms the booking/i);
+  assert.match(section, /No payment proof upload is required/i);
+  assert.match(section, /remaining accommodation balance, entrance fees/i);
+  assert.doesNotMatch(section, /GCash and Maya proof of payment|verified by the admin/i);
+  for (const safetyPolicy of [
+    "Extra person fees may apply",
+    "damaged items",
+    "Additional charges may be added",
+  ]) assert.ok(section.includes(safetyPolicy), "Missing unchanged policy: " + safetyPolicy);
+});
+
+test("UI-33 customer checkout and landing policy agree on PayPal capture and 50% accommodation only", () => {
+  const checkout = read("frontend/customerHTML/booking-payment.html");
+  assert.match(checkout, /<h2>Pay with PayPal<\/h2>/);
+  assert.match(checkout, /<option value="paypal" selected>PayPal<\/option>/);
+  assert.match(checkout, /50% accommodation\s+downpayment/i);
+  assert.match(checkout, /Entrance fees, the remaining accommodation\s+balance/i);
+  assert.match(checkout, /successfully captured downpayment/i);
+  assert.match(checkout, /50% downpayment of the\s+accommodation price through PayPal/i);
+  assert.doesNotMatch(checkout, /GCash and Maya proof of payment must be verified/i);
+});
