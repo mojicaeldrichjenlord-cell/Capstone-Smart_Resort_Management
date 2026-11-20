@@ -128,9 +128,11 @@
         link.hasAttribute("download")) return;
     const target = new URL(link.href, window.location.href);
     const current = new URL(window.location.href);
+    // Preserve legitimate query-driven navigation, but do not reload an
+    // already-open page solely because its current URL has tracking params.
     if (target.origin !== current.origin ||
         target.pathname !== current.pathname ||
-        target.search !== current.search ||
+        (target.search && target.search !== current.search) ||
         target.hash) return;
     // Do not bypass booking/payment's existing leave-confirmation safeguard.
     if (link.classList.contains("confirm-transaction-exit")) return;
@@ -138,8 +140,10 @@
     closeMobileMenu();
     showNavbar();
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    window.scrollTo({ top: 0, left: 0, behavior: reducedMotion ? "instant" : "smooth" });
-    lastY = 0;
+    window.scrollTo({ top: 0, left: 0, behavior: reducedMotion ? "auto" : "smooth" });
+    // Smooth scrolling starts at the previous position. Resetting lastY to 0
+    // would falsely treat that first animation frame as a downward scroll.
+    lastY = Math.max(0, window.scrollY || window.pageYOffset || 0);
     direction = 0;
     accumulated = 0;
   });
