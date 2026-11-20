@@ -55,6 +55,7 @@ jobs:
             tests/ai-natural-recommendations.test.js \
             tests/ai-taglish-tone.test.js \
             tests/customer-receipt-ui29.test.js \
+            tests/customer-mobile-navigation-ui30.test.js \
             > "$RUNNER_TEMP/ai-regression.log" 2>&1
           status=$?
           cat "$RUNNER_TEMP/ai-regression.log"
