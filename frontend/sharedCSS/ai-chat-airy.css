@@ -611,3 +611,32 @@ body.customer-manager-tone .ai-chat-window .ai-chat-header,
   .ai-chat-window .ai-voice-panel { padding: 7px 9px 6px; max-height: min(132px, 29dvh); }
   .ai-chat-window .ai-voice-panel .ai-voice-actions:first-child { gap: 6px; }
 }
+
+
+/* UI-30: Repeat the mobile resize state in this last-loaded Customer Home /
+   Accommodations theme. Without it, an earlier combined mobile rule makes
+   normal and maximized chats identical on iPhone/Android. */
+@media (max-width: 560px) {
+  .ai-chat-window:not(.maximized) {
+    top: auto;
+    right: 8px;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    left: 8px;
+    width: auto;
+    height: min(575px, 66dvh);
+    min-height: 0;
+    max-height: calc(100dvh - 16px);
+    border-radius: 16px 16px 12px 12px;
+  }
+  .ai-chat-window.maximized {
+    top: max(8px, env(safe-area-inset-top));
+    right: 8px;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    left: 8px;
+    width: auto;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    border-radius: 15px;
+  }
+}
