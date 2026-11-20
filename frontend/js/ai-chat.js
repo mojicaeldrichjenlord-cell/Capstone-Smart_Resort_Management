@@ -1575,6 +1575,16 @@ function removeTypingIndicator() {
   if (indicator) indicator.remove();
 }
 
+// UI-30: Keep the maximize/restore control accessible on phones and iPads.
+function syncChatSizeButton(chatWindow, maximizeBtn) {
+  const expanded = chatWindow.classList.contains("maximized");
+  maximizeBtn.textContent = expanded ? "❐" : "▢";
+  maximizeBtn.title = expanded ? "Restore size" : "Maximize";
+  maximizeBtn.setAttribute("aria-label",
+    expanded ? "Restore compact chat size" : "Maximize chat");
+  maximizeBtn.setAttribute("aria-pressed", String(expanded));
+}
+
 function toggleMaximize() {
   const chatWindow = document.getElementById("aiChatWindow");
   const maximizeBtn = document.getElementById("aiChatMaximize");
@@ -1582,7 +1592,7 @@ function toggleMaximize() {
 
   chatWindow.classList.toggle("maximized");
   const isMaximized = chatWindow.classList.contains("maximized");
-  maximizeBtn.textContent = isMaximized ? "❐" : "▢";
+  syncChatSizeButton(chatWindow, maximizeBtn);
   localStorage.setItem(AI_WINDOW_STATE_KEY, isMaximized ? "maximized" : "normal");
 }
 
@@ -1592,12 +1602,8 @@ function restoreWindowState() {
   if (!chatWindow || !maximizeBtn) return;
 
   const savedState = localStorage.getItem(AI_WINDOW_STATE_KEY);
-  if (savedState === "maximized") {
-    chatWindow.classList.add("maximized");
-    maximizeBtn.textContent = "❐";
-  } else {
-    maximizeBtn.textContent = "▢";
-  }
+  chatWindow.classList.toggle("maximized", savedState === "maximized");
+  syncChatSizeButton(chatWindow, maximizeBtn);
 }
 
 function speakText(text) {
