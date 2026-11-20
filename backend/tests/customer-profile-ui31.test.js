@@ -57,6 +57,7 @@ test("UI-31 keeps one password form, same field IDs, validation and authenticate
 test("UI-31 profile-specific CSS loads last, stays calm and remains mobile readable", () => {
   assert.ok(html.indexOf("profile.css?v=20261120-ui31") >
             html.indexOf("customer-manager-tone.css?v=20261119-ui22"));
+  assert.match(html, /customerJS\/profile\.js\?v=20261120-ui31/);
   assert.match(css, /body\.customer-manager-tone\.customer-profile-page/);
   assert.match(css, /background: #f8fafc !important/);
   assert.match(css, /\.profile-form-grid,\s*\.customer-profile-page \.password-form-grid/);
