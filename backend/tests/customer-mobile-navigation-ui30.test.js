@@ -92,8 +92,10 @@ function mockNavbar(url, open = true) {
     let clickPrevented = false;
     const link = {
       href,
+      id: options.logout ? "logoutBtn" : "",
       classList:{contains: name => name === "confirm-transaction-exit" && !!options.guarded},
       target: "",hasAttribute(){return false;},
+      getAttribute(name){return name === "href" ? href : null;},
     };
     const event = {
       target: { closest(){return link;} },
@@ -124,6 +126,9 @@ test("UI-30 different-page, modified click and booking guard keep native browser
   assert.equal(nextPage.scrollTo, null);
   assert.equal(nextPage.nav.classList.contains("show"), true);
   assert.equal(nextPage.click("https://arvicseasideresort.com/customerHTML/rooms.html", {ctrlKey:true}), false);
+  // Clicking Logout must be handled by logout-confirm.js, not scroll-to-top.
+  assert.equal(nextPage.click("#", {logout:true}), false);
+  assert.equal(nextPage.scrollTo, null);
 
   const payment = mockNavbar("https://arvicseasideresort.com/customerHTML/booking-payment.html");
   assert.equal(payment.click("https://arvicseasideresort.com/customerHTML/booking-payment.html", {guarded:true}), false);
