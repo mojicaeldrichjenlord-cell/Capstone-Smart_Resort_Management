@@ -126,6 +126,10 @@
         event.button !== 0 || event.metaKey || event.ctrlKey ||
         event.shiftKey || event.altKey || link.target === "_blank" ||
         link.hasAttribute("download")) return;
+    // Logout and in-page anchors are NOT page navigation. Their own
+    // confirmation/anchor handlers must remain untouched.
+    const rawHref = (link.getAttribute("href") || "").trim();
+    if (!rawHref || rawHref.startsWith("#") || link.id === "logoutBtn") return;
     const target = new URL(link.href, window.location.href);
     const current = new URL(window.location.href);
     // Preserve legitimate query-driven navigation, but do not reload an
