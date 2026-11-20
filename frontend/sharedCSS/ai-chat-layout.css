@@ -149,3 +149,33 @@
 @media (prefers-reduced-motion: reduce) {
   .ai-chat-window, .ai-chat-window * { scroll-behavior: auto !important; }
 }
+
+
+/* UI-30: On phones a normal chat is a compact bottom sheet, while Maximize
+   expands it to the safe visible viewport. Old mobile selectors applied the
+   SAME full-viewport dimensions to both states, making the button look broken.
+   The header and composer retain their fixed flex rows; messages scroll. */
+@media (max-width: 560px) {
+  .ai-chat-window:not(.maximized) {
+    top: auto;
+    left: 8px;
+    right: 8px;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    width: auto;
+    height: min(575px, 66dvh);
+    min-height: 0;
+    max-height: calc(100dvh - 16px);
+    border-radius: 16px 16px 12px 12px;
+  }
+  .ai-chat-window.maximized {
+    top: max(8px, env(safe-area-inset-top));
+    left: 8px;
+    right: 8px;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    width: auto;
+    height: auto;
+    min-height: 0;
+    max-height: none;
+    border-radius: 15px;
+  }
+}
