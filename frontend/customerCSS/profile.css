@@ -1,230 +1,315 @@
-/* ======================================================
-   CUSTOMER PROFILE CSS
-   File: frontend/customerCSS/profile.css
+/*
+ * UI-31 — Customer Profile: minimal, readable account settings.
+ * Scoped to customer-profile-page and loaded AFTER Customer manager-tone.
+ * Only presentation changes; user data and password API remain unchanged.
+ */
 
-   NOTE:
-   - Navbar CSS removed from this file.
-   - Navbar style is handled by:
-     frontend/sharedCSS/customer-navbar.css
-====================================================== */
-
-.page-header {
-  background:
-    linear-gradient(rgba(15, 23, 42, 0.58), rgba(20, 184, 166, 0.52)),
-    url("https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1600&q=80")
-      center/cover no-repeat;
-  color: white;
-  text-align: center;
-  padding: 68px 18px;
+body.customer-manager-tone.customer-profile-page {
+  background: #f8fafc !important;
+  color: #1e293b;
 }
 
-.page-header h1 {
-  margin: 0 0 10px;
-  font-size: 2.7rem;
+body.customer-profile-page::before,
+body.customer-profile-page::after {
+  display: none !important;
+  content: none !important;
 }
 
-.page-header p {
-  margin: 0 auto;
-  max-width: 680px;
-  font-size: 1rem;
-  opacity: 0.96;
-  line-height: 1.7;
+.customer-profile-page .profile-wrapper {
+  width: min(920px, calc(100% - 36px));
+  margin: 23px auto 58px;
 }
 
-.profile-wrapper {
-  width: 94%;
-  max-width: 980px;
-  margin: 30px auto 46px;
+.customer-profile-page .top-page-actions {
+  display: flex;
+  margin: 0 0 22px;
 }
 
-.top-page-actions {
-  margin-bottom: 16px;
-}
-
-.back-btn {
+.customer-profile-page .back-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-height: 39px;
+  padding: 9px 13px;
+  border: 1px solid #dce6ea;
+  border-radius: 10px;
+  color: #334155;
+  background: #fff;
   text-decoration: none;
-  background: rgba(255, 255, 255, 0.96);
-  color: #0f172a;
-  padding: 11px 18px;
+  font-size: .84rem;
+  font-weight: 650;
+  box-shadow: none;
+  transition: background-color .15s ease, border-color .15s ease;
+}
+.customer-profile-page .back-btn:hover {
+  background: #eef8f5;
+  border-color: #b8d8d0;
+  transform: none;
+}
+
+.customer-profile-page .profile-intro {
+  padding: 0 2px;
+  margin: 0 0 23px;
+}
+.customer-profile-page .profile-eyebrow {
+  margin: 0 0 7px;
+  color: #0f766e;
+  font-size: .72rem;
+  line-height: 1.3;
+  letter-spacing: .09em;
+  font-weight: 750;
+}
+.customer-profile-page .profile-intro h1 {
+  margin: 0 0 7px;
+  color: #172554;
+  font-size: clamp(1.55rem, 3.4vw, 1.95rem);
+  font-weight: 760;
+  line-height: 1.24;
+  letter-spacing: -.025em;
+}
+.customer-profile-page .profile-intro > p:last-child {
+  margin: 0;
+  color: #64748b;
+  line-height: 1.5;
+  font-size: .90rem;
+}
+
+body.customer-manager-tone .customer-profile-page .profile-card,
+body.customer-manager-tone.customer-profile-page .profile-card {
+  background: #fff !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 17px;
+  padding: 24px 26px;
+  margin: 0 0 16px;
+  box-shadow: 0 3px 16px rgba(22, 41, 62, .04) !important;
+}
+
+.customer-profile-page .profile-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 20px;
+}
+.customer-profile-page .profile-card-heading h2 {
+  margin: 0 0 4px;
+  color: #172554;
+  font-weight: 720;
+  font-size: 1.06rem;
+  line-height: 1.35;
+  letter-spacing: -.01em;
+}
+.customer-profile-page .profile-card-heading p {
+  margin: 0;
+  color: #64748b;
+  font-size: .82rem;
+  line-height: 1.48;
+}
+.customer-profile-page .profile-readonly-tag {
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border: 1px solid #e2e8f0;
   border-radius: 999px;
-  font-weight: 800;
-  transition: 0.2s ease;
-  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.06);
-  border: 1px solid rgba(219, 231, 239, 0.9);
+  background: #f8fafc;
+  color: #64748b;
+  font-size: .69rem;
+  font-weight: 650;
 }
 
-.back-btn:hover {
-  transform: translateY(-1px);
-  background: #ffffff;
-}
-
-.profile-card {
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(219, 231, 239, 0.92);
-  border-radius: 30px;
-  padding: 24px;
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
-  margin-bottom: 20px;
-}
-
-.profile-card h2 {
-  margin: 0 0 18px;
-  color: #0f172a;
-  font-size: 1.45rem;
-}
-
-.profile-form-grid {
+.customer-profile-page .profile-form-grid,
+.customer-profile-page .password-form-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 20px;
 }
-
-.profile-form-group {
+.customer-profile-page .profile-form-group {
   display: flex;
   flex-direction: column;
+  min-width: 0;
   gap: 7px;
 }
-
-.profile-form-group.full-width {
+.customer-profile-page .profile-form-group.full-width {
   grid-column: 1 / -1;
 }
-
-.profile-form-group label {
-  color: #0f172a;
-  font-weight: 900;
-  font-size: 0.86rem;
-}
-
-.profile-readonly {
-  width: 100%;
-  min-height: 46px;
-  border: 1px solid #dbe7ef;
-  background: #f8fafc;
-  border-radius: 14px;
-  padding: 13px 14px;
-  color: #334155;
+.customer-profile-page .profile-field-label,
+.customer-profile-page .profile-form-group label {
+  color: #475569;
+  font-size: .79rem;
   font-weight: 700;
-  line-height: 1.4;
+  line-height: 1.35;
 }
-
-.password-form {
-  display: grid;
-  gap: 14px;
-}
-
-.password-group {
+.customer-profile-page .profile-readonly {
   display: flex;
-  gap: 10px;
   align-items: center;
-}
-
-.password-group input {
-  flex: 1;
+  min-height: 46px;
   width: 100%;
+  padding: 11px 13px;
+  border-radius: 10px;
+  border: 1px solid #e1e8ef;
+  background: #f8fafc;
+  color: #273a51;
+  font-size: .89rem;
+  line-height: 1.4;
+  font-weight: 550;
+  overflow-wrap: anywhere;
+}
+
+.customer-profile-page .profile-security-card {
+  margin-bottom: 0;
+}
+.customer-profile-page .password-form {
+  display: grid;
+  gap: 17px;
+}
+.customer-profile-page .password-group {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  align-items: stretch;
+}
+.customer-profile-page .password-group input {
+  flex: 1 1 auto;
+  min-width: 0;
+  width: 100%;
+  min-height: 48px;
   border: 1px solid #cbd5e1;
-  background: #ffffff;
-  border-radius: 14px;
-  padding: 13px 14px;
+  border-radius: 10px;
   outline: none;
-  font-size: 0.95rem;
-  transition: 0.18s ease;
+  padding: 11px 83px 11px 13px;
+  background: #fff;
+  color: #1e293b;
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.35;
+  transition: border-color .15s ease, box-shadow .15s ease;
 }
-
-.password-group input:focus {
-  border-color: #14b8a6;
-  box-shadow: 0 0 0 3px rgba(20, 184, 166, 0.12);
+.customer-profile-page .password-group input:focus {
+  border-color: #0f766e;
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, .12);
 }
-
-.toggle-password {
-  border: none;
-  border-radius: 999px;
-  background: #0f172a;
-  color: #ffffff;
-  padding: 12px 16px;
-  font-weight: 900;
+.customer-profile-page .toggle-password {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 66px;
+  min-height: 34px;
+  padding: 6px 9px;
+  border: 1px solid #d5e8e2;
+  border-radius: 8px;
+  background: #eff8f5;
+  color: #0f766e;
+  font: inherit;
+  font-weight: 700;
+  font-size: .76rem;
+  line-height: 1.2;
   cursor: pointer;
-  min-width: 82px;
-  transition: 0.2s ease;
+  transition: background-color .15s ease;
+}
+.customer-profile-page .toggle-password:hover {
+  background: #dcf1e9;
+  transform: translateY(-50%);
+}
+.customer-profile-page .toggle-password[aria-pressed="true"] {
+  color: #172554;
+  background: #e9eef7;
+  border-color: #d5deeb;
 }
 
-.toggle-password:hover {
-  transform: translateY(-1px);
-  background: #1e293b;
+.customer-profile-page .password-form-footer {
+  padding-top: 3px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 13px 20px;
 }
-
-.profile-submit-btn {
-  border: none;
-  border-radius: 999px;
-  padding: 13px 18px;
-  background: linear-gradient(135deg, #14b8a6, #0ea5e9);
-  color: #ffffff;
-  font-weight: 950;
+.customer-profile-page .password-help {
+  flex: 1 1 230px;
+  margin: 0;
+  color: #64748b;
+  font-size: .79rem;
+  line-height: 1.45;
+}
+.customer-profile-page .profile-submit-btn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 11px 18px;
+  border: 1px solid #0f766e;
+  border-radius: 10px;
+  background: #0f766e;
+  color: #fff;
+  font: inherit;
+  font-size: .85rem;
+  font-weight: 720;
+  line-height: 1.3;
+  box-shadow: none;
   cursor: pointer;
-  box-shadow: 0 10px 20px rgba(20, 184, 166, 0.18);
-  transition: 0.2s ease;
-  width: fit-content;
+  transition: background-color .15s ease;
+}
+.customer-profile-page .profile-submit-btn:hover {
+  background: #115e59;
+  transform: none;
+}
+.customer-profile-page .profile-submit-btn:disabled {
+  opacity: .7;
+  cursor: wait;
 }
 
-.profile-submit-btn:hover {
-  transform: translateY(-1px);
+.customer-profile-page :is(.back-btn, .toggle-password, .profile-submit-btn):focus-visible {
+  outline: 3px solid #38bdf8;
+  outline-offset: 3px;
 }
 
-/* ======================================================
-   RESPONSIVE DESIGN
-====================================================== */
-
-@media (max-width: 768px) {
-  .page-header {
-    padding: 52px 16px;
+@media (max-width: 760px) {
+  .customer-profile-page .profile-wrapper {
+    width: min(100% - 30px, 650px);
+    margin: 19px auto 42px;
   }
-
-  .page-header h1 {
-    font-size: 2.1rem;
+  body.customer-manager-tone.customer-profile-page .profile-card {
+    padding: 21px 20px;
   }
-
-  .profile-card {
-    padding: 18px;
-    border-radius: 24px;
-  }
-
-  .profile-form-grid {
-    grid-template-columns: 1fr;
+  .customer-profile-page .profile-form-grid,
+  .customer-profile-page .password-form-grid {
+    gap: 15px;
   }
 }
 
-@media (max-width: 480px) {
-  .page-header {
-    padding: 38px 14px;
+@media (max-width: 600px) {
+  .customer-profile-page .profile-form-grid,
+  .customer-profile-page .password-form-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
   }
-
-  .page-header h1 {
-    font-size: 1.8rem;
-  }
-
-  .profile-wrapper {
-    width: 94%;
-    margin: 18px auto 30px;
-  }
-
-  .back-btn {
-    width: 100%;
-  }
-
-  .profile-card {
-    padding: 14px;
-    border-radius: 20px;
-  }
-
-  .password-group {
+  .customer-profile-page .profile-intro { margin-bottom: 20px; }
+  .customer-profile-page .profile-card-heading { margin-bottom: 17px; }
+  .customer-profile-page .profile-readonly-tag { font-size: .66rem; }
+  .customer-profile-page .password-form-footer {
     flex-direction: column;
     align-items: stretch;
+    gap: 12px;
   }
+  .customer-profile-page .password-help { flex: none; }
+  .customer-profile-page .profile-submit-btn { width: 100%; }
+}
 
-  .toggle-password,
-  .profile-submit-btn {
-    width: 100%;
+@media (max-width: 390px) {
+  .customer-profile-page .profile-wrapper { width: calc(100% - 20px); }
+  body.customer-manager-tone.customer-profile-page .profile-card {
+    padding: 17px 15px;
+    border-radius: 14px;
+  }
+  .customer-profile-page .profile-intro h1 { font-size: 1.6rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .customer-profile-page :is(.back-btn, .password-group input, .toggle-password, .profile-submit-btn) {
+    transition: none;
   }
 }
