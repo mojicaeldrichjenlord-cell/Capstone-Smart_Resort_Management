@@ -34,6 +34,20 @@
   letter-spacing: 0.6px;
   line-height: 1;
   white-space: nowrap;
+  /* UI-30: Customer brand is a real touch/keyboard-accessible Home link. */
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  max-width: 100%;
+  min-height: 44px;
+  text-decoration: none;
+  cursor: pointer;
+}
+.navbar .logo:hover { color: #e7fffb; }
+.navbar .logo:focus-visible {
+  outline: 3px solid #99f6e4;
+  outline-offset: 4px;
+  border-radius: 5px;
 }
 
 .navbar nav {
