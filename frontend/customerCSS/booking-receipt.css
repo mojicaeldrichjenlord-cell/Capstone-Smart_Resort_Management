@@ -1,375 +1,377 @@
-/* CUSTOMER BOOKING RECEIPT CSS - Minimal customer receipt */
-
-body {
-  background: linear-gradient(135deg, #eefafa 0%, #f8fbfc 55%, #e7f7f5 100%);
+/*
+ * UI-29 — Customer reservation receipt: simple, print-friendly invoice style.
+ * Presentation only. Booking status, guest data, amounts and conditional
+ * final/onsite charge calculations stay in customerJS/booking-receipt.js.
+ *
+ * Scoped overrides beat UI-22's generic customer hero/card theme without
+ * changing that shared theme on any other page.
+ */
+body.customer-manager-tone {
+  background: #f8fafc !important;
+  color: #1e293b;
 }
 
-.page-header {
-  background: linear-gradient(135deg, #0f172a 0%, #0f766e 55%, #14b8a6 100%);
-  color: #ffffff;
-  text-align: center;
-  padding: 54px 18px;
-}
-
-.page-header h1 {
-  margin: 0 0 8px;
-  font-size: clamp(2rem, 4vw, 2.65rem);
-  letter-spacing: -0.04em;
-}
-
-.page-header p {
-  margin: 0 auto;
-  max-width: 680px;
-  font-size: 0.98rem;
-  opacity: 0.94;
-  line-height: 1.7;
-}
-
-.receipt-page-wrapper {
-  width: 92%;
-  max-width: 880px;
-  margin: 26px auto 46px;
-}
-
-.receipt-top-actions {
-  display: flex;
-  justify-content: flex-start;
-  margin-bottom: 14px;
-}
-
-.back-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  text-decoration: none;
-  background: rgba(255, 255, 255, 0.96);
-  color: #0f172a;
-  padding: 11px 18px;
-  border-radius: 999px;
-  font-weight: 800;
-  transition: 0.2s ease;
-  box-shadow: 0 10px 20px rgba(15, 23, 42, 0.06);
-  border: 1px solid rgba(219, 231, 239, 0.9);
-}
-
-.back-btn:hover {
-  transform: translateY(-1px);
-  background: #ffffff;
-}
-
-.receipt-shell {
-  background: rgba(255, 255, 255, 0.96);
-  border-radius: 26px;
-  padding: 18px;
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
-  border: 1px solid rgba(219, 231, 239, 0.92);
-}
-
-.receipt-loading-box,
-.receipt-error-box {
-  background: #ffffff;
-  border-radius: 20px;
-  padding: 24px;
-  text-align: center;
-  color: #475569;
-  border: 1px solid #dbe7ef;
-}
-
-.receipt-error-box {
-  color: #991b1b;
-  border-color: #fecaca;
-  background: #fff7f7;
-}
-
-.minimal-receipt {
-  background: #ffffff;
-  border: 1px solid #dbe7ef;
-  border-radius: 22px;
-  overflow: hidden;
-}
-
-.receipt-hero {
-  background: linear-gradient(135deg, #0f172a 0%, #16233b 58%, #14b8a6 100%);
-  color: #ffffff;
-  padding: 22px;
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: flex-start;
-  flex-wrap: wrap;
-}
-
-.receipt-title h2 {
-  margin: 0 0 6px;
-  font-size: 1.7rem;
-  letter-spacing: -0.03em;
-}
-
-.receipt-title p {
-  margin: 0;
-  color: rgba(255, 255, 255, 0.86);
-  line-height: 1.5;
-  font-size: 0.95rem;
-}
-
-.receipt-code-box {
-  min-width: 170px;
-  background: rgba(255, 255, 255, 0.13);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  border-radius: 18px;
-  padding: 12px 15px;
-  text-align: center;
-}
-
-.receipt-code-label {
-  font-size: 0.76rem;
-  opacity: 0.9;
-  font-weight: 800;
-  margin-bottom: 4px;
-}
-
-.receipt-code-value {
-  font-size: 1.35rem;
-  font-weight: 950;
-  letter-spacing: 0.04em;
-}
-
-.receipt-content {
-  padding: 20px;
-  display: grid;
-  gap: 16px;
-}
-
-.receipt-section {
-  border: 1px solid #dbe7ef;
-  border-radius: 18px;
-  padding: 16px;
-  background: #fcfeff;
-}
-
-.receipt-section h3,
-.payment-summary h3 {
-  margin: 0 0 12px;
-  color: #0f172a;
-  font-size: 1rem;
-  letter-spacing: -0.02em;
-}
-
-.info-list {
-  display: grid;
-  gap: 0;
-}
-
-.info-row {
-  display: grid;
-  grid-template-columns: minmax(130px, 0.8fr) minmax(0, 1.2fr);
-  gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid #e2e8f0;
-  color: #334155;
-  line-height: 1.45;
-  font-size: 0.94rem;
-}
-
-.info-row:last-child {
-  border-bottom: none;
-}
-
-.info-label {
-  font-weight: 850;
-  color: #0f172a;
-}
-
-.status-pill {
-  display: inline-flex;
-  width: fit-content;
-  align-items: center;
-  justify-content: center;
-  padding: 6px 10px;
-  border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 900;
-  border: 1px solid transparent;
-}
-
-.status-approved,
-.status-paid {
-  background: #dcfce7;
-  color: #166534;
-  border-color: #bbf7d0;
-}
-
-.status-partially_paid {
-  background: #dbeafe;
-  color: #1d4ed8;
-  border-color: #bfdbfe;
-}
-
-.status-pending {
-  background: #fef3c7;
-  color: #92400e;
-  border-color: #fde68a;
-}
-
-.status-cancelled,
-.status-rejected,
-.status-unpaid {
-  background: #fee2e2;
-  color: #991b1b;
-  border-color: #fecaca;
-}
-
-.items-list {
-  display: grid;
-  gap: 10px;
-}
-
-.receipt-item {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 15px;
-  padding: 12px;
-  color: #475569;
-  line-height: 1.55;
-  font-size: 0.92rem;
-}
-
-.receipt-item strong {
-  display: block;
-  color: #0f172a;
-  margin-bottom: 4px;
-  font-size: 0.98rem;
-}
-
-.payment-summary {
-  background: #0f172a;
-  color: #ffffff;
-  border-radius: 18px;
-  padding: 16px;
-}
-
-.payment-summary h3 {
-  color: #ffffff;
-}
-
-.amount-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 14px;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  color: #cbd5e1;
-  font-size: 0.94rem;
-}
-
-.amount-row:last-child {
-  border-bottom: none;
-}
-
-.amount-row strong {
-  color: #ffffff;
-  white-space: nowrap;
-}
-
-.receipt-reminder {
-  background: #fff7ed;
-  border: 1px solid #fed7aa;
-  color: #9a3412;
-  border-radius: 16px;
-  padding: 13px 15px;
-  line-height: 1.6;
-  font-size: 0.92rem;
-}
-
-.receipt-actions {
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin-top: 18px;
-}
-
-.receipt-actions .btn-secondary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 210px;
-  text-decoration: none;
-  border-radius: 999px;
-  padding: 12px 18px;
-  background: #0f766e;
-  color: #ffffff;
-  font-weight: 900;
-  box-shadow: 0 10px 20px rgba(20, 184, 166, 0.16);
-}
-
-@media (max-width: 768px) {
-  .page-header {
-    padding: 46px 16px;
-  }
-
-  .receipt-shell {
-    padding: 14px;
-    border-radius: 22px;
-  }
-
-  .receipt-content {
-    padding: 16px;
-  }
-
-  .info-row {
-    grid-template-columns: 1fr;
-    gap: 4px;
-  }
-}
-
-@media (max-width: 480px) {
-  .receipt-page-wrapper {
-    width: 95%;
-    margin: 16px auto 28px;
-  }
-
-  .receipt-top-actions {
-    display: block;
-    margin-bottom: 12px;
-  }
-
-  .back-btn,
-  .receipt-actions .btn-secondary {
-    width: 100%;
-  }
-
-  .receipt-hero {
-    padding: 18px;
-  }
-
-  .receipt-code-box {
-    width: 100%;
-  }
-
-  .receipt-section {
-    padding: 14px;
-  }
-}
-
-/* ======================================================
-   REMOVE GLOBAL DECORATIVE ICONS ON ADMIN RECEIPT
-   Purpose:
-   - Removes global palm tree and wave pseudo-icons
-   - Keeps printed thermal receipt clean
-====================================================== */
-
+/* Hide the site's decorative background icons on this receipt page only. */
 body::before,
 body::after {
   display: none !important;
   content: none !important;
 }
 
-@media print {
+.receipt-page-wrapper {
+  width: min(92%, 840px);
+  margin: 26px auto 48px;
+}
 
-  body::before,
-  body::after {
+.receipt-top-actions {
+  display: flex;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.back-btn {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 13px;
+  text-decoration: none;
+  color: #334155;
+  background: transparent;
+  border: 1px solid #dbe4e9;
+  border-radius: 10px;
+  font-size: .86rem;
+  font-weight: 650;
+  line-height: 1.3;
+  transition: background-color .15s ease, border-color .15s ease;
+}
+.back-btn:hover { background: #fff; border-color: #bfcfd7; }
+.back-btn:focus-visible,
+.receipt-reminder a:focus-visible {
+  outline: 3px solid #38bdf8;
+  outline-offset: 2px;
+}
+
+body.customer-manager-tone .receipt-shell {
+  background: #fff !important;
+  border: 1px solid #e0e8ec !important;
+  box-shadow: 0 5px 22px rgba(30, 45, 65, .045) !important;
+  border-radius: 18px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.receipt-loading-box,
+.receipt-error-box {
+  background: #fff;
+  padding: 25px 20px;
+  text-align: center;
+  font-size: .9rem;
+  color: #475569;
+}
+.receipt-error-box {
+  color: #991b1b;
+  background: #fff7f7;
+}
+
+.minimal-receipt {
+  background: #fff;
+  color: #334155;
+}
+
+.receipt-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 18px;
+  background: #fff;
+  border-top: 4px solid #0f766e;
+  border-bottom: 1px solid #e5ebef;
+  padding: 25px 28px 22px;
+}
+.receipt-title {
+  flex: 1 1 340px;
+  min-width: 0;
+}
+.receipt-title h1 {
+  color: #172554;
+  font-size: clamp(1.45rem, 3vw, 1.82rem);
+  font-weight: 750;
+  letter-spacing: -.03em;
+  line-height: 1.23;
+  margin: 0 0 11px;
+}
+.receipt-title p {
+  font-size: .85rem;
+  color: #64748b;
+  line-height: 1.6;
+  margin: 0 0 9px;
+}
+.receipt-title p strong {
+  color: #27344e;
+  font-weight: 700;
+}
+.receipt-title p:last-child {
+  margin-bottom: 0;
+  font-size: .8rem;
+}
+.receipt-code-box {
+  flex: 0 0 auto;
+  min-width: 150px;
+  max-width: 100%;
+  padding: 12px 15px;
+  color: #172554;
+  background: #f6faf9;
+  border: 1px solid #d8e8e4;
+  border-radius: 11px;
+  text-align: right;
+}
+.receipt-code-label {
+  color: #64748b;
+  font-size: .7rem;
+  font-weight: 650;
+  margin-bottom: 5px;
+}
+.receipt-code-value {
+  color: #172554;
+  font-size: clamp(1rem, 2.3vw, 1.23rem);
+  font-weight: 750;
+  letter-spacing: .015em;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+
+.receipt-content {
+  display: grid;
+  gap: 23px;
+  padding: 24px 28px 28px;
+}
+/* Sections are separated by whitespace and fine rules, not tinted cards. */
+.receipt-section {
+  padding: 0 0 21px;
+  border-bottom: 1px solid #e5ebef;
+  background: #fff;
+}
+.receipt-section h3,
+.payment-summary h3 {
+  color: #172554;
+  font-size: 1rem;
+  font-weight: 750;
+  letter-spacing: -.01em;
+  margin: 0 0 13px;
+}
+.info-list { display: grid; }
+.info-row {
+  display: grid;
+  grid-template-columns: minmax(130px, .73fr) minmax(0, 1.27fr);
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #eef2f5;
+  font-size: .89rem;
+  line-height: 1.45;
+  color: #334155;
+}
+.info-row:last-child { border-bottom: 0; }
+.info-row > :last-child { min-width: 0; overflow-wrap: anywhere; }
+.info-label {
+  color: #64748b;
+  font-weight: 600;
+}
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 100%;
+  padding: 4px 9px;
+  border-radius: 7px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  color: #334155;
+  font-size: .78rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+.status-approved,
+.status-paid { background: #ebf8f1; border-color: #cee9d7; color: #206547; }
+.status-partially_paid { background: #eff6ff; border-color: #d6e6f9; color: #24518a; }
+.status-pending { background: #fef9ed; border-color: #efe2bf; color: #805a20; }
+.status-cancelled,
+.status-rejected,
+.status-unpaid { background: #fff1f2; border-color: #f0d2d4; color: #933d44; }
+
+.items-list { display: grid; gap: 10px; }
+.receipt-item {
+  background: #f8fafc;
+  border: 1px solid #e5ebef;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: .88rem;
+  line-height: 1.58;
+  color: #475569;
+  overflow-wrap: anywhere;
+}
+.receipt-item strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #172554;
+  font-size: .92rem;
+  font-weight: 700;
+}
+
+/* This is an invoice breakdown, not a second dark hero. */
+.payment-summary {
+  color: #334155;
+  background: #fff;
+  padding: 0;
+}
+.amount-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  padding: 9px 0;
+  color: #475569;
+  border-bottom: 1px solid #eef2f5;
+  font-size: .89rem;
+  line-height: 1.4;
+}
+.amount-row > span { flex: 1 1 auto; min-width: 0; }
+.amount-row > strong {
+  flex: 0 0 auto;
+  color: #1e293b;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* Only the payable total gets visual emphasis. Applies to both simple
+   receipt and the final-payment version, without changing any amounts. */
+.payment-summary > .amount-row:last-child {
+  margin-top: 9px;
+  padding: 13px 12px;
+  color: #0f5e59;
+  font-weight: 750;
+  background: #eef8f5;
+  border: 1px solid #d5e9e2;
+  border-radius: 10px;
+}
+.payment-summary > .amount-row:last-child strong {
+  color: #0f5e59;
+  font-size: 1.02rem;
+}
+.receipt-section-subtitle {
+  margin-top: 19px;
+  margin-bottom: 8px;
+  color: #475569;
+  font-size: .85rem;
+  font-weight: 650;
+}
+.payment-summary .receipt-item { margin-bottom: 8px; }
+
+/* Helpful note, not an orange warning panel. Preserve customer support links. */
+.receipt-reminder {
+  padding: 13px 15px;
+  border: 1px solid #e5ebef;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #475569;
+  line-height: 1.6;
+  font-size: .82rem;
+}
+.receipt-reminder > strong {
+  color: #334155;
+  font-weight: 700;
+}
+.receipt-reminder a {
+  color: #0f766e;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.receipt-reminder a:hover { color: #115e59; }
+
+@media (max-width: 680px) {
+  .receipt-page-wrapper {
+    width: calc(100% - 26px);
+    margin: 18px auto 32px;
+  }
+  .receipt-hero { padding: 20px 18px; gap: 14px; }
+  .receipt-content { padding: 20px 18px 23px; gap: 20px; }
+}
+@media (max-width: 480px) {
+  .receipt-page-wrapper { width: calc(100% - 18px); margin: 12px auto 25px; }
+  .receipt-hero { flex-direction: column; gap: 13px; padding: 18px 15px; }
+  .receipt-code-box {
+    align-self: stretch;
+    width: 100%;
+    text-align: left;
+    padding: 10px 12px;
+  }
+  .receipt-content { padding: 18px 15px 20px; }
+  .info-row {
+    grid-template-columns: minmax(100px, .8fr) minmax(0, 1.2fr);
+    gap: 8px;
+    font-size: .84rem;
+  }
+  .amount-row { font-size: .84rem; gap: 8px; }
+  .amount-row > strong { font-size: .84rem; }
+  .payment-summary > .amount-row:last-child strong { font-size: .94rem; }
+}
+@media (max-width: 345px) {
+  .info-row { grid-template-columns: 1fr; gap: 2px; }
+  .amount-row { align-items: flex-start; }
+}
+
+/* A clean hard copy for front-desk verification, even on narrow paper. */
+@media print {
+  @page { margin: 12mm; }
+  html, body, body.customer-manager-tone {
+    background: #fff !important;
+    color: #111827 !important;
+  }
+  .navbar, .receipt-top-actions, .page-header,
+  .menu-toggle, .receipt-actions {
     display: none !important;
-    content: none !important;
+  }
+  .receipt-page-wrapper {
+    margin: 0;
+    width: 100%;
+    max-width: none;
+  }
+  body.customer-manager-tone .receipt-shell {
+    background: #fff !important;
+    box-shadow: none !important;
+    border: 0 !important;
+    border-radius: 0;
+  }
+  .receipt-hero {
+    background: #fff !important;
+    border-top: 2px solid #475569;
+    padding: 10px 0 14px;
+  }
+  .receipt-title h1, .receipt-section h3, .payment-summary h3 {
+    color: #111827 !important;
+  }
+  .receipt-content { padding: 14px 0 0; gap: 17px; }
+  .receipt-section { padding-bottom: 14px; }
+  .receipt-item, .receipt-reminder, .receipt-code-box {
+    background: #fff !important;
+    color: #374151 !important;
+    border-color: #d1d5db !important;
+  }
+  .payment-summary > .amount-row:last-child {
+    background: #fff !important;
+    color: #111827 !important;
+    border: 1px solid #9ca3af;
+  }
+  .payment-summary > .amount-row:last-child strong { color: #111827 !important; }
+  .receipt-section, .payment-summary, .receipt-reminder, .receipt-item,
+  .receipt-hero, .receipt-code-box {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .status-pill {
+    background: #fff !important;
+    color: #111827 !important;
+    border-color: #d1d5db !important;
   }
 }

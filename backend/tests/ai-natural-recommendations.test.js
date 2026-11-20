@@ -396,8 +396,8 @@ test("UI-27 customer chatbot docks to lower-right and keeps a responsive branded
       path.join(__dirname, "../../frontend/customerHTML", page), "utf8");
     assert.match(html, /class="ai-assistant-brand"/, page);
     assert.match(html, /Arvic Seaside Resort AI Assistant/, page);
-    assert.match(html, /ai-chat-airy\.css\?v=20261119-ui28/, page);
-    assert.match(html, /ai-chat\.js\?v=20261119-ui27/, page);
+    assert.match(html, /ai-chat-airy\.css\?v=20261120-ui30/, page);
+    assert.match(html, /ai-chat\.js\?v=20261120-ui30/, page);
     assert.match(html, /id="aiChatMaximize"/, page);
     assert.match(html, /id="aiChatClose"/, page);
     assert.match(html, /id="aiMicBtn"/, page);
@@ -440,7 +440,7 @@ test("UI-28 open voice settings remain compact while preserving voice controls a
   for (const page of ["index.html", "rooms.html"]) {
     const html = fs.readFileSync(
       path.join(__dirname, "../../frontend/customerHTML", page), "utf8");
-    assert.match(html, /ai-chat-airy\.css\?v=20261119-ui28/);
+    assert.match(html, /ai-chat-airy\.css\?v=20261120-ui30/);
     assert.match(html, /ai-voice\.js\?v=20261119-gemini-default-compact28/);
   }
 });

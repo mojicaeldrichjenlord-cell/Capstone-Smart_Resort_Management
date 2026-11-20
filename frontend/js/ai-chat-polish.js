@@ -22,7 +22,16 @@ document.addEventListener("DOMContentLoaded", () => {
     if (maximize) {
       const expanded = chat.classList.contains("maximized");
       maximize.title = expanded ? "Restore size" : "Maximize";
-      maximize.setAttribute("aria-label", expanded ? "Restore chat size" : "Maximize chat");
+      maximize.setAttribute("aria-label", expanded ? "Restore compact chat size" : "Maximize chat");
+      maximize.setAttribute("aria-pressed", String(expanded));
+    }
+    const minimize = document.getElementById("aiChatMinimize");
+    if (minimize) {
+      const reduceOnPhone = window.matchMedia("(max-width: 560px)").matches &&
+        chat.classList.contains("maximized");
+      minimize.title = reduceOnPhone ? "Reduce to compact size" : "Minimize";
+      minimize.setAttribute("aria-label",
+        reduceOnPhone ? "Reduce chat to compact size" : "Minimize chat to launcher");
     }
   };
   syncWindow();
@@ -32,9 +41,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   close?.addEventListener("click", () => toggle.focus());
 
-  // Minimize hides the popup but keeps chat history/context. Stop an active
-  // microphone session using the existing public voice API, never leave it
-  // listening invisibly behind a minimized window.
+  // UI-30: On phones, Minimize reduces a maximized chat to compact first.
+  // In compact mode (and on desktop), it hides the popup to the launcher.
+  // Hiding the chat preserves conversation history/context; only then stop
+  // an active microphone session to avoid invisible audio recording.
   const headerActions = chat.querySelector(".ai-chat-header-actions");
   if (headerActions && !document.getElementById("aiChatMinimize")) {
     const minimize = document.createElement("button");
@@ -46,10 +56,17 @@ document.addEventListener("DOMContentLoaded", () => {
     minimize.setAttribute("aria-label", "Minimize chat");
     headerActions.insertBefore(minimize, maximize || close);
     minimize.addEventListener("click", () => {
+      // The square resize control already saves the preferred size.
+      if (window.matchMedia("(max-width: 560px)").matches &&
+          chat.classList.contains("maximized")) {
+        toggleMaximize();
+        return;
+      }
       window.ArvicVoice?.stopConversation?.("");
       chat.classList.remove("show");
       toggle.focus();
     });
+    syncWindow();
   }
 
   // Collapse ONLY the visual panel. The voice API, speech recognition,

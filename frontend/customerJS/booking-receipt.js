@@ -238,7 +238,7 @@ async function loadReceipt() {
       <article class="minimal-receipt">
         <header class="receipt-hero">
           <div class="receipt-title">
-            <h2>${isCompleted ? "Final Receipt" : "Reservation Receipt"}</h2>
+            <h1>${isCompleted ? "Final Receipt" : "Reservation Receipt"}</h1>
 
             <p>
               <strong>${escapeHtml(RESORT_INFO.name)}</strong><br>

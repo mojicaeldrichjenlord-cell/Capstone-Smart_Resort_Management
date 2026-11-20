@@ -70,13 +70,19 @@ function setupPasswordToggles() {
 
       if (!input) return;
 
-      if (input.type === "password") {
-        input.type = "text";
-        button.textContent = "Hide";
-      } else {
-        input.type = "password";
-        button.textContent = "Show";
-      }
+      const isVisible = input.type === "password";
+      input.type = isVisible ? "text" : "password";
+      button.textContent = isVisible ? "Hide" : "Show";
+      // UI-31: Announce the actual visibility state to screen readers and
+      // keep the compact in-field control keyboard accessible.
+      button.setAttribute("aria-pressed", String(isVisible));
+      const fieldName = ({
+        currentPassword: "current password",
+        newPassword: "new password",
+        confirmNewPassword: "new password confirmation",
+      })[targetId] || "password";
+      button.setAttribute("aria-label",
+        (isVisible ? "Hide " : "Show ") + fieldName);
     });
   });
 }
@@ -191,6 +197,13 @@ function setupPasswordForm(userId) {
         }
 
         button.textContent = "Show";
+        button.setAttribute("aria-pressed", "false");
+        const fieldName = ({
+          currentPassword: "current password",
+          newPassword: "new password",
+          confirmNewPassword: "new password confirmation",
+        })[targetId] || "password";
+        button.setAttribute("aria-label", "Show " + fieldName);
       });
     } catch (error) {
       console.error("changePassword error:", error);
