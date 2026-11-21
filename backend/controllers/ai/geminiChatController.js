@@ -1022,6 +1022,20 @@ exports.chatWithGemini = async (req, res) => {
       });
     }
 
+    // AI-44: Recognize a short Romanized Mandarin greeting as a greeting,
+    // without charging a Gemini call or weakening resort-only restrictions.
+    if (/^\\s*(?:ni\\s*hao(?:\\s*ma)?|nihao|xie\\s*xie)[!?.。！？，,\\s]*$/i.test(String(message))) {
+      const greeting = /xie\\s*xie/i.test(String(message))
+        ? "不客气！需要了解 Arvic Seaside Resort 的房间或预订吗？"
+        : "你好！欢迎咨询 Arvic Seaside Resort。想了解客房、价格还是预订呢？";
+      return res.status(200).json({
+        success: true, mode: "resort_greeting", reply: greeting,
+        extracted_context: mergeContext(req.body?.context || {}, { language_style: "mandarin" }),
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null, recommendation_cards: [],
+      });
+    }
+
     // UI-36: A receptionist is NOT a general-purpose search assistant.
     // Apply a deterministic resort-scope gate before ALL paid Gemini
     // extraction, all MySQL catalog reads and the verified-policy routes.
@@ -2011,7 +2025,7 @@ exports.chatWithGemini = async (req, res) => {
         ? "Reply entirely in natural Spanish."
         : mergedContext.language_style === "mandarin"
         ? "Reply entirely in Mandarin Chinese, using Simplified Chinese characters."
-        : "Reply in clear English.";
+        : "Reply in the language of the CURRENT guest utterance when clearly identifiable (including languages beyond the four common presets); otherwise use clear English.";
 
     const missingDetailsText = missingCoreDetails.length
       ? missingCoreDetails.join(", ")
