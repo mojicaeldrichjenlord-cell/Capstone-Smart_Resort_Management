@@ -18,6 +18,10 @@ const {
 router.get("/tasks", listMyHousekeepingTasks);
 // Only assigned staff can advance Needs Cleaning -> In Progress.
 router.put("/tasks/:id/start", startHousekeepingTask);
+// Image upload happens only after Housekeeping signed auth and before Done.
+const { readCleaningProofUpload, uploadCleaningProof } =
+  require("../controllers/housekeeping/housekeepingProofController");
+router.post("/tasks/:id/proof", readCleaningProofUpload, uploadCleaningProof);
 // Only assigned staff can mark In Progress -> Cleaned; Manager verifies later.
 router.put("/tasks/:id/cleaned", markHousekeepingCleaned);
 
