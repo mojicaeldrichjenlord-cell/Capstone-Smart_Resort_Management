@@ -249,7 +249,7 @@ async function uploadPhoto(token = staffToken, version = task?.version ?? 1) {
   return {code:response.status,data:await response.json()};
 }
 const cleaned = async (version = 1, token = staffToken) => {
-  if (task?.status === "in_progress" && !proof && token === staffToken) {
+  if (task?.status === "in_progress" && task.version === version && !proof && token === staffToken) {
     const uploaded = await uploadPhoto(token,version);
     assert.equal(uploaded.code,201);
   }
