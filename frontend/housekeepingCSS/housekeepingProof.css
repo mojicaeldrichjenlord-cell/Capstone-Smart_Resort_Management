@@ -1,0 +1,54 @@
+/* HK-46: Housekeeping photo proof workflow, compatible with phone cameras. */
+.hk-proof-upload {
+  display: flex; flex-direction: column; gap: 9px;
+  width: min(100%, 330px); padding: 12px;
+  border: 1px solid #bfdfda; border-radius: 14px;
+  background: #f0fdfa;
+}
+.hk-proof-upload label { font-size: .82rem; font-weight: 800; color: #115e59; }
+.hk-proof-upload input[type="file"] {
+  max-width: 100%; font-size: .8rem; color: #334155; min-height: 40px;
+}
+.hk-proof-upload input[type="file"]::file-selector-button {
+  border: 1px solid #99f6e4; background: #fff; color: #0f766e;
+  border-radius: 9px; padding: 9px; font-weight: 800; margin-right: 9px;
+}
+.hk-proof-upload .hk-proof-help { font-size: .76rem; color: #475569; line-height: 1.4; }
+.hk-proof-upload .hk-proof-preview {
+  max-width: 190px; max-height: 165px; width: auto;
+  border-radius: 10px; object-fit: contain; background: #e2e8f0;
+}
+.hk-proof-upload .hk-proof-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.hk-proof-upload .hk-proof-actions button { flex: 1 1 145px; }
+.hk-proof-upload .hk-proof-actions button:disabled {
+  background: #cbd5e1; color: #475569; cursor: not-allowed;
+}
+.hk-proof-upload .hk-proof-submitted {
+  color: #166534; font-size: .82rem; font-weight: 800;
+}
+.hk-proof-upload .hk-proof-error {
+  color: #991b1b; font-size: .82rem; font-weight: 800;
+}
+.hk-task-action-cell .hk-action { min-width: 130px; }
+@media (max-width: 760px) {
+  .hk-task-list-table { min-width: 0 !important; display: block; }
+  .hk-task-list-table thead { display: none; }
+  .hk-task-list-table tbody { display: grid; gap: 12px; }
+  .hk-task-list-table tr {
+    display: block; padding: 12px; background: #fff;
+    border: 1px solid #d7e5e9; border-radius: 15px;
+  }
+  .hk-task-list-table td {
+    display: flex; justify-content: space-between; gap: 8px;
+    padding: 9px 5px; border: 0; min-width: 0;
+  }
+  .hk-task-list-table td::before {
+    content: attr(data-label); color: #64748b; font-size: .8rem;
+    font-weight: 750; flex: 0 0 96px;
+  }
+  .hk-task-list-table .hk-task-action-cell {
+    flex-direction: column; align-items: stretch; gap: 12px;
+  }
+  .hk-task-list-table .hk-task-action-cell::before { flex-basis: auto; }
+  .hk-task-list-table .hk-proof-upload { width: 100%; }
+}
