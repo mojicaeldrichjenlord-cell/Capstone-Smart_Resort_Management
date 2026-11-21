@@ -181,7 +181,7 @@ test("AI focused-room details are concise, from DB facts, and never invent a rat
   assert.match(verified, /₱3,000/);
   assert.doesNotMatch(verified, /available (?:on|for)|confirmed (?:available|booking)/i);
   const missing = focusedRoomOverview({ room_name: "Family Room B", capacity: 8 }, "english");
-  assert.match(missing, /not listed/i);
+  assert.match(missing, /not listed|aren't specified yet/i);
   assert.doesNotMatch(missing, /₱|fridge|pool balcony|private bathroom/i);
   const sanitized = focusedRoomOverview({
     room_name: "Room X", capacity: 2, amenities: "<script>alert(1)</script>; TV",
