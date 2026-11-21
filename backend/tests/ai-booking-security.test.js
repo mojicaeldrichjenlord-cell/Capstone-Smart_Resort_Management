@@ -609,6 +609,157 @@ test("AI-37 previously supplied guests are reused; explicit group size takes pre
   assert.equal(modelCalls, 0);
 });
 
+
+test("AI-38 after 10 guests, 7 pala refreshes matching rooms instead of refusing the topic", async () => {
+  catalogRows = [
+    { ...exampleRoom, id: 71, room_name: "Double Room 1", capacity: 7, day_price: 4000 },
+    { ...exampleRoom, id: 94, room_name: "Family Room B", capacity: 20, day_price: 8000 },
+    { ...exampleRoom, id: 95, room_name: "Big Nipa Hut", category_name: "Cottage", capacity: 20 },
+  ];
+  const first = await post("/api/ai/chat", {
+    message: "Anong room ang massuggest mo?", voice_language: "taglish",
+  });
+  assert.equal(first.status, 200);
+  assert.equal(first.body.mode, "recommendation_needs_guest_count");
+
+  const ten = await post("/api/ai/chat", {
+    message: "10",
+    voice_language: "taglish",
+    context: first.body.extracted_context,
+    recent_turns: [
+      { role: "user", text: "Anong room ang massuggest mo?" },
+      { role: "assistant", text: first.body.reply },
+    ],
+  });
+  assert.equal(ten.status, 200);
+  assert.equal(ten.body.extracted_context.guests, 10);
+  assert.deepEqual(ten.body.recommendation_cards.map(room => room.id), [94]);
+  assert.equal(ten.body.extracted_context.room_id, 94);
+
+  // A new capacity filter must be evaluated against a fresh catalog read.
+  queries = [];
+  modelCalls = 0;
+  const seven = await post("/api/ai/chat", {
+    message: "7 pala",
+    voice_language: "taglish",
+    context: ten.body.extracted_context,
+    recent_turns: [
+      { role: "user", text: "Anong room ang massuggest mo?" },
+      { role: "assistant", text: first.body.reply },
+      { role: "user", text: "10" },
+      { role: "assistant", text: ten.body.reply },
+    ],
+  });
+  assert.equal(seven.status, 200);
+  assert.equal(seven.body.mode, "verified_accommodation_preview");
+  assert.equal(seven.body.extracted_context.guests, 7);
+  assert.match(seven.body.reply, /7 guests na/i);
+  assert.deepEqual(seven.body.recommendation_cards.map(room => room.id), [71,94]);
+  assert.equal(Object.hasOwn(seven.body.extracted_context, "room_id"), false);
+  assert.equal(seven.body.booking_preview, null);
+  assert.equal(seven.body.recommendation_cards[0].availability_verified, false);
+  assert.equal(queries.length, 1);
+  assert.match(queries[0].sql, /FROM accommodations a/i);
+  assert.doesNotMatch(queries[0].sql, /reservation_items/i);
+  assert.equal(modelCalls, 0);
+});
+
+test("AI-38 corrected guest count sees newly updated Admin prices and inventory", async () => {
+  catalogRows = [{ ...exampleRoom, id: 94, room_name: "Family Room B",
+    capacity: 20, day_price: 8000 }];
+  const first = await post("/api/ai/chat", {
+    message: "Recommend a room",
+  });
+  const ten = await post("/api/ai/chat", {
+    message: "10", context: first.body.extracted_context,
+    recent_turns: [
+      { role: "user", text: "Recommend a room" },
+      { role: "assistant", text: first.body.reply },
+    ],
+  });
+  assert.deepEqual(ten.body.recommendation_cards.map(room=>room.id), [94]);
+
+  // Test's in-memory mock represents a fresh Admin edit/new room.
+  catalogRows = [
+    { ...exampleRoom, id: 94, room_name: "Family Room B",
+      capacity: 20, day_price: 7900 },
+    { ...exampleRoom, id: 71, room_name: "Double Room 1",
+      capacity: 7, day_price: 4000 },
+  ];
+  queries = [];
+  modelCalls = 0;
+  const response = await post("/api/ai/chat", {
+    message: "5 na lang kami",
+    context: ten.body.extracted_context,
+    recent_turns: [
+      { role: "user", text: "Recommend a room" },
+      { role: "assistant", text: first.body.reply },
+      { role: "user", text: "10" },
+      { role: "assistant", text: ten.body.reply },
+    ],
+  });
+  assert.equal(response.status, 200);
+  assert.equal(response.body.mode, "verified_accommodation_preview");
+  assert.equal(response.body.extracted_context.guests, 5);
+  assert.deepEqual(response.body.recommendation_cards.map(room=>room.id), [71,94]);
+  assert.equal(response.body.recommendation_cards.find(room=>room.id===94).day_price, 7900);
+  assert.equal(queries.length, 1);
+  assert.equal(modelCalls, 0);
+});
+
+test("AI-38 original family-room scope persists after revising 10 guests to 7", async () => {
+  catalogRows = [
+    { ...exampleRoom, id: 94, room_name: "Family Room B", capacity: 20 },
+    { ...exampleRoom, id: 93, room_name: "Family Room A", capacity: 8 },
+    { ...exampleRoom, id: 71, room_name: "Double Room 1", capacity: 7 },
+  ];
+  const first = await post("/api/ai/chat", { message:"Recommend a family room" });
+  const ten = await post("/api/ai/chat", {
+    message:"10", context:first.body.extracted_context,
+    recent_turns:[
+      {role:"user",text:"Recommend a family room"},
+      {role:"assistant",text:first.body.reply},
+    ],
+  });
+  assert.deepEqual(ten.body.recommendation_cards.map(room=>room.id), [94]);
+  const seven = await post("/api/ai/chat", {
+    message:"7 guests pala", context:ten.body.extracted_context,
+    recent_turns:[
+      {role:"user",text:"Recommend a family room"},
+      {role:"assistant",text:first.body.reply},
+      {role:"user",text:"10"},
+      {role:"assistant",text:ten.body.reply},
+    ],
+  });
+  assert.equal(seven.status, 200);
+  assert.equal(seven.body.extracted_context.guests, 7);
+  assert.deepEqual(seven.body.recommendation_cards.map(room=>room.id), [93,94]);
+  assert.equal(modelCalls, 0);
+});
+
+test("AI-38 stale or unrelated numeric messages cannot bypass resort-only restriction", async () => {
+  const previous = [
+    { role: "user", text: "Recommend a room" },
+    { role: "assistant", text: "Sure po! Ilan po kayong guests?" },
+    { role: "user", text: "10" },
+    { role: "assistant", text: "Yes po, free parking ang resort." },
+  ];
+  for(const message of ["7 pala", "7pm pala", "Si Jose Rizal?"]) {
+    queries = [];
+    modelCalls = 0;
+    const response = await post("/api/ai/chat", {
+      message, context: {
+        intent:"ask_recommendation", guests:10, room_id:94,
+        room_name:"Family Room B",
+      }, recent_turns: previous,
+    });
+    assert.equal(response.status, 200, message);
+    assert.equal(response.body.mode, "resort_scope_only", message);
+    assert.equal(queries.length, 0, message);
+    assert.equal(modelCalls, 0, message);
+  }
+});
+
 test("AI-37 selecting a named accommodation or browsing rooms still works without guest question", async () => {
   const browse = await post("/api/ai/chat", { message: "What rooms are available?" });
   assert.equal(browse.body.mode, "verified_accommodation_preview");
