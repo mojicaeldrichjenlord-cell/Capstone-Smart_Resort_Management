@@ -1025,7 +1025,10 @@ exports.chatWithGemini = async (req, res) => {
     const scopeContext = req.body.context && typeof req.body.context === "object" &&
       !Array.isArray(req.body.context) ? req.body.context : {};
     const recentScopeTurns = normalizeRecentTurns(req.body.recent_turns);
-    if (!isResortQuestion(message, scopeContext, recentScopeTurns)) {
+    // Short numeric responses ("4", "apat kami") are resort-relevant ONLY
+    // after this assistant explicitly requested guest count.
+    if (!isResortQuestion(message, scopeContext, recentScopeTurns) &&
+        !guestCountFollowUp(message, recentScopeTurns, scopeContext)) {
       const language = normalizeLanguageStyle(req.body.voice_language) ||
         detectLanguageFromMessage(message) ||
         normalizeLanguageStyle(req.body.language_style) ||
