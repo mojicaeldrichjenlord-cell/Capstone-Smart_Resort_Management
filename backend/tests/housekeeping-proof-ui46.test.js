@@ -44,7 +44,7 @@ test("HK-46 Manager image must be signed and reviewed before a separate Verify R
 });
 test("HK-46 Housekeeping can select camera photo and must upload before marking Cleaned",()=>{
   assert.match(hkHtml,/housekeepingProof\.css/);
-  assert.match(hkJS,/capture", "environment"/);
+  assert.doesNotMatch(hkJS,/setAttribute\("capture",/);
   assert.match(hkJS,/image\/jpeg,image\/png,image\/webp/);
   assert.match(hkJS,/new FormData\(\)/);
   assert.match(hkJS,/\/proof"/);
