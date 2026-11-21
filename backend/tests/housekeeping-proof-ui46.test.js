@@ -19,11 +19,15 @@ const mgrRoutes=read("backend/routes/managerRoutes.js");
 const taskController=read("backend/controllers/housekeeping/housekeepingTasksController.js");
 const proofController=read("backend/controllers/housekeeping/housekeepingProofController.js");
 
-test("HK-46 Manager screen has resort logo, quick navigation, filtering and visible task counts",()=>{
+test("HK-46/49 Manager screen has resort logo, filtering and visible task counts without shortcut buttons",()=>{
   assert.match(mgrHtml, /src="\.\.\/images\/arvic-logo\.png"/);
   assert.match(mgrHtml, /id="hkTasksSection"/);
   assert.match(mgrHtml, /id="hkAssignSection"/);
   assert.match(mgrHtml, /id="hkManagerStatusFilter"/);
+  assert.doesNotMatch(mgrHtml, /class="hk-manager-jumps"|aria-label="Housekeeping quick navigation"/);
+  assert.doesNotMatch(mgrHtml, /href="#hk(?:Tasks|Assign|Date)Section"/);
+  assert.doesNotMatch(mgrCSS, /\.hk-manager-jumps/);
+  assert.match(mgrHtml, /id="hkDateSection"/);
   for(const stat of ["hkCountNeeds","hkCountProgress","hkCountReview","hkCountVerified"])
     assert.match(mgrHtml,new RegExp('id="'+stat+'"'));
   assert.match(mgrCSS, /@media \(max-width: 760px\)/);
@@ -77,6 +81,6 @@ test("HK-46 JS files parse and all exact versioned frontend resources exist",()=
   assert.doesNotThrow(()=>new vm.Script(hkJS));
   assert.match(mgrHtml,/managerHousekeeping\.js\?v=20261121-hk46/);
   assert.match(hkHtml,/housekeepingTasks\.js\?v=20261121-hk46/);
-  assert.match(mgrHtml,/managerHousekeeping-review\.css\?v=20261121-hk46/);
+  assert.match(mgrHtml,/managerHousekeeping-review\.css\?v=20261121-hk49/);
   assert.match(hkHtml,/housekeepingProof\.css\?v=20261121-hk46/);
 });
