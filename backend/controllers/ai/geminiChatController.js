@@ -1024,8 +1024,8 @@ exports.chatWithGemini = async (req, res) => {
 
     // AI-44: Recognize a short Romanized Mandarin greeting as a greeting,
     // without charging a Gemini call or weakening resort-only restrictions.
-    if (/^\\s*(?:ni\\s*hao(?:\\s*ma)?|nihao|xie\\s*xie)[!?.。！？，,\\s]*$/i.test(String(message))) {
-      const greeting = /xie\\s*xie/i.test(String(message))
+    if (/^\s*(?:ni\s*hao(?:\s*ma)?|nihao|xie\s*xie)[!?.。！？，,\s]*$/i.test(String(message))) {
+      const greeting = /xie\s*xie/i.test(String(message))
         ? "不客气！需要了解 Arvic Seaside Resort 的房间或预订吗？"
         : "你好！欢迎咨询 Arvic Seaside Resort。想了解客房、价格还是预订呢？";
       return res.status(200).json({
