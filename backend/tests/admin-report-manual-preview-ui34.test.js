@@ -104,7 +104,7 @@ test("UI-34 preview code is presentation-only; secure payment flow still enforce
   assert.match(manualHtml, /id="highlightDownpaymentRow" hidden/);
   assert.match(manualHtml, /id="highlightRemainingLabel"/);
   assert.match(manualHtml, /admin-walkin\.js\?v=20261121-ui34/);
-  assert.match(manualHtml, /admin-walkin\.css\?v=20261121-ui34/);
+  assert.match(manualHtml, /admin-walkin\.css\?v=20261121-ui35/);
   assert.match(manualCss, /#highlightDownpaymentRow\[hidden\]\s*\{\s*display:\s*none !important;/);
   assert.match(manualJs, /const isWalkIn = getManualReservationType\(\) === "walkin"/);
   assert.match(manualJs, /const requiredPayment = isWalkIn \? accommodationTotal : requiredDownpayment/);
