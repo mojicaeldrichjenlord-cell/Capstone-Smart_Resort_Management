@@ -9,7 +9,7 @@ const express = require("express");
 process.env.FRONTDESK_TOKEN_SECRET = randomBytes(48).toString("base64url");
 // Consistent synthetic bcrypt hash for signed staff tokens in mock DB users.
 const STAFF_TEST_HASH = require("./helpers/staffPasswordFixture");
-let accounts, task, proof, queries, missingTable, occupied, completed, reservationItem;
+let accounts, task, proof, queries, missingTable, missingProofTable, occupied, completed, reservationItem;
 const currentDay = (() => {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit",
@@ -29,6 +29,12 @@ const fakeDb = {
         if (isTask && missingTable) {
           const e = new Error("Table housekeeping_tasks doesn't exist");
           e.code = "ER_NO_SUCH_TABLE"; e.errno = 1146; throw e;
+        }
+        if (missingProofTable && /housekeeping_cleaning_proofs/i.test(sql)) {
+          const e = new Error("Table 'test.housekeeping_cleaning_proofs' doesn't exist");
+          e.code = "ER_NO_SUCH_TABLE"; e.errno = 1146;
+          e.sqlMessage = e.message;
+          throw e;
         }
         if (/FROM users WHERE id = \? LIMIT 1/i.test(sql)) {
           const account = accounts.get(Number(params[0]));
@@ -210,7 +216,7 @@ beforeEach(() => {
     [2, { id:2, password: STAFF_TEST_HASH, fullname:"House Keeper", role:"housekeeping", account_status:"active", is_verified:1 }],
     [3, { id:3, password: STAFF_TEST_HASH, fullname:"Other Housekeeper", role:"housekeeping", account_status:"active", is_verified:1 }],
   ]);
-  task = null; proof = null; queries = []; missingTable = false; occupied = false;
+  task = null; proof = null; queries = []; missingTable = false; missingProofTable = false; occupied = false;
   completed = true; reservationItem = 41;
 });
 // Exercise routes via HTTP on a disposable local Express listener.
@@ -616,4 +622,28 @@ test("HK-46 migration stores staff proof in a private table, not public media or
   assert.match(sql,/MEDIUMBLOB NOT NULL/);
   assert.match(sql,/UNIQUE KEY uq_housekeeping_cleaning_proof_task/);
   assert.doesNotMatch(sql,/ALTER TABLE\s+(?:reservations|accommodations|reservation_items)/i);
+});
+
+
+test("HK-48 missing proof migration keeps Manager and staff read-only task lists available", async () => {
+  await createAndCheck();
+  missingProofTable = true;
+  const manager = await call(mgr + "/tasks?date=" + currentDay, {token:managerToken});
+  assert.equal(manager.code, 200);
+  assert.equal(manager.data.proof_setup_required, true);
+  assert.equal(manager.data.tasks.length, 1);
+  assert.equal(manager.data.tasks[0].has_proof, false);
+  const housekeeper = await call(hk + "/tasks?date=" + currentDay, {token:staffToken});
+  assert.equal(housekeeper.code, 200);
+  assert.equal(housekeeper.data.proof_setup_required, true);
+  assert.equal(housekeeper.data.tasks.length, 1);
+  assert.equal(housekeeper.data.tasks[0].has_proof, false);
+  assert.ok(queries.some(x => /NULL AS has_proof/i.test(x.sql)));
+  // Signed uploads must fail closed rather than publicly storing or
+  // automatically marking a room Cleaned without reviewed evidence.
+  assert.equal((await start()).code, 200);
+  const uploaded = await uploadPhoto(staffToken, 1);
+  assert.equal(uploaded.code, 503);
+  assert.equal(uploaded.data.code, "HOUSEKEEPING_PROOF_MIGRATION_REQUIRED");
+  assert.equal(task.status, "in_progress");
 });
