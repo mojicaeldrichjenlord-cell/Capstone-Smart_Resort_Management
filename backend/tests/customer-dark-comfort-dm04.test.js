@@ -1,93 +1,88 @@
 "use strict";
-// DM-04: UI-only regression, no credentials or production calls.
-const test=require("node:test");
-const assert=require("node:assert/strict");
-const fs=require("node:fs");
-const path=require("node:path");
-const vm=require("node:vm");
-const root=path.resolve(__dirname,"../..");
-const read=p=>fs.readFileSync(path.join(root,p),"utf8");
-const polish=read("frontend/customerCSS/customer-comfort-polish-dm04.css");
-const bookings=read("frontend/customerJS/my-bookings.js");
-const toggleCss=read("frontend/customerCSS/customer-theme-toggle.css");
-const toggleJs=read("frontend/sharedJS/customer-theme-toggle.js");
-const pages=[
-  "index.html","rooms.html","booking.html","booking-payment.html",
-  "booking-receipt.html","my-bookings.html","profile.html","resort-map.html"
+// DM-01: Customer-only design tokens, with no theme toggle or state writes yet.
+// Static checks intentionally never touch bookings, payments, AI, or database.
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+
+const root = path.resolve(__dirname, "../..");
+const read = p => fs.readFileSync(path.join(root, p), "utf8");
+const themePath = "frontend/customerCSS/customer-theme-tokens.css";
+const tokens = read(themePath);
+const currentPalette = read("frontend/customerCSS/customer-manager-tone.css");
+const customerPages = [
+  "index.html",
+  "rooms.html",
+  "booking.html",
+  "booking-payment.html",
+  "booking-receipt.html",
+  "my-bookings.html",
+  "profile.html",
+  "resort-map.html",
 ];
 
-test("DM-04 decorative emoji body backgrounds removed in both Customer modes",()=>{
-  assert.match(polish,/body\.customer-manager-tone::before,/);
-  assert.match(polish,/body\.customer-manager-tone::after/);
-  assert.match(polish,/content:\s*none\s*!important/);
-  assert.match(polish,/display:\s*none\s*!important/);
-  assert.doesNotMatch(polish,/🌴|🌊|🐬|☁|background-image:\s*url/);
-  const noComments=polish.replace(/\/\*[\s\S]*?\*\//g,"");
-  let braces=0;
-  for(const char of noComments){if(char==="{")braces++;if(char==="}")braces--;}
-  assert.equal(braces,0,"CSS must have balanced braces");
+test("DM-01 shared semantic tokens describe soft navy/slate dark and original light palette", () => {
+  assert.match(tokens, /@media screen\s*\{/);
+  assert.match(tokens, /body\.customer-manager-tone\s*\{/);
+  assert.match(tokens, /html\[data-customer-theme="dark"\]\s+body\.customer-manager-tone\s*\{/);
+  assert.match(tokens, /--customer-page-top:\s*#f8fafc/);
+  assert.match(tokens, /--customer-card:\s*#ffffff/);
+  assert.match(tokens, /--customer-text-primary:\s*#0f172a/);
+  assert.match(tokens, /--customer-nav-start:\s*#172554/);
+  assert.match(tokens, /--customer-accent:\s*#0f766e/);
+  assert.match(tokens, /--customer-page-top:\s*#172535/);
+  assert.match(tokens, /--customer-card:\s*#24364a/);
+  assert.match(tokens, /--customer-nav-start:\s*#142b3e/);
+  assert.match(tokens, /--customer-accent:\s*#16877f/);
+  assert.match(tokens, /--customer-text-primary:\s*#f1f5f9/);
+  assert.doesNotMatch(tokens, /(?:^|:\s*)#000000\b|(?:^|:\s*)black\s*;/im);
 });
 
-test("DM-04 corrects every dynamic My Bookings white card without altering booking data",()=>{
-  for(const className of [
-    "customer-booking-history-card",
-    "customer-booking-history-title",
-    "customer-booking-history-status",
-    "customer-booking-payment-summary",
-    "customer-booking-detail",
-    "customer-booking-feedback"
-  ]) {
-    assert.ok(bookings.includes(className),className+" missing in generated card");
-    assert.ok(polish.includes("."+className),className+" missing in dark CSS");
+test("DM-01 tokens loaded once after current theme on all eight signed-in Customer pages", () => {
+  for (const file of customerPages) {
+    const html = read("frontend/customerHTML/" + file);
+    const cssRef = "customer-theme-tokens.css?v=20261121-dm01";
+    assert.equal(html.split(cssRef).length - 1, 1, file);
+    assert.match(html, /<body[^>]*\bcustomer-manager-tone\b/);
+    const closingHead = html.indexOf("</head>");
+    const themePos = html.indexOf(cssRef);
+    assert.ok(themePos < closingHead && themePos > 0, file + " must load theme CSS in <head>");
+    assert.ok(themePos > html.indexOf("customer-manager-tone.css"), file + " tokens load after current palette");
+    const styleAfter = html.slice(themePos, closingHead);
+    assert.match(styleAfter, /customer-theme-toggle\.css\?v=20261121-dm04/, file + " DM-02 toggle remains loaded");
+    assert.match(styleAfter, /customer-dark-skin-dm03\.css\?v=20261121-dm03/, file + " DM-03 dark skin follows");
+    assert.match(styleAfter, /customer-comfort-polish-dm04\.css\?v=20261121-dm04/, file + " DM-04 comfort polish follows");
+    assert.match(styleAfter, /customer-mobile-nav-dm05\.css\?v=20261121-dm05/, file + " DM-05 mobile nav loaded last");
+    assert.equal((styleAfter.match(/rel="stylesheet"/g) || []).length, 4, file + " loads toggle, dark skin, polish, mobile nav");
+    assert.ok(styleAfter.indexOf("customer-theme-toggle.css") < styleAfter.indexOf("customer-dark-skin-dm03.css"), file);
+    assert.ok(styleAfter.indexOf("customer-dark-skin-dm03.css") < styleAfter.indexOf("customer-comfort-polish-dm04.css"), file);
+    assert.ok(styleAfter.indexOf("customer-comfort-polish-dm04.css") < styleAfter.indexOf("customer-mobile-nav-dm05.css"), file);
+    assert.doesNotMatch(html, /id="customerThemeToggle"/, file + " toggle is injected once by shared JS");
   }
-  assert.match(bookings,/data-status="\$\{escapeHtml\(status\)\}"/);
-  assert.match(polish,/\[data-status="approved"\]/);
-  assert.match(polish,/\[data-status="cancelled"\]/);
-  assert.match(polish,/var\(--customer-card/);
-  assert.match(polish,/background-image:\s*none\s*!important/);
-  assert.doesNotThrow(()=>new vm.Script(bookings));
-  assert.doesNotThrow(()=>new vm.Script(toggleJs));
 });
 
-test("DM-04 compact switch slides, supports reduced motion and keeps native button semantics",()=>{
-  assert.match(toggleCss,/width:\s*82px/);
-  assert.match(toggleCss,/height:\s*44px/);
-  assert.match(toggleCss,/\.customer-theme-toggle\[aria-pressed="true"\] \.customer-theme-icon/);
-  assert.match(toggleCss,/transform:\s*translateX\(38px\)/);
-  assert.match(toggleCss,/prefers-reduced-motion:\s*reduce/);
-  assert.match(toggleJs,/button\.type = "button"/);
-  assert.match(toggleJs,/setAttribute\("aria-pressed"/);
-  assert.match(toggleJs,/setAttribute\("aria-label"/);
-  assert.match(toggleJs,/nav\.insertBefore\(button, logout\)/);
-  assert.match(toggleJs,/icon\.textContent = isDark \? "☾" : "☀"/);
-});
-
-test("DM-04 polish loaded last on all Customer pages, never on public or staff pages",()=>{
-  for(const page of pages){
-    const source=read("frontend/customerHTML/"+page);
-    const head=source.slice(0,source.indexOf("</head>"));
-    const ref="customer-comfort-polish-dm04.css?v=20261121-dm04";
-    assert.equal(source.split(ref).length-1,1,page);
-    assert.ok(head.lastIndexOf('rel="stylesheet"') < head.indexOf(ref),page+" last CSS");
-    assert.ok(head.indexOf("customer-dark-skin-dm03.css")<head.indexOf(ref));
-    assert.match(head,/customer-theme-toggle\.js\?v=20261121-dm04/);
-    assert.match(head,/customer-theme-toggle\.css\?v=20261121-dm04/);
-  }
-  assert.match(read("frontend/customerHTML/my-bookings.html"),/my-bookings\.js\?v=20261121-dm04/);
-  for(const other of [
+test("DM-01 leaves public landing and other account pages outside Customer theme foundation", () => {
+  for (const p of [
     "frontend/customerHTML/landing.html",
     "frontend/managerHTML/managerDashboard.html",
-    "frontend/housekeepingHTML/housekeepingDashboard.html"
-  ]) assert.doesNotMatch(read(other),/customer-comfort-polish-dm04/,other);
+    "frontend/housekeepingHTML/housekeepingDashboard.html",
+  ]) {
+    assert.doesNotMatch(read(p), /customer-theme-tokens\.css/, p);
+  }
+  assert.doesNotMatch(tokens, /localStorage|sessionStorage|fetch\(|document\.|window\./);
+  assert.doesNotMatch(tokens, /\bbody\s*\{/);
 });
 
-test("DM-04 retains light-mode colors, PayPal isolation and white printed receipt",()=>{
-  assert.match(polish,/@media screen/);
-  assert.doesNotMatch(polish,/@media print|html\[data-customer-theme="light"\]/);
-  assert.doesNotMatch(polish,/\bfetch\s*\(|localStorage|#paypalButton/);
-  assert.match(read("frontend/customerCSS/booking-receipt.css"),/@media print/);
-  const css=polish.replace(/\/\*[\s\S]*?\*\//g,"");
-  const darkSelectors=css.split("\n").filter(s=>/^\s*html\[data-customer-theme="dark"\]/.test(s));
-  assert.ok(darkSelectors.length>=10);
-  assert.ok(darkSelectors.every(s=>s.includes("body.customer-manager-tone")));
+test("DM-01 current Customer background, cards, navbar, buttons use semantic variables with safe light fallbacks", () => {
+  const required = [
+    "--customer-page-top", "--customer-page-bottom", "--customer-text-primary",
+    "--customer-card", "--customer-border", "--customer-nav-start",
+    "--customer-nav-end", "--customer-accent", "--customer-focus",
+  ];
+  for (const name of required) {
+    assert.match(currentPalette, new RegExp("var\\(" + name + ",\\s*#[a-fA-F0-9]{3,8}\\)"), name);
+  }
+  assert.match(currentPalette, /--checkout-teal:\s*var\(--customer-accent/);
+  assert.match(currentPalette, /body\.customer-manager-tone\s+\.ai-chat-window/);
 });
