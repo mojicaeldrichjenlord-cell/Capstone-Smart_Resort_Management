@@ -970,39 +970,38 @@ test("Voice response switches back to English when the guest speaks English", as
   assert.equal(modelCalls, 1);
   assert.match(modelPrompts.at(-1), /The CURRENT guest message controls reply language/);
 });
-test("Taglish and Spanish voice preferences use the selected fixed reply language", async () => {
+test("AI-44 Taglish and Spanish voice messages follow the latest guest language", async () => {
   const taglish = await post("/api/ai/chat", {
-    message: "Hello", voice_language: "taglish",
+    message: "May room available po ba kayo?",
+    input_source: "voice",
+    context: { language_style: "spanish" },
   });
   assert.equal(taglish.status, 200);
   assert.equal(taglish.body.extracted_context.language_style, "taglish");
-  assert.match(modelPrompts[1], /Reply in casual, everyday Filipino-English Taglish/);
-  assert.match(modelPrompts[1], /LIVE SPOKEN CONVERSATION/);
-  modelCalls = 0;
-  successfulModelCalls = 0;
-  injectedFailures = 0;
-  injectedStatus = 503;
-  modelPrompts = [];
+  modelCalls = 0; successfulModelCalls = 0; injectedFailures = 0;
+  injectedStatus = 503; modelPrompts = [];
   const spanish = await post("/api/ai/chat", {
-    message: "Hello", voice_language: "spanish",
+    message: "Hola, tienen habitaciones?",
+    input_source: "voice",
+    context: { language_style: "taglish" },
   });
   assert.equal(spanish.status, 200);
   assert.equal(spanish.body.extracted_context.language_style, "spanish");
-  assert.match(modelPrompts[1], /Reply entirely in natural Spanish/);
 });
 
-
-test("Live voice Gemini prompt is concise and conversational while retaining booking rules", async () => {
+test("Live voice Gemini prompt remains concise and obeys booking rules", async () => {
   const result = await post("/api/ai/chat", {
     message: "Help me find a family cottage.",
-    voice_language: "english",
+    input_source: "voice",
   });
   assert.equal(result.status, 200);
-  assert.match(modelPrompts[1], /LIVE SPOKEN CONVERSATION/);
-  assert.match(modelPrompts[1], /one or two short sentences/);
-  assert.match(modelPrompts[1], /Ask at most ONE useful follow-up question/);
-  assert.match(modelPrompts[1], /Never invent or promise a booking/);
+  assert.match(modelPrompts.at(-1), /LIVE SPOKEN CONVERSATION/);
+  assert.match(modelPrompts.at(-1), /one or two short sentences/);
+  assert.match(modelPrompts.at(-1), /Ask at most ONE useful follow-up question/);
+  assert.match(modelPrompts.at(-1), /Never invent or promise a booking/);
+  assert.match(modelPrompts.at(-1), /same language as the current spoken message/);
 });
+
 test("Normal text chat is not forced into live spoken-conversation style", async () => {
   const result = await post("/api/ai/chat", {
     message: "How can I book?",
