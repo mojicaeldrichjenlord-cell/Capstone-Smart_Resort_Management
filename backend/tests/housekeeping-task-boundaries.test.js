@@ -9,7 +9,7 @@ const express = require("express");
 process.env.FRONTDESK_TOKEN_SECRET = randomBytes(48).toString("base64url");
 // Consistent synthetic bcrypt hash for signed staff tokens in mock DB users.
 const STAFF_TEST_HASH = require("./helpers/staffPasswordFixture");
-let accounts, task, queries, missingTable, occupied, completed, reservationItem;
+let accounts, task, proof, queries, missingTable, occupied, completed, reservationItem;
 const currentDay = (() => {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Manila", year: "numeric", month: "2-digit", day: "2-digit",
@@ -76,7 +76,7 @@ const fakeDb = {
           if (/ht.task_date = \?/i.test(sql) && params.at(-1) !== currentDay) {
             return [[]];
           }
-          return [[{ ...task }]];
+          return [[{ ...task, has_proof: proof ? 1 : null }]];
         }
         if (/UPDATE housekeeping_tasks ht JOIN users u/i.test(sql)) {
           const [staffId, id, version] = params;
@@ -103,20 +103,57 @@ const fakeDb = {
         if (/UPDATE housekeeping_tasks SET status = 'cleaned'/i.test(sql)) {
           const [id, staffId, version] = params;
           if (task && task.id === id && task.assigned_to === staffId &&
-              task.version === version && task.status === "in_progress") {
+              task.version === version && task.status === "in_progress" && proof) {
             task.status = "cleaned"; task.version++; return [{ affectedRows: 1 }];
           }
           return [{ affectedRows: 0 }];
         }
         if (/UPDATE housekeeping_tasks ht SET ht.status = 'verified_ready'/i.test(sql)) {
-          const [managerId, id, version] = params;
+          const [managerId, id, version, reviewedBy] = params;
           assert.match(sql, /NOT EXISTS \(SELECT 1 FROM reservation_items ri/);
+          assert.match(sql, /housekeeping_cleaning_proofs hp/);
           if (task && task.id === id && task.version === version &&
-              task.status === "cleaned" && !occupied) {
+              task.status === "cleaned" && !occupied &&
+              proof?.reviewed_by === reviewedBy && reviewedBy === managerId) {
             task.status = "verified_ready"; task.verified_by = managerId;
             task.version++; return [{ affectedRows: 1 }];
           }
           return [{ affectedRows: 0 }];
+        }
+        if (/INSERT INTO housekeeping_cleaning_proofs/i.test(sql)) {
+          const [staff, mime, bytes, size, hash, id, assigned, version] = params;
+          if (!task || task.id !== id || staff !== assigned ||
+              assigned !== task.assigned_to || task.status !== "in_progress" ||
+              task.version !== version) return [{affectedRows:0}];
+          proof = {
+            task_id:id,uploaded_by:staff,mime_type:mime,
+            image_data:bytes,image_size:size,image_sha256:hash,
+            reviewed_by:null,reviewed_at:null,
+          };
+          return [{affectedRows:1}];
+        }
+        if (/SELECT p.image_data, p.mime_type/i.test(sql)) {
+          if (!proof || !task || proof.task_id !== params[0] ||
+              !["cleaned","verified_ready"].includes(task.status)) return [[]];
+          return [[{
+            image_data:proof.image_data,mime_type:proof.mime_type,
+            image_size:proof.image_size,
+          }]];
+        }
+        if (/UPDATE housekeeping_cleaning_proofs p/i.test(sql)) {
+          const [managerId,id,version] = params;
+          if (!proof || !task || task.id !== id || task.version !== version ||
+              task.status !== "cleaned") return [{affectedRows:0}];
+          proof.reviewed_by = managerId;
+          proof.reviewed_at = new Date().toISOString();
+          return [{affectedRows:1}];
+        }
+        if (/UPDATE housekeeping_tasks ht SET ht.status='in_progress'/i.test(sql)) {
+          const [id,version] = params;
+          if (!task || proof || task.id !== id || task.version !== version ||
+              task.status !== "cleaned") return [{affectedRows:0}];
+          task.status = "in_progress"; task.cleaned_at = null;
+          task.version++; return [{affectedRows:1}];
         }
         throw new Error("Unexpected mocked SQL: " + sql);
       },
@@ -173,7 +210,7 @@ beforeEach(() => {
     [2, { id:2, password: STAFF_TEST_HASH, fullname:"House Keeper", role:"housekeeping", account_status:"active", is_verified:1 }],
     [3, { id:3, password: STAFF_TEST_HASH, fullname:"Other Housekeeper", role:"housekeeping", account_status:"active", is_verified:1 }],
   ]);
-  task = null; queries = []; missingTable = false; occupied = false;
+  task = null; proof = null; queries = []; missingTable = false; occupied = false;
   completed = true; reservationItem = 41;
 });
 // Exercise routes via HTTP on a disposable local Express listener.
@@ -199,10 +236,35 @@ const createAndCheck = async () => {
 };
 const start = (version = 0, token = staffToken) =>
   call(hk + "/tasks/45/start", { token, method: "PUT", body: { version } });
-const cleaned = (version = 1, token = staffToken) =>
-  call(hk + "/tasks/45/cleaned", { token, method: "PUT", body: { version } });
-const verify = (version = 2, token = managerToken) =>
-  call(mgr + "/tasks/45/verify", { token, method: "PUT", body: { version } });
+const photoBytes = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL/3QAAAABJRU5ErkJggg==", "base64");
+async function uploadPhoto(token = staffToken, version = task?.version ?? 1) {
+  const form = new FormData();
+  form.append("version", String(version));
+  form.append("proof", new Blob([photoBytes],{type:"image/png"}), "clean.png");
+  const response = await fetch(base + hk + "/tasks/45/proof", {
+    method:"POST", headers:{Authorization:"Bearer " + token},
+    body:form, signal:AbortSignal.timeout(5000),
+  });
+  return {code:response.status,data:await response.json()};
+}
+const cleaned = async (version = 1, token = staffToken) => {
+  if (task?.status === "in_progress" && !proof && token === staffToken) {
+    const uploaded = await uploadPhoto(token,version);
+    assert.equal(uploaded.code,201);
+  }
+  return call(hk + "/tasks/45/cleaned", { token, method:"PUT", body:{version} });
+};
+const verify = async (version = 2, token = managerToken) => {
+  if (task?.status === "cleaned" && proof && !proof.reviewed_by &&
+      token === managerToken) {
+    const reviewed = await call(mgr + "/tasks/45/proof/review", {
+      method:"POST",token,body:{version},
+    });
+    assert.equal(reviewed.code,200);
+  }
+  return call(mgr + "/tasks/45/verify", {token,method:"PUT",body:{version}});
+};
 const taskWrites = () => queries.filter(x => /^(INSERT INTO|UPDATE) housekeeping_tasks/i.test(x.sql));
 
 // Privacy boundary: Manager receives only the staff fields needed for assignment.
@@ -338,7 +400,7 @@ test("Manager verifies cleaned task without altering booking availability", asyn
     /^(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+/i.test(x.sql));
   assert.ok(writes.length >= 4, "Lifecycle must exercise real task write paths");
   assert.equal(writes.every(x =>
-    /^(?:INSERT\s+INTO|UPDATE)\s+housekeeping_tasks\b/i.test(x.sql)), true);
+    /^(?:INSERT\s+INTO|UPDATE)\s+housekeeping_(?:tasks|cleaning_proofs)\b/i.test(x.sql)), true);
 });
 test("Housekeeping token cannot perform Manager verification", async () => {
   await createAndCheck(); await start(); await cleaned();
