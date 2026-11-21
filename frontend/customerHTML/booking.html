@@ -245,14 +245,16 @@
              role="status" aria-live="polite" data-state="pending">
             Select accommodation, date, and time slot to check availability.
           </p>
+          <!-- UI-35: Back stays on the left; primary payment step stays right.
+               Tab order follows the visible order on desktop and mobile. -->
           <div class="booking-form-actions">
-            <button type="submit" class="btn-primary full-btn" id="nextToPaymentBtn" disabled>
-              Next to Payment
-            </button>
-
             <a href="rooms.html" class="back-btn-full confirm-transaction-exit">
               Back to Accommodations
             </a>
+
+            <button type="submit" class="btn-primary full-btn" id="nextToPaymentBtn" disabled>
+              Next to Payment
+            </button>
           </div>
         </form>
 
