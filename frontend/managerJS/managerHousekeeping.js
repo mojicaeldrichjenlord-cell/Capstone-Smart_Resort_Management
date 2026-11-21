@@ -18,6 +18,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const verifyProof = document.getElementById("hkProofVerifyBtn");
   let staff = [];
   let taskRows = [];
+  let proofSetupRequired = false;
   let selectedTask = null;
   let proofBlobUrl = null;
   let busy = false;
@@ -161,10 +162,13 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
           const pending = document.createElement("span");
           pending.className = "hk-proof-pending";
-          pending.textContent = "Legacy task: photo needed";
+          pending.textContent = proofSetupRequired
+            ? "Photo verification pending database setup"
+            : "Legacy task: photo needed";
           controls.appendChild(pending);
           const returnButton = document.createElement("button");
           returnButton.type = "button"; returnButton.className = "manager-inventory-edit";
+          returnButton.disabled = proofSetupRequired;
           returnButton.textContent = "Request Photo";
           returnButton.addEventListener("click", () => perform(
             "tasks/" + task.id + "/request-proof", {version:task.version},
@@ -290,6 +294,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       const tasks = response[2].tasks || [];
       taskRows = tasks;
+      proofSetupRequired = Boolean(response[2].proof_setup_required);
       for (const [element, field] of [
         ["hkCountNeeds", "needs_cleaning"],
         ["hkCountProgress", "in_progress"],
@@ -302,7 +307,10 @@ document.addEventListener("DOMContentLoaded", () => {
       drawTasks(tasks);
       message.textContent = (feedback ? feedback + " " : "") +
         "Showing " + tasks.length + " task(s) on " + date +
-        ". Eligible completed checkout items: " + (response[1].items || []).length + ".";
+        ". Eligible completed checkout items: " + (response[1].items || []).length + "." +
+        (proofSetupRequired
+          ? " Photo proof review is paused until the approved cleaning-proof database migration is applied."
+          : "");
     } catch (error) {
       message.textContent = (feedback ? feedback + " " : "") +
         error.message + " If migration is pending, the cleaning task module is not active yet.";
