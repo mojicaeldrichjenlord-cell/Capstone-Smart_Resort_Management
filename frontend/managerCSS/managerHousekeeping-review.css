@@ -1,0 +1,141 @@
+/* HK-46 Manager Housekeeping UX; scoped so other Manager pages remain unchanged. */
+.hk-manager-layout .manager-navbar { gap: 16px; }
+.hk-manager-layout .manager-hk-brand {
+  display: flex; flex-direction: row; align-items: center; gap: 12px;
+  min-width: 200px;
+}
+.hk-manager-layout .manager-hk-logo {
+  width: 52px; height: 52px; padding: 4px; background: #fff;
+  object-fit: contain; border-radius: 12px; flex: 0 0 auto;
+}
+.hk-manager-layout .manager-hk-brand-copy { display: flex; flex-direction: column; gap: 2px; }
+.hk-manager-layout .manager-hk-brand-copy strong { color: #fff; font-size: 1.12rem; }
+.hk-manager-layout .manager-hk-brand-copy span { color: #e0f2fe; margin-top: 0; }
+.hk-manager-layout .manager-page { max-width: 1200px; }
+.hk-manager-layout .manager-hero { padding: 25px 30px; }
+.hk-manager-layout .manager-hero h1 { font-size: clamp(1.65rem, 3vw, 2.35rem); }
+.hk-manager-jumps { display: flex; flex-wrap: wrap; gap: 10px; margin: 19px 0; }
+.hk-manager-jumps a {
+  display: inline-flex; align-items: center; min-height: 42px;
+  padding: 10px 15px; border-radius: 999px;
+  color: #0f766e; font-weight: 800; text-decoration: none;
+  background: #e6f6f3; border: 1px solid #b7e8df;
+}
+.hk-manager-jumps a:hover { background: #d5f1ea; }
+.hk-manager-jumps a:focus-visible, .hk-manager-layout select:focus-visible,
+.hk-manager-layout button:focus-visible, .hk-manager-layout summary:focus-visible {
+  outline: 3px solid #14b8a6; outline-offset: 3px;
+}
+.hk-manager-stats {
+  display: grid; grid-template-columns: repeat(4, minmax(0,1fr));
+  gap: 12px; margin: 14px 0 20px;
+}
+.hk-manager-stats > div {
+  background: #fff; border: 1px solid #d9e4ea;
+  border-radius: 16px; padding: 16px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.hk-manager-stats span { color: #475569; font-size: .85rem; font-weight: 750; }
+.hk-manager-stats strong { color: #0f766e; font-size: 1.9rem; line-height: 1; }
+.hk-manager-assign-details summary {
+  font-weight: 850; color: #12324a; cursor: pointer;
+  font-size: 1.2rem; padding: 5px 0;
+}
+.hk-manager-task-heading {
+  display: flex; justify-content: space-between; align-items: flex-end;
+  flex-wrap: wrap; gap: 12px;
+}
+.hk-manager-task-heading p { margin: 3px 0 6px; }
+.hk-manager-task-heading label {
+  display: flex; flex-direction: column; gap: 6px; min-width: 190px;
+  font-size: .82rem; font-weight: 800; color: #334155;
+}
+.hk-manager-task-heading select {
+  border: 1px solid #bdcfd6; border-radius: 10px;
+  padding: 11px 12px; background: #fff; color: #0f172a;
+  min-height: 42px; font: inherit; font-weight: 700;
+}
+.hk-manager-layout .manager-task-table td { padding: 14px 11px; }
+.hk-manager-layout .manager-task-table tbody tr[data-status="cleaned"] { background: #f0fdfa; }
+.hk-manager-layout .manager-row-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.hk-manager-layout .manager-row-actions button {
+  white-space: nowrap; min-height: 39px; padding: 9px 11px;
+  border-radius: 10px; font-weight: 800; cursor: pointer;
+}
+.hk-manager-layout .manager-row-actions .hk-proof-view {
+  color: #fff; background: #0f766e; border: 1px solid #0f766e;
+}
+.hk-manager-layout .manager-row-actions .hk-proof-pending {
+  color: #92400e; background: #fff7ed; border: 1px solid #fcd34d;
+}
+.hk-manager-proof-dialog {
+  border: 1px solid #cbd5e1; border-radius: 20px; padding: 20px;
+  box-shadow: 0 25px 70px #0f172a55;
+  width: min(660px, calc(100vw - 30px)); max-height: 90dvh;
+  overflow-y: auto; color: #0f172a;
+}
+.hk-manager-proof-dialog::backdrop { background: rgba(7, 25, 45, .72); }
+.hk-manager-proof-head {
+  display: flex; justify-content: space-between; gap: 10px; align-items: center;
+}
+.hk-manager-proof-head h2 { margin: 0; font-size: 1.3rem; }
+.hk-manager-proof-dialog button {
+  min-height: 42px; border-radius: 10px; padding: 10px 16px;
+  font: inherit; font-weight: 800; cursor: pointer;
+}
+.hk-manager-proof-dialog button:disabled { opacity: .5; cursor: not-allowed; }
+.hk-manager-proof-image {
+  width: 100%; max-height: 55vh; object-fit: contain; background: #f1f5f9;
+  border-radius: 12px; margin-top: 12px;
+}
+.hk-manager-proof-actions {
+  margin-top: 16px; display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap;
+}
+.hk-manager-proof-actions .manager-approve { background: #0f766e; color: white; border: 0; }
+.hk-manager-proof-actions button:not(.manager-approve),
+.hk-manager-proof-head button { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
+#hkProofMessage { color: #475569; line-height: 1.5; }
+#hkManagerDateSection, #hkTasksSection, #hkAssignSection { scroll-margin-top: 110px; }
+@media (max-width: 950px) {
+  .hk-manager-stats { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .hk-manager-layout .manager-navbar { flex-wrap: wrap; padding: 12px 16px; }
+  .hk-manager-layout .manager-nav { overflow-x: auto; width: 100%; flex-wrap: nowrap; }
+}
+@media (max-width: 760px) {
+  .hk-manager-layout .manager-page { width: calc(100% - 24px); margin-top: 18px; }
+  .hk-manager-layout .manager-hero { padding: 22px 18px; }
+  .hk-manager-stats { gap: 8px; }
+  .hk-manager-stats > div { padding: 13px; }
+  .hk-manager-jumps { overflow-x: auto; flex-wrap: nowrap; }
+  .hk-manager-jumps a { flex: 0 0 auto; white-space: nowrap; font-size: .83rem; }
+  .hk-manager-layout .manager-task-table {
+    min-width: 0; display: block; width: 100%;
+  }
+  .hk-manager-layout .manager-task-table thead { display: none; }
+  .hk-manager-layout .manager-task-table tbody { display: grid; gap: 14px; }
+  .hk-manager-layout .manager-task-table tr {
+    display: block; padding: 12px; border: 1px solid #d9e4ea;
+    border-radius: 15px; background: #fff;
+  }
+  .hk-manager-layout .manager-task-table td {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 10px; padding: 9px 4px; border: 0; min-width: 0;
+    word-break: break-word;
+  }
+  .hk-manager-layout .manager-task-table td::before {
+    content: attr(data-label); color: #64748b; font-size: .79rem;
+    font-weight: 750; flex: 0 0 95px;
+  }
+  .hk-manager-layout .manager-task-table td:first-child { font-weight: 900; }
+  .hk-manager-layout .manager-task-table td:last-child {
+    flex-direction: column; align-items: stretch;
+  }
+  .hk-manager-layout .manager-task-table td:last-child::before { flex-basis: auto; }
+  .hk-manager-layout .manager-row-actions button { width: 100%; }
+  .hk-manager-layout .manager-task-table td select { max-width: 185px; }
+}
+@media (max-width: 420px) {
+  .hk-manager-stats span { font-size: .75rem; }
+  .hk-manager-layout .manager-task-table td::before { flex-basis: 86px; }
+  .hk-manager-proof-actions button { width: 100%; }
+}
