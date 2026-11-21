@@ -73,6 +73,7 @@ function slim(row) {
     started_at: row.started_at || null,
     cleaned_at: row.cleaned_at || null,
     verified_at: row.verified_at || null,
+    has_proof: Number(row.has_proof) === 1,
   };
 }
 // Shared read-only list query for both roles. Authorization is applied by each endpoint.
@@ -81,7 +82,8 @@ const taskListSql =
   "a.name AS accommodation_name, r.reservation_code, " +
   "DATE_FORMAT(ht.task_date,'%Y-%m-%d') AS task_date, ht.status, " +
   "ht.version, ht.assigned_to, u.fullname AS assigned_name, " +
-  "ht.verified_by, ht.started_at, ht.cleaned_at, ht.verified_at " +
+  "ht.verified_by, ht.started_at, ht.cleaned_at, ht.verified_at, " +
+  "(SELECT 1 FROM housekeeping_cleaning_proofs hp WHERE hp.task_id=ht.id LIMIT 1) AS has_proof " +
   "FROM housekeeping_tasks ht " +
   "JOIN accommodations a ON a.id = ht.accommodation_id " +
   "JOIN reservation_items ri ON ri.id = ht.reservation_item_id " +
@@ -249,11 +251,13 @@ exports.markHousekeepingCleaned = async (req, res) => {
     const [result] = await db.promise().query(
       "UPDATE housekeeping_tasks SET status = 'cleaned', cleaned_at = NOW(), " +
       "version = version + 1 WHERE id = ? AND assigned_to = ? " +
-      "AND status = 'in_progress' AND version = ?",
+      "AND status = 'in_progress' AND version = ? " +
+      "AND EXISTS (SELECT 1 FROM housekeeping_cleaning_proofs hp " +
+      "WHERE hp.task_id=housekeeping_tasks.id)",
       [id, req.housekeepingUser.id, version]);
     if (Number(result.affectedRows) !== 1) {
       return res.status(409).json({ success: false, code: "TASK_CHANGED",
-        message: "Cleaning was not started by you or task changed. Refresh." });
+        message: "Upload a cleaning photo before marking Cleaned, or refresh if the task changed." });
     }
     return res.json({ success: true, message: "Task marked cleaned. Manager verification is pending." });
   } catch (error) { return sendError(res, error, "mark cleaned"); }
@@ -276,11 +280,13 @@ exports.verifyHousekeepingTask = async (req, res) => {
       "AND NOT EXISTS (SELECT 1 FROM reservation_items ri " +
       "JOIN reservations r ON r.id = ri.reservation_id " +
       "WHERE ri.accommodation_id = ht.accommodation_id " +
-      "AND r.reservation_status = 'approved' AND r.is_checked_in = 1)",
-      [req.managerUser.id, id, version]);
+      "AND r.reservation_status = 'approved' AND r.is_checked_in = 1) " +
+      "AND EXISTS (SELECT 1 FROM housekeeping_cleaning_proofs hp " +
+      "WHERE hp.task_id=ht.id AND hp.reviewed_by=? AND hp.reviewed_at IS NOT NULL)",
+      [req.managerUser.id, id, version, req.managerUser.id]);
     if (Number(result.affectedRows) !== 1) {
       return res.status(409).json({ success: false, code: "TASK_CHANGED_OR_OCCUPIED",
-        message: "Task changed, is not cleaned, or accommodation has a checked-in reservation. Refresh and verify." });
+        message: "Task changed, proof was not reviewed, or the accommodation is occupied. View the proof and refresh." });
     }
     return res.json({ success: true,
       message: "Cleaning verified. This does not alter booking availability." });
