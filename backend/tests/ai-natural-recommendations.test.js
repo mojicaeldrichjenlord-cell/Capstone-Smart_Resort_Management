@@ -406,7 +406,7 @@ test("UI-27 customer chatbot docks to lower-right and keeps a responsive branded
     assert.match(html, /class="ai-assistant-brand"/, page);
     assert.match(html, /Arvic Seaside Resort AI Assistant/, page);
     assert.match(html, /ai-chat-airy\.css\?v=20261120-ui30/, page);
-    assert.match(html, /ai-chat\.js\?v=20261120-ui30/, page);
+    assert.match(html, /ai-chat\.js\?v=20261121-ai45/, page);
     assert.match(html, /id="aiChatMaximize"/, page);
     assert.match(html, /id="aiChatClose"/, page);
     assert.match(html, /id="aiMicBtn"/, page);
