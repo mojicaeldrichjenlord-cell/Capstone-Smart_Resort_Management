@@ -437,7 +437,7 @@ function renderPaymentCard(booking) {
 
           <span>
             Reference:
-            <strong>${escapeHtml(reference || "No reference")}</strong>
+            <strong>${escapeHtml(reference || (method === "paypal" ? "Not required" : "No reference"))}</strong>
           </span>
 
           <span>
@@ -465,7 +465,9 @@ function renderPaymentCard(booking) {
                   View Proof
                 </button>
               `
-              : `<span class="no-proof-text">No proof available</span>`
+              : `<span class="no-proof-text">${method === "paypal"
+                  ? "PayPal checkout — no screenshot required"
+                  : "No proof available"}</span>`
           }
         </section>
       </div>
@@ -501,6 +503,11 @@ function renderPaymentCard(booking) {
 
 function getPaymentRecordNote(booking) {
   const paymentStatus = getPaymentStatus(booking);
+  const method = getPaymentMethod(booking);
+
+  if (method === "paypal" && ["pending", "unpaid"].includes(paymentStatus)) {
+    return "PayPal checkout is pending. Payment is recorded after a successful capture.";
+  }
 
   if (paymentStatus === "partially_paid") {
     return "Downpayment verified. Remaining accommodation balance is collected during check-in.";
@@ -514,7 +521,7 @@ function getPaymentRecordNote(booking) {
     return "Payment/reservation was rejected.";
   }
 
-  if (!getPaymentReference(booking) && !getProofSource(booking)) {
+  if (method !== "paypal" && !getPaymentReference(booking) && !getProofSource(booking)) {
     return "No payment reference or proof is currently available.";
   }
 
