@@ -11,7 +11,7 @@ const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 const imageMimes = new Set(["image/jpeg", "image/png", "image/webp"]);
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: MAX_IMAGE_BYTES, files: 1, fields: 0 },
+  limits: { fileSize: MAX_IMAGE_BYTES, files: 1, fields: 1 },
   fileFilter(_req, file, done) {
     if (!imageMimes.has(String(file.mimetype).toLowerCase())) {
       const err = new Error("Only JPEG, PNG or WebP proof photos are accepted.");
