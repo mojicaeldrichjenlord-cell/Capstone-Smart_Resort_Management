@@ -1425,7 +1425,19 @@ exports.chatWithGemini = async (req, res) => {
     // invent photos, room IDs or prices, and never create a reservation here.
     // This also handles large-group cottage questions with honest Function
     // Area alternatives when no cottage has the requested listed capacity.
-    if (isVerifiedPreviewRequest(message)) {
+    // A guest count in written words ("for three guests") now qualifies for
+    // previews, but never let that shortcut bypass explicit booking-window
+    // validation or reservation_items collision checks. A booking page with
+    // dates/times or a real booking intent stays on the guarded full path.
+    const previewMustUseBookingFlow = Boolean(
+      req.body.check_in || req.body.check_out ||
+      req.body.check_in_time || req.body.check_out_time ||
+      req.body.wants_booking === true ||
+      req.body.context?.check_in || req.body.context?.check_out ||
+      req.body.context?.check_in_time || req.body.context?.check_out_time ||
+      req.body.context?.wants_booking === true
+    );
+    if (isVerifiedPreviewRequest(message) && !previewMustUseBookingFlow) {
       const storedPreviewContext = req.body.context &&
         typeof req.body.context === "object" && !Array.isArray(req.body.context)
         ? req.body.context : {};
