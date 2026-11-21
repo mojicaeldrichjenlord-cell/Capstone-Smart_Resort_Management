@@ -14,7 +14,7 @@
     spanish: { stt: "es-ES", tts: "es-ES", label: "Español" },
     mandarin: { stt: "zh-CN", tts: "zh-CN", label: "中文 (Mandarin)" },
   });
-  const KEY = "smartresort_ai_voice_language_v1";
+  // UI-44: No persistent voice-language picker. Each turn is auto-detected.
   const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
   // Web Speech can be denied by Safari even when the iPhone mic is allowed.
   const isIOS = /iPhone|iPad|iPod/i.test(window.navigator?.userAgent || "") ||
@@ -28,7 +28,7 @@
     (window.AudioContext || window.webkitAudioContext));
   const canSpeak = () => Boolean(SpeechRecognitionAPI || canRecord());
   const state = {
-    language: "english",
+    language: "english", // last detected language, for reply playback only
     inputMode: "accurate", // Gemini-first for all supported languages/devices.
     live: false,
     mode: "idle",
@@ -66,6 +66,19 @@
       URL.revokeObjectURL(playingUrl);
       playingUrl = null;
     }
+  }
+
+  // Detect reply voice from the actual utterance, not the old dropdown.
+  // On-device synthesis is limited to installed voices; unsupported languages
+  // fall back to the browser's voice rather than pretending to be native.
+  function inferReplyLanguage(raw) {
+    const text = String(raw || "").trim();
+    if (/[\u3400-\u9fff]/u.test(text) || /\b(?:ni\s*hao|xie\s*xie|fangjian|yuding)\b/i.test(text)) return "mandarin";
+    if (/\b(?:hola|gracias|habitaciones?|reservar|precio|cu[aá]nto|buenos|tienen|quiero|puedo|por favor)\b/i.test(text)) return "spanish";
+    const filipino = /\b(?:po|opo|kayo|meron|may|kwarto|kuwarto|magkano|paano|saan|ilan|puwede|pwede|yung|ninyo|niyo|salamat)\b/i.test(text);
+    const english = /\b(?:room|booking|available|price|check.in|check.out|payment|guest|resort|rate|can|how|this|that)\b/i.test(text);
+    if (filipino) return english ? "taglish" : "taglish";
+    return "english";
   }
 
   function getLocale() {
@@ -137,7 +150,7 @@
     controls.live.disabled = !canSpeak();
     controls.live.classList.toggle("active", state.live);
     controls.interrupt.hidden = !(state.live && state.mode === "live-speaking");
-    controls.lang.disabled = state.mode === "dictation" || state.mode === "dictation-transcribing";
+    // Input language is detected automatically; there is no language selector.
     // Avoid changing transcription providers in the middle of recording.
     if (controls.inputMode) {
       controls.inputMode.disabled = state.live || listening || state.mode === "dictation-transcribing";
@@ -267,6 +280,7 @@
 
   function speakReply(text, onDone = null) {
     const content = String(text || "").trim();
+    if (content) state.language = inferReplyLanguage(content);
     cancelSpeech();
     const serial = state.speechSequence;
     if (!content) {
@@ -402,7 +416,7 @@
       const response = await fetch(voiceApiBase() + "/ai/transcribe", {
         method: "POST", headers: {
           "Content-Type": "audio/wav",
-          "X-Arvic-Voice-Language": state.language,
+          "X-Arvic-Voice-Language": "auto",
           "Authorization": "Bearer " + token
         }, body: wav, signal: controller.signal
       });
@@ -412,6 +426,7 @@
       // This is already a model-transcribed audio result, not a browser
       // guess. Preserve it instead of rewriting specific words afterwards.
       const text = String(body.transcript || "").trim().slice(0, state.transcriptLimit);
+      if (text) state.language = inferReplyLanguage(text);
       const input = document.getElementById("aiChatInput");
       if (!input) return;
       if (kind === "dictation") {
@@ -507,10 +522,9 @@
   }
 
   function beginVoiceInput(kind) {
-    // Accurate mode transcribes actual audio via the existing signed Gemini
-    // endpoint. Fast mode retains browser STT without an extra Gemini request.
-    if (canRecord() && (state.inputMode === "accurate" ||
-        preferRecording || !SpeechRecognitionAPI)) {
+    // Multilingual input uses Gemini audio auto-detection whenever available;
+    // browser speech recognition is a limited device-language fallback only.
+    if (canRecord()) {
       return startRecordedInput(kind);
     }
     if (state.inputMode === "accurate" && !canRecord()) {
@@ -548,19 +562,18 @@
 
   function setLanguage(language) {
     if (!Object.hasOwn(LOCALES, language)) return;
-    if (state.live) stopConversation("Voice language changed. Start a new conversation to continue.");
+    // Programmatic voice output change must not interrupt a live call.
     if (state.mode === "dictation" || state.mode === "dictation-transcribing") {
       stopRecognition(true); cancelRecordedInput(); state.mode = "idle";
     }
     state.language = language;
-    // Changing the voice language never silently changes the Gemini-first
-    // input preference. Unsupported browsers still use the existing fallback.
-    try { localStorage.setItem(KEY, language); } catch (_) { /* private mode */ }
-    if (controls?.lang) controls.lang.value = language;
+    // Never persist a language preference: the next visitor turn can differ.
+    // No picker; this is retained as an internal TTS compatibility method.
     if (controls?.inputMode) controls.inputMode.value = state.inputMode;
     updateControls();
-    status((canRecord() ? "Gemini mic ready · credits apply" :
-      "Browser mic fallback active") + " · " + getLocale().label);
+    status(canRecord()
+      ? "Auto language mic ready · transcription uses Gemini credits."
+      : "Browser microphone fallback: language recognition may be limited.");
   }
 
   function scheduleListen(session) {
@@ -657,7 +670,7 @@
     state.finalText = "";
     state.draftPrefix = kind === "dictation" ? input.value.trim() : "";
     state.mode = kind === "dictation" ? "dictation" : "live-listening";
-    recognizer.lang = getLocale().stt;
+    recognizer.lang = getLocale().stt; // Device fallback cannot auto-detect arbitrary languages.
     recognizer.continuous = kind === "dictation";
     recognizer.interimResults = true;
     // Some browsers offer a better-scored "pool shade"/"preview" alternative.
@@ -813,6 +826,7 @@
 
   function readAloud(text) {
     if (state.live) stopConversation("Voice conversation stopped to play this reply.");
+    state.language = inferReplyLanguage(text);
     status("Reading response in " + getLocale().label + "…");
     speakReply(text, () => status("Finished reading aloud."));
   }
@@ -828,13 +842,7 @@
     panel.setAttribute("aria-label", "AI voice assistance");
     panel.innerHTML = [
       '<div class="ai-voice-actions">',
-      '<label for="aiVoiceLanguage">Voice language</label>',
-      '<select id="aiVoiceLanguage" aria-label="Choose a voice language">',
-      '<option value="english">English</option>',
-      '<option value="taglish">Taglish / Filipino</option>',
-      '<option value="spanish">Español</option>',
-      '<option value="mandarin">中文 Mandarin</option>',
-      '</select>',
+      '<span class="ai-voice-auto-label">Automatic language detection</span>',
       '<button id="aiVoiceLive" type="button" aria-pressed="false">Start Conversation</button>',
       '</div>',
       // A single microphone mode keeps the UI simple. Gemini is the default;
@@ -852,22 +860,17 @@
     controls = {
       panel,
       mic: microphone,
-      lang: panel.querySelector("#aiVoiceLanguage"),
-
       live: panel.querySelector("#aiVoiceLive"),
       interrupt: panel.querySelector("#aiVoiceInterrupt"),
       status: panel.querySelector("#aiVoiceStatus"),
       info: panel.querySelector("#aiVoiceInfo"),
     };
-    const saved = (() => {
-      try { return localStorage.getItem(KEY); } catch (_) { return null; }
-    })();
-    state.language = Object.hasOwn(LOCALES, saved) ? saved : "english";
+    // Ignore any legacy saved voice selection; public users choose by speaking.
+    state.language = "english";
     // Ignore earlier Fast/browser preferences: Gemini transcription is now
     // the default across sessions, with browser STT as a device fallback.
     state.inputMode = "accurate";
-    controls.lang.value = state.language;
-    // Safari/Android may populate voices lazily; warm the list before Read Aloud.
+     // Safari/Android may populate voices lazily; warm the list before Read Aloud.
     // Still synthesize synchronously when the user taps to preserve iOS gestures.
     window.speechSynthesis?.getVoices?.();
     microphone.addEventListener("click", toggleDictation);
@@ -876,8 +879,7 @@
       else startConversation();
     });
     controls.interrupt.addEventListener("click", interruptConversation);
-    controls.lang.addEventListener("change", () => setLanguage(controls.lang.value));
-
+ 
     document.getElementById("aiChatClose")?.addEventListener("click", () =>
       stopConversation("Voice controls stopped when the assistant closed."));
     document.getElementById("aiNewChatBtn")?.addEventListener("click", () =>
