@@ -293,3 +293,45 @@
   }
   /* State badges and attention/error/ready panels intentionally untouched. */
 }
+
+
+/* FD-DM-01B: small hard-coded light text surfaces found during CSS audit. */
+@media screen {
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone :is(
+    .panel-heading h2, .reservation-code, .payment-card-head strong,
+    .guest-card-head strong, .reservation-card-head strong,
+    .reservation-detail-box strong, .payment-detail-box strong,
+    .guest-info-box strong, .guest-adjustment-payment-row strong,
+    .entrance-adjustment-meta-item strong
+  ) { color: var(--fd-text) !important; }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone :is(
+    .filter-group label, .collection-helper-text, .guest-adjustment-header p,
+    .entrance-adjustment-header p, .proof-modal-head span,
+    .proof-modal-status, .guest-adjustment-payment-row span,
+    .entrance-adjustment-meta-item span
+  ) { color: var(--fd-muted) !important; }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone :is(
+    .reservation-state-box:not(.error), .payment-state-box:not(.error),
+    .guest-state-box:not(.error), .next-step-note, .checkin-rule-note,
+    .proof-modal-body, .guest-adjustment-payment-row:not(.due-row)
+  ) {
+    background: var(--fd-soft) !important;
+    border-color: var(--fd-line) !important;
+    color: var(--fd-muted) !important;
+  }
+  /* Payment-policy information stays visibly amber rather than disappearing. */
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .payment-policy-note {
+    background: #4b3c28 !important;
+    border-color: #997449 !important;
+    color: #f9e6ad !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone :is(
+    .proof-close-btn, .guest-adjustment-close-btn,
+    .stay-modal-close-btn, .final-checkout-close-btn,
+    .additional-charges-close-btn, .entrance-adjustment-close-btn
+  ) {
+    background: var(--fd-soft) !important;
+    color: var(--fd-text) !important;
+    border-color: var(--fd-line) !important;
+  }
+}
