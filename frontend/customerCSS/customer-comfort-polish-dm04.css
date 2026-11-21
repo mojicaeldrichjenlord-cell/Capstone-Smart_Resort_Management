@@ -1,0 +1,98 @@
+/*
+ * DM-04 | Customer comfort polish.
+ * Decorative background emojis removed in both Customer themes.
+ * Dark-only corrections for My Bookings' dynamically generated cards,
+ * which contain legacy inline light styles. Light Mode remains unchanged.
+ * No backend, booking amounts, PayPal SDK, or print behavior is changed.
+ */
+@media screen {
+  /* style.css adds giant palm/wave emoji on body pseudo-elements.
+     Keep the resort photos, cards, maps, and actual navigation icons. */
+  body.customer-manager-tone::before,
+  body.customer-manager-tone::after {
+    display: none !important;
+    content: none !important;
+    background: none !important;
+  }
+
+  /* Dark theme: quieter contrast across the page with no bright-white boxes. */
+  html[data-customer-theme="dark"] body.customer-manager-tone .customer-booking-history-card {
+    background: var(--customer-card, #24364a) !important;
+    background-image: none !important;
+    border: 1px solid var(--customer-border, #3c5668) !important;
+    color: var(--customer-text-primary, #e4ebf3) !important;
+    box-shadow: 0 12px 30px rgba(5, 15, 27, .20) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .customer-booking-history-card > div:last-child {
+    background: transparent !important;
+    color: var(--customer-text-primary, #e4ebf3) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .customer-booking-history-title {
+    color: var(--customer-text-primary, #e4ebf3) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .customer-booking-detail {
+    background: var(--customer-card-subtle, #203145) !important;
+    background-image: none !important;
+    color: var(--customer-text-secondary, #b7c5d5) !important;
+    border-color: var(--customer-border, #3c5668) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .customer-booking-detail strong {
+    color: var(--customer-text-primary, #e4ebf3) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .customer-booking-payment-summary {
+    background: var(--customer-card-subtle, #203145) !important;
+    background-image: none !important;
+    color: var(--customer-text-secondary, #b7c5d5) !important;
+    border-color: var(--customer-border, #3c5668) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .customer-booking-payment-summary strong {
+    color: var(--customer-text-primary, #e4ebf3) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .customer-booking-history-card .btn-primary {
+    background: var(--customer-accent-strong, #0f766e) !important;
+    background-image: none !important;
+    color: #fff !important;
+    border-color: transparent !important;
+  }
+
+  /* Gentle semantic badges override the inline, light-only badge palette. */
+  html[data-customer-theme="dark"] body.customer-manager-tone .customer-booking-history-status {
+    border: 1px solid var(--customer-border) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone
+  .customer-booking-history-status:is([data-status="approved"],[data-status="confirmed"],[data-status="completed"]) {
+    background: var(--customer-status-success-background) !important;
+    color: var(--customer-status-success-text) !important;
+    border-color: #387d62 !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone
+  .customer-booking-history-status:is([data-status="pending"],[data-status="partially_paid"]) {
+    background: var(--customer-status-warning-background) !important;
+    color: var(--customer-status-warning-text) !important;
+    border-color: #997449 !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone
+  .customer-booking-history-status:is([data-status="rejected"],[data-status="cancelled"],[data-status="no_show"]) {
+    background: var(--customer-status-error-background) !important;
+    color: var(--customer-status-error-text) !important;
+    border-color: #8b4b5b !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone
+  .customer-booking-history-status:not([data-status="approved"]):not([data-status="confirmed"]):not([data-status="completed"]):not([data-status="pending"]):not([data-status="partially_paid"]):not([data-status="rejected"]):not([data-status="cancelled"]):not([data-status="no_show"]) {
+    background: var(--customer-card-raised) !important;
+    color: var(--customer-text-primary) !important;
+  }
+
+  /* Dynamic messages also use inline light backgrounds. */
+  html[data-customer-theme="dark"] body.customer-manager-tone #myBookingsContainer > div:not(:has(.customer-booking-history-card)) {
+    color: var(--customer-text-secondary) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone #myBookingsContainer > div:has(.customer-booking-history-card) {
+    color: var(--customer-text-primary) !important;
+  }
+  @media (max-width: 600px) {
+    html[data-customer-theme="dark"] body.customer-manager-tone .customer-booking-history-card {
+      border-radius: 18px !important;
+    }
+  }
+}
