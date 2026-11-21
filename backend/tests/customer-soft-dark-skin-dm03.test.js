@@ -10,14 +10,14 @@ const tokens=read("frontend/customerCSS/customer-theme-tokens.css");
 const pages=["index.html","rooms.html","booking.html","booking-payment.html",
   "booking-receipt.html","my-bookings.html","profile.html","resort-map.html"];
 
-test("DM-03 last stylesheet on all signed-in Customer pages only",()=>{
+test("DM-03 original dark skin stays before DM-04 comfort polish on Customer pages only",()=>{
   for(const name of pages){
     const page=read("frontend/customerHTML/"+name);
     const ref="customer-dark-skin-dm03.css?v=20261121-dm03";
     assert.equal(page.split(ref).length-1,1,name);
     const head=page.slice(0,page.indexOf("</head>"));
     assert.ok(head.includes(ref),name);
-    assert.ok(head.lastIndexOf('rel="stylesheet"')<head.indexOf(ref),name+" stylesheet last");
+    assert.ok(head.indexOf(ref) < head.indexOf("customer-comfort-polish-dm04.css"),name+" dark skin before comfort polish");
     assert.ok(head.indexOf("customer-theme-tokens.css")<head.indexOf(ref),name);
     assert.ok(head.indexOf("customer-theme-toggle.css")<head.indexOf(ref),name);
     assert.match(page,/<body[^>]*customer-manager-tone/);
