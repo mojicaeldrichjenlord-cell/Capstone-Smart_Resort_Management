@@ -27,7 +27,8 @@ const { matchCheapestInquiry, pickCheapestRows, cheapestReply } =
   require("./aiAffordableFollowup");
 const { isResortQuestion, resortOnlyReply } = require("./aiResortScopeGuard");
 const { isPersonalizedRecommendation, explicitGuestCount, savedGuestCount,
-  guestCountQuestion, guestCountFollowUp } = require("./aiRecommendationIntake");
+  guestCountQuestion, guestCountFollowUp, recommendationLookupMessage
+} = require("./aiRecommendationIntake");
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -1146,8 +1147,9 @@ exports.chatWithGemini = async (req, res) => {
       const catalog = await getAccommodationCatalog();
       // Use a fresh query expression with an explicit group size, never a
       // previously recommended room ID. SQL stays read-only.
-      const query = "Recommend a " + recommendationFollowUp.category +
-        " for " + recommendationFollowUp.guests + " guests";
+      const query = recommendationLookupMessage(
+        recommendationFollowUp.category, recommendationFollowUp.guests,
+      );
       const selection = selectVerifiedPreviews(
         catalog, query, [], { guests: recommendationFollowUp.guests },
       );
