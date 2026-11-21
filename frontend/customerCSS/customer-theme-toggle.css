@@ -1,0 +1,66 @@
+/*
+ * DM-02 — Customer Navbar Theme Toggle.
+ * Inherits existing nav look, same button on desktop and mobile menu.
+ * Scope: Customer navbar only; do not change fixed navbar positioning,
+ * booking/payment confirmation or the AI widget.
+ */
+@media screen {
+  body.customer-manager-tone > .navbar nav .customer-theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    flex: 0 0 auto;
+    min-height: 44px;
+    min-width: 118px;
+    padding: 10px 14px;
+    margin: 0;
+    border: 1px solid rgba(255, 255, 255, .27);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, .12);
+    background-image: none;
+    color: #fff;
+    font: inherit;
+    font-size: .88rem;
+    font-weight: 800;
+    line-height: 1.1;
+    text-align: center;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color .2s ease, border-color .2s ease;
+    box-shadow: none;
+  }
+  body.customer-manager-tone > .navbar nav .customer-theme-toggle:hover {
+    background: rgba(255, 255, 255, .21);
+    border-color: rgba(255, 255, 255, .45);
+  }
+  body.customer-manager-tone > .navbar nav .customer-theme-toggle:focus-visible {
+    outline: 3px solid var(--customer-focus, #5eead4);
+    outline-offset: 3px;
+  }
+  body.customer-manager-tone > .navbar nav .customer-theme-icon {
+    font-size: 1.1rem;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+  }
+  @media (max-width: 900px) {
+    body.customer-manager-tone > .navbar nav .customer-theme-toggle {
+      width: 100%;
+      min-width: 0;
+      justify-content: flex-start;
+      padding: 12px 14px;
+      border-radius: 10px;
+      text-align: left;
+      font-size: .95rem;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    body.customer-manager-tone > .navbar nav .customer-theme-toggle {
+      transition: none;
+    }
+  }
+}
