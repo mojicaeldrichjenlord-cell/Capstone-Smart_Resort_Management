@@ -1,0 +1,654 @@
+/*
+ * DM-03 | Customer-only Soft Dark Mode, screen display.
+ * Scope: only the eight signed-in Customer pages with
+ * html[data-customer-theme="dark"] body.customer-manager-tone.
+ *
+ * Keep original Light Mode completely unchanged. Do not target Admin,
+ * Manager, Front Desk, Housekeeping, auth or the PUBLIC landing page.
+ * No changes to reservation/payment state, PayPal SDK buttons, uploaded
+ * photos, map coordinates, AI behavior, or receipt data.
+ * @media screen excludes the printed receipt, which stays white.
+ */
+@media screen {
+  html[data-customer-theme="dark"] body.customer-manager-tone {
+    color-scheme: dark;
+    color: var(--customer-text-primary) !important;
+    background: linear-gradient(
+      180deg, var(--customer-page-top), var(--customer-page-bottom)
+    ) !important;
+  }
+
+  /* Shared Customer navigation and non-destructive navigation controls. */
+  html[data-customer-theme="dark"] body.customer-manager-tone > .navbar {
+    background: linear-gradient(135deg,
+      var(--customer-nav-start), var(--customer-nav-end)) !important;
+    background-image: linear-gradient(135deg,
+      var(--customer-nav-start), var(--customer-nav-end)) !important;
+    border-bottom-color: var(--customer-border) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone > .navbar nav {
+    color: #fff;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone > .navbar nav a,
+  html[data-customer-theme="dark"] body.customer-manager-tone > .navbar .logo {
+    color: #f1f5f9;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone > .navbar .customer-theme-toggle {
+    background: rgba(255,255,255,.16);
+    border-color: rgba(255,255,255,.34);
+    color: #fff;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .back-btn, .back-btn-full, .map-btn.light, .map-nav-btn
+  ) {
+    background: var(--customer-card-subtle) !important;
+    color: var(--customer-text-primary) !important;
+    border-color: var(--customer-border) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .back-btn, .back-btn-full, .map-btn.light, .map-nav-btn
+  ):hover {
+    background: var(--customer-card-raised) !important;
+    color: var(--customer-text-primary) !important;
+  }
+
+  /* Headers maintain navy/teal contrast and do NOT hide photos/hero art. */
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .hero-section, .page-header, .map-hero, .pricing-guide-card
+  ) {
+    background: linear-gradient(135deg,
+      var(--customer-nav-start), var(--customer-nav-end)) !important;
+    background-image: linear-gradient(135deg,
+      var(--customer-nav-start), var(--customer-nav-end)) !important;
+    color: #fff !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .hero-section, .page-header, .map-hero, .pricing-guide-card
+  ) :is(h1, h2, h3, p, span) {
+    color: inherit;
+  }
+
+  /* Main cards/panels are slate, not pure black. */
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .welcome-box, .home-card, .contact-card, .social-card,
+    .contact-links-box, .social-links-box, .contact-link-card, .social-link-card,
+    .category-filter-panel, .room-ai-card, .room-card,
+    .booking-card, .bookings-shell, .my-booking-card, .booking-card,
+    .map-filter-panel, .map-card, .map-info-card,
+    .profile-card, .section-box
+  ) {
+    background: var(--customer-card) !important;
+    background-image: none !important;
+    border-color: var(--customer-border) !important;
+    color: var(--customer-text-primary) !important;
+    box-shadow: var(--customer-shadow) !important;
+  }
+
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .welcome-box, .home-card, .contact-card, .social-card,
+    .contact-link-card, .social-link-card,
+    .category-filter-panel, .room-ai-card, .room-card,
+    .booking-card, .my-booking-card, .bookings-shell,
+    .map-filter-panel, .map-card, .map-info-card,
+    .profile-card, .section-box
+  ) :is(h2, h3) {
+    color: var(--customer-text-heading) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .welcome-box, .home-card, .contact-card, .social-card,
+    .contact-link-card, .social-link-card,
+    .category-filter-panel, .room-ai-content, .my-booking-card,
+    .map-filter-panel, .map-info-card,
+    .bookings-shell, .profile-card
+  ) :is(p, small) {
+    color: var(--customer-text-secondary) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .subtext, .field-help, .rooms-compact-hint,
+    .map-selected-counter, .contact-note, .social-note
+  ) {
+    color: var(--customer-text-secondary) !important;
+  }
+
+  /* Customer home: glass location and nested contact/social links. */
+  html[data-customer-theme="dark"] body.customer-manager-tone .location-map-overlay {
+    background: linear-gradient(120deg,
+      rgba(20, 43, 62, .84), rgba(20, 43, 62, .45)) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .location-map-content {
+    background: rgba(36, 54, 74, .94) !important;
+    color: var(--customer-text-primary) !important;
+    border-color: var(--customer-border) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .location-map-content :is(h2,p) {
+    color: var(--customer-text-primary) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .contact-link-card strong, .social-link-card strong
+  ) { color: var(--customer-text-primary) !important; }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .contact-link-card small, .social-link-card small
+  ) { color: var(--customer-text-secondary) !important; }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .contact-note, .social-note
+  ) {
+    background: var(--customer-card-subtle) !important;
+    border-color: var(--customer-border) !important;
+  }
+
+  /* Accommodation cards, gallery thumbnails and amenity details. */
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .room-ai-meta div, .room-ai-amenities, .room-customer-inclusions,
+    .room-gallery-strip, .map-cta, .map-image-wrap, .map-info-image
+  ) {
+    background: var(--customer-card-subtle) !important;
+    background-image: none !important;
+    border-color: var(--customer-border) !important;
+    color: var(--customer-text-primary) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .room-ai-content h3, .room-price,
+    .customer-amenities-list, .room-ai-meta div, .room-ai-amenities,
+    .room-customer-inclusions, .map-info-card h2, .map-info-card .info-row strong
+  ) {
+    color: var(--customer-text-primary) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .room-ai-content p, .map-cta p, .map-info-card .info-row span,
+    .empty-customer-inclusions
+  ) {
+    color: var(--customer-text-secondary) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .room-gallery-strip img, .map-info-image, .map-image-wrap
+  ) { border-color: var(--customer-border) !important; }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .category-count, .map-filter-count
+  ) {
+    background: var(--customer-teal-tint) !important;
+    color: #a7f3d0 !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .category-filter-btn:not(.active), .map-filter-btn:not(.active),
+    .ask-ai-btn
+  ) {
+    background: var(--customer-card-subtle) !important;
+    color: var(--customer-text-primary) !important;
+    border-color: var(--customer-border) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .category-filter-btn:not(.active), .map-filter-btn:not(.active),
+    .ask-ai-btn
+  ):hover {
+    background: var(--customer-card-raised) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone #roomsContainer .room-accordion-toggle {
+    background: var(--customer-card) !important;
+    color: var(--customer-text-primary) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone #roomsContainer .room-ai-card.is-expanded > .room-accordion-toggle,
+  html[data-customer-theme="dark"] body.customer-manager-tone #roomsContainer .room-accordion-toggle:hover {
+    background: var(--customer-card-raised) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone #roomsContainer :is(
+    .room-accordion-name, .room-accordion-price
+  ) { color: var(--customer-text-primary) !important; }
+  html[data-customer-theme="dark"] body.customer-manager-tone #roomsContainer :is(
+    .room-accordion-subtitle, .room-accordion-price-label
+  ) { color: var(--customer-text-secondary) !important; }
+  html[data-customer-theme="dark"] body.customer-manager-tone #roomsContainer .room-ai-card.is-expanded > .room-accordion-panel {
+    border-top-color: var(--customer-border) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone #roomsContainer .room-accordion-chevron {
+    border-color: #5eead4 !important;
+  }
+
+  /* Booking cards, per-room slots, amount summary and availability status. */
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .booking-item-card, .reservation-item-card, .summary-box,
+    .slot-preview, .booking-availability-summary,
+    .booking-availability-note, .booking-slot-status,
+    .booking-detail-item, .detail-item,
+    .my-booking-details, .empty-state, .empty-bookings
+  ) {
+    background: var(--customer-card-subtle) !important;
+    background-image: none !important;
+    border-color: var(--customer-border) !important;
+    color: var(--customer-text-primary) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .booking-item-title, .summary-box strong, .detail-item strong,
+    .booking-detail-item strong, .my-booking-card h3, .empty-state h3
+  ) { color: var(--customer-text-primary) !important; }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .detail-item span, .booking-detail-item span, .my-booking-card p,
+    .summary-box span, .empty-state
+  ) { color: var(--customer-text-secondary) !important; }
+  html[data-customer-theme="dark"] body.customer-manager-tone .highlight-box {
+    background: var(--customer-nav-start) !important;
+    color: #f1f5f9 !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .highlight-box :is(span,strong) {
+    color: #f1f5f9 !important;
+  }
+
+  /* Accessible native inputs and custom accommodation dropdown.
+     Do not alter validation, disabled state, dates or form handlers. */
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .booking-form-group input, .booking-form-group select,
+    .booking-form-group textarea, .payment-form-group textarea,
+    .request-modal-box textarea, .modal-content textarea,
+    .accommodation-picker-button, .accommodation-search-input,
+    .password-group input
+  ) {
+    background: var(--customer-input-background) !important;
+    color: var(--customer-input-text) !important;
+    border-color: var(--customer-border-strong) !important;
+    -webkit-text-fill-color: var(--customer-input-text);
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    input, textarea
+  )::placeholder { color: var(--customer-input-placeholder) !important; opacity: 1; }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .booking-form-group label, .payment-form-group label,
+    .profile-field-label, .profile-form-group label
+  ) { color: var(--customer-text-primary) !important; }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .booking-form-group select, .slot-select, .accommodation-search-input
+  ) option {
+    color: var(--customer-input-text);
+    background: var(--customer-input-background);
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .slot-select option:disabled {
+    color: #fecdd3 !important;
+    background: #4b2b35 !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .accommodation-picker-panel {
+    background: var(--customer-card-raised) !important;
+    border-color: var(--customer-border) !important;
+    box-shadow: var(--customer-shadow) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .accommodation-option-btn {
+    background: var(--customer-card-subtle) !important;
+    color: var(--customer-text-primary) !important;
+    border-color: var(--customer-border) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .accommodation-option-btn:hover {
+    background: var(--customer-card-raised) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .accommodation-option-btn :is(strong, span) {
+    color: var(--customer-text-primary) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .booking-availability-note[data-state="available"],
+    .booking-availability-summary[data-state="available"],
+    .booking-slot-status[data-state="available"]
+  ) {
+    background: var(--customer-status-success-background) !important;
+    color: var(--customer-status-success-text) !important;
+    border-color: #387d62 !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .booking-availability-note[data-state="unavailable"],
+    .booking-availability-note[data-state="error"],
+    .booking-slot-status[data-state="error"]
+  ) {
+    background: var(--customer-status-error-background) !important;
+    color: var(--customer-status-error-text) !important;
+    border-color: #8b4b5b !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .booking-availability-note[data-state="checking"],
+    .booking-slot-status[data-state="checking"]
+  ) {
+    background: #273c54 !important;
+    color: #c5e5ff !important;
+    border-color: #44617e !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .booking-slot-status[data-state="mixed"] {
+    background: var(--customer-status-warning-background) !important;
+    color: var(--customer-status-warning-text) !important;
+    border-color: #997449 !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .resort-policy-reminder, .policy-acknowledgement
+  ) {
+    background: var(--customer-status-warning-background) !important;
+    background-image: none !important;
+    border-color: #8e6c44 !important;
+    color: var(--customer-status-warning-text) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .resort-policy-reminder h2, .resort-policy-reminder li, .policy-acknowledgement
+  ) { color: var(--customer-status-warning-text) !important; }
+
+  /* Primary actions: sufficiently dark teal underneath white text. */
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .btn-primary, .btn-primary.full-btn, .book-now-btn, .map-link-btn,
+    .map-btn.primary, .profile-submit-btn,
+    .category-filter-btn.active, .map-filter-btn.active,
+    .pricing-guide-btn, .my-booking-actions .receipt-btn
+  ) {
+    background: var(--customer-accent-strong, #0f766e) !important;
+    background-image: none !important;
+    color: #fff !important;
+    border-color: var(--customer-accent-strong, #0f766e) !important;
+    box-shadow: none !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .btn-primary, .book-now-btn, .map-link-btn, .map-btn.primary,
+    .profile-submit-btn, .category-filter-btn.active, .map-filter-btn.active
+  ):hover {
+    background: var(--customer-accent-hover) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .back-btn, .back-btn-full, .btn-primary, .book-now-btn,
+    .category-filter-btn, .map-filter-btn, .map-nav-btn,
+    .accommodation-option-btn, .accommodation-picker-button,
+    input, select, textarea, button, a
+  ):focus-visible {
+    outline: 3px solid var(--customer-focus) !important;
+    outline-offset: 3px;
+  }
+
+  /* MY BOOKINGS: preserve status meaning even against generic chip styling. */
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .status-approved, .status-completed, .status-available-pill,
+    .payment-paid, .status-paid
+  ) {
+    background: var(--customer-status-success-background) !important;
+    color: var(--customer-status-success-text) !important;
+    border-color: #387d62 !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .status-pending, .payment-pending
+  ) {
+    background: var(--customer-status-warning-background) !important;
+    color: var(--customer-status-warning-text) !important;
+    border-color: #997449 !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .status-rejected, .status-cancelled, .status-unavailable-pill,
+    .payment-rejected, .status-unpaid, .payment-unpaid
+  ) {
+    background: var(--customer-status-error-background) !important;
+    color: var(--customer-status-error-text) !important;
+    border-color: #8b4b5b !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .modify-btn, .my-booking-actions .modify-btn
+  ) {
+    background: var(--customer-card-raised) !important;
+    color: var(--customer-text-primary) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .cancel-btn, .remove-item-btn
+  ) {
+    background: var(--customer-status-error-background) !important;
+    color: var(--customer-status-error-text) !important;
+  }
+
+  /* Resort Map: marker photo/map remains visible; its information panel dims. */
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .map-note, .map-selected-counter
+  ) {
+    background: var(--customer-card-subtle) !important;
+    color: var(--customer-text-primary) !important;
+    border-color: var(--customer-border) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .map-info-card .info-row {
+    border-bottom-color: var(--customer-border) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .map-info-card :is(h2, strong) {
+    color: var(--customer-text-primary) !important;
+  }
+
+  /* PROFILE: neutral read-only details, passwords and subtle controls. */
+  html[data-customer-theme="dark"] body.customer-manager-tone.customer-profile-page {
+    background: linear-gradient(180deg,
+      var(--customer-page-top), var(--customer-page-bottom)) !important;
+    color: var(--customer-text-primary) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone.customer-profile-page :is(
+    .profile-intro h1, .profile-card-heading h2, .profile-eyebrow
+  ) { color: var(--customer-text-primary) !important; }
+  html[data-customer-theme="dark"] body.customer-manager-tone.customer-profile-page :is(
+    .profile-intro p, .profile-card-heading p, .password-help
+  ) { color: var(--customer-text-secondary) !important; }
+  html[data-customer-theme="dark"] body.customer-manager-tone.customer-profile-page .profile-card {
+    background: var(--customer-card) !important;
+    border-color: var(--customer-border) !important;
+    box-shadow: var(--customer-shadow) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone.customer-profile-page :is(
+    .profile-readonly, .profile-readonly-tag, .toggle-password
+  ) {
+    background: var(--customer-card-subtle) !important;
+    color: var(--customer-text-primary) !important;
+    border-color: var(--customer-border) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone.customer-profile-page .toggle-password[aria-pressed="true"] {
+    background: var(--customer-card-raised) !important;
+    color: #a7f3d0 !important;
+  }
+
+  /* PAYPAL CHECKOUT: screen-only container contrast; leave SDK button/iframe
+     and PayPal's actual amount/checkout data completely untouched. */
+  html[data-customer-theme="dark"] body.customer-manager-tone.customer-payment-page {
+    --checkout-page: var(--customer-page-top);
+    --checkout-card: var(--customer-card);
+    --checkout-text: var(--customer-text-primary);
+    --checkout-muted: var(--customer-text-secondary);
+    --checkout-border: var(--customer-border);
+    --checkout-teal: var(--customer-accent-strong);
+    --checkout-teal-tint: var(--customer-teal-tint);
+    background: var(--checkout-page) !important;
+    color: var(--checkout-text) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone.customer-payment-page .payment-card {
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone.customer-payment-page .payment-grid > .section-box {
+    background: var(--checkout-card) !important;
+    color: var(--checkout-text) !important;
+    border-color: var(--checkout-border) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone.customer-payment-page :is(
+    .payment-title-block h1, .payment-grid .section-box h2,
+    .paypal-payment-header h3, .summary-item strong, .payment-row strong
+  ) { color: var(--checkout-text) !important; }
+  html[data-customer-theme="dark"] body.customer-manager-tone.customer-payment-page :is(
+    .payment-title-block p, .summary-item, .payment-row span,
+    .payment-note, .payment-form-group label, .paypal-payment-help,
+    .paypal-payment-copy, .paypal-sdk-status, .policy-item p
+  ) { color: var(--checkout-muted) !important; }
+  html[data-customer-theme="dark"] body.customer-manager-tone.customer-payment-page :is(
+    .summary-item, .payment-row, .policy-item
+  ) { border-color: var(--checkout-border) !important; }
+  html[data-customer-theme="dark"] body.customer-manager-tone.customer-payment-page :is(
+    .paypal-payment-section, .paypal-amount-row, .paypal-sdk-status,
+    .payment-note, .payment-form-wrapper
+  ) {
+    background: var(--customer-card-subtle) !important;
+    color: var(--checkout-text) !important;
+    border-color: var(--checkout-border) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone.customer-payment-page :is(
+    .paypal-payment-copy, .paypal-payment-help, .paypal-sdk-status
+  ) { color: var(--checkout-muted) !important; }
+  html[data-customer-theme="dark"] body.customer-manager-tone.customer-payment-page .payment-row:nth-child(2) {
+    background: var(--customer-teal-tint) !important;
+    border-color: #387d62 !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone.customer-payment-page :is(
+    .payment-row:nth-child(2) span, .payment-row:nth-child(2) strong,
+    .paypal-amount-row strong, .paypal-kicker, .payment-step-label
+  ) { color: #a7f3d0 !important; }
+  html[data-customer-theme="dark"] body.customer-manager-tone.customer-payment-page :is(
+    .paypal-sandbox-badge, .policy-item span
+  ) {
+    background: var(--customer-teal-tint) !important;
+    color: #a7f3d0 !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone.customer-payment-page :is(
+    .resort-policy-reminder, .policy-acknowledgement
+  ) {
+    background: var(--customer-card-subtle) !important;
+    border-color: var(--customer-border) !important;
+    color: var(--customer-text-primary) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone.customer-payment-page :is(
+    .resort-policy-reminder h2, .policy-acknowledgement
+  ) { color: var(--customer-text-primary) !important; }
+  html[data-customer-theme="dark"] body.customer-manager-tone.customer-payment-page .paypal-payment-section #paypalButton {
+    /* Deliberately no overrides: preserve PayPal's hosted payment UI. */
+    isolation: isolate;
+  }
+
+  /* RECEIPT: dark on screen but always WHITE when printed. */
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .receipt-shell, .minimal-receipt, .receipt-hero, .receipt-section,
+    .payment-summary, .receipt-content, .receipt-loading-box,
+    .receipt-code-box, .receipt-item, .receipt-reminder
+  ) {
+    background: var(--customer-card) !important;
+    color: var(--customer-text-primary) !important;
+    border-color: var(--customer-border) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .receipt-shell {
+    box-shadow: var(--customer-shadow) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .receipt-title h1, .receipt-title p strong, .receipt-section h3,
+    .payment-summary h3, .receipt-item strong, .receipt-code-value,
+    .receipt-reminder > strong, .amount-row > strong
+  ) { color: var(--customer-text-primary) !important; }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .receipt-title p, .info-label, .receipt-section-subtitle, .receipt-code-label,
+    .info-row, .receipt-item, .amount-row, .receipt-reminder
+  ) { color: var(--customer-text-secondary) !important; }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .info-row, .amount-row
+  ) { border-bottom-color: var(--customer-border) !important; }
+  html[data-customer-theme="dark"] body.customer-manager-tone .payment-summary > .amount-row:last-child {
+    background: var(--customer-teal-tint) !important;
+    border-color: #387d62 !important;
+    color: #c6f7e4 !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .payment-summary > .amount-row:last-child strong {
+    color: #c6f7e4 !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .receipt-reminder a {
+    color: #8af0dd !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .receipt-loading-box, .receipt-error-box
+  ) {
+    background: var(--customer-card) !important;
+    color: var(--customer-text-secondary) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .receipt-error-box {
+    background: var(--customer-status-error-background) !important;
+    color: var(--customer-status-error-text) !important;
+  }
+
+  /* Dialogs stay readable; do not change close/confirm/cancel semantics. */
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .pricing-modal-box, .image-viewer-box, .cancel-transaction-box,
+    .request-modal-box, .modal-content, .logout-confirm-dialog
+  ) {
+    background: var(--customer-card-raised) !important;
+    color: var(--customer-text-primary) !important;
+    border-color: var(--customer-border) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .cancel-transaction-box h2, .request-modal-box h2,
+    .modal-content h2, .logout-confirm-dialog h2,
+    #imageViewerCaption
+  ) { color: var(--customer-text-primary) !important; }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .cancel-transaction-box p, .logout-confirm-dialog p, #imageViewerCounter
+  ) { color: var(--customer-text-secondary) !important; }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .cancel-transaction-btn, .logout-confirm-cancel
+  ) {
+    background: var(--customer-status-error-background) !important;
+    color: var(--customer-status-error-text) !important;
+    border-color: #8b4b5b !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .continue-booking-btn, .logout-confirm-accept
+  ) {
+    background: var(--customer-accent-strong) !important;
+    color: #fff !important;
+  }
+
+  /* AI assistant: visually integrate the EXISTING chat without modifying any
+     message logic, language detection, microphone, cards or API call. */
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .ai-chat-window, .ai-chat-window.maximized
+  ) {
+    background: var(--customer-card) !important;
+    color: var(--customer-text-primary) !important;
+    border-color: var(--customer-border) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-chat-header {
+    background: var(--customer-nav-start) !important;
+    color: #fff !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-chat-messages {
+    background: var(--customer-page-top) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-message.assistant .ai-bubble {
+    background: var(--customer-card-raised) !important;
+    color: var(--customer-text-primary) !important;
+    border-color: var(--customer-border) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .ai-chat-window .ai-quick-question, .ai-chat-window .ai-recommendation-card,
+    .ai-chat-window .ai-voice-panel
+  ) {
+    background: var(--customer-card-raised) !important;
+    color: var(--customer-text-primary) !important;
+    border-color: var(--customer-border) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .ai-chat-window .ai-recommendation-body strong,
+    .ai-chat-window .ai-quick-questions-label
+  ) { color: var(--customer-text-primary) !important; }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .ai-chat-window .ai-recommendation-body p,
+    .ai-chat-window .ai-recommendation-body .ai-recommendation-price
+  ) { color: var(--customer-text-secondary) !important; }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-chat-input-area {
+    background: var(--customer-card) !important;
+    border-color: var(--customer-border) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-chat-input-area input {
+    background: var(--customer-input-background) !important;
+    color: var(--customer-input-text) !important;
+    border-color: var(--customer-border-strong) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-chat-input-area input::placeholder {
+    color: var(--customer-input-placeholder) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .ai-chat-window .ai-reply-actions button, .ai-chat-window .ai-chat-mic-btn,
+    .ai-chat-window .ai-recommendation-link:not(.primary),
+    .ai-chat-window .ai-chat-header-btn
+  ) {
+    background: var(--customer-card-subtle) !important;
+    color: var(--customer-text-primary) !important;
+    border-color: var(--customer-border) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone :is(
+    .ai-chat-toggle, .ai-chat-window .ai-chat-send,
+    .ai-chat-window .ai-message.user .ai-bubble,
+    .ai-chat-window .ai-recommendation-link.primary
+  ) {
+    background: var(--customer-accent-strong) !important;
+    color: #fff !important;
+  }
+}
+/* No print rules: original receipt @media print keeps white, ink-friendly. */
