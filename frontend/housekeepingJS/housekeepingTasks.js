@@ -99,7 +99,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = "image/jpeg,image/png,image/webp";
-    input.setAttribute("capture", "environment");
+    // Leave capture optional so phones can choose Camera OR Photo Library.
     input.setAttribute("aria-label", "Choose cleaning proof photo for " + task.accommodation);
     label.appendChild(input);
     wrap.appendChild(label);
