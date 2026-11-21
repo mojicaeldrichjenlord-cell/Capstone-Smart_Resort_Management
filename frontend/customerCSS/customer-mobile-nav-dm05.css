@@ -1,0 +1,193 @@
+/*
+ * DM-05 | Compact Customer Mobile Navigation (screen only).
+ * Only the 8 signed-in Customer pages use this file.
+ * Works with the existing hamburger / scroll-nav scripts without changing
+ * booking-exit confirmation, AI chat, theme persistence, or login.
+ */
+@media screen and (max-width: 900px) {
+  /* Keep the header compact: the opened nav is an overlay, not a grid row. */
+  body.customer-manager-tone > header.navbar {
+    min-height: 72px !important;
+    padding: 8px 12px !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 9px !important;
+  }
+  body.customer-manager-tone > header.navbar .logo {
+    min-width: 0 !important;
+    max-width: 100%;
+  }
+  body.customer-manager-tone > header.navbar .menu-toggle {
+    min-width: 44px !important;
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 12px !important;
+  }
+  body.customer-manager-tone > header.navbar #mobileNav {
+    position: absolute !important;
+    grid-column: auto !important;
+    top: calc(100% + 5px) !important;
+    left: 10px !important;
+    right: 10px !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-height: calc(100vh - 90px);
+    max-height: calc(100dvh - 90px);
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    display: none !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 3px !important;
+    margin: 0 !important;
+    padding: 9px !important;
+    border: 1px solid rgba(148, 163, 184, .24) !important;
+    border-radius: 16px !important;
+    background: #1c2b40 !important;
+    box-shadow: 0 16px 34px rgba(8, 20, 35, .3) !important;
+    scrollbar-width: thin;
+    scrollbar-color: #56687b transparent;
+  }
+  body.customer-manager-tone > header.navbar #mobileNav.show {
+    display: flex !important;
+  }
+  body.customer-manager-tone > header.navbar #mobileNav > a {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    flex: 0 0 auto !important;
+    min-height: 42px !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 8px 12px !important;
+    border-radius: 10px !important;
+    font-size: .94rem !important;
+    line-height: 1.25 !important;
+    text-align: left !important;
+    color: #e5edf5 !important;
+  }
+  body.customer-manager-tone > header.navbar #mobileNav > a.active,
+  body.customer-manager-tone > header.navbar #mobileNav > a.active-nav {
+    background: #34445d !important;
+    color: #f8fafc !important;
+    box-shadow: none !important;
+  }
+  body.customer-manager-tone > header.navbar #mobileNav > a:hover {
+    background: #2c4056 !important;
+  }
+  /* A subtle separator keeps Logout clearly distinct from the theme. */
+  body.customer-manager-tone > header.navbar #mobileNav > #logoutBtn {
+    margin-top: 4px !important;
+    border-top: 1px solid rgba(148, 163, 184, .22) !important;
+    border-radius: 0 0 10px 10px !important;
+  }
+
+  /* One full-width Theme row; the actual switch stays a compact 64x34 track
+     aligned right. A pseudo-label avoids rewriting shared page markup/JS. */
+  body.customer-manager-tone > header.navbar #mobileNav > button#customerThemeToggle {
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    flex: 0 0 50px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: 50px !important;
+    min-height: 50px !important;
+    margin: 5px 0 0 !important;
+    padding: 0 12px !important;
+    border: 1px solid rgba(148, 163, 184, .24) !important;
+    border-radius: 11px !important;
+    background: #25364c !important;
+    background-image: none !important;
+    color: #e5edf5 !important;
+    box-shadow: none !important;
+    text-align: left !important;
+    font-size: .92rem !important;
+    cursor: pointer;
+  }
+  body.customer-manager-tone > header.navbar #mobileNav > button#customerThemeToggle::before {
+    content: "Theme";
+    position: static;
+    display: inline-block;
+    margin-right: auto;
+    color: #dce7f1;
+    font-weight: 750;
+    letter-spacing: 0;
+  }
+  body.customer-manager-tone > header.navbar #mobileNav > button#customerThemeToggle::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    width: 64px;
+    height: 34px;
+    border: 1px solid #aebdcb;
+    border-radius: 999px;
+    background: #e8eef4;
+    transform: translateY(-50%);
+    pointer-events: none;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone > header.navbar #mobileNav > button#customerThemeToggle::after {
+    background: #152435;
+    border-color: #60788e;
+  }
+  body.customer-manager-tone > header.navbar #mobileNav > button#customerThemeToggle .customer-theme-icon {
+    position: absolute !important;
+    z-index: 1;
+    top: 50%;
+    right: 44px;
+    flex: 0 0 26px !important;
+    width: 26px !important;
+    height: 26px !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+    font-size: .95rem !important;
+    background: #fff !important;
+    color: #253448 !important;
+    box-shadow: 0 1px 3px rgba(4, 13, 23, .25) !important;
+    transform: translateY(-50%) !important;
+    transition: right .18s ease, background-color .18s ease;
+  }
+  body.customer-manager-tone > header.navbar #mobileNav > button#customerThemeToggle[aria-pressed="true"] .customer-theme-icon {
+    right: 14px;
+    background: #edf3f8 !important;
+    color: #14273b !important;
+    transform: translateY(-50%) !important;
+  }
+  body.customer-manager-tone > header.navbar #mobileNav > button#customerThemeToggle:hover {
+    background: #2d4056 !important;
+  }
+  body.customer-manager-tone > header.navbar #mobileNav > button#customerThemeToggle:focus-visible {
+    outline: 3px solid #5eead4 !important;
+    outline-offset: 2px !important;
+  }
+
+  /* The AI floating launcher should not compete with an expanded mobile menu.
+     Menu overlay is above even an already opened chat window until closed. */
+  body.customer-manager-tone:has(> header.navbar #mobileNav.show) > header.navbar {
+    z-index: 5200 !important;
+  }
+  body.customer-manager-tone:has(> header.navbar #mobileNav.show) .ai-chat-toggle {
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+}
+@media screen and (max-width: 480px) {
+  body.customer-manager-tone > header.navbar .logo::after {
+    font-size: clamp(.99rem, 4.4vw, 1.2rem) !important;
+  }
+  body.customer-manager-tone > header.navbar .logo::before {
+    width: 46px !important;
+    height: 46px !important;
+  }
+  body.customer-manager-tone > header.navbar #mobileNav {
+    left: 8px !important;
+    right: 8px !important;
+  }
+}
+@media screen and (max-width: 900px) and (prefers-reduced-motion: reduce) {
+  body.customer-manager-tone > header.navbar #mobileNav > button#customerThemeToggle .customer-theme-icon {
+    transition: none !important;
+  }
+}
