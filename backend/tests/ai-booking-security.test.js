@@ -204,6 +204,57 @@ const futureContext = {
   wants_booking: true,
 };
 
+test("AI-36 history trivia is politely refused with zero Gemini credits or SQL reads", async () => {
+  const result = await post("/api/ai/chat", {
+    message: "ano full name ni bonifacio",
+    voice_language: "taglish",
+    context: { room_id: 61, room_name: "Family Room A", guests: 20 },
+    recent_turns: [
+      { role: "user", text: "Anong magandang room para sa 20 guests?" },
+      { role: "assistant", text: "Ito po yung matching preview." },
+    ],
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.success, true);
+  assert.equal(result.body.mode, "resort_scope_only");
+  assert.equal(result.body.resort_scope_allowed, false);
+  assert.match(result.body.reply, /Resort inquiries lang po/i);
+  assert.doesNotMatch(result.body.reply, /Andres|Bonifacio|historical/i);
+  assert.deepEqual(result.body.recommendation_cards, []);
+  assert.equal(result.body.booking_preview, null);
+  assert.equal(modelCalls, 0);
+  assert.equal(queries.length, 0);
+});
+
+test("AI-36 second non-resort turn is still blocked even after prior refusal", async () => {
+  const result = await post("/api/ai/chat", {
+    message: "si jose rizal",
+    voice_language: "english",
+    context: { room_id: 61, language_style: "taglish" },
+    recent_turns: [
+      { role: "user", text: "ano full name ni bonifacio" },
+      { role: "assistant", text: "Resort inquiries lang po ang masasagot ko." },
+    ],
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.mode, "resort_scope_only");
+  assert.match(result.body.reply, /I can help with Arvic Seaside Resort/i);
+  assert.doesNotMatch(result.body.reply, /Jose|Protacio|Mercado|Rizal/i);
+  assert.equal(modelCalls, 0);
+  assert.equal(queries.length, 0);
+});
+
+test("AI-36 mixed history and parking request cannot get a generic AI answer", async () => {
+  const result = await post("/api/ai/chat", {
+    message: "Ano full name ni Bonifacio? May parking ba sa resort?",
+    voice_language: "taglish",
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.mode, "resort_scope_only");
+  assert.equal(modelCalls, 0);
+  assert.equal(queries.length, 0);
+});
+
 test("Retired AI create-booking route refuses unauthenticated direct writes", async () => {
   const result = await post("/api/ai/create-booking", {
     user_id: 42, room_id: 61, guests: 3,
