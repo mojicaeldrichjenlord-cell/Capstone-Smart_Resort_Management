@@ -120,3 +120,42 @@ test("AI-38 the original requested category overrides the last suggested room", 
   assert.equal(change.category, "family");
   assert.equal(requestedCategory(recommendationLookupMessage(change.category, change.guests)), "family");
 });
+
+
+test("AI-45 descriptive Filipino recommendations preserve written guest count", () => {
+  const { guestCountFromText } = require("../controllers/ai/aiVerifiedPreview");
+  for (const q of [
+    "Anong room ang maganda para sa dalawa?",
+    "Anong family room ang maganda para sa dalawa?",
+    "Which room is best for two?",
+    "Anong rooms ang pwede para sa dalawa?",
+  ]) {
+    assert.equal(guestCountFromText(q), 2, q);
+    assert.equal(explicitGuestCount(q), 2, q);
+  }
+  assert.equal(isPersonalizedRecommendation("Anong room ang maganda para sa dalawa?"), true);
+  assert.equal(isPersonalizedRecommendation("Anong family room ang maganda para sa dalawa?"), true);
+  assert.equal(isPersonalizedRecommendation("Anong room ang maganda?"), true);
+  assert.equal(guestCountFromText("Family Room Two"), 0);
+  assert.equal(guestCountFromText("Room 7,000"), 0);
+});
+
+test("AI-45 2-to-7 corrections need immediately preceding verified preview", () => {
+  const original = "Anong room ang maganda para sa dalawa?";
+  const recent = [
+    {role:"user", text:"Nihao ma?"},
+    {role:"assistant", text:"你好！"},
+    {role:"user", text:original},
+    {role:"assistant", text:"Ito po yung matching accommodations. Check niyo lang yung photos and details sa cards."},
+  ];
+  const ctx = {intent:"ask_recommendation", guests:2, recommendation_category:"room", language_style:"taglish"};
+  for (const q of ["Pito pala kami", "7 pala kami", "7"]) {
+    assert.deepEqual(guestCountCorrection(q, recent, ctx),
+      {guests:7, category:"room", corrected:true}, q);
+  }
+  assert.equal(guestCountCorrection("7pm pala", recent, ctx), null);
+  assert.equal(guestCountCorrection("Pito pala kami", recent,
+    {guests:2, recommendation_category:"room"}), null);
+  assert.equal(guestCountCorrection("Pito pala kami",
+    [...recent.slice(0,-1), {role:"assistant",text:"Yes, free parking ang resort."}], ctx), null);
+});
