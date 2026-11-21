@@ -54,6 +54,9 @@ jobs:
             tests/ai-refund-facebook-contact.test.js \
             tests/ai-natural-recommendations.test.js \
             tests/ai-taglish-tone.test.js \
+            tests/ai-voice-assistant.test.js \
+            tests/ai-speech-transcription.test.js \
+            tests/ai-auto-multilingual-ui44.test.js \
             tests/customer-receipt-ui29.test.js \
             tests/customer-mobile-navigation-ui30.test.js \
             tests/customer-rooms-accordion-ui43.test.js \
