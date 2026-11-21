@@ -220,7 +220,7 @@ test("Voice toolbar initializes without making backend or speech calls", () => {
   assert.equal(h.voice.getLanguage(), "english");
   assert.doesNotMatch(script, /id="aiVoiceLanguage"/);
   assert.match(script, /Automatic language detection/);
-  assert.match(h.nodes.aiVoiceStatus.textContent, /dictate and review/i);
+  assert.match(h.nodes.aiVoiceStatus.textContent, /Gemini mic ready|Browser voice recognition/i);
   assert.equal(h.recognitionInstances.length, 0);
   assert.equal(h.requests.length, 0);
 });
@@ -461,7 +461,7 @@ test("Available Azure Blessica plays MP3 instead of browser TTS", async () => {
 test("Voice picker is removed while language and live controls remain", () => {
   const h = mount();
   assert.equal(h.voice.getLanguage(), "english");
-  assert.match(h.nodes.aiVoiceStatus.textContent, /dictate and review/i);
+  assert.match(h.nodes.aiVoiceStatus.textContent, /Gemini mic ready|Browser voice recognition/i);
   assert.doesNotMatch(script, /aiVoiceChoice|aiVoicePreview|voiceChoice/);
   assert.doesNotMatch(script, /id="aiVoiceLanguage"/);
   assert.match(script, /Automatic language detection/);
