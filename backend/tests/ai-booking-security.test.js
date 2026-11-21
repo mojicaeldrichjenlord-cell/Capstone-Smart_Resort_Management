@@ -738,6 +738,77 @@ test("AI-38 original family-room scope persists after revising 10 guests to 7", 
   assert.equal(modelCalls, 0);
 });
 
+
+test("AI-45 natural two-to-seven follow-up retains group search even after language switch", async () => {
+  catalogRows = [
+    { ...exampleRoom, id: 71, room_name: "Double Room 1", capacity: 7, day_price: 4000 },
+    { ...exampleRoom, id: 72, room_name: "Small Room", capacity: 3, day_price: 2000 },
+    { ...exampleRoom, id: 94, room_name: "Family Room B", capacity: 20, day_price: 8000 },
+  ];
+  const original = "Anong room ang maganda para sa dalawa?";
+  const first = await post("/api/ai/chat", {
+    message: original,
+    context: { language_style: "mandarin" },
+    recent_turns: [
+      {role:"user",text:"Nihao ma?"},
+      {role:"assistant",text:"你好！欢迎咨询 Arvic Seaside Resort。"},
+    ],
+  });
+  assert.equal(first.status, 200);
+  assert.equal(first.body.mode, "verified_accommodation_preview");
+  assert.equal(first.body.extracted_context.guests, 2);
+  assert.equal(first.body.extracted_context.intent, "ask_recommendation");
+  assert.equal(first.body.extracted_context.recommendation_category, "room");
+  assert.deepEqual(first.body.recommendation_cards.map(room => room.id), [72,71,94]);
+  assert.equal(modelCalls, 0);
+  const recent = [
+    {role:"user",text:"Nihao ma?"},
+    {role:"assistant",text:"你好！欢迎咨询 Arvic Seaside Resort。"},
+    {role:"user",text:original},
+    {role:"assistant",text:first.body.reply},
+  ];
+  for (const message of ["Pito pala kami", "7 pala kami"]) {
+    queries = [];
+    const result = await post("/api/ai/chat", {
+      message, context:first.body.extracted_context, recent_turns:recent,
+    });
+    assert.equal(result.status, 200, message);
+    assert.equal(result.body.mode, "verified_accommodation_preview", message);
+    assert.equal(result.body.extracted_context.guests, 7, message);
+    assert.equal(result.body.extracted_context.intent, "ask_recommendation", message);
+    assert.deepEqual(result.body.recommendation_cards.map(room => room.id), [71,94], message);
+    assert.match(result.body.reply, /7 guests na|7位客人/, message);
+    assert.equal(modelCalls, 0, message);
+    assert.equal(queries.length, 1, message);
+    assert.equal(result.body.booking_preview, null, message);
+  }
+});
+
+test("AI-45 a guest-specific family-room preview keeps category on count correction", async () => {
+  catalogRows = [
+    { ...exampleRoom, id: 11, room_name: "Family Room A", capacity: 7 },
+    { ...exampleRoom, id: 12, room_name: "Family Room B", capacity: 10 },
+    { ...exampleRoom, id: 13, room_name: "Double Room 1", capacity: 7 },
+  ];
+  const initial = "Anong family room ang maganda para sa dalawa?";
+  const first = await post("/api/ai/chat", {message:initial});
+  assert.equal(first.body.mode,"verified_accommodation_preview");
+  assert.equal(first.body.extracted_context.recommendation_category, "family");
+  const second = await post("/api/ai/chat", {
+    message:"Pito pala kami",
+    context:first.body.extracted_context,
+    recent_turns:[
+      {role:"user",text:initial},
+      {role:"assistant",text:first.body.reply},
+    ],
+  });
+  assert.equal(second.body.mode,"verified_accommodation_preview");
+  assert.deepEqual(second.body.recommendation_cards.map(r=>r.id),[11,12]);
+  assert.equal(second.body.extracted_context.guests,7);
+  assert.equal(second.body.extracted_context.recommendation_category,"family");
+  assert.equal(modelCalls,0);
+});
+
 test("AI-38 stale or unrelated numeric messages cannot bypass resort-only restriction", async () => {
   const previous = [
     { role: "user", text: "Recommend a room" },
