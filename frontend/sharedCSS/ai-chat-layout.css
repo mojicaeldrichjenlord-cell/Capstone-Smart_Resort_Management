@@ -179,3 +179,37 @@
     border-radius: 15px;
   }
 }
+
+/* UI-38: Make conversational bubbles follow their text, not the whole row.
+   Keep a maximum width for readable long answers on compact/mobile screens.
+   Structured booking-preview cards intentionally retain a usable card width. */
+.ai-chat-window .ai-message {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  width: 100%;
+}
+.ai-chat-window .ai-message.user {
+  align-items: flex-end;
+}
+.ai-chat-window .ai-message > .ai-bubble {
+  width: fit-content;
+  max-width: min(88%, 640px);
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+.ai-chat-window .ai-message.user > .ai-bubble {
+  max-width: min(85%, 560px);
+}
+.ai-chat-window .ai-message.assistant > .ai-reply-actions {
+  align-self: flex-start;
+  width: fit-content;
+  max-width: 100%;
+}
+/* The confirmation preview is a card, not a short conversational bubble. */
+.ai-chat-window .ai-message.assistant > .ai-bubble:has(.ai-confirm-booking-btn) {
+  width: min(100%, 430px);
+  max-width: 100%;
+}
