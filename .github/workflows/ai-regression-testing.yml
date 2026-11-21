@@ -72,6 +72,7 @@ jobs:
             tests/ai-recommendation-intake.test.js \
             tests/housekeeping-task-boundaries.test.js \
             tests/housekeeping-proof-ui46.test.js \
+            tests/manager-navbar-logo-ui47.test.js \
             > "$RUNNER_TEMP/ai-regression.log" 2>&1
           status=$?
           cat "$RUNNER_TEMP/ai-regression.log"
