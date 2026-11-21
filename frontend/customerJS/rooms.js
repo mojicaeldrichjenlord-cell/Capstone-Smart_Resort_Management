@@ -13,6 +13,46 @@
 
 let allRooms = [];
 let currentFilter = "all";
+// UI-43: Compact accommodation accordion for mobile / iPad, including
+// touch devices in landscape. Desktop retains the full card presentation.
+const ROOMS_ACCORDION_QUERY = "(max-width: 1199px), (pointer: coarse)";
+let expandedRoomId = null;
+
+function isCompactRoomLayout() {
+  return window.matchMedia(ROOMS_ACCORDION_QUERY).matches;
+}
+
+function syncRoomAccordionState() {
+  const compact = isCompactRoomLayout();
+  document.querySelectorAll("#roomsContainer .room-ai-card").forEach((card) => {
+    const button = card.querySelector(".room-accordion-toggle");
+    const panel = card.querySelector(".room-accordion-panel");
+    if (!button || !panel) return;
+    const expanded = !compact || Number(card.dataset.roomId) === expandedRoomId;
+    panel.hidden = !expanded;
+    button.setAttribute("aria-expanded", String(expanded));
+    card.classList.toggle("is-expanded", expanded);
+  });
+}
+
+function setupRoomAccordion() {
+  const container = document.getElementById("roomsContainer");
+  if (!container) return;
+  container.addEventListener("click", (event) => {
+    const toggle = event.target.closest(".room-accordion-toggle");
+    if (!toggle || !container.contains(toggle) || !isCompactRoomLayout()) return;
+    const id = Number(toggle.closest(".room-ai-card")?.dataset.roomId);
+    if (!Number.isSafeInteger(id) || id < 1) return;
+    expandedRoomId = expandedRoomId === id ? null : id;
+    syncRoomAccordionState();
+  });
+  const media = window.matchMedia(ROOMS_ACCORDION_QUERY);
+  if (typeof media.addEventListener === "function") {
+    media.addEventListener("change", syncRoomAccordionState);
+  } else if (typeof media.addListener === "function") {
+    media.addListener(syncRoomAccordionState);
+  }
+}
 
 let currentViewerImages = [];
 let currentViewerIndex = 0;
@@ -40,6 +80,7 @@ document.addEventListener("DOMContentLoaded", () => {
   checkCustomerAccess();
   setupLogout();
   setupCategoryFilters();
+  setupRoomAccordion();
   setupImageViewerControls();
   loadRooms();
 });
@@ -160,6 +201,12 @@ function focusRequestedAiAccommodation() {
   if (!Number.isSafeInteger(id) || id < 1) return;
   const card = document.getElementById("room-card-" + id);
   if (!card) return;
+  // A deep-linked AI recommendation must show its information immediately
+  // even when the tablet/phone defaults to collapsed accommodations.
+  if (isCompactRoomLayout()) {
+    expandedRoomId = id;
+    syncRoomAccordionState();
+  }
   card.classList.add("ai-room-focused");
   window.requestAnimationFrame(() => card.scrollIntoView({
     behavior: "smooth", block: "center",
@@ -245,6 +292,11 @@ function renderRooms(rooms) {
     return;
   }
 
+  // If filters removed the open accommodation, don't expand another by mistake.
+  if (!rooms.some(room => Number(room.id) === expandedRoomId)) {
+    expandedRoomId = null;
+  }
+  const compact = isCompactRoomLayout();
   container.innerHTML = rooms
     .map((room) => {
       const rawImage = room.image || "";
@@ -268,6 +320,12 @@ function renderRooms(rooms) {
       const maxCapacity = room.max_capacity || 0;
       const status = capitalize(room.status || "available");
       const extendedSlotLabel = getExtendedLabel(room.category_name, true);
+      const roomId = Number(room.id);
+      const initiallyExpanded = !compact || expandedRoomId === roomId;
+      const compactPrices = [
+        Number(room.day_price) > 0 ? "Day ₱" + dayPrice : "",
+        Number(room.overnight_price) > 0 ? "Night ₱" + overnightPrice : "",
+      ].filter(Boolean).join(" · ") || "Ask for rates";
 
       const galleryImages = Array.isArray(room.gallery_images)
         ? room.gallery_images
@@ -297,7 +355,24 @@ function renderRooms(rooms) {
         : "";
 
       return `
-        <div class="room-ai-card" id="room-card-${Number(room.id)}">
+        <article class="room-ai-card${initiallyExpanded ? " is-expanded" : ""}"
+          id="room-card-${roomId}" data-room-id="${roomId}">
+          <button type="button" class="room-accordion-toggle"
+            aria-controls="room-panel-${roomId}"
+            aria-expanded="${initiallyExpanded}"
+            aria-label="View details for ${itemName}">
+            <img class="room-accordion-thumb" src="${imageSrc}" alt=""
+              loading="lazy"
+              onerror="this.onerror=null;this.src=FALLBACK_IMAGE;" />
+            <span class="room-accordion-main">
+              <span class="room-accordion-name">${itemName}</span>
+              <span class="room-accordion-subtitle">Up to ${maxCapacity} guests · ${displayGroup}</span>
+              <span class="room-accordion-price">${compactPrices}</span>
+            </span>
+            <span class="room-accordion-chevron" aria-hidden="true"></span>
+          </button>
+          <section class="room-accordion-panel" id="room-panel-${roomId}"
+            aria-label="${itemName} details" role="region"${initiallyExpanded ? "" : " hidden"}>
           <div class="room-photo-wrap">
             <img
               src="${imageSrc}"
@@ -389,10 +464,12 @@ function renderRooms(rooms) {
               </button>
             </div>
           </div>
-        </div>
+          </section>
+        </article>
       `;
     })
     .join("");
+  syncRoomAccordionState();
 }
 
 // ============================================================

@@ -1,0 +1,195 @@
+/* UI-43: Customer Accommodation responsive accordion.
+ * Desktop keeps the complete photo cards. Mobile and tablet—including
+ * larger touch tablets—show compact, accessible accommodation rows.
+ * Only layout changes; existing booking/photo/AI actions stay in panel.
+ */
+
+/* The legacy desktop card remains fully visible and unchanged in layout. */
+#roomsContainer .room-accordion-toggle,
+.rooms-compact-hint {
+  display: none;
+}
+#roomsContainer .room-accordion-panel {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+}
+#roomsContainer .room-accordion-panel[hidden] {
+  display: none !important;
+}
+
+@media (max-width: 1199px), (pointer: coarse) {
+  .rooms-compact-hint {
+    display: block;
+    font-size: 0.9rem;
+    line-height: 1.45;
+    color: #475569;
+    margin: 0 0 14px;
+    padding: 0 2px;
+  }
+
+  body.customer-manager-tone .room-ai-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  body.customer-manager-tone #roomsContainer .room-ai-card {
+    min-width: 0;
+    width: 100%;
+    border-radius: 18px;
+    box-shadow: 0 7px 20px rgba(15, 23, 42, 0.075);
+  }
+
+  #roomsContainer .room-accordion-toggle {
+    display: grid;
+    grid-template-columns: 78px minmax(0, 1fr) 22px;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    min-height: 100px;
+    padding: 11px 14px;
+    background: #ffffff;
+    border: none;
+    color: #0f172a;
+    text-align: left;
+    cursor: pointer;
+    font: inherit;
+  }
+
+  #roomsContainer .room-accordion-toggle:focus-visible {
+    outline: 3px solid #0f766e;
+    outline-offset: -4px;
+    border-radius: 16px;
+  }
+
+  #roomsContainer .room-accordion-toggle:hover,
+  #roomsContainer .room-ai-card.is-expanded > .room-accordion-toggle {
+    background: #f2fbfa;
+  }
+
+  #roomsContainer .room-accordion-thumb {
+    width: 78px;
+    height: 76px;
+    object-fit: cover;
+    border-radius: 11px;
+    background: #e2e8f0;
+  }
+
+  #roomsContainer .room-accordion-main {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: 3px;
+  }
+
+  #roomsContainer .room-accordion-name {
+    color: #102035;
+    font-size: 1.05rem;
+    font-weight: 800;
+    line-height: 1.3;
+    overflow-wrap: anywhere;
+  }
+
+  #roomsContainer .room-accordion-subtitle {
+    color: #64748b;
+    font-size: 0.81rem;
+    line-height: 1.4;
+  }
+
+  #roomsContainer .room-accordion-price {
+    color: #0f766e;
+    font-size: 0.84rem;
+    font-weight: 800;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+
+  #roomsContainer .room-accordion-chevron {
+    display: block;
+    width: 12px;
+    height: 12px;
+    border-right: 2px solid #0f766e;
+    border-bottom: 2px solid #0f766e;
+    transform: rotate(45deg);
+    transition: transform 160ms ease;
+    margin: -5px auto 0;
+  }
+
+  #roomsContainer .room-ai-card.is-expanded > .room-accordion-toggle .room-accordion-chevron {
+    transform: rotate(225deg);
+    margin-top: 6px;
+  }
+
+  #roomsContainer .room-ai-card.is-expanded > .room-accordion-panel {
+    border-top: 1px solid #e2e8f0;
+  }
+
+  #roomsContainer .room-accordion-panel .room-photo-wrap > img {
+    height: clamp(205px, 33vw, 300px);
+  }
+
+  #roomsContainer .room-accordion-panel .room-gallery-strip {
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #roomsContainer .room-accordion-panel .room-ai-content {
+    height: auto;
+    min-width: 0;
+  }
+
+  /* Filter controls should not consume four full-screen rows on phones. */
+  .rooms-wrapper .category-filter-panel {
+    padding: 15px;
+    border-radius: 18px;
+  }
+  .rooms-wrapper .category-filter-buttons {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 8px;
+    padding: 2px 0 8px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  .rooms-wrapper .category-filter-buttons .category-filter-btn {
+    width: auto;
+    flex: 0 0 auto;
+    padding: 10px 14px;
+    white-space: nowrap;
+    text-align: center;
+    font-size: 0.87rem;
+  }
+}
+
+@media (max-width: 540px) {
+  #roomsContainer .room-accordion-toggle {
+    grid-template-columns: 68px minmax(0, 1fr) 16px;
+    gap: 10px;
+    min-height: 89px;
+    padding: 9px 12px;
+  }
+  #roomsContainer .room-accordion-thumb {
+    width: 68px;
+    height: 68px;
+  }
+  #roomsContainer .room-accordion-name {
+    font-size: 0.97rem;
+  }
+  #roomsContainer .room-accordion-subtitle,
+  #roomsContainer .room-accordion-price {
+    font-size: 0.79rem;
+  }
+  #roomsContainer .room-accordion-panel .room-photo-wrap > img {
+    height: 200px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #roomsContainer .room-accordion-chevron {
+    transition: none;
+  }
+}

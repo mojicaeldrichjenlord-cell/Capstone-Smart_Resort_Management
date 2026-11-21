@@ -67,6 +67,26 @@ const SHORT_ANSWERS = Object.freeze({
 function normalizeQuestion(message) {
   return String(message || "").normalize("NFKC").toLowerCase().trim();
 }
+// AI-39: One shared intent for the resort-only gate AND verified FAQ route.
+// Avoid matching generic "open" (e.g. "open source code") as a resort question.
+function isOpeningHoursInquiry(message) {
+  const t = normalizeQuestion(message);
+  if (!t || t.length > 350) return false;
+  const patterns = [
+    /\b(?:tuwing\s+)?(?:kailan|kelan)\s+(?:(?:po|ba|nga|kaya)\s+)*(?:(?:kayo|ang\s+(?:resort|hotel))\s+)?(?:open|bukas|nagbubukas|magbubukas|nag[ -]?oopen|nagsasara|sarado|close)\b/i,
+    /\b(?:hanggang\s+)?(?:anong\s+oras|anong\s+araw|anong\s+mga\s+araw|anong\s+days?)\s+(?:(?:po|ba)\s+)*(?:(?:kayo|ang\s+(?:resort|hotel))\s+)?(?:open|bukas|nagbubukas|nagsasara|nag[ -]?oopen|sarado|close)\b/i,
+    /\b(?:open|bukas|sarado|closed)\s+(?:(?:po|ba|pa|din|rin)\s+)*(?:kayo|ang\s+(?:resort|hotel))\b/i,
+    /\b(?:kayo|ang\s+(?:resort|hotel))\s+(?:po\s+)?(?:ba\s+)?(?:open|bukas|sarado|closed)\b/i,
+    /\b(?:are\s+you|is\s+(?:the\s+)?(?:resort|hotel))\s+open\b(?=\s*(?:[?!.]|$|(?:now|today|tomorrow|on|every|at|24|during|weekends?|weekdays?|daily)\b))/i,
+    /\b(?:when|what\s+days?|what\s+time|how\s+late)\s+(?:(?:are|do)\s+you|is\s+(?:the\s+)?resort)?\s*(?:open|close|closed)\b/i,
+    /\b(?:what\s+time\s+do\s+you|when\s+do\s+you|until\s+what\s+time\s+are\s+you)\s+(?:open|close)\b/i,
+    /\b(?:tuwing|every)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|lunes|martes|miyerkules|huwebes|biyernes|sabado|linggo|weekends?)\s+(?:(?:po|ba|kayo|ang)\s+){0,4}(?:open|bukas)\b/i,
+    /\b(?:what\s+(?:are\s+)?your\s+)?(?:operating|opening|business)\s+(?:hours?|days?|schedule)\b/i,
+    /\b24\s*(?:\/\s*7|hours?|oras)\b.{0,65}\b(?:kayo|resort|hotel|open|bukas)\b|\b(?:kayo|resort|hotel|open|bukas)\b.{0,65}\b24\s*(?:\/\s*7|hours?|oras)\b/i,
+  ];
+  return patterns.some(pattern => pattern.test(t));
+}
+
 function guessInquiryLanguage(message) {
   const t = normalizeQuestion(message);
   if (/[\u3400-\u9fff]/u.test(t)) return "mandarin";
@@ -87,7 +107,8 @@ function matchResortInquiry(message) {
   if (!t || t.length > 600) return null;
   const parking = /\b(?:park(?:ing|ing\s+lot)?|car\s*park|vehicle\s+parking|paradahan|mag[ -]?park|i[ -]?park)\b/i.test(t);
   const location = /\b(?:address|located|location|saan\s+(?:kayo|po\s+kayo|ang\s+resort)|nasaan\s+(?:ang\s+)?resort|directions?\s+to\s+(?:the\s+)?resort|direcci[oó]n)\b/i.test(t);
-  const hours = /\b(?:operating\s+hours?|opening\s+hours?|business\s+hours?|open\s+(?:24\s*(?:\/\s*7|hours?)|everyday|on\s+(?:sunday|saturday|weekends?))|what\s+time\s+(?:do\s+you\s+)?open|anong\s+oras\s+(?:bukas|open)|bukas\s+ba\s+(?:kayo|ang\s+resort)|oras\s+ng\s+resort)\b/i.test(t);
+  const hours = isOpeningHoursInquiry(t) ||
+    /\b(?:operating\s+hours?|opening\s+hours?|business\s+hours?|open\s+(?:24\s*(?:\/\s*7|hours?)|everyday|on\s+(?:sunday|saturday|weekends?))|what\s+time\s+(?:do\s+you\s+)?open|anong\s+oras\s+(?:bukas|open)|bukas\s+ba\s+(?:kayo|ang\s+resort)|oras\s+ng\s+resort)\b/i.test(t);
   const contact = /\b(?:contact\s+(?:number|details?|info)|phone\s+(?:number|contact)|telephone|hotline|tawag(?:an)?\s+(?:ko\s+)?(?:sa\s+)?(?:resort|inyo|kayo)|numero\s+ng\s+(?:resort|contact)|number\s+(?:niyo|nyo|ninyo)|contact\s+kayo)\b/i.test(t);
   const pool = /\b(?:swimming\s+pool|pool\s+(?:area|facility)|may\s+(?:ba\s+)?pool|meron\s+(?:ba\s+)?pool|have\s+(?:a\s+)?pool|piscina)\b/i.test(t);
   // Prevent a resort-wide answer falsely promising a specific room amenity.
@@ -114,6 +135,10 @@ function matchResortInquiry(message) {
 
   // Resort's opening hours are not check-in/out schedules.
   if (topic === "openingHours" && /check[ -]?(?:in|out)|room|booking\s+time|reservation\s+time/i.test(t)) return null;
+  // Normal posted hours do not guarantee emergency or holiday operations.
+  if (topic === "openingHours" &&
+      /\b(?:holidays?|pasko|christmas|new\s+year|undas|bagyo|typhoon|storm|brownout|power\s+outage|emergency|maintenance)\b/i.test(t))
+    return { topic, qualified: true };
   // Pool pricing / eligibility / safety rules must not be inferred from pool existence.
   if (topic === "pool" && /\b(?:free|libre|libreng|magkano|price|rate|fee|depth|deep|rules|allowed|included|bawal|hours|open\s+until)\b/i.test(t))
     return { topic, qualified: true };
@@ -124,6 +149,11 @@ function getResortInquiryReply(match, language) {
   if (!match || !SHORT_ANSWERS[match.topic]) return null;
   const locale = Object.hasOwn(SHORT_ANSWERS[match.topic], language) ? language : "english";
   if (match.qualified) {
+    if (match.topic === "openingHours") {
+      if (locale === "taglish" || locale === "tagalog")
+        return "Regular hours po ng resort ay 24 hours, Monday to Sunday. Para sa special holiday o emergency changes, pa-confirm po muna sa Front Desk: 0956-912-5625.";
+      return "Our regular resort hours are 24 hours, Monday to Sunday. Please confirm possible holiday or emergency changes with Front Desk at 0956-912-5625.";
+    }
     if (locale === "taglish" || locale === "tagalog") {
       return match.topic === "parking"
         ? "May free parking po tayo para sa lahat ng vehicle types, pero hindi pa confirmed yung specific parking detail na tinanong niyo. Pwede niyo pong i-check sa Front Desk: 0956-912-5625."
@@ -194,7 +224,7 @@ function resortInquiryPromptLines() {
 }
 
 module.exports = {
-  RESORT_INQUIRY_FACTS, matchResortInquiry,
+  RESORT_INQUIRY_FACTS, matchResortInquiry, isOpeningHoursInquiry,
   guessInquiryLanguage, getResortInquiryReply, resortInquiryPromptLines,
   matchUnverifiedResortPolicy, getUnverifiedResortPolicyReply,
 };

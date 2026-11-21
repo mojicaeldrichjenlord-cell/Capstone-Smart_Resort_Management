@@ -194,3 +194,54 @@ test("Non-inquiry statements and unrelated content cannot trigger a canned resor
     assert.equal(matchResortInquiry(question), null, question);
   }
 });
+
+
+test("AI-39 natural operating days/hours questions use a verified answer, no AI/DB guess", () => {
+  const { isOpeningHoursInquiry } =
+    require("../controllers/ai/resortInquiryKnowledge");
+  for (const message of [
+    "tuwing kelan po kayo open?",
+    "Tuwing kailan po kayo bukas?",
+    "Kailan po kayo nagbubukas?",
+    "Anong oras kayo open?",
+    "Hanggang anong oras kayo bukas?",
+    "Anong days po kayo open?",
+    "Bukas ba kayo ng Sunday?",
+    "Open po ba kayo pag weekends?",
+    "Tuwing Sunday ba kayo open?",
+    "Every Sunday po ba kayo open?",
+    "Are you open on Sundays?",
+    "What days are you open?",
+    "When do you close?",
+    "Are you open 24/7?",
+    "24/7 ba kayo?",
+    "What are your operating hours?",
+  ]) {
+    assert.equal(isOpeningHoursInquiry(message), true, message);
+    const match = matchResortInquiry(message);
+    assert.deepEqual(match, { topic: "openingHours", qualified: false }, message);
+    const response = getResortInquiryReply(match, guessInquiryLanguage(message) || "english");
+    assert.match(response, /24 hours/, message);
+    assert.match(response, /Monday to Sunday|Monday through Sunday/, message);
+    assert.doesNotMatch(response, /refund|available rooms?|unlimited slots/i);
+  }
+});
+
+test("AI-39 special opening circumstances are qualified, not guaranteed", () => {
+  for (const question of ["Open ba kayo pag holiday?", "Bukas ba kayo kapag may bagyo?"]) {
+    assert.deepEqual(matchResortInquiry(question),
+      { topic: "openingHours", qualified: true }, question);
+    const answer = getResortInquiryReply(matchResortInquiry(question), "taglish");
+    assert.match(answer, /Regular hours po/);
+    assert.match(answer, /pa-confirm po muna sa Front Desk/);
+  }
+  for (const question of [
+    "What is open source software?",
+    "Open a Python file for me",
+    "When does the mall open?",
+    "Are you open to writing a poem?",
+    "Anong oras ang check-in sa Family Room B?",
+  ]) {
+    assert.equal(matchResortInquiry(question), null, question);
+  }
+});

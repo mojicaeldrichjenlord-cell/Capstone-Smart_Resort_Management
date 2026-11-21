@@ -30,9 +30,13 @@
     <link rel="stylesheet" href="../customerCSS/landing.css" />
     <!-- Stage UI-22: visual-only muted Customer theme, loaded last. -->
   <link rel="stylesheet" href="../customerCSS/customer-manager-tone.css?v=20261119-ui22" />
+    <!-- UI-37: Reuse Customer chatbot visuals on the public landing page. -->
+    <link rel="stylesheet" href="../sharedCSS/ai-recommendations.css" />
+    <link rel="stylesheet" href="../sharedCSS/ai-chat-layout.css?v=20261121-ui38" />
+    <link rel="stylesheet" href="../sharedCSS/ai-chat-airy.css?v=20261121-ui37" />
 </head>
 
-  <body class="customer-manager-tone">
+  <body class="customer-manager-tone" data-ai-chat-surface="public">
     <!-- ======================================================
       LANDING NAVBAR
       Purpose:
@@ -542,12 +546,46 @@
       </p>
     </footer>
 
+    <!-- UI-37: Guest inquiries are available without customer login.
+         Only the welcome message/history and booking links differ from Home.
+         No mic control: server-side voice services require authentication. -->
+    <button id="aiChatToggle" class="ai-chat-toggle" type="button"
+      aria-label="Ask Arvic Seaside AI Chatbot Assistant">Ask AI Chatbot</button>
+    <div id="aiChatWindow" class="ai-chat-window" aria-label="Arvic Seaside AI Chatbot Assistant">
+      <div class="ai-chat-header">
+        <div class="ai-assistant-brand">
+          <span class="ai-assistant-mark" aria-hidden="true">✦</span>
+          <div class="ai-assistant-heading">
+            <h3>Arvic Seaside Resort AI Assistant</h3>
+            <span class="ai-assistant-caption">Ask about our resort · No login required</span>
+          </div>
+        </div>
+        <div class="ai-chat-header-actions">
+          <button id="aiNewChatBtn" class="ai-chat-header-btn" title="New Chat" type="button">New</button>
+          <button id="aiChatMaximize" class="ai-chat-header-btn" title="Maximize" type="button">▢</button>
+          <button id="aiChatClose" class="ai-chat-header-btn" title="Close" type="button">&times;</button>
+        </div>
+      </div>
+      <div id="aiChatMessages" class="ai-chat-messages" aria-live="polite"></div>
+      <div class="ai-chat-input-area">
+        <input type="text" id="aiChatInput"
+          aria-label="Ask a question about Arvic Seaside Resort"
+          maxlength="2000"
+          placeholder="Ask about rooms, rates, cottages, parking..." />
+        <button id="aiSendBtn" class="ai-chat-send" type="button">Send</button>
+      </div>
+    </div>
+
     <!-- ======================================================
       LANDING PAGE JAVASCRIPT
       Purpose:
       - Controls mobile burger menu
       - Controls image gallery modal
+      - Reuses the current verified resort AI chat endpoint and safety guards
     ======================================================= -->
+    <script src="../sharedJS/api-config.js"></script>
     <script src="../customerJS/landing.js"></script>
+    <script src="../js/ai-chat.js?v=20261121-ui42"></script>
+    <script src="../js/ai-chat-polish.js?v=20261121-ui37"></script>
   </body>
 </html>

@@ -3,9 +3,33 @@ const AI_API_BASE = typeof API_BASE === "string" ? API_BASE
   : (["localhost", "127.0.0.1"].includes(window.location.hostname)
     ? "http://127.0.0.1:5000/api"
     : "https://smartresort-backend.onrender.com/api");
-const AI_CONTEXT_KEY = "smartresort_ai_context_v1";
-const AI_WINDOW_STATE_KEY = "smartresort_ai_window_state_v1";
-const AI_CHAT_HISTORY_KEY = "smartresort_ai_chat_history_v1";
+// UI-37: Public landing inquiries and signed-in Customer chats must not share
+// local history, recommendation context, or saved popup size.
+const AI_IS_PUBLIC_LANDING = document.body?.dataset.aiChatSurface === "public";
+const AI_CONTEXT_KEY = AI_IS_PUBLIC_LANDING
+  ? "arvic_public_ai_context_v1" : "smartresort_ai_context_v1";
+const AI_WINDOW_STATE_KEY = AI_IS_PUBLIC_LANDING
+  ? "arvic_public_ai_window_state_v1" : "smartresort_ai_window_state_v1";
+const AI_CHAT_HISTORY_KEY = AI_IS_PUBLIC_LANDING
+  ? "arvic_public_ai_chat_history_v1" : "smartresort_ai_chat_history_v1";
+// UI-42: Public visitor conversations live only in this page's JavaScript
+// memory. A new load, separate tab or next visitor starts completely fresh.
+// Customer Home retains its existing separately keyed localStorage behavior.
+let aiPublicChatHistory = [];
+let aiPublicChatContext = {};
+let aiPublicChatGeneration = 0;
+if (AI_IS_PUBLIC_LANDING) {
+  // Remove historical persisted public chats saved by older releases.
+  // Never remove the Customer account, Customer chat, or booking state.
+  for (const key of [AI_CHAT_HISTORY_KEY, AI_CONTEXT_KEY, AI_WINDOW_STATE_KEY]) {
+    try { localStorage.removeItem(key); } catch (_) { /* storage may be disabled */ }
+  }
+  // Browsers can restore a previous DOM/JS snapshot with the Back button.
+  // A reload prevents showing another visitor's cached chat from bfcache.
+  window.addEventListener("pageshow", event => {
+    if (event.persisted) window.location.reload();
+  });
+}
 // Verified official Facebook page from the Customer Home page (refund support).
 const OFFICIAL_RESORT_FACEBOOK_URL = "https://www.facebook.com/share/1E1kZLtrV4/?mibextid=wwXIfr";
 // Keep these contact numbers consistent with the Customer Home contact card.
@@ -89,6 +113,7 @@ async function sendAiMessage(options = {}) {
   }
 
   aiMessageInFlight = true;
+  const requestGeneration = aiPublicChatGeneration;
   // New broad recommendation requests must not stay locked to an older card.
   const freshSearch = isFreshAiAccommodationSearch(message, getStoredAiContext());
   if (freshSearch) {
@@ -130,9 +155,11 @@ async function sendAiMessage(options = {}) {
       body: JSON.stringify(payload),
     });
 
+    if (AI_IS_PUBLIC_LANDING && requestGeneration !== aiPublicChatGeneration) return null;
     removeTypingIndicator();
 
     const data = await response.json();
+    if (AI_IS_PUBLIC_LANDING && requestGeneration !== aiPublicChatGeneration) return null;
 
     if (!response.ok) {
       const requestError = new Error(data.message || "Failed to get AI response.");
@@ -150,7 +177,10 @@ async function sendAiMessage(options = {}) {
       if (((data.mode === "verified_accommodation_preview" ||
              data.mode === "verified_cheapest_accommodation") &&
             !Object.prototype.hasOwnProperty.call(data.extracted_context, "room_id")) ||
-          data.mode === "accommodation_selection_needed") {
+          data.mode === "accommodation_selection_needed" ||
+          data.mode === "recommendation_needs_guest_count") {
+        // AI-37: A new recommendation is pending guest count; don't
+        // preserve an older selected accommodation by merging nullish keys.
         delete merged.room_id;
         delete merged.room_name;
       }
@@ -178,6 +208,8 @@ async function sendAiMessage(options = {}) {
     }
     return aiReply;
   } catch (error) {
+    // A response from a prior public New Chat must never reappear later.
+    if (AI_IS_PUBLIC_LANDING && requestGeneration !== aiPublicChatGeneration) return null;
     console.warn("AI chat request failed:", error.code || error.message);
     removeTypingIndicator();
 
@@ -226,9 +258,11 @@ async function sendAiMessage(options = {}) {
     appendAiMessage("assistant", safeReply);
     return safeReply;
   } finally {
-    aiMessageInFlight = false;
-    sendBtn.disabled = false;
-    sendBtn.textContent = "Send";
+    if (!AI_IS_PUBLIC_LANDING || requestGeneration === aiPublicChatGeneration) {
+      aiMessageInFlight = false;
+      sendBtn.disabled = false;
+      sendBtn.textContent = "Send";
+    }
   }
 }
 
@@ -265,6 +299,7 @@ function normalizeTimeForContext(value) {
 }
 
 function getStoredAiContext() {
+  if (AI_IS_PUBLIC_LANDING) return { ...aiPublicChatContext };
   try {
     const raw = localStorage.getItem(AI_CONTEXT_KEY);
     return raw ? JSON.parse(raw) : {};
@@ -274,6 +309,10 @@ function getStoredAiContext() {
 }
 
 function saveAiContext(context) {
+  if (AI_IS_PUBLIC_LANDING) {
+    aiPublicChatContext = { ...(context || {}) };
+    return;
+  }
   localStorage.setItem(AI_CONTEXT_KEY, JSON.stringify(context || {}));
 }
 
@@ -311,6 +350,7 @@ function isFreshAiAccommodationSearch(text, context = {}) {
 }
 
 function getStoredChatHistory() {
+  if (AI_IS_PUBLIC_LANDING) return aiPublicChatHistory.slice();
   try {
     const raw = localStorage.getItem(AI_CHAT_HISTORY_KEY);
     return raw ? JSON.parse(raw) : [];
@@ -320,6 +360,10 @@ function getStoredChatHistory() {
 }
 
 function saveChatHistory(history) {
+  if (AI_IS_PUBLIC_LANDING) {
+    aiPublicChatHistory = Array.isArray(history) ? history.slice(-80) : [];
+    return;
+  }
   localStorage.setItem(AI_CHAT_HISTORY_KEY, JSON.stringify(history || []));
 }
 
@@ -348,7 +392,9 @@ function restoreChatHistory() {
   if (!history.length) {
     appendAiMessage(
       "assistant",
-      "Hi po! Anong accommodation o booking details ang maitutulong ko sa inyo?",
+      AI_IS_PUBLIC_LANDING
+        ? "Welcome po sa Arvic Seaside Beach Resort and Hotel! 👋 Ask me about rooms, cottages, rates, parking, and resort policies—no login needed. Ano pong gusto ninyong malaman?"
+        : "Hi po! Anong accommodation o booking details ang maitutulong ko sa inyo?",
       false
     );
 
@@ -419,8 +465,21 @@ function appendAiStarterSuggestions(messages) {
 }
 
 function clearAiConversation() {
-  localStorage.removeItem(AI_CHAT_HISTORY_KEY);
-  localStorage.removeItem(AI_CONTEXT_KEY);
+  if (AI_IS_PUBLIC_LANDING) {
+    aiPublicChatGeneration++;
+    aiPublicChatHistory = [];
+    aiPublicChatContext = {};
+    aiMessageInFlight = false;
+    removeTypingIndicator();
+    const sendBtn = document.getElementById("aiSendBtn");
+    if (sendBtn) {
+      sendBtn.disabled = false;
+      sendBtn.textContent = "Send";
+    }
+  } else {
+    localStorage.removeItem(AI_CHAT_HISTORY_KEY);
+    localStorage.removeItem(AI_CONTEXT_KEY);
+  }
 
   const input = document.getElementById("aiChatInput");
   if (input) {
@@ -999,6 +1058,9 @@ function aiRoomMoney(amount) {
 }
 
 function getAiCustomerPageUrl(page, accommodationId) {
+  // Public visitors can inquire and compare room cards, but entering any
+  // Customer accommodation/booking workflow requires signing in first.
+  if (AI_IS_PUBLIC_LANDING) return "../authHTML/login.html";
   const id = Number(accommodationId);
   if (!Number.isSafeInteger(id) || id <= 0) return "rooms.html";
   return page + "?room_id=" + encodeURIComponent(String(id));
@@ -1064,11 +1126,11 @@ function appendAiRecommendationCards(items, save = true) {
     actions.className = "ai-recommendation-actions";
     const detail = document.createElement("a");
     detail.href = getAiCustomerPageUrl("rooms.html", room.id);
-    detail.textContent = "View Details";
+    detail.textContent = AI_IS_PUBLIC_LANDING ? "Login for Details" : "View Details";
     detail.className = "ai-recommendation-link";
     const book = document.createElement("a");
     book.href = getAiCustomerPageUrl("booking.html", room.id);
-    book.textContent = "Book This";
+    book.textContent = AI_IS_PUBLIC_LANDING ? "Login to Book" : "Book This";
     book.className = "ai-recommendation-link primary";
     const ask = document.createElement("button");
     ask.type = "button";
@@ -1098,6 +1160,12 @@ function appendAiRecommendationCards(items, save = true) {
 }
 
 function createBookingFromPreview(preview, button) {
+  // UI-37: Public landing visitors must always go through Customer login.
+  // A stale localStorage user object is not proof of authentication.
+  if (AI_IS_PUBLIC_LANDING) {
+    window.location.href = "../authHTML/login.html";
+    return;
+  }
   // AI suggestions never create reservations directly. The Customer
   // booking form owns final dates, slot pricing, payment and conflict checks.
   const user = JSON.parse(localStorage.getItem("user") || "null");
@@ -1593,7 +1661,9 @@ function toggleMaximize() {
   chatWindow.classList.toggle("maximized");
   const isMaximized = chatWindow.classList.contains("maximized");
   syncChatSizeButton(chatWindow, maximizeBtn);
-  localStorage.setItem(AI_WINDOW_STATE_KEY, isMaximized ? "maximized" : "normal");
+  if (!AI_IS_PUBLIC_LANDING) {
+    localStorage.setItem(AI_WINDOW_STATE_KEY, isMaximized ? "maximized" : "normal");
+  }
 }
 
 function restoreWindowState() {
@@ -1601,7 +1671,7 @@ function restoreWindowState() {
   const maximizeBtn = document.getElementById("aiChatMaximize");
   if (!chatWindow || !maximizeBtn) return;
 
-  const savedState = localStorage.getItem(AI_WINDOW_STATE_KEY);
+  const savedState = AI_IS_PUBLIC_LANDING ? "normal" : localStorage.getItem(AI_WINDOW_STATE_KEY);
   chatWindow.classList.toggle("maximized", savedState === "maximized");
   syncChatSizeButton(chatWindow, maximizeBtn);
 }

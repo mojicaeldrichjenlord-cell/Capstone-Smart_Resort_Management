@@ -16,7 +16,7 @@
     ======================================================= -->
     <link rel="stylesheet" href="../sharedCSS/global.css" />
     <link rel="stylesheet" href="../css/style.css" />
-    <link rel="stylesheet" href="../adminCSS/admin-walkin.css" />
+    <link rel="stylesheet" href="../adminCSS/admin-walkin.css?v=20261121-ui35" />
     <!-- Resort favicon and accessible Admin mobile navigation. -->
   <link rel="stylesheet" href="../adminCSS/admin-mobile-nav.css" />
   <link rel="icon" type="image/png" href="../images/arvic-logo.png" />
@@ -174,7 +174,7 @@
               </div>
 
               <div class="summary-box">
-                <strong>Required Down Payment</strong>
+                <strong id="requiredPaymentLabel">Full Accommodation Payment</strong>
                 <span id="requiredDownpayment">₱0.00</span>
               </div>
             </div>
@@ -185,13 +185,15 @@
                 <strong id="highlightAccommodationTotal">₱0.00</strong>
               </div>
 
-              <div class="highlight-row">
-                <span>Suggested Down Payment (50%)</span>
+              <!-- UI-34: 50% guidance is for Facebook/Messenger only; never show
+                   this row for walk-ins, which must pay accommodation in full. -->
+              <div class="highlight-row" id="highlightDownpaymentRow" hidden>
+                <span>Required Down Payment (50%)</span>
                 <strong id="highlightDownpayment">₱0.00</strong>
               </div>
 
               <div class="highlight-row">
-                <span>Remaining Balance Onsite</span>
+                <span id="highlightRemainingLabel">Remaining Accommodation Balance</span>
                 <strong id="highlightRemainingBalance">₱0.00</strong>
               </div>
 
@@ -205,10 +207,9 @@
           <!-- ======================================================
              FORM ACTIONS
           ======================================================= -->
+          <!-- UI-35: Secondary action left; Next to Payment right for
+               both walk-in and Facebook/Messenger manual reservations. -->
           <div class="walkin-actions">
-            <button type="submit" class="btn-primary" id="manualNextPaymentBtn" disabled
-              title="Choose and verify available time slots first.">Next to Payment</button>
-
             <a
               href="admin.html"
               class="btn-secondary"
@@ -216,6 +217,9 @@
             >
               Cancel
             </a>
+
+            <button type="submit" class="btn-primary" id="manualNextPaymentBtn" disabled
+              title="Choose and verify available time slots first.">Next to Payment</button>
           </div>
         </form>
 
@@ -233,7 +237,7 @@
     <script src="../sharedJS/manualReservationRoleNav.js"></script>
     <!-- Block expired fixed slots before payment; backend validates again. -->
     <script src="../sharedJS/manual-schedule-guard.js"></script>
-    <script src="../adminJS/admin-walkin.js"></script>
+    <script src="../adminJS/admin-walkin.js?v=20261121-ui34"></script>
     <script src="../adminJS/admin-mobile-nav.js"></script>
     <script src="../sharedJS/logout-confirm.js"></script>
   </body>

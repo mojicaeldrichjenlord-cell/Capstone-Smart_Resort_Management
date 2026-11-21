@@ -16,8 +16,8 @@ const { generalCategoryAmenitiesReply } = require("./aiAccommodationCategoryPoli
 const { isNaturalRoomDetailsQuestion, naturalRoomDetailsReply } = require("./aiNaturalRoomDetails");
 const { isFreeEntranceQuestion, explicitEntranceRoomName, verifiedFreeEntranceReply } = require("./aiAccommodationEntrance");
 const { wantsFocusedRoomOverview, focusedRoomOverview } = require("./aiAccommodationDetails");
-const { isVerifiedPreviewRequest, selectVerifiedPreviews, verifiedPreviewReply } =
-  require("./aiVerifiedPreview");
+const { isVerifiedPreviewRequest, selectVerifiedPreviews, verifiedPreviewReply,
+  requestedCategory } = require("./aiVerifiedPreview");
 const { isRoomPaymentInquiry, resolvePaymentRoom, paymentReply } =
   require("./aiFocusedPaymentReply");
 const {
@@ -25,6 +25,11 @@ const {
 } = require("./aiAccommodationCounts");
 const { matchCheapestInquiry, pickCheapestRows, cheapestReply } =
   require("./aiAffordableFollowup");
+const { isResortQuestion, resortOnlyReply } = require("./aiResortScopeGuard");
+const { isPersonalizedRecommendation, explicitGuestCount, savedGuestCount,
+  guestCountQuestion, guestCountFollowUp: pendingGuestRecommendationAnswer,
+  guestCountCorrection, recommendationLookupMessage
+} = require("./aiRecommendationIntake");
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -1014,6 +1019,37 @@ exports.chatWithGemini = async (req, res) => {
       });
     }
 
+    // UI-36: A receptionist is NOT a general-purpose search assistant.
+    // Apply a deterministic resort-scope gate before ALL paid Gemini
+    // extraction, all MySQL catalog reads and the verified-policy routes.
+    // Stale room_id or old chat history must not authorize a history quiz.
+    // This also covers voice transcripts because voice sends this endpoint.
+    const scopeContext = req.body.context && typeof req.body.context === "object" &&
+      !Array.isArray(req.body.context) ? req.body.context : {};
+    const recentScopeTurns = normalizeRecentTurns(req.body.recent_turns);
+    // Short numeric responses ("4", "apat kami") are resort-relevant ONLY
+    // after this assistant explicitly requested guest count.
+    const guestCorrection = guestCountCorrection(
+      message, recentScopeTurns, scopeContext,
+    );
+    if (!isResortQuestion(message, scopeContext, recentScopeTurns) &&
+        !pendingGuestRecommendationAnswer(message, recentScopeTurns, scopeContext) &&
+        !guestCorrection) {
+      const language = normalizeLanguageStyle(req.body.voice_language) ||
+        detectLanguageFromMessage(message) ||
+        normalizeLanguageStyle(req.body.language_style) ||
+        normalizeLanguageStyle(scopeContext.language_style) || "taglish";
+      return res.status(200).json({
+        success: true,
+        mode: "resort_scope_only",
+        resort_scope_allowed: false,
+        reply: resortOnlyReply(language),
+        extracted_context: mergeContext(scopeContext, { language_style: language }),
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null, recommendation_cards: [],
+      });
+    }
+
     // Fixed-policy fast path: 0 Gemini calls, 0 DB queries, 0 tokens.
     // Do not let an old saved room/payment preference override the user's
     // current generic downpayment question. Final peso amount is still
@@ -1094,6 +1130,97 @@ exports.chatWithGemini = async (req, res) => {
         alternative_dates: [], booking_preview: null,
         recommendation_cards: [],
       });
+    }
+
+    // AI-37: Personalized recommendations need the party size first.
+    // Browsing the room catalog ("What rooms do you have?") is NOT a
+    // personalized suggestion, so it keeps its old verified preview path.
+    // A simple reply like "4 kami" then uses a fresh SQL catalog read,
+    // without paid Gemini intent extraction or stale pricing.
+    const recommendationSaved = req.body.context &&
+      typeof req.body.context === "object" && !Array.isArray(req.body.context)
+      ? req.body.context : {};
+    const recommendationHistory = normalizeRecentTurns(req.body.recent_turns);
+    const recommendationFollowUp = pendingGuestRecommendationAnswer(
+      message, recommendationHistory, recommendationSaved,
+    ) || guestCorrection;
+    if (recommendationFollowUp) {
+      // A short count correction ("7 pala") inherits the conversation's
+      // established language rather than accidentally switching to English.
+      const language = normalizeLanguageStyle(req.body.voice_language) ||
+        normalizeLanguageStyle(req.body.language_style) ||
+        normalizeLanguageStyle(recommendationSaved.language_style) ||
+        detectLanguageFromMessage(message) || "taglish";
+      const catalog = await getAccommodationCatalog();
+      // Use a fresh query expression with an explicit group size, never a
+      // previously recommended room ID. SQL stays read-only.
+      const query = recommendationLookupMessage(
+        recommendationFollowUp.category, recommendationFollowUp.guests,
+      );
+      const selection = selectVerifiedPreviews(
+        catalog, query, [], { guests: recommendationFollowUp.guests },
+      );
+      const updated = {
+        ...recommendationSaved,
+        guests: recommendationFollowUp.guests,
+        language_style: language,
+        intent: "ask_recommendation",
+        recommendation_category: recommendationFollowUp.category,
+      };
+      // Multiple matching previews aren't a confirmed single-room focus.
+      delete updated.room_id;
+      delete updated.room_name;
+      if (selection.rows.length === 1) {
+        updated.room_id = selection.rows[0].id;
+        updated.room_name = selection.rows[0].room_name;
+      }
+      return res.status(200).json({
+        success: true, mode: "verified_accommodation_preview",
+        reply: recommendationFollowUp.corrected
+          ? (language === "english" ? "Noted, " :
+             language === "tagalog" ? "Sige po, " :
+             language === "spanish" ? "Entendido, " :
+             language === "mandarin" ? "好的，" : "Noted po, ") +
+            (language === "mandarin"
+              ? recommendationFollowUp.guests + "位客人。"
+              : recommendationFollowUp.guests + " guests na. ") +
+            verifiedPreviewReply(selection, language)
+          : verifiedPreviewReply(selection, language),
+        extracted_context: updated,
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null,
+        recommendation_cards: verifiedAccommodationCards(selection.rows, false),
+      });
+    }
+    if (isPersonalizedRecommendation(message)) {
+      const guestCount = explicitGuestCount(message) ||
+        savedGuestCount({ guests: req.body.guests }) ||
+        savedGuestCount(recommendationSaved);
+      if (!guestCount) {
+        const language = normalizeLanguageStyle(req.body.voice_language) ||
+          detectLanguageFromMessage(message) ||
+          (/\b(?:ano|anong|magandang|masusuggest|massuggest|po|kayo)\b/i.test(message)
+            ? "taglish" : null) ||
+          normalizeLanguageStyle(req.body.language_style) ||
+          normalizeLanguageStyle(recommendationSaved.language_style) || "taglish";
+        const updated = {
+          ...recommendationSaved, guests: null,
+          intent: "ask_recommendation", language_style: language,
+          recommendation_category: requestedCategory(message) || "room",
+        };
+        // Don't carry an unrelated selected accommodation into a NEW
+        // personal recommendation before the guest gives their party size.
+        delete updated.room_id;
+        delete updated.room_name;
+        return res.status(200).json({
+          success: true, mode: "recommendation_needs_guest_count",
+          reply: guestCountQuestion(language),
+          extracted_context: updated,
+          matched_rooms: [], catalog_recommendations: [],
+          alternative_dates: [], booking_preview: null,
+          recommendation_cards: [],
+        });
+      }
     }
 
     // Simple inventory COUNT intent comes before previews and rate/payment
@@ -1268,9 +1395,16 @@ exports.chatWithGemini = async (req, res) => {
     // This also handles large-group cottage questions with honest Function
     // Area alternatives when no cottage has the requested listed capacity.
     if (isVerifiedPreviewRequest(message)) {
-      const savedContext = req.body.context &&
+      const storedPreviewContext = req.body.context &&
         typeof req.body.context === "object" && !Array.isArray(req.body.context)
         ? req.body.context : {};
+      // The booking form can provide its guest count as a top-level field.
+      // AI-37: Do not recommend from an unfiltered catalog in that case.
+      const pageGuests = savedGuestCount({ guests: req.body.guests });
+      const savedContext = {
+        ...storedPreviewContext,
+        ...(pageGuests ? { guests: pageGuests } : {}),
+      };
       const language = normalizeLanguageStyle(req.body.voice_language) ||
         (/\b(?:may|anong|ano|mga|para|sa|po|patingin|pakita|larawan|litrato|tao)\b/i.test(String(message))
           ? "taglish" : null) ||
@@ -1509,11 +1643,18 @@ exports.chatWithGemini = async (req, res) => {
       });
     }
 
-    // Natural open-ended room details: "anong meron sa Family Room B",
-    // "what does this room have?", etc. Answer from one EXACT fresh DB
-    // accommodation; never infer amenities from another room's listing.
-    // This keeps ordinary conversation natural without hard-coding Q&A.
-    if (isNaturalRoomDetailsQuestion(message)) {
+    // AI-40: The "Ask About This" card sets an exact ID + name. Prioritize
+    // its full verified overview over the amenities-only natural Q&A path.
+    // Otherwise blank amenities hid valid DB capacity/rates from visitors.
+    const focusedOverviewId = Number(req.body?.context?.room_id ?? req.body?.room_id);
+    const focusedOverviewName = req.body?.context?.room_name ?? req.body?.room_name;
+    const isSelectedOverview = Number.isSafeInteger(focusedOverviewId) &&
+      focusedOverviewId > 0 &&
+      wantsFocusedRoomOverview(message, focusedOverviewName);
+
+    // Natural open-ended amenity questions still use one EXACT fresh DB
+    // listing. Focused overviews continue to the richer path below.
+    if (isNaturalRoomDetailsQuestion(message) && !isSelectedOverview) {
       const saved = req.body.context && typeof req.body.context === "object" &&
         !Array.isArray(req.body.context) ? req.body.context : {};
       const name = String(saved.room_name ?? req.body.room_name ?? "").trim();
@@ -1577,13 +1718,13 @@ exports.chatWithGemini = async (req, res) => {
     // Room overview fast path: answer "Tell me more about [selected room]"
     // from the actual current DB record. Do not replace a room summary with
     // generic check-in questions, generate Gemini tokens, or invent inclusions.
-    const overviewId = Number(req.body?.context?.room_id ?? req.body?.room_id);
-    const overviewName = req.body?.context?.room_name ?? req.body?.room_name;
-    if (Number.isSafeInteger(overviewId) && overviewId > 0 &&
-        wantsFocusedRoomOverview(message, overviewName)) {
+    const overviewId = focusedOverviewId;
+    const overviewName = focusedOverviewName;
+    if (isSelectedOverview) {
       const [overviewRows] = await db.promise().query(
         "SELECT a.id, a.name AS room_name, a.description, a.amenities, " +
           "a.max_capacity AS capacity, a.day_price, a.overnight_price, " +
+          "a.extended_price, a.free_entrance_pax, a.status, " +
           "c.name AS category_name FROM accommodations a " +
           "LEFT JOIN accommodation_categories c ON c.id = a.category_id " +
           "WHERE a.id = ? LIMIT 1",
@@ -1593,12 +1734,27 @@ exports.chatWithGemini = async (req, res) => {
       // The selected room may have been renamed. A question naming a
       // DIFFERENT room must never receive facts about the older selection.
       if (overviewRecord &&
+          String(overviewRecord.room_name || "").trim().toLowerCase() ===
+            String(overviewName || "").trim().toLowerCase() &&
           wantsFocusedRoomOverview(message, overviewRecord.room_name)) {
+        // AI-41: "Tell me more about..." can be a prefilled CARD action,
+        // not the visitor's own language choice. Prefer their last genuine
+        // inquiry (excluding earlier card prompts) before stale chat context.
+        const genuineQuestion = normalizeRecentTurns(req.body.recent_turns)
+          .filter(turn => turn.role === "user" &&
+            !/^(?:tell me (?:more )?about|anong details ng)\b/i.test(turn.text))
+          .at(-1)?.text || "";
+        const isCardPrompt = /^tell me (?:more )?about\b/i.test(String(message).trim());
+        const priorFilipino = /\b(?:ano|anong|ilan|ilang|magkano|pwede|puwede|paano|kayo|kami|meron|may|ba|bang|po|ninyo|nyo|niyo|saan)\b/i.test(genuineQuestion);
+        const priorEnglish = /^(?:what|which|where|when|why|how|can|do|does|is|are|please|recommend|show|suggest|tell)\b/i.test(genuineQuestion);
         const language = normalizeLanguageStyle(req.body.voice_language) ||
-          (/^(?:tell me|can you tell|describe|what|more details)/i.test(String(message).trim())
-            ? "english" : null) ||
+          (isCardPrompt && priorFilipino ? "taglish" : null) ||
+          (isCardPrompt && priorEnglish ? "english" : null) ||
+          (isCardPrompt ? normalizeLanguageStyle(req.body.context?.language_style) : null) ||
           (/\b(?:ano|anong|ang|mga|nito|ito|po|pakikwento)\b/i.test(String(message))
             ? "taglish" : null) ||
+          (/^(?:tell me|can you tell|describe|what|more details)/i.test(String(message).trim())
+            ? "english" : null) ||
           detectLanguageFromMessage(message) ||
           normalizeLanguageStyle(req.body.language_style) ||
           normalizeLanguageStyle(req.body.context?.language_style) || "english";
@@ -1618,6 +1774,20 @@ exports.chatWithGemini = async (req, res) => {
           recommendation_cards: [],
         });
       }
+      // A deleted or renamed listing must not be described using a stale
+      // selected ID, another room's details, or unverified Gemini guesses.
+      const saved = req.body.context && typeof req.body.context === "object" &&
+        !Array.isArray(req.body.context) ? { ...req.body.context } : {};
+      delete saved.room_id;
+      delete saved.room_name;
+      return res.status(200).json({
+        success: true, mode: "accommodation_selection_needed",
+        reply: "That accommodation listing may have changed. Please select its latest card again so I can give you the correct details.",
+        extracted_context: saved,
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null,
+        recommendation_cards: [],
+      });
     }
 
     // Bounded previous turns: conversation continuity without unlimited tokens.
@@ -1854,6 +2024,14 @@ exports.chatWithGemini = async (req, res) => {
 
     const finalPrompt = `
 You are the Arvic Seaside Resort AI Assistant for Arvic Seaside Beach Resort and Hotel.
+SCOPE BOUNDARY: You are the resort's receptionist, NOT a general Gemini chatbot.
+Only answer questions about Arvic Seaside Resort's accommodation, booking, amenities,
+payments, access, facilities, guest services, policies and related guest needs.
+Never answer unrelated history, politics, homework, trivia, math, coding,
+celebrity, recipe, sports, or other general-knowledge questions.
+If an unrelated request reaches you, politely redirect to resort inquiries
+WITHOUT giving the unrelated answer, even if older context says "resort".
+For mixed queries, only answer the resort part; do not solve the unrelated part.
 Your name is "Arvic Seaside Resort AI Assistant". Say it ONLY if directly asked who you are.
 Never reintroduce yourself each reply or begin routine replies with "Welcome",
 "I'm your AI assistant", or a scripted resort introduction.

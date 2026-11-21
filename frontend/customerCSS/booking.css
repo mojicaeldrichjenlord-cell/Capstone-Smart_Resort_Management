@@ -956,3 +956,36 @@
   color: #075985;
 }
 .slot-select option:disabled { color: #9f1239; background: #fff1f2; }
+
+
+/* UI-35: Customer online booking actions always follow secondary-left,
+   payment-right order, including narrow mobile widths. If both labels
+   cannot fit, wrapping preserves Next to Payment right alignment. */
+.booking-form-actions {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.booking-form-actions .back-btn-full,
+.booking-form-actions .btn-primary {
+  flex: 0 1 auto;
+  width: auto;
+  min-height: 44px;
+  max-width: 100%;
+  padding: 10px 14px;
+  text-align: center;
+}
+.booking-form-actions .back-btn-full {
+  margin-right: auto;
+}
+.booking-form-actions #nextToPaymentBtn {
+  margin-left: auto;
+}
+@media (max-width: 480px) {
+  .booking-form-actions { flex-direction: row; }
+  .booking-form-actions .back-btn-full,
+  .booking-form-actions #nextToPaymentBtn { width: auto; }
+}

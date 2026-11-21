@@ -1619,17 +1619,27 @@ function updateSummary() {
     accommodationTotal += Number(slot.price || 0) * getStayDuration(item);
   });
 
+  // UI-34: Payment screen already enforces FULL accommodation payment for
+  // walk-ins. The preview must not falsely promise a 50% option. Facebook/
+  // Messenger still supports the 50% deposit or full payment at checkout.
+  const isWalkIn = getManualReservationType() === "walkin";
   const requiredDownpayment = accommodationTotal * 0.5;
-  const remainingBalance = accommodationTotal - requiredDownpayment;
+  const requiredPayment = isWalkIn ? accommodationTotal : requiredDownpayment;
+  const remainingBalance = Math.max(0, accommodationTotal - requiredPayment);
   const estimatedEntranceFee = getEstimatedEntranceFee();
 
   document.getElementById("summaryItemCount").textContent = `${items.length} item(s)`;
   document.getElementById("estimatedEntranceFee").textContent = `₱${formatMoney(estimatedEntranceFee)}`;
   document.getElementById("accommodationTotal").textContent = `₱${formatMoney(accommodationTotal)}`;
-  document.getElementById("requiredDownpayment").textContent = `₱${formatMoney(requiredDownpayment)}`;
+  document.getElementById("requiredPaymentLabel").textContent = isWalkIn
+    ? "Full Accommodation Payment (Due Now)" : "Required Down Payment (50%)";
+  document.getElementById("requiredDownpayment").textContent = `₱${formatMoney(requiredPayment)}`;
 
   document.getElementById("highlightAccommodationTotal").textContent = `₱${formatMoney(accommodationTotal)}`;
+  document.getElementById("highlightDownpaymentRow").hidden = isWalkIn;
   document.getElementById("highlightDownpayment").textContent = `₱${formatMoney(requiredDownpayment)}`;
+  document.getElementById("highlightRemainingLabel").textContent = isWalkIn
+    ? "Accommodation Balance After Full Payment" : "Remaining Accommodation Balance";
   document.getElementById("highlightRemainingBalance").textContent = `₱${formatMoney(remainingBalance)}`;
   document.getElementById("highlightEntranceFee").textContent = `₱${formatMoney(estimatedEntranceFee)}`;
 }

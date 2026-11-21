@@ -316,6 +316,14 @@
         room.image || ""
       );
 
+      // UI-43: The compact accordion thumbnail is a second image of the
+      // same accommodation. Keep it under the existing resilient loader
+      // so Aiven media and case-sensitive photos work on mobile/iPad.
+      configureResilientImage(
+        card.querySelector(".room-accordion-thumb"),
+        room.image || ""
+      );
+
       const galleryImages = Array.isArray(room.gallery_images)
         ? room.gallery_images.slice(0, 8)
         : [];

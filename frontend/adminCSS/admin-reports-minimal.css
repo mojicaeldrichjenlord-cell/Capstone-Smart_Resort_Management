@@ -168,10 +168,10 @@
   line-height: 1.25;
   font-variant-numeric: tabular-nums;
 }
-/* Separate charge reconciliations remain visible, but compact. */
+/* UI-34: Only two paid-charge comparison cards remain on screen/print. */
 .reports-minimal-page .report-charge-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0,1fr));
+  grid-template-columns: repeat(2, minmax(0,1fr));
   gap: 10px;
   margin: 0 0 12px;
 }
@@ -388,7 +388,7 @@
   }
   .reports-minimal-page .report-charge-grid {
     display: grid !important;
-    grid-template-columns: repeat(3,minmax(0,1fr)) !important;
+    grid-template-columns: repeat(2,minmax(0,1fr)) !important;
     gap: 4px !important;
     margin: 0 0 5px !important;
   }

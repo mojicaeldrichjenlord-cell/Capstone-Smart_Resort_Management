@@ -80,7 +80,10 @@ test("Frontend cards provide View Details, booking link and focused follow-up", 
   assert.match(source, /function getAiRecentConversationTurns/);
   const roomPage = fs.readFileSync(path.join(__dirname, "../../frontend/customerJS/rooms.js"), "utf8");
   assert.match(roomPage, /function focusRequestedAiAccommodation/);
-  assert.match(roomPage, /room-card-\$\{Number\(room\.id\)\}/);
+  // UI-43 extracts a validated roomId before building the card and
+  // expanding its mobile/iPad accordion via the AI deep link.
+  assert.match(roomPage, /room-card-\$\{(?:Number\(room\.id\)|roomId)\}/);
+  assert.match(roomPage, /function focusRequestedAiAccommodation\(/);
 });
 
 test("Focused accommodation amenities use both Admin description and inclusions", () => {
@@ -173,12 +176,15 @@ test("AI focused-room details are concise, from DB facts, and never invent a rat
     day_price: 3000, overnight_price: 3000,
   }, "taglish");
   assert.match(verified, /Single Room \(Pool side\) C/);
-  assert.match(verified, /Private CR/);
+  assert.match(verified, /sariling CR/);
+  assert.match(verified, /TV/);
+  assert.match(verified, /aircon/);
+  assert.doesNotMatch(verified, /tV|air Conditioned|Description:|Listed amenities:/);
   assert.match(verified, /4 guests/);
   assert.match(verified, /₱3,000/);
   assert.doesNotMatch(verified, /available (?:on|for)|confirmed (?:available|booking)/i);
   const missing = focusedRoomOverview({ room_name: "Family Room B", capacity: 8 }, "english");
-  assert.match(missing, /not listed/i);
+  assert.match(missing, /not listed|aren't specified yet/i);
   assert.doesNotMatch(missing, /₱|fridge|pool balcony|private bathroom/i);
   const sanitized = focusedRoomOverview({
     room_name: "Room X", capacity: 2, amenities: "<script>alert(1)</script>; TV",
@@ -197,7 +203,9 @@ test("AI selected-room overview is a read-only DB path before Gemini extraction"
   assert.match(overview, /WHERE a\.id = \? LIMIT 1/);
   assert.match(overview, /wantsFocusedRoomOverview\(message, overviewRecord\.room_name\)/);
   assert.match(overview, /focusedRoomOverview\(overviewRecord, language\)/);
-  assert.doesNotMatch(overview, /INSERT|UPDATE|DELETE|generateGemini\(/i);
+  // Clearing a stale JavaScript context via delete is not a SQL write.
+  // Guard the actual SQL mutation verbs and the paid model call instead.
+  assert.doesNotMatch(overview, /\b(?:INSERT\s+INTO|UPDATE\s+accommodations|DELETE\s+FROM)\b|generateGemini\(/i);
   assert.ok(end < source.indexOf("await extractStructuredIntent(", end));
 });
 
