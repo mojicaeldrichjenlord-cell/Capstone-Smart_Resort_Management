@@ -138,7 +138,7 @@ function renderBookingCard(booking) {
   const canCancelReservation = isCancellationAllowed(booking);
 
   return `
-    <div style="
+    <div class="customer-booking-history-card" style="
       background: rgba(255,255,255,0.96);
       border-radius: 26px;
       overflow: hidden;
@@ -171,11 +171,11 @@ function renderBookingCard(booking) {
 
       <div style="padding:20px;">
         <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;margin-bottom:10px;">
-          <h3 style="margin:0;color:#0f172a;font-size:1.22rem;">
+          <h3 class="customer-booking-history-title" style="margin:0;color:#0f172a;font-size:1.22rem;">
             ${escapeHtml(booking.room_name || "Accommodation")}
           </h3>
 
-          <span style="
+          <span class="customer-booking-history-status" data-status="${escapeHtml(status)}" style="
             white-space:nowrap;
             padding:8px 12px;
             border-radius:999px;
@@ -193,35 +193,35 @@ function renderBookingCard(booking) {
           gap:10px;
           margin:14px 0;
         ">
-          <div style="${detailBoxStyle()}">
+          <div class="customer-booking-detail" style="${detailBoxStyle()}">
             <strong>Check In</strong><br>
             ${formatDate(booking.check_in)}<br>
             ${formatTime(booking.check_in_time)}
           </div>
 
-          <div style="${detailBoxStyle()}">
+          <div class="customer-booking-detail" style="${detailBoxStyle()}">
             <strong>Check Out</strong><br>
             ${formatDate(booking.check_out)}<br>
             ${formatTime(booking.check_out_time)}
           </div>
 
-          <div style="${detailBoxStyle()}">
+          <div class="customer-booking-detail" style="${detailBoxStyle()}">
             <strong>Guests</strong><br>
             ${booking.guests || 0}
           </div>
 
-          <div style="${detailBoxStyle()}">
+          <div class="customer-booking-detail" style="${detailBoxStyle()}">
             <strong>Stay Duration</strong><br>
             ${formatStayDuration(booking)}
           </div>
 
-          <div style="${detailBoxStyle()}">
+          <div class="customer-booking-detail" style="${detailBoxStyle()}">
             <strong>Created</strong><br>
             ${formatDateTime(booking.created_at)}
           </div>
         </div>
 
-        <div style="
+        <div class="customer-booking-payment-summary" style="
           background: linear-gradient(180deg, #fcfeff 0%, #f4fbfc 100%);
           border: 1px solid #dbe7ef;
           border-radius: 16px;
@@ -416,7 +416,7 @@ function getStatusBadgeStyles(status) {
 
 function getLoadingBox() {
   return `
-    <div style="
+    <div class="customer-booking-feedback" style="
       background: rgba(255,255,255,0.95);
       border: 1px solid rgba(219,231,239,0.92);
       border-radius: 22px;
@@ -432,7 +432,7 @@ function getLoadingBox() {
 
 function getEmptyBox(message) {
   return `
-    <div style="
+    <div class="customer-booking-feedback" style="
       background: rgba(255,255,255,0.95);
       border: 1px solid rgba(219,231,239,0.92);
       border-radius: 22px;
@@ -448,7 +448,7 @@ function getEmptyBox(message) {
 
 function getErrorBox(message) {
   return `
-    <div style="
+    <div class="customer-booking-feedback customer-booking-feedback-error" style="
       background: rgba(255,255,255,0.95);
       border: 1px solid #fecaca;
       border-radius: 22px;

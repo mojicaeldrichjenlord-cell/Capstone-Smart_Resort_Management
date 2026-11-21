@@ -1,0 +1,94 @@
+/*
+ * DM-01 | Arvic Seaside CUSTOMER theme design tokens.
+ *
+ * Light mode remains the default. These tokens intentionally do not
+ * change any component's appearance on their own. DM-02 will add the
+ * customer-only toggle; DM-03/04 will migrate the remaining hardcoded
+ * page, checkout, receipt, and chatbot colors to these semantic tokens.
+ *
+ * Scope is limited to signed-in Customer pages using .customer-manager-tone.
+ * This stylesheet MUST NOT be loaded by Admin, Manager, Front Desk,
+ * Housekeeping, auth screens or the public landing page.
+ *
+ * Theme state convention for DM-02:
+ *   <html data-customer-theme="light"> (default / optional)
+ *   <html data-customer-theme="dark">
+ * No JS, persistence, forced system theme or toggle is introduced in DM-01.
+ */
+
+@media screen {
+  body.customer-manager-tone {
+    /* Existing light palette; keep current UI visually unchanged. */
+    --customer-page-top: #f8fafc;
+    --customer-page-bottom: #eef2ff;
+    --customer-card: #ffffff;
+    --customer-card-raised: #ffffff;
+    --customer-card-subtle: #f1f5f9;
+    --customer-text-primary: #0f172a;
+    --customer-text-secondary: #64748b;
+    --customer-text-heading: #172554;
+    --customer-border: #e2e8f0;
+    --customer-border-strong: #cbd5e1;
+    --customer-nav-start: #172554;
+    --customer-nav-end: #0f766e;
+    --customer-accent: #0f766e;
+    --customer-accent-strong: #0f766e;
+    --customer-accent-strong-hover: #115e59;
+    --customer-accent-hover: #115e59;
+    --customer-teal-tint: #f0fdfa;
+    --customer-input-background: #ffffff;
+    --customer-input-text: #0f172a;
+    --customer-input-placeholder: #64748b;
+    --customer-focus: #5eead4;
+    --customer-shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+    --customer-status-success-background: #ecfdf5;
+    --customer-status-success-text: #166534;
+    --customer-status-warning-background: #fffbeb;
+    --customer-status-warning-text: #92400e;
+    --customer-status-error-background: #fff1f2;
+    --customer-status-error-text: #991b1b;
+    --customer-chat-assistant-background: #ffffff;
+    --customer-chat-user-background: #0f766e;
+    --customer-chat-text: #0f172a;
+    --customer-contrast-on-accent: #ffffff;
+  }
+
+  html[data-customer-theme="dark"] body.customer-manager-tone {
+    /* Premium SOFT dark: navy, slate and muted teal — never pure black. */
+    --customer-page-top: #172535;
+    --customer-page-bottom: #1b2b3d;
+    --customer-card: #24364a;
+    --customer-card-raised: #2c4054;
+    --customer-card-subtle: #203145;
+    --customer-text-primary: #f1f5f9;
+    --customer-text-secondary: #b7c5d5;
+    --customer-text-heading: #f1f5f9;
+    --customer-border: #3c5668;
+    --customer-border-strong: #52697c;
+    --customer-nav-start: #142b3e;
+    --customer-nav-end: #185e63;
+    --customer-accent: #16877f;
+    /* White action text requires 4.5:1 contrast: darker teal for buttons. */
+    --customer-accent-strong: #0f766e;
+    --customer-accent-strong-hover: #115e59;
+    --customer-accent-hover: #1c9e95;
+    --customer-teal-tint: #203e41;
+    --customer-input-background: #21374a;
+    --customer-input-text: #f1f5f9;
+    --customer-input-placeholder: #b7c5d5;
+    --customer-focus: #5eead4;
+    --customer-shadow: 0 8px 22px rgba(8, 21, 33, 0.2);
+    --customer-status-success-background: #1d453b;
+    --customer-status-success-text: #b7f7d3;
+    --customer-status-warning-background: #4b3c28;
+    --customer-status-warning-text: #f9e6ad;
+    --customer-status-error-background: #4b2b35;
+    --customer-status-error-text: #fecdd3;
+    --customer-chat-assistant-background: #2c4054;
+    --customer-chat-user-background: #16877f;
+    --customer-chat-text: #f1f5f9;
+    --customer-contrast-on-accent: #ffffff;
+  }
+}
+
+/* Printing/receipt exports are deliberately not themed in DM-01. */

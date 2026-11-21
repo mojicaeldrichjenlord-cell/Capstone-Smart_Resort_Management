@@ -73,6 +73,11 @@ jobs:
             tests/housekeeping-task-boundaries.test.js \
             tests/housekeeping-proof-ui46.test.js \
             tests/manager-navbar-logo-ui47.test.js \
+            tests/customer-dark-theme-foundation-dm01.test.js \
+            tests/customer-theme-toggle-dm02.test.js \
+            tests/customer-soft-dark-skin-dm03.test.js \
+            tests/customer-dark-comfort-dm04.test.js \
+            tests/customer-mobile-nav-dm05.test.js \
             > "$RUNNER_TEMP/ai-regression.log" 2>&1
           status=$?
           cat "$RUNNER_TEMP/ai-regression.log"
