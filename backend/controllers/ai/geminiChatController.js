@@ -1375,9 +1375,16 @@ exports.chatWithGemini = async (req, res) => {
     // This also handles large-group cottage questions with honest Function
     // Area alternatives when no cottage has the requested listed capacity.
     if (isVerifiedPreviewRequest(message)) {
-      const savedContext = req.body.context &&
+      const storedPreviewContext = req.body.context &&
         typeof req.body.context === "object" && !Array.isArray(req.body.context)
         ? req.body.context : {};
+      // The booking form can provide its guest count as a top-level field.
+      // AI-37: Do not recommend from an unfiltered catalog in that case.
+      const pageGuests = savedGuestCount({ guests: req.body.guests });
+      const savedContext = {
+        ...storedPreviewContext,
+        ...(pageGuests ? { guests: pageGuests } : {}),
+      };
       const language = normalizeLanguageStyle(req.body.voice_language) ||
         (/\b(?:may|anong|ano|mga|para|sa|po|patingin|pakita|larawan|litrato|tao)\b/i.test(String(message))
           ? "taglish" : null) ||
