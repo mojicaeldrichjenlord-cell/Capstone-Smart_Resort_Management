@@ -411,3 +411,48 @@
     color-scheme: light;
   }
 }
+
+/*
+ * FD-DM-03 | Remove white manual booking frame
+ * Manual Reservation previously displayed a light outer .walkin-card around
+ * its already-dark .section-box panels. Keep both layers in the same calm
+ * dark-slate palette. This is Front Desk-only and never affects light mode.
+ */
+@media screen {
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .walkin-wrapper > .walkin-card {
+    background: #1c2d3e !important;
+    background-color: #1c2d3e !important;
+    background-image: none !important;
+    border: 1px solid #3c5668 !important;
+    color: #f1f5f9 !important;
+    padding: clamp(12px, 2vw, 18px);
+    border-radius: 22px;
+    box-shadow: 0 12px 28px rgba(7, 18, 29, .18) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .walkin-wrapper > .walkin-card > form > .section-box {
+    background: #24364a !important;
+    background-color: #24364a !important;
+    background-image: none !important;
+    border: 1px solid #3c5668 !important;
+    color: #f1f5f9 !important;
+    box-shadow: none !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  /* Manual payment uses a seamless frame, with distinct readable panels. */
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone.manual-payment-page .payment-card {
+    background: transparent !important;
+    background-image: none !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone.manual-payment-page .payment-grid > .section-box {
+    background: #24364a !important;
+    border: 1px solid #3c5668 !important;
+    box-shadow: none !important;
+  }
+}
