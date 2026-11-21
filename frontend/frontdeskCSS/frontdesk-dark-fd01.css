@@ -383,3 +383,31 @@
     border: 1px solid #3c5668 !important;
   }
 }
+
+
+/* Final receipt page: dark surrounding UI, always-white thermal paper. */
+@media screen {
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .receipt-preview-card {
+    background: var(--fd-card) !important;
+    border-color: var(--fd-line) !important;
+    color: var(--fd-text) !important;
+    box-shadow: 0 10px 25px rgba(7, 18, 29, .2) !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .preview-header h1 {
+    color: var(--fd-text) !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .preview-header p:not(.receipt-eyebrow) {
+    color: var(--fd-muted) !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .receipt-preview-stage {
+    background: var(--fd-soft) !important;
+    border-color: var(--fd-line) !important;
+  }
+  /* Receipt preview must match the ink-safe print output exactly. */
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .thermal-receipt-shell {
+    background: #fff !important;
+    color: #000 !important;
+    border-color: #d1d5db !important;
+    color-scheme: light;
+  }
+}
