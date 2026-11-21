@@ -456,3 +456,65 @@
     box-shadow: none !important;
   }
 }
+
+/*
+ * FD-DM-04 | Accessible Front Desk dark-mode text contrast.
+ * Retains semantic payment/status badge colors and ink-safe printed receipts.
+ */
+@media screen {
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone {
+    --fd-text: #f8fbff;
+    --fd-muted: #d5e2ee;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone :is(
+    .frontdesk-access-note, .frontdesk-account-card
+  ) {
+    background: #26384c !important;
+    border: 1px solid #456176 !important;
+    box-shadow: none !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone :is(
+    .frontdesk-access-note, .frontdesk-account-card
+  ) :is(span, p, small) {
+    color: #d5e2ee !important;
+    opacity: 1 !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone :is(
+    .frontdesk-access-note, .frontdesk-account-card
+  ) strong {
+    color: #f8fbff !important;
+    opacity: 1 !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone :is(
+    .frontdesk-card p, .frontdesk-card small,
+    .payment-summary-card:not(.attention) span,
+    .payment-detail-box .detail-label,
+    .payment-detail-box > span,
+    .payment-record-note,
+    .panel-heading p,
+    .record-count,
+    .filter-group label,
+    .frontdesk-payment-card .reservation-id
+  ) {
+    color: #d5e2ee !important;
+    opacity: 1 !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone :is(
+    .frontdesk-card h2, .frontdesk-card h3,
+    .payment-detail-box strong, .panel-heading h2
+  ) {
+    color: #f8fbff !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .payment-summary-card.attention {
+    background: #4b3c28 !important;
+    border-color: #997449 !important;
+    box-shadow: none !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .payment-summary-card.attention span {
+    color: #f9e6ad !important;
+    opacity: 1 !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .payment-summary-card.attention strong {
+    color: #fff3cd !important;
+  }
+}
