@@ -27,6 +27,8 @@
   <link rel="stylesheet" href="../customerCSS/customer-manager-tone.css?v=20261119-ui22" />
     <!-- UI-26: Light, airy shared AI chat skin; load AFTER customer theme. -->
     <link rel="stylesheet" href="../sharedCSS/ai-chat-airy.css?v=20261120-ui30" />
+    <!-- UI-43: Mobile / iPad compact accordion; desktop cards unchanged. -->
+    <link rel="stylesheet" href="../customerCSS/rooms-accordion-ui43.css?v=20261121-ui43" />
 </head>
 
   <body class="customer-manager-tone">
@@ -119,6 +121,7 @@
         </div>
       </section>
 
+      <p class="rooms-compact-hint">Tap an accommodation to see photos, amenities, rates, and booking options.</p>
       <div class="room-ai-grid" id="roomsContainer"></div>
     </main>
 
@@ -214,7 +217,7 @@
     <script src="../sharedJS/api-config.js"></script>
 
     <!-- Existing rooms logic -->
-    <script src="../customerJS/rooms.js"></script>
+    <script src="../customerJS/rooms.js?v=20261121-ui43"></script>
 
     <!-- ======================================================
        MOBILE / VERCEL ACCOMMODATION IMAGE FIX
