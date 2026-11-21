@@ -59,6 +59,7 @@ jobs:
             tests/customer-profile-ui31.test.js \
             tests/customer-landing-receipt-ui32.test.js \
             tests/admin-report-manual-preview-ui34.test.js \
+            tests/booking-payment-action-alignment-ui35.test.js \
             > "$RUNNER_TEMP/ai-regression.log" 2>&1
           status=$?
           cat "$RUNNER_TEMP/ai-regression.log"
