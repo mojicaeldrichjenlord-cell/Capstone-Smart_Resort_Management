@@ -1761,6 +1761,20 @@ exports.chatWithGemini = async (req, res) => {
           recommendation_cards: [],
         });
       }
+      // A deleted or renamed listing must not be described using a stale
+      // selected ID, another room's details, or unverified Gemini guesses.
+      const saved = req.body.context && typeof req.body.context === "object" &&
+        !Array.isArray(req.body.context) ? { ...req.body.context } : {};
+      delete saved.room_id;
+      delete saved.room_name;
+      return res.status(200).json({
+        success: true, mode: "accommodation_selection_needed",
+        reply: "That accommodation listing may have changed. Please select its latest card again so I can give you the correct details.",
+        extracted_context: saved,
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null,
+        recommendation_cards: [],
+      });
     }
 
     // Bounded previous turns: conversation continuity without unlimited tokens.
