@@ -1643,11 +1643,18 @@ exports.chatWithGemini = async (req, res) => {
       });
     }
 
-    // Natural open-ended room details: "anong meron sa Family Room B",
-    // "what does this room have?", etc. Answer from one EXACT fresh DB
-    // accommodation; never infer amenities from another room's listing.
-    // This keeps ordinary conversation natural without hard-coding Q&A.
-    if (isNaturalRoomDetailsQuestion(message)) {
+    // AI-40: The "Ask About This" card sets an exact ID + name. Prioritize
+    // its full verified overview over the amenities-only natural Q&A path.
+    // Otherwise blank amenities hid valid DB capacity/rates from visitors.
+    const focusedOverviewId = Number(req.body?.context?.room_id ?? req.body?.room_id);
+    const focusedOverviewName = req.body?.context?.room_name ?? req.body?.room_name;
+    const isSelectedOverview = Number.isSafeInteger(focusedOverviewId) &&
+      focusedOverviewId > 0 &&
+      wantsFocusedRoomOverview(message, focusedOverviewName);
+
+    // Natural open-ended amenity questions still use one EXACT fresh DB
+    // listing. Focused overviews continue to the richer path below.
+    if (isNaturalRoomDetailsQuestion(message) && !isSelectedOverview) {
       const saved = req.body.context && typeof req.body.context === "object" &&
         !Array.isArray(req.body.context) ? req.body.context : {};
       const name = String(saved.room_name ?? req.body.room_name ?? "").trim();
@@ -1711,13 +1718,13 @@ exports.chatWithGemini = async (req, res) => {
     // Room overview fast path: answer "Tell me more about [selected room]"
     // from the actual current DB record. Do not replace a room summary with
     // generic check-in questions, generate Gemini tokens, or invent inclusions.
-    const overviewId = Number(req.body?.context?.room_id ?? req.body?.room_id);
-    const overviewName = req.body?.context?.room_name ?? req.body?.room_name;
-    if (Number.isSafeInteger(overviewId) && overviewId > 0 &&
-        wantsFocusedRoomOverview(message, overviewName)) {
+    const overviewId = focusedOverviewId;
+    const overviewName = focusedOverviewName;
+    if (isSelectedOverview) {
       const [overviewRows] = await db.promise().query(
         "SELECT a.id, a.name AS room_name, a.description, a.amenities, " +
           "a.max_capacity AS capacity, a.day_price, a.overnight_price, " +
+          "a.extended_price, a.free_entrance_pax, a.status, " +
           "c.name AS category_name FROM accommodations a " +
           "LEFT JOIN accommodation_categories c ON c.id = a.category_id " +
           "WHERE a.id = ? LIMIT 1",
@@ -1727,6 +1734,8 @@ exports.chatWithGemini = async (req, res) => {
       // The selected room may have been renamed. A question naming a
       // DIFFERENT room must never receive facts about the older selection.
       if (overviewRecord &&
+          String(overviewRecord.room_name || "").trim().toLowerCase() ===
+            String(overviewName || "").trim().toLowerCase() &&
           wantsFocusedRoomOverview(message, overviewRecord.room_name)) {
         const language = normalizeLanguageStyle(req.body.voice_language) ||
           (/^(?:tell me|can you tell|describe|what|more details)/i.test(String(message).trim())
