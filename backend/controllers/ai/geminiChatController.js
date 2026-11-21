@@ -25,6 +25,7 @@ const {
 } = require("./aiAccommodationCounts");
 const { matchCheapestInquiry, pickCheapestRows, cheapestReply } =
   require("./aiAffordableFollowup");
+const { isResortQuestion, resortOnlyReply } = require("./aiResortScopeGuard");
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -1014,6 +1015,30 @@ exports.chatWithGemini = async (req, res) => {
       });
     }
 
+    // UI-36: A receptionist is NOT a general-purpose search assistant.
+    // Apply a deterministic resort-scope gate before ALL paid Gemini
+    // extraction, all MySQL catalog reads and the verified-policy routes.
+    // Stale room_id or old chat history must not authorize a history quiz.
+    // This also covers voice transcripts because voice sends this endpoint.
+    const scopeContext = req.body.context && typeof req.body.context === "object" &&
+      !Array.isArray(req.body.context) ? req.body.context : {};
+    const recentScopeTurns = normalizeRecentTurns(req.body.recent_turns);
+    if (!isResortQuestion(message, scopeContext, recentScopeTurns)) {
+      const language = normalizeLanguageStyle(req.body.voice_language) ||
+        detectLanguageFromMessage(message) ||
+        normalizeLanguageStyle(req.body.language_style) ||
+        normalizeLanguageStyle(scopeContext.language_style) || "taglish";
+      return res.status(200).json({
+        success: true,
+        mode: "resort_scope_only",
+        resort_scope_allowed: false,
+        reply: resortOnlyReply(language),
+        extracted_context: mergeContext(scopeContext, { language_style: language }),
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null, recommendation_cards: [],
+      });
+    }
+
     // Fixed-policy fast path: 0 Gemini calls, 0 DB queries, 0 tokens.
     // Do not let an old saved room/payment preference override the user's
     // current generic downpayment question. Final peso amount is still
@@ -1854,6 +1879,14 @@ exports.chatWithGemini = async (req, res) => {
 
     const finalPrompt = `
 You are the Arvic Seaside Resort AI Assistant for Arvic Seaside Beach Resort and Hotel.
+SCOPE BOUNDARY: You are the resort's receptionist, NOT a general Gemini chatbot.
+Only answer questions about Arvic Seaside Resort's accommodation, booking, amenities,
+payments, access, facilities, guest services, policies and related guest needs.
+Never answer unrelated history, politics, homework, trivia, math, coding,
+celebrity, recipe, sports, or other general-knowledge questions.
+If an unrelated request reaches you, politely redirect to resort inquiries
+WITHOUT giving the unrelated answer, even if older context says "resort".
+For mixed queries, only answer the resort part; do not solve the unrelated part.
 Your name is "Arvic Seaside Resort AI Assistant". Say it ONLY if directly asked who you are.
 Never reintroduce yourself each reply or begin routine replies with "Welcome",
 "I'm your AI assistant", or a scripted resort introduction.
