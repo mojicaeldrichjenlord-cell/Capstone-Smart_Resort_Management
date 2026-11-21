@@ -16,7 +16,7 @@ function isPersonalizedRecommendation(message) {
   const q = normal(message);
   if (!q || q.length > 500) return false;
   if (/^recommend this accommodation for me\s*:/i.test(q)) return false;
-  const suggest = /\b(?:recommend(?:ation|ations)?|suggest(?:ion|ions)?|marerecommend|marecommend|mairerecommend|irerecommend|mare-recommend|ma-recommend|massuggest|masusuggest|masuggest|ma-suggest|best\s+(?:room|accommodation)|magandang\s+(?:room|kwarto|kuwarto|cottage)|suitable\s+(?:room|accommodation)|help\s+me\s+(?:choose|find)\s+(?:a\s+)?(?:room|cottage|accommodation))\b/i.test(q);
+  const suggest = /\b(?:recommend(?:ation|ations)?|suggest(?:ion|ions)?|marerecommend|marecommend|mairerecommend|irerecommend|mare-recommend|ma-recommend|massuggest|masusuggest|masuggest|ma-suggest|best\s+(?:room|accommodation)|maganda(?:ng)?\s+(?:(?:para\s+sa)\s+)?(?:room|rooms|kwarto|kuwarto|cottage)|suitable\s+(?:room|accommodation)|help\s+me\s+(?:choose|find)\s+(?:a\s+)?(?:room|cottage|accommodation))\b/i.test(q);
   const target = /\b(?:rooms?|kwarto|kuwarto|cottages?|kubo|nipa|huts?|accommodations?|pavilions?|function\s+areas?|shades?|stays?)\b/i.test(q);
   // "Ano ang marerecommend mo?" can be a follow-up to a previous room
   // discussion, but without a category we conservatively request guests.
