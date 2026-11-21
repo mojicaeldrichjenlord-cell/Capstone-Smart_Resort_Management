@@ -83,6 +83,30 @@
     color: var(--customer-text-primary) !important;
   }
 
+  /* Inline light feedback placeholders previously flashed white in dark mode. */
+  html[data-customer-theme="dark"] body.customer-manager-tone .customer-booking-feedback {
+    background: var(--customer-card, #24364a) !important;
+    color: var(--customer-text-secondary, #b7c5d5) !important;
+    border-color: var(--customer-border, #3c5668) !important;
+    box-shadow: var(--customer-shadow) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .customer-booking-feedback-error {
+    background: var(--customer-status-error-background, #4b2b35) !important;
+    color: var(--customer-status-error-text, #fecdd3) !important;
+    border-color: #8b4b5b !important;
+  }
+  /* Dark navbar switch overrides the previous pill button styling. */
+  html[data-customer-theme="dark"] body.customer-manager-tone > .navbar nav .customer-theme-toggle {
+    background: #253448 !important;
+    background-image: none !important;
+    border-color: #60788e !important;
+    color: #fff !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone > .navbar nav .customer-theme-toggle .customer-theme-icon {
+    background: #edf3f8 !important;
+    color: #172535 !important;
+  }
+
   /* Dynamic messages also use inline light backgrounds. */
   html[data-customer-theme="dark"] body.customer-manager-tone #myBookingsContainer > div:not(:has(.customer-booking-history-card)) {
     color: var(--customer-text-secondary) !important;
