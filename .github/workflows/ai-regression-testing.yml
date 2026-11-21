@@ -70,6 +70,8 @@ jobs:
             tests/ai-chat-bubble-ui38.test.js \
             tests/ai-resort-scope.test.js \
             tests/ai-recommendation-intake.test.js \
+            tests/housekeeping-task-boundaries.test.js \
+            tests/housekeeping-proof-ui46.test.js \
             > "$RUNNER_TEMP/ai-regression.log" 2>&1
           status=$?
           cat "$RUNNER_TEMP/ai-regression.log"
