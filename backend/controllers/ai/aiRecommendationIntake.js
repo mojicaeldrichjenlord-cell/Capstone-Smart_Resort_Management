@@ -89,7 +89,24 @@ function guestCountFollowUp(message, recentTurns = [], context = {}) {
     ? { ...pending, guests } : null;
 }
 
+// Translate category keys back to the spelling understood by the verified
+// accommodation catalog selector. A "family" recommendation MUST search
+// family rooms, not quietly return generic rooms or no cards.
+function recommendationLookupMessage(category, guests) {
+  const categoryText = {
+    room: "room", single: "single room", family: "family room",
+    double: "double room", single_poolside: "single room poolside",
+    single_cottage: "single room cottage", cottage: "cottage",
+    shade: "shade", big_shade: "big shade", small_shade: "small shade",
+    pool_shade: "pool shade", nipa_hut: "nipa hut",
+    big_nipa: "big nipa hut", small_nipa: "small nipa hut",
+    function: "function area",
+  }[category] || "room";
+  return "Recommend a " + categoryText + " for " + guests + " guests";
+}
+
 module.exports = {
   isPersonalizedRecommendation, explicitGuestCount, savedGuestCount,
   guestCountQuestion, pendingRecommendation, guestCountFollowUp,
+  recommendationLookupMessage,
 };
