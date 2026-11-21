@@ -92,7 +92,8 @@ function fakePage(mobile = true) {
   ].join("\n");
   const helpers = {
     document, window, URLSearchParams,
-    allRooms: [],
+    // Mimic a successfully loaded catalog, so renderRooms uses the card path.
+    allRooms: [{ id: 97 }, { id: 98 }],
     updateCategoryCount() {},
     renderRoomMessage() { return "No accommodations"; },
     resolveImagePath(x) { return x || "fallback.jpg"; },
