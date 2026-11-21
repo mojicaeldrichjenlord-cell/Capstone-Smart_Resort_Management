@@ -509,6 +509,10 @@ function mergeContext(oldContext = {}, newContext = {}) {
     room_name: newContext.room_name ?? oldContext.room_name ?? null,
     room_id: newContext.room_id ?? oldContext.room_id ?? null,
     intent: newContext.intent ?? oldContext.intent ?? null,
+    // Keep the original accommodation category for follow-up corrections:
+    // 2 guests -> 7 guests should refresh the same type of room.
+    recommendation_category:
+      newContext.recommendation_category ?? oldContext.recommendation_category ?? null,
     wants_booking: newContext.wants_booking ?? oldContext.wants_booking ?? null,
     language_style: newContext.language_style ?? oldContext.language_style ?? null,
     payment_method: newContext.payment_method ?? oldContext.payment_method ?? null,
