@@ -2149,3 +2149,18 @@ test("AI-41 English visitors get natural English; live voice's explicit language
   assert.equal(modelCalls, 0);
   assert.equal(queries.length, 2);
 });
+
+
+test("AI-44 Mandarin pinyin greeting is answered in Chinese with no model call", async () => {
+  const oldCalls = modelCalls;
+  const oldQueries = queries.length;
+  const response = await post("/api/ai/chat", { message: "ni hao ma?" });
+  assert.equal(response.status, 200);
+  assert.equal(response.body.mode, "resort_greeting");
+  assert.equal(response.body.extracted_context.language_style, "mandarin");
+  assert.match(response.body.reply, /你好/);
+  assert.match(response.body.reply, /Arvic Seaside Resort/);
+  assert.doesNotMatch(response.body.reply, /Resort inquiries lang|questions regarding/i);
+  assert.equal(modelCalls, oldCalls);
+  assert.equal(queries.length, oldQueries);
+});
