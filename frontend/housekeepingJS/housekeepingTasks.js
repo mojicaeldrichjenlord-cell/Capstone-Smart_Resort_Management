@@ -8,6 +8,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const date = document.getElementById("hkDate");
   const refreshButton = document.getElementById("hkRefreshTasks");
   let busy = false;
+  let proofSetupRequired = false;
   const previewUrls = new Set();
   // Disable visible actions while a request is running, avoiding repeated clicks.
   // The server still validates assignment, status and optimistic version.
@@ -177,7 +178,7 @@ document.addEventListener("DOMContentLoaded", () => {
       statusBadge(tr, task.status);
       const action = cell(tr, "", "Next Action");
       action.classList.add("hk-task-action-cell");
-      if (task.status === "in_progress") {
+      if (task.status === "in_progress" && !proofSetupRequired) {
         action.appendChild(proofUploadControls(task));
       }
       let endpoint, label;
@@ -214,7 +215,9 @@ document.addEventListener("DOMContentLoaded", () => {
       } else if (task.status === "in_progress") {
         const hint = document.createElement("span");
         hint.className = "hk-proof-error";
-        hint.textContent = "Upload a photo before Mark Cleaned.";
+        hint.textContent = proofSetupRequired
+          ? "Photo proof upload is paused until the cleaning-proof database migration is approved."
+          : "Upload a photo before Mark Cleaned.";
         action.appendChild(hint);
       } else {
         action.textContent = task.status === "cleaned" ?
@@ -230,9 +233,13 @@ document.addEventListener("DOMContentLoaded", () => {
     status.textContent = "Loading assigned cleaning tasks…";
     try {
       const tasks = await request("tasks?date=" + encodeURIComponent(date.value));
+      proofSetupRequired = Boolean(tasks.proof_setup_required);
       draw(tasks.tasks || []);
       status.textContent = (feedback ? feedback + " " : "") +
-        "Showing " + (tasks.tasks || []).length + " assigned task(s), including open backlog.";
+        "Showing " + (tasks.tasks || []).length + " assigned task(s), including open backlog." +
+        (proofSetupRequired
+          ? " Cleaning photo completion is paused until the database migration is approved."
+          : "");
     } catch (error) {
       status.textContent = (feedback ? feedback + " " : "") + error.message;
     } finally {
