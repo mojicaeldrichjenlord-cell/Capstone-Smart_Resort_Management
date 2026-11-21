@@ -33,6 +33,11 @@ router.get("/housekeeping/eligible-items", listEligibleHousekeepingItems);
 router.post("/housekeeping/tasks", createHousekeepingTask);
 // Assign/reassign before cleaning starts, using a version check.
 router.put("/housekeeping/tasks/:id/assign", reassignHousekeepingTask);
+// Private image proof is never a public accommodation-gallery URL.
+const { getManagerCleaningProof, reviewManagerCleaningProof } =
+  require("../controllers/housekeeping/housekeepingProofController");
+router.get("/housekeeping/tasks/:id/proof", getManagerCleaningProof);
+router.post("/housekeeping/tasks/:id/proof/review", reviewManagerCleaningProof);
 // Manager alone signs off a cleaned task, not room listing availability.
 router.put("/housekeeping/tasks/:id/verify", verifyHousekeepingTask);
 
