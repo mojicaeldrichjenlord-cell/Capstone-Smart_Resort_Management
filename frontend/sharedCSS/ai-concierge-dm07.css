@@ -21,7 +21,7 @@
     top: auto !important;
     left: auto !important;
     right: 16px !important;
-    bottom: max(76px, calc(64px + env(safe-area-inset-bottom))) !important;
+    bottom: max(16px, env(safe-area-inset-bottom)) !important;
     width: min(386px, calc(100vw - 32px)) !important;
     max-width: calc(100vw - 32px) !important;
     height: min(550px, calc(100dvh - 112px)) !important;
