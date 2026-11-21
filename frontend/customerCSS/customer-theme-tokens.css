@@ -33,6 +33,7 @@
     --customer-nav-end: #0f766e;
     --customer-accent: #0f766e;
     --customer-accent-strong: #0f766e;
+    --customer-accent-strong-hover: #115e59;
     --customer-accent-hover: #115e59;
     --customer-teal-tint: #f0fdfa;
     --customer-input-background: #ffffff;
@@ -69,6 +70,7 @@
     --customer-accent: #16877f;
     /* White action text requires 4.5:1 contrast: darker teal for buttons. */
     --customer-accent-strong: #0f766e;
+    --customer-accent-strong-hover: #115e59;
     --customer-accent-hover: #1c9e95;
     --customer-teal-tint: #203e41;
     --customer-input-background: #21374a;
