@@ -164,3 +164,22 @@ test("AI-39 opening-hours intent does not unlock unrelated or manipulative tasks
     assert.equal(isResortQuestion(message, context, recent), false, message);
   }
 });
+
+
+test("AI-44 multilingual greetings and clear resort requests pass the scope gate", () => {
+  for (const q of [
+    "ni hao ma?", "ni hao", "你好", "我想预订一个房间", "房间多少钱？",
+    "hola", "Quiero reservar una habitación",
+    "こんにちは", "部屋を予約したいです",
+    "안녕하세요", "객실 예약하고 싶어요",
+    "bonjour", "Je cherche une chambre",
+    "Guten Tag", "Haben Sie Zimmer?",
+    "مرحبا", "أريد حجز غرفة",
+  ]) assert.equal(isResortQuestion(q), true, q);
+  for (const q of [
+    "Who was Jose Rizal?", "Write me a Python program",
+    "What is the capital of Japan?",
+    "¿Cuál es la capital de Japón?",
+    "日本の首都は何ですか？",
+  ]) assert.equal(isResortQuestion(q), false, q);
+});
