@@ -591,3 +591,34 @@
 @media screen and (prefers-reduced-motion: reduce) {
   body.customer-manager-tone .ai-chat-window * { scroll-behavior: auto !important; transition: none !important; }
 }
+
+/* DM-08: User-selected New Chat, Transcription, and Mic vector symbols.
+ * Keep SVG strokes aligned and icons readable at all phone sizes. */
+@media screen {
+  body.customer-manager-tone .ai-chat-window .ai-chat-icon-btn svg {
+    display: block;
+    width: 19px;
+    height: 19px;
+    max-width: 100%;
+    max-height: 100%;
+    fill: none;
+    stroke: currentColor;
+    flex: none;
+    pointer-events: none;
+  }
+  body.customer-manager-tone .ai-chat-window #aiNewChatBtn svg {
+    width: 19px;
+    height: 19px;
+  }
+  body.customer-manager-tone .ai-chat-window #aiVoiceOptionsToggle svg {
+    width: 20px;
+    height: 20px;
+  }
+  body.customer-manager-tone .ai-chat-window #aiMicBtn svg {
+    width: 20px;
+    height: 20px;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-chat-icon-btn {
+    line-height: 1 !important;
+  }
+}
