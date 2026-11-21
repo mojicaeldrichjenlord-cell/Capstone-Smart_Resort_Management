@@ -2004,3 +2004,94 @@ test("Focused-room Wi-Fi follow-up is not overridden by unknown resort-wide poli
   assert.notEqual(r.body.mode, "unverified_resort_policy");
   assert.ok(modelCalls >= 1);
 });
+
+
+test("AI-40 Ask About This returns verified facts for every selected accommodation type", async () => {
+  catalogRows = [
+    { ...exampleRoom, id: 71, room_name: "Double Room 1",
+      category_name: "Room", capacity: 7, description: "",
+      amenities: "", day_price: 4000, overnight_price: 4000,
+      extended_price: null, free_entrance_pax: null },
+    { ...exampleRoom, id: 72, room_name: "Family Room A",
+      category_name: "Room", capacity: 7, description: "Two-bedroom family room",
+      amenities: "Private CR, Air conditioned",
+      day_price: 3500, overnight_price: 4500, free_entrance_pax: 2 },
+    { ...exampleRoom, id: 73, room_name: "Big Nipa Hut 1",
+      category_name: "Cottage", capacity: 20, description: "",
+      amenities: "", day_price: 900, overnight_price: 1200 },
+    { ...exampleRoom, id: 74, room_name: "Function Area A",
+      category_name: "Function Area", capacity: 50, description: "Event venue",
+      amenities: "", day_price: 7000, overnight_price: 8000 },
+    { ...exampleRoom, id: 75, room_name: "Single Room Cottage 1",
+      category_name: "Room", capacity: 4, description: "Near the cottages",
+      amenities: "Air conditioned, Private CR", day_price: 3000,
+      overnight_price: 3300 },
+  ];
+  for (const room of catalogRows) {
+    const response = await post("/api/ai/chat", {
+      message: "Tell me more about " + room.room_name + ".",
+      context: { room_id: room.id, room_name: room.room_name, language_style: "taglish" },
+    });
+    assert.equal(response.status, 200, room.room_name);
+    assert.equal(response.body.mode, "verified_accommodation_overview", room.room_name);
+    assert.equal(response.body.extracted_context.room_id, room.id);
+    assert.equal(response.body.extracted_context.room_name, room.room_name);
+    assert.ok(response.body.reply.includes(room.room_name), room.room_name);
+    assert.match(response.body.reply, new RegExp(String(room.capacity) + " guests"));
+    assert.match(response.body.reply, /Listed rates:/);
+    assert.ok(response.body.reply.includes(
+      Number(room.day_price).toLocaleString("en-PH")), room.room_name);
+    assert.doesNotMatch(response.body.reply,
+      /availability (?:is|has been) confirmed|guaranteed booking/i);
+  }
+  // Mocked SQL must read the exact clicked ID only; not the old selected
+  // recommendation, an unrelated first room, or an arbitrary Gemini answer.
+  assert.equal(queries.length, catalogRows.length);
+  assert.ok(queries.every(q => /WHERE a\.id = \? LIMIT 1/i.test(q.sql)));
+  assert.deepEqual(queries.map(q => Number(q.params[0])),
+    catalogRows.map(room => room.id));
+  assert.equal(modelCalls, 0);
+});
+
+test("AI-40 empty amenities still return capacity and rates, not only a Front Desk referral", async () => {
+  catalogRows = [
+    { ...exampleRoom, id: 71, room_name: "Double Room 1",
+      category_name: "Room", capacity: 7, description: "", amenities: "",
+      day_price: 4000, overnight_price: 4000, free_entrance_pax: null },
+    { ...exampleRoom, id: 72, room_name: "Other Private Room",
+      description: "Private pool and a balcony", amenities: "Karaoke",
+      day_price: 9999, overnight_price: 9999 },
+  ];
+  const response = await post("/api/ai/chat", {
+    message: "Tell me more about Double Room 1.",
+    context: { room_id: 71, room_name: "Double Room 1" },
+  });
+  assert.equal(response.body.mode, "verified_accommodation_overview");
+  assert.match(response.body.reply, /Double Room 1/);
+  assert.match(response.body.reply, /7 guests/);
+  assert.match(response.body.reply, /4,000/);
+  assert.match(response.body.reply, /amenities are not listed/i);
+  assert.doesNotMatch(response.body.reply, /Private pool|balcony|Karaoke|9,999/i);
+  assert.equal(modelCalls, 0);
+  assert.equal(queries.length, 1);
+});
+
+test("AI-40 stale selected room IDs and renamed listings are not silently described", async () => {
+  catalogRows = [{ ...exampleRoom, id: 80, room_name: "Renamed Family Room",
+    description: "Aircon and private CR", day_price: 6700 }];
+  for (const [id, name] of [
+    [80, "Old Family Room Name"],
+    [5000, "Deleted Room"],
+  ]) {
+    const response = await post("/api/ai/chat", {
+      message: "Tell me more about " + name + ".",
+      context: { room_id: id, room_name: name },
+    });
+    assert.equal(response.body.mode, "accommodation_selection_needed");
+    assert.match(response.body.reply, /select its latest card/i);
+    assert.doesNotMatch(response.body.reply, /Aircon|private CR|6,700/i);
+    assert.ok(!Object.hasOwn(response.body.extracted_context, "room_id"));
+    assert.ok(!Object.hasOwn(response.body.extracted_context, "room_name"));
+  }
+  assert.equal(modelCalls, 0);
+});
