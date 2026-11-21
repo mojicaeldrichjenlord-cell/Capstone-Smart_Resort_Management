@@ -339,7 +339,7 @@
     .btn-primary, .book-now-btn, .map-link-btn, .map-btn.primary,
     .profile-submit-btn, .category-filter-btn.active, .map-filter-btn.active
   ):hover {
-    background: var(--customer-accent-hover) !important;
+    background: var(--customer-accent-strong-hover, #115e59) !important;
   }
   html[data-customer-theme="dark"] body.customer-manager-tone :is(
     .back-btn, .back-btn-full, .btn-primary, .book-now-btn,
