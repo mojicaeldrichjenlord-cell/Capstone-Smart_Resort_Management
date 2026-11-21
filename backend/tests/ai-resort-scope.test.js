@@ -110,7 +110,9 @@ test("AI-36 scope check occurs before all Gemini and catalog calls", () => {
   const src = fs.readFileSync(
     path.join(__dirname, "../controllers/ai/geminiChatController.js"), "utf8");
   const start = src.indexOf("exports.chatWithGemini = async");
-  const guard = src.indexOf("if (!isResortQuestion(message, scopeContext, recentScopeTurns))", start);
+  // Short count replies from an already-pending resort recommendation are
+  // the only additional allowance added to the scope gate in AI-37.
+  const guard = src.indexOf("if (!isResortQuestion(message, scopeContext, recentScopeTurns) &&", start);
   const policy = src.indexOf("if (isGeneralOnlineDownpaymentQuestion(message))", start);
   const catalog = src.indexOf("const [countRows] = await db.promise().query(", start);
   const extraction = src.indexOf("await extractStructuredIntent(message, requestContext)", start);
