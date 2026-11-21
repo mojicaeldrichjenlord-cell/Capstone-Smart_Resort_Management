@@ -3,9 +3,15 @@ const AI_API_BASE = typeof API_BASE === "string" ? API_BASE
   : (["localhost", "127.0.0.1"].includes(window.location.hostname)
     ? "http://127.0.0.1:5000/api"
     : "https://smartresort-backend.onrender.com/api");
-const AI_CONTEXT_KEY = "smartresort_ai_context_v1";
-const AI_WINDOW_STATE_KEY = "smartresort_ai_window_state_v1";
-const AI_CHAT_HISTORY_KEY = "smartresort_ai_chat_history_v1";
+// UI-37: Public landing inquiries and signed-in Customer chats must not share
+// local history, recommendation context, or saved popup size.
+const AI_IS_PUBLIC_LANDING = document.body?.dataset.aiChatSurface === "public";
+const AI_CONTEXT_KEY = AI_IS_PUBLIC_LANDING
+  ? "arvic_public_ai_context_v1" : "smartresort_ai_context_v1";
+const AI_WINDOW_STATE_KEY = AI_IS_PUBLIC_LANDING
+  ? "arvic_public_ai_window_state_v1" : "smartresort_ai_window_state_v1";
+const AI_CHAT_HISTORY_KEY = AI_IS_PUBLIC_LANDING
+  ? "arvic_public_ai_chat_history_v1" : "smartresort_ai_chat_history_v1";
 // Verified official Facebook page from the Customer Home page (refund support).
 const OFFICIAL_RESORT_FACEBOOK_URL = "https://www.facebook.com/share/1E1kZLtrV4/?mibextid=wwXIfr";
 // Keep these contact numbers consistent with the Customer Home contact card.
@@ -351,7 +357,9 @@ function restoreChatHistory() {
   if (!history.length) {
     appendAiMessage(
       "assistant",
-      "Hi po! Anong accommodation o booking details ang maitutulong ko sa inyo?",
+      AI_IS_PUBLIC_LANDING
+        ? "Welcome po sa Arvic Seaside Beach Resort and Hotel! 👋 Ask me about rooms, cottages, rates, parking, and resort policies—no login needed. Ano pong gusto ninyong malaman?"
+        : "Hi po! Anong accommodation o booking details ang maitutulong ko sa inyo?",
       false
     );
 
@@ -1002,6 +1010,9 @@ function aiRoomMoney(amount) {
 }
 
 function getAiCustomerPageUrl(page, accommodationId) {
+  // Public visitors can inquire and compare room cards, but entering any
+  // Customer accommodation/booking workflow requires signing in first.
+  if (AI_IS_PUBLIC_LANDING) return "../authHTML/login.html";
   const id = Number(accommodationId);
   if (!Number.isSafeInteger(id) || id <= 0) return "rooms.html";
   return page + "?room_id=" + encodeURIComponent(String(id));
@@ -1067,11 +1078,11 @@ function appendAiRecommendationCards(items, save = true) {
     actions.className = "ai-recommendation-actions";
     const detail = document.createElement("a");
     detail.href = getAiCustomerPageUrl("rooms.html", room.id);
-    detail.textContent = "View Details";
+    detail.textContent = AI_IS_PUBLIC_LANDING ? "Login for Details" : "View Details";
     detail.className = "ai-recommendation-link";
     const book = document.createElement("a");
     book.href = getAiCustomerPageUrl("booking.html", room.id);
-    book.textContent = "Book This";
+    book.textContent = AI_IS_PUBLIC_LANDING ? "Login to Book" : "Book This";
     book.className = "ai-recommendation-link primary";
     const ask = document.createElement("button");
     ask.type = "button";
@@ -1101,6 +1112,12 @@ function appendAiRecommendationCards(items, save = true) {
 }
 
 function createBookingFromPreview(preview, button) {
+  // UI-37: Public landing visitors must always go through Customer login.
+  // A stale localStorage user object is not proof of authentication.
+  if (AI_IS_PUBLIC_LANDING) {
+    window.location.href = "../authHTML/login.html";
+    return;
+  }
   // AI suggestions never create reservations directly. The Customer
   // booking form owns final dates, slot pricing, payment and conflict checks.
   const user = JSON.parse(localStorage.getItem("user") || "null");
