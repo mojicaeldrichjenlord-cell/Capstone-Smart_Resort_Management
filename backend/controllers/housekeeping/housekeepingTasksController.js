@@ -90,16 +90,41 @@ const taskListSql =
   "JOIN reservations r ON r.id = ri.reservation_id " +
   "JOIN users u ON u.id = ht.assigned_to ";
 
+// HK-48 release safety: The new proof table is a separately approved
+// migration. Until it exists, Manager/Housekeeping must still be able to
+// view their previously assigned tasks. Only read-only task lists fall
+// back; all write operations remain fail-closed until the migration.
+function missingProofStorage(error) {
+  return (error?.code === "ER_NO_SUCH_TABLE" || error?.errno === 1146) &&
+    /housekeeping_cleaning_proofs/i.test(
+      String(error?.sqlMessage || error?.message || ""));
+}
+const taskListWithoutProofSql = taskListSql.replace(
+  "(SELECT 1 FROM housekeeping_cleaning_proofs hp WHERE hp.task_id=ht.id LIMIT 1) AS has_proof",
+  "NULL AS has_proof"
+);
+async function queryTaskList(suffix, params) {
+  try {
+    const [rows] = await db.promise().query(taskListSql + suffix, params);
+    return { rows, proof_setup_required: false };
+  } catch (error) {
+    if (!missingProofStorage(error)) throw error;
+    const [rows] = await db.promise().query(taskListWithoutProofSql + suffix, params);
+    return { rows, proof_setup_required: true };
+  }
+}
+
 // MANAGER: view task progress for one checkout date; no database changes.
 exports.listManagerHousekeepingTasks = async (req, res) => {
   const day = getDay(req, res);
   if (!day) return;
   try {
-    const [rows] = await db.promise().query(
-      taskListSql + "WHERE ht.task_date = ? " +
+    const { rows, proof_setup_required } = await queryTaskList(
+      "WHERE ht.task_date = ? " +
       "ORDER BY FIELD(ht.status,'needs_cleaning','in_progress','cleaned','verified_ready'), ht.id DESC LIMIT 200",
       [day]);
-    return res.json({ success: true, date: day, tasks: rows.map(slim), limit: 200 });
+    return res.json({ success: true, date: day, tasks: rows.map(slim), limit: 200,
+      proof_setup_required });
   } catch (error) { return sendError(res, error, "manager task list"); }
 };
 
@@ -108,12 +133,13 @@ exports.listMyHousekeepingTasks = async (req, res) => {
   const day = getDay(req, res);
   if (!day) return;
   try {
-    const [rows] = await db.promise().query(
-      taskListSql + "WHERE ht.assigned_to = ? AND " +
+    const { rows, proof_setup_required } = await queryTaskList(
+      "WHERE ht.assigned_to = ? AND " +
       "(ht.task_date = ? OR (ht.task_date < ? AND ht.status <> 'verified_ready')) " +
       "ORDER BY ht.task_date ASC, ht.id ASC LIMIT 200",
       [req.housekeepingUser.id, day, day]);
     return res.json({ success: true, date: day, tasks: rows.map(slim), limit: 200,
+      proof_setup_required,
       note: "Includes outstanding older assignments; verified ready does not override booking availability." });
   } catch (error) { return sendError(res, error, "staff task list"); }
 };
