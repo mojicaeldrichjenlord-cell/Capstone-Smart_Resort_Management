@@ -41,71 +41,130 @@ function listedRate(value) {
     : "";
 }
 
-// AI-40: "Ask About This" must answer what the selected DB listing actually
-// knows, even when Admin has not filled its separate amenities field.
-// No hardcoded room facts, guesses, Gemini calls or reservation writes.
+// AI-41: A card-click overview is a conversation, not a database printout.
+// Keep the verified accommodation ID, rates, capacity and category policies,
+// but phrase them like a concise resort concierge. No Gemini calls needed.
+function friendlyList(items, filipino) {
+  if (items.length < 2) return items.join("");
+  const conjunction = filipino ? "at" : "and";
+  if (items.length === 2) return items.join(" " + conjunction + " ");
+  return items.slice(0, -1).join(", ") + ", " + conjunction + " " + items.at(-1);
+}
+
+function conversationalAmenities(room, filipino) {
+  const facts = listedAmenityParts(room);
+  const names = new Set(facts.map(x => x.toLowerCase()));
+  const hasTwoBedrooms = names.has("2 separate bedrooms");
+  const hasEachAC = names.has("air conditioner in each bedroom");
+  const hasEachCabinet = names.has("cabinets in each bedroom");
+  const grouped = hasTwoBedrooms && (hasEachAC || hasEachCabinet);
+  const special = new Set(grouped
+    ? ["2 separate bedrooms", "air conditioner in each bedroom", "cabinets in each bedroom"]
+    : []);
+  const terms = facts.filter(x => !special.has(x.toLowerCase())).map(x => {
+    if (filipino && /^private cr$/i.test(x)) return "sariling CR";
+    if (!filipino && /^private cr$/i.test(x)) return "private bathroom";
+    return x.charAt(0).toLowerCase() + x.slice(1);
+  });
+  if (grouped) {
+    const features = [
+      hasEachAC ? (filipino ? "aircon" : "air conditioning") : "",
+      hasEachCabinet ? (filipino ? "cabinets" : "cabinets") : "",
+    ].filter(Boolean);
+    terms.push(filipino
+      ? "2 bedrooms na parehong may " + friendlyList(features, true)
+      : "2 bedrooms, each with " + friendlyList(features, false));
+  }
+  return friendlyList(terms, filipino);
+}
+
+function conversationalRates(room, filipino) {
+  const day = listedRate(room?.day_price);
+  const night = listedRate(room?.overnight_price);
+  const extended = listedRate(room?.extended_price);
+  if (!day && !night && !extended) return "";
+  const parts = [];
+  if (day && night && day === night) {
+    parts.push(filipino
+      ? day + " po for Day Tour or Night"
+      : "Day Tour and Night are both " + day);
+  } else {
+    if (day) parts.push(filipino ? day + " for Day Tour" : "Day Tour is " + day);
+    if (night) parts.push(filipino ? night + " for Night" : "Night is " + night);
+  }
+  if (extended) parts.push(filipino
+    ? extended + " for Extended"
+    : "Extended is " + extended);
+  return parts.join(filipino ? ", at " : "; ") + ".";
+}
+
 function focusedRoomOverview(room, language = "english") {
   const filipino = ["tagalog", "taglish"].includes(String(language).toLowerCase());
   const name = cleanedFact(room?.room_name || room?.name || "Accommodation", 90);
   const count = Number(room?.capacity ?? room?.max_capacity);
-  const capacity = Number.isSafeInteger(count) && count > 0
-    ? (filipino ? "good for up to " + count + " guests" : "listed for up to " + count + " guests")
-    : (filipino ? "wala pang listed capacity" : "capacity is not listed");
-  const sentences = [name + (filipino ? " po, " : " is ") + capacity + "."];
+  const capacity = Number.isSafeInteger(count) && count > 0;
+  const sentences = [];
 
+  if (capacity) {
+    sentences.push(filipino
+      ? "Yung " + name + " po, good for up to " + count + " guests."
+      : name + " can accommodate up to " + count + " guests.");
+  } else {
+    sentences.push(filipino
+      ? "Yung " + name + " po, wala pang indicated guest capacity."
+      : "The guest capacity for " + name + " isn't listed yet.");
+  }
+
+  const plainCottage = isPlainCottageCategory(room);
+  const amenities = plainCottage ? "" : conversationalAmenities(room, filipino);
   const description = cleanedFact(room?.description);
-  if (description && !/^(?:n\/a|none|null|not available|no description)$/i.test(description)) {
-    sentences.push("Description: " + description.replace(/[.!?]+$/, "") + ".");
+  // Don't parrot generic Admin descriptions that only repeat the room type or
+  // guest-count range. Preserve other genuinely supplied descriptions.
+  const usefulDescription = description &&
+    !/^(?:n\/a|none|null|not available|no description|room accommodation\b|room for \d+|(?:good for|up to) \d+|family room(?:\s|$)|double room(?:\s|$))/i.test(description);
+  if (amenities) {
+    sentences.push(filipino
+      ? "May " + amenities + "."
+      : "It comes with " + amenities + ".");
+  } else if (plainCottage) {
+    sentences.push(filipino
+      ? "Wala pong included amenities sa cottage na ito."
+      : "This cottage doesn't include amenities.");
+  } else if (!usefulDescription) {
+    sentences.push(filipino
+      ? "Hindi pa po naka-detail ang amenities, so pa-confirm na lang sa Front Desk."
+      : "The amenities aren't specified yet, so please check with Front Desk.");
+  }
+  if (usefulDescription) {
+    const detail = description.replace(/[.!?]+$/, "");
+    // Avoid repeating a full room description when the amenities already
+    // convey exactly the same text.
+    if (!amenities || !amenities.toLowerCase().includes(detail.toLowerCase())) {
+      sentences.push(detail + ".");
+    }
   }
 
-  // Rooms must use their OWN amenities; only the confirmed Function Area
-  // category gets category-wide inclusions when Admin left its list empty.
-  const isPlainCottage = isPlainCottageCategory(room);
-  const listedAmenities = isPlainCottage ? [] : listedAmenityParts(room);
-  if (isPlainCottage) {
-    sentences.push(filipino
-      ? "Wala pong kasamang amenities sa cottage na ito."
-      : "This cottage does not include amenities.");
-  } else if (listedAmenities.length) {
-    sentences.push((filipino ? "Listed amenities: " : "Listed amenities: ") +
-      listedAmenities.join(", ") + ".");
-  } else {
-    sentences.push(filipino
-      ? "Hindi pa nakalista ang specific amenities; paki-confirm na lang po sa Front Desk kung kailangan."
-      : "Specific amenities are not listed yet; please confirm inclusions with Front Desk if needed.");
-  }
+  const rates = conversationalRates(room, filipino);
+  if (rates) sentences.push(rates);
 
-  const rates = [
-    listedRate(room?.day_price) ? "Day Tour " + listedRate(room.day_price) : "",
-    listedRate(room?.overnight_price) ? "Night " + listedRate(room.overnight_price) : "",
-    listedRate(room?.extended_price) ? "Extended " + listedRate(room.extended_price) : "",
-  ].filter(Boolean);
-  if (rates.length) {
-    sentences.push("Listed rates: " + rates.join("; ") + ".");
-  } else {
-    sentences.push(filipino
-      ? "Wala pang verified rates sa listing."
-      : "Rates are not listed yet.");
-  }
-
-  const freeRaw = room?.free_entrance_pax;
-  const free = freeRaw === null || freeRaw === undefined ||
-    String(freeRaw).trim() === "" ? NaN : Number(freeRaw);
+  const rawFree = room?.free_entrance_pax;
+  const free = rawFree === null || rawFree === undefined ||
+    String(rawFree).trim() === "" ? NaN : Number(rawFree);
   if (Number.isSafeInteger(free) && free > 0) {
     sentences.push(filipino
-      ? "May " + free + " pax na free entrance ayon sa listing."
-      : "The listing includes free entrance for " + free + " guests.");
+      ? "May free entrance din po for " + free + " guests."
+      : "Free entrance is included for " + free + " guests.");
   }
 
   const status = String(room?.status || "").trim().toLowerCase();
   if (status && status !== "available") {
     sentences.push(filipino
-      ? "Sa ngayon, hindi naka-mark na available ang listing na ito."
-      : "This listing is not currently marked available.");
+      ? "Hindi po currently marked as available ang accommodation na ito."
+      : "This accommodation isn't currently marked available.");
   }
   sentences.push(filipino
-    ? "Check niyo na lang po yung date at slot sa booking page para sa actual availability."
-    : "Exact date and slot availability must still be checked on the booking page.");
+    ? "Check niyo na lang po yung date at slot sa booking page."
+    : "Please check the booking page for your date and slot.");
 
   return sentences.join(" ");
 }
