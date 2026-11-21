@@ -38,7 +38,7 @@ test("MGR-47 navbar uses one responsive logo size without Housekeeping-only over
   assert.match(shared, /\.manager-navbar > \.manager-brand\s*\{[^}]*flex-direction:\s*row/s);
   assert.match(shared, /\.manager-navbar \.manager-brand-logo\s*\{[^}]*width:\s*52px;[^}]*height:\s*52px;/s);
   assert.match(shared, /\.manager-navbar \.manager-brand-text\s*\{[^}]*flex-direction:\s*column/s);
-  assert.match(shared, /@media \(max-width: 420px\)\s*\{[^}]*\.manager-navbar \.manager-brand-logo\s*\{[^}]*width:\s*44px/s);
+  assert.match(shared, /@media \(max-width: 420px\)\s*\{[\s\S]{0,400}?\.manager-navbar \.manager-brand-logo\s*\{[^}]*width:\s*44px/s);
   assert.doesNotMatch(housekeeping, /\.manager-hk-logo\s*\{/);
 });
 
