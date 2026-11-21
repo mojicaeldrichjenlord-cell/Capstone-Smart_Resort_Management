@@ -4,7 +4,8 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   isPersonalizedRecommendation, explicitGuestCount, savedGuestCount,
-  guestCountQuestion, guestCountFollowUp, recommendationLookupMessage,
+  guestCountQuestion, guestCountFollowUp, correctedGuestCount,
+  guestCountCorrection, recommendationLookupMessage,
 } = require("../controllers/ai/aiRecommendationIntake");
 const { requestedCategory } = require("../controllers/ai/aiVerifiedPreview");
 
@@ -66,4 +67,56 @@ test("AI-37 follow-up keeps explicit accommodation type through verified catalog
     assert.equal(pending.category, scope);
     assert.equal(requestedCategory(recommendationLookupMessage(scope,6)), scope);
   }
+});
+
+
+test("AI-38 natural 10-to-7 revisions are recognized without inventing other numbers", () => {
+  for (const q of ["7 pala", "7 na lang", "7 na pala kami",
+    "5 na lang kami", "sorry 7 pala", "actually 7", "7 guests pala",
+    "pito pala", "7"]) {
+    const expected = q.startsWith("5") ? 5 : 7;
+    assert.equal(correctedGuestCount(q), expected, q);
+  }
+  for (const q of ["7pm pala", "7 pm pala", "₱7 pala",
+    "room 7 pala", "7,000", "Who is Jose Rizal?",
+    "the 7 wonders of the world", "700 guests", "2026-11-21"]) {
+    assert.equal(correctedGuestCount(q), 0, q);
+  }
+});
+
+test("AI-38 a guest-count correction requires an immediately previous resort recommendation", () => {
+  const recent = [
+    { role: "user", text: "Anong room ang massuggest mo?" },
+    { role: "assistant", text: guestCountQuestion("taglish") },
+    { role: "user", text: "10" },
+    { role: "assistant", text: "Ito po yung preview ng Family Room B. Click niyo ang View Details." },
+  ];
+  const context = {
+    intent: "ask_recommendation", guests: 10, room_id: 94,
+    room_name: "Family Room B", language_style: "taglish",
+  };
+  assert.deepEqual(guestCountCorrection("7 pala", recent, context),
+    { guests: 7, category: "room", corrected: true });
+  assert.deepEqual(guestCountCorrection("5 na lang kami", recent, context),
+    { guests: 5, category: "room", corrected: true });
+  assert.equal(guestCountCorrection("7 pala", recent, {}), null);
+  assert.equal(guestCountCorrection("7 pala", [], context), null);
+  assert.equal(guestCountCorrection("7 pala",
+    [...recent.slice(0, 3), { role: "assistant", text: "Yes po, free parking." }],
+    context), null);
+  assert.equal(guestCountCorrection("Who was Bonifacio?", recent, context), null);
+});
+
+test("AI-38 the original requested category overrides the last suggested room", () => {
+  const previous = [
+    { role: "user", text: "Recommend a family room" },
+    { role: "assistant", text: guestCountQuestion("english") },
+    { role: "user", text: "10" },
+    { role: "assistant", text: "Here's the preview for Family Room B." },
+  ];
+  const change = guestCountCorrection("7 pala", previous, {
+    intent:"ask_recommendation", guests:10, room_id:94, room_name:"Family Room B",
+  });
+  assert.equal(change.category, "family");
+  assert.equal(requestedCategory(recommendationLookupMessage(change.category, change.guests)), "family");
 });
