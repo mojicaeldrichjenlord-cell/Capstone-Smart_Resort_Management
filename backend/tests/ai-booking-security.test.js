@@ -229,7 +229,7 @@ test("AI-36 history trivia is politely refused with zero Gemini credits or SQL r
 test("AI-36 second non-resort turn is still blocked even after prior refusal", async () => {
   const result = await post("/api/ai/chat", {
     message: "si jose rizal",
-    voice_language: "english",
+    input_source: "voice",
     context: { room_id: 61, language_style: "taglish" },
     recent_turns: [
       { role: "user", text: "ano full name ni bonifacio" },
@@ -238,7 +238,7 @@ test("AI-36 second non-resort turn is still blocked even after prior refusal", a
   });
   assert.equal(result.status, 200);
   assert.equal(result.body.mode, "resort_scope_only");
-  assert.match(result.body.reply, /I can help with Arvic Seaside Resort/i);
+  assert.match(result.body.reply, /Resort inquiries lang po/i);
   assert.doesNotMatch(result.body.reply, /Jose|Protacio|Mercado|Rizal/i);
   assert.equal(modelCalls, 0);
   assert.equal(queries.length, 0);
@@ -949,27 +949,26 @@ test("Mandarin text chat overrides an older Spanish chat-language preference", a
   assert.equal(result.body.extracted_context.language_style, "mandarin");
   assert.match(modelPrompts[1], /Simplified Chinese characters/);
 });
-test("English voice session replies in English even if guest changes spoken language", async () => {
+test("Voice response switches to Mandarin when the guest speaks Mandarin", async () => {
   const result = await post("/api/ai/chat", {
     message: "你好，我想预订一个房间。",
-    voice_language: "english",
-    context: { language_style: "mandarin" },
-  });
-  assert.equal(result.status, 200);
-  assert.equal(result.body.extracted_context.language_style, "english");
-  assert.match(modelPrompts[1], /Reply in clear English/);
-});
-test("Mandarin voice session replies in Mandarin even if transcript is English", async () => {
-  const result = await post("/api/ai/chat", {
-    message: "Do you have a family room?",
-    voice_language: "mandarin",
+    input_source: "voice",
     context: { language_style: "english" },
   });
   assert.equal(result.status, 200);
   assert.equal(result.body.extracted_context.language_style, "mandarin");
-  // Simple catalog requests now skip the extraction call.
+  assert.match(modelPrompts.at(-1), /Simplified Chinese characters/);
+});
+test("Voice response switches back to English when the guest speaks English", async () => {
+  const result = await post("/api/ai/chat", {
+    message: "Do you have a family room?",
+    input_source: "voice",
+    context: { language_style: "mandarin" },
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.extracted_context.language_style, "english");
   assert.equal(modelCalls, 1);
-  assert.match(modelPrompts.at(-1), /Reply entirely in Mandarin Chinese/);
+  assert.match(modelPrompts.at(-1), /The CURRENT guest message controls reply language/);
 });
 test("Taglish and Spanish voice preferences use the selected fixed reply language", async () => {
   const taglish = await post("/api/ai/chat", {
