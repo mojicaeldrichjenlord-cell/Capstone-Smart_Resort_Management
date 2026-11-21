@@ -18,8 +18,8 @@ const pages = [
 test("DM-02 all signed-in Customer pages restore theme before CSS and use one shared toggle style", () => {
   for (const page of pages) {
     const html=read("frontend/customerHTML/" + page);
-    const jsTag='<script src="../sharedJS/customer-theme-toggle.js?v=20261121-dm02"></script>';
-    const cssRef='customer-theme-toggle.css?v=20261121-dm02';
+    const jsTag='<script src="../sharedJS/customer-theme-toggle.js?v=20261121-dm04"></script>';
+    const cssRef='customer-theme-toggle.css?v=20261121-dm04';
     assert.equal(html.split(jsTag).length-1,1,page);
     assert.equal(html.split(cssRef).length-1,1,page);
     assert.ok(html.indexOf(jsTag)<html.indexOf('rel="stylesheet"'),page+" restore before paint");
