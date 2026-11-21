@@ -536,6 +536,10 @@ function summarizeContext(context = {}) {
 
 function detectOfflineLanguage(message, context = {}) {
   const text = String(message || "").toLowerCase();
+  // AI-44: Even when the API is unavailable, don't use stale language
+  // when the latest message is recognizably Mandarin or Spanish.
+  if (/[\u3400-\u9fff]/u.test(text) || /\b(?:ni\s*hao(?:\s*ma)?|nihao|xie\s*xie|fangjian|yuding)\b/i.test(text)) return "mandarin";
+  if (/\b(?:hola|gracias|habitaciones?|cu[aá]nto|reservaci[oó]n|precio|quiero|tienen)\b/i.test(text)) return "spanish";
   // Short Filipino slot replies must not suddenly switch to English offline.
   if (/^(?:umaga|gabi|day tour po|night po)$/.test(text.trim())) return "tagalog";
 
