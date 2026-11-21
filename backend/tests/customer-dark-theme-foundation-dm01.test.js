@@ -39,7 +39,7 @@ test("DM-01 shared semantic tokens describe soft navy/slate dark and original li
   assert.doesNotMatch(tokens, /(?:^|:\s*)#000000\b|(?:^|:\s*)black\s*;/im);
 });
 
-test("DM-01 tokens loaded once, last, on all eight signed-in Customer pages", () => {
+test("DM-01 tokens loaded once after current theme on all eight signed-in Customer pages", () => {
   for (const file of customerPages) {
     const html = read("frontend/customerHTML/" + file);
     const cssRef = "customer-theme-tokens.css?v=20261121-dm01";
@@ -50,8 +50,9 @@ test("DM-01 tokens loaded once, last, on all eight signed-in Customer pages", ()
     assert.ok(themePos < closingHead && themePos > 0, file + " must load theme CSS in <head>");
     assert.ok(themePos > html.indexOf("customer-manager-tone.css"), file + " tokens load after current palette");
     const styleAfter = html.slice(themePos, closingHead);
-    assert.doesNotMatch(styleAfter, /rel="stylesheet"/, file + " should load theme CSS last");
-    assert.doesNotMatch(html, /id="customerThemeToggle"/, file + " must not ship toggle before DM-02");
+    assert.match(styleAfter, /customer-theme-toggle\.css\?v=20261121-dm02/, file + " only DM-02 toggle styles may follow theme tokens");
+    assert.equal((styleAfter.match(/rel="stylesheet"/g) || []).length, 1, file + " should not add unrelated theme layers");
+    assert.doesNotMatch(html, /id="customerThemeToggle"/, file + " toggle is injected once by shared JS");
   }
 });
 
