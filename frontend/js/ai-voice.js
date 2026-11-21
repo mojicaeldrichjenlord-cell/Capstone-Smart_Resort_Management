@@ -19,6 +19,24 @@
     german: { stt: "de-DE", tts: "de-DE", label: "Deutsch" },
     arabic: { stt: "ar-SA", tts: "ar-SA", label: "العربية" },
   });
+  // DM-08: Consistent, vector-based Speech-to-Text and Stop icons.
+  // Presentational only: dictation/live transcription state remains unchanged.
+  const MIC_ICON_SVG = [
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"',
+    ' stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"',
+    ' aria-hidden="true" focusable="false">',
+    '<rect x="9" y="2.5" width="6" height="12" rx="3"/>',
+    '<path d="M5 10.5v1.5a7 7 0 0 0 14 0v-1.5M12 19v3M8 22h8"/>',
+    '</svg>'
+  ].join("");
+  const STOP_ICON_SVG = [
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"',
+    ' stroke-width="2" stroke-linecap="round" stroke-linejoin="round"',
+    ' aria-hidden="true" focusable="false">',
+    '<rect x="6" y="6" width="12" height="12" rx="2"/>',
+    '</svg>'
+  ].join("");
+
   // UI-44: No persistent voice-language picker. Each turn is auto-detected.
   const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
   // Web Speech can be denied by Safari even when the iPhone mic is allowed.
@@ -153,7 +171,15 @@
   function updateControls() {
     if (!controls) return;
     const listening = state.mode === "dictation" || state.mode === "live-listening";
-    controls.mic.textContent = state.mode === "dictation" ? "■" : "🎤";
+    if (document.body.classList.contains("customer-manager-tone")) {
+      // updateControls() runs on each state change; keep the visible icon in
+      // sync with dictation without touching microphone/session handlers.
+      const micIcon = state.mode === "dictation" ? STOP_ICON_SVG : MIC_ICON_SVG;
+      if (controls.mic.innerHTML !== micIcon) controls.mic.innerHTML = micIcon;
+      controls.mic.classList.add("ai-chat-icon-btn");
+    } else {
+      controls.mic.textContent = state.mode === "dictation" ? "■" : "🎤";
+    }
     controls.mic.title = state.mode === "dictation"
       ? "Stop recording and review transcript" : "Dictate a message, then review and send";
     controls.mic.setAttribute("aria-label", controls.mic.title);

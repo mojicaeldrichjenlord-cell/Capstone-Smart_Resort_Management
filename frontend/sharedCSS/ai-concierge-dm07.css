@@ -1,0 +1,624 @@
+/*
+ * DM-07 | Unified Customer AI Concierge (presentation only)
+ * Loaded last, after DM-06, on signed-in Customer pages.
+ * Scope: body.customer-manager-tone. Never affects public, staff, or print.
+ */
+@media screen {
+  body.customer-manager-tone .ai-chat-window {
+    --dm07-panel: #ffffff;
+    --dm07-header: #f7fafb;
+    --dm07-canvas: #f4f8fa;
+    --dm07-surface: #ffffff;
+    --dm07-soft: #eff6f7;
+    --dm07-input: #ffffff;
+    --dm07-border: #d7e3e8;
+    --dm07-text: #1c3042;
+    --dm07-muted: #526778;
+    --dm07-accent: #0f766e;
+    --dm07-accent-text: #ffffff;
+    position: fixed !important;
+    z-index: 4201;
+    top: auto !important;
+    left: auto !important;
+    right: 16px !important;
+    bottom: max(16px, env(safe-area-inset-bottom)) !important;
+    width: min(386px, calc(100vw - 32px)) !important;
+    max-width: calc(100vw - 32px) !important;
+    height: min(550px, calc(100dvh - 112px)) !important;
+    max-height: calc(100dvh - 92px) !important;
+    min-height: 0 !important;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    isolation: isolate;
+    border: 1px solid var(--dm07-border) !important;
+    border-radius: 18px !important;
+    background: var(--dm07-panel) !important;
+    color: var(--dm07-text) !important;
+    box-shadow: 0 16px 42px rgba(15, 34, 51, .18) !important;
+  }
+  body.customer-manager-tone .ai-chat-window.show { display: flex !important; }
+  body.customer-manager-tone .ai-chat-window:not(.show) { display: none !important; }
+  body.customer-manager-tone .ai-chat-window.maximized {
+    top: auto !important;
+    right: 12px !important;
+    bottom: max(12px, env(safe-area-inset-bottom)) !important;
+    left: auto !important;
+    width: min(880px, calc(100vw - 24px)) !important;
+    max-width: calc(100vw - 24px) !important;
+    height: min(780px, calc(100dvh - 24px)) !important;
+    max-height: calc(100dvh - 24px) !important;
+  }
+  body.customer-manager-tone .ai-chat-toggle {
+    position: fixed !important;
+    z-index: 4200;
+    right: 16px !important;
+    bottom: max(16px, env(safe-area-inset-bottom)) !important;
+    left: auto !important;
+    width: auto !important;
+    min-height: 44px;
+    max-width: calc(100vw - 32px);
+    padding: 10px 16px !important;
+    background: #0f766e !important;
+    color: #ffffff !important;
+    border-radius: 999px !important;
+    box-shadow: 0 8px 22px rgba(14, 74, 75, .23) !important;
+  }
+  body.customer-manager-tone .ai-chat-toggle::before {
+    content: none !important;
+    display: none !important;
+  }
+  body.customer-manager-tone .ai-chat-toggle[hidden] { display: none !important; }
+
+  body.customer-manager-tone .ai-chat-window .ai-chat-header {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    gap: 7px;
+    min-height: 62px;
+    padding: 9px 11px !important;
+    background: var(--dm07-header) !important;
+    color: var(--dm07-text) !important;
+    border-bottom: 1px solid var(--dm07-border) !important;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-assistant-brand {
+    display: flex;
+    align-items: center;
+    flex: 1 1 auto;
+    gap: 8px;
+    min-width: 0;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-assistant-mark {
+    display: grid;
+    place-items: center;
+    flex: 0 0 30px;
+    width: 30px;
+    height: 30px;
+    border: 1px solid var(--dm07-border);
+    border-radius: 10px;
+    background: var(--dm07-soft);
+    color: var(--dm07-accent);
+    box-shadow: none;
+    font-size: .68rem;
+    font-weight: 850;
+    letter-spacing: .01em;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-assistant-heading {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 2px;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-chat-header h3,
+  body.customer-manager-tone .ai-chat-window .ai-chat-header .ai-assistant-heading h3 {
+    display: block;
+    margin: 0;
+    color: var(--dm07-text) !important;
+    font-size: .81rem !important;
+    font-weight: 780;
+    letter-spacing: -.01em;
+    line-height: 1.28;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-chat-header h3::before {
+    display: none !important;
+    content: none !important;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-assistant-caption {
+    display: block;
+    color: var(--dm07-muted) !important;
+    font-size: .67rem;
+    line-height: 1.2;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-chat-header-actions {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    gap: 4px;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-chat-header-btn {
+    flex: 0 0 32px;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 32px;
+    min-width: 32px;
+    height: 32px;
+    padding: 0 !important;
+    border: 1px solid var(--dm07-border) !important;
+    border-radius: 10px !important;
+    background: var(--dm07-soft) !important;
+    color: var(--dm07-text) !important;
+    font-size: 1rem !important;
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-chat-header-btn:hover {
+    background: var(--dm07-canvas) !important;
+  }
+
+  /* Only the conversation scrolls; the header and composer stay put. */
+  body.customer-manager-tone .ai-chat-window .ai-chat-messages,
+  body.customer-manager-tone .ai-chat-window.maximized .ai-chat-messages {
+    display: block;
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 0;
+    height: auto;
+    max-height: none;
+    padding: 15px 13px 18px !important;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    background: var(--dm07-canvas) !important;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-message {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    width: 100%;
+    margin: 0 0 14px;
+    min-width: 0;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-message.user { align-items: flex-end; }
+  body.customer-manager-tone .ai-chat-window .ai-message > .ai-bubble {
+    width: fit-content;
+    max-width: min(88%, 640px);
+    min-width: 0;
+    padding: 10px 12px;
+    border-radius: 14px;
+    overflow-wrap: anywhere;
+    color: var(--dm07-text);
+    font-size: .86rem;
+    line-height: 1.5;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-message.assistant > .ai-bubble {
+    background: var(--dm07-surface) !important;
+    color: var(--dm07-text) !important;
+    border: 1px solid var(--dm07-border) !important;
+    border-bottom-left-radius: 5px;
+    box-shadow: none;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-message.user > .ai-bubble {
+    background: var(--dm07-accent) !important;
+    color: var(--dm07-accent-text) !important;
+    border-bottom-right-radius: 5px;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-reply-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    max-width: 100%;
+    margin-top: 6px;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-reply-actions button {
+    min-height: 31px;
+    padding: 6px 9px !important;
+    border: 1px solid var(--dm07-border) !important;
+    border-radius: 9px !important;
+    background: var(--dm07-surface) !important;
+    color: var(--dm07-muted) !important;
+    font-size: .72rem !important;
+    line-height: 1.25;
+    white-space: normal;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-quick-questions {
+    width: 100%;
+    margin: 10px 0 8px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0;
+    background: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-quick-questions-label {
+    margin: 0 0 9px;
+    color: var(--dm07-muted) !important;
+    font-size: .72rem;
+    font-weight: 650;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-quick-questions-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 7px;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-quick-question {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: auto;
+    min-height: 34px;
+    padding: 7px 12px !important;
+    border: 1px solid var(--dm07-border) !important;
+    border-radius: 999px !important;
+    background: var(--dm07-soft) !important;
+    background-image: none !important;
+    color: var(--dm07-text) !important;
+    font-size: .74rem !important;
+    font-weight: 650;
+    line-height: 1.2;
+    box-shadow: none !important;
+    cursor: pointer;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-quick-question:hover {
+    border-color: var(--dm07-accent) !important;
+  }
+  body.customer-manager-tone .ai-chat-window:not(.maximized) .ai-recommendations-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-recommendation-card {
+    background: var(--dm07-surface) !important;
+    color: var(--dm07-text) !important;
+    border: 1px solid var(--dm07-border) !important;
+    box-shadow: none !important;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-recommendations-caption,
+  body.customer-manager-tone .ai-chat-window .ai-recommendation-body p {
+    color: var(--dm07-muted) !important;
+  }
+
+  /* Composer holds the microphone, voice settings, and send action. */
+  body.customer-manager-tone .ai-chat-window .ai-chat-input-area {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    width: 100%;
+    min-width: 0;
+    gap: 7px;
+    margin: 0;
+    padding: 10px !important;
+    background: var(--dm07-panel) !important;
+    border-top: 1px solid var(--dm07-border) !important;
+    box-shadow: none;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-chat-input-area input {
+    flex: 1 1 0;
+    width: 0;
+    min-width: 0;
+    max-width: none;
+    height: 43px;
+    padding: 9px 11px;
+    border: 1px solid var(--dm07-border) !important;
+    border-radius: 11px;
+    background: var(--dm07-input) !important;
+    color: var(--dm07-text) !important;
+    font-size: 16px;
+    line-height: 1.3;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-chat-input-area input::placeholder {
+    color: var(--dm07-muted) !important;
+    opacity: 1;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-chat-mic-btn,
+  body.customer-manager-tone .ai-chat-window .ai-voice-options-toggle {
+    flex: 0 0 39px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 39px !important;
+    min-width: 39px;
+    height: 43px;
+    min-height: 43px;
+    max-width: 39px;
+    padding: 0 !important;
+    border: 1px solid var(--dm07-border) !important;
+    border-radius: 11px !important;
+    background: var(--dm07-soft) !important;
+    color: var(--dm07-text) !important;
+    cursor: pointer;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-voice-options-toggle {
+    box-shadow: none !important;
+    text-align: center;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-voice-options-toggle[aria-expanded="true"] {
+    border-color: var(--dm07-accent) !important;
+    color: var(--dm07-accent) !important;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-voice-options-toggle svg {
+    display: block;
+    width: 19px;
+    height: 19px;
+    pointer-events: none;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-chat-send {
+    flex: 0 0 54px;
+    width: 54px;
+    min-width: 54px;
+    height: 43px;
+    padding: 0 7px !important;
+    border: 0 !important;
+    border-radius: 11px;
+    background: var(--dm07-accent) !important;
+    color: #fff !important;
+    font-size: .79rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-chat-send:disabled { cursor: wait; opacity: .65; }
+
+  /* Voice panel is an optional popup, not a persistent white full-width bar. */
+  body.customer-manager-tone .ai-chat-window .ai-voice-panel {
+    position: absolute !important;
+    z-index: 6;
+    left: 10px !important;
+    right: 10px !important;
+    bottom: 72px !important;
+    top: auto !important;
+    display: block;
+    flex: none;
+    width: auto !important;
+    max-width: none !important;
+    max-height: min(205px, 34dvh) !important;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    margin: 0;
+    padding: 12px !important;
+    border: 1px solid var(--dm07-border) !important;
+    border-radius: 14px;
+    background: var(--dm07-surface) !important;
+    color: var(--dm07-text) !important;
+    box-shadow: 0 14px 34px rgba(16, 33, 48, .2);
+  }
+  body.customer-manager-tone .ai-chat-window .ai-voice-panel[hidden] { display: none !important; }
+  body.customer-manager-tone .ai-chat-window .ai-voice-panel .ai-voice-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-voice-panel .ai-voice-auto-label {
+    flex: 1 1 100%;
+    color: var(--dm07-muted) !important;
+    font-size: .74rem;
+    font-weight: 650;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-voice-panel #aiVoiceLive {
+    flex: 1 1 100%;
+    min-height: 38px;
+    border-radius: 10px;
+    background: var(--dm07-accent) !important;
+    border-color: var(--dm07-accent) !important;
+    color: #fff !important;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-voice-panel #aiVoiceStatus,
+  body.customer-manager-tone .ai-chat-window .ai-voice-panel .ai-voice-info {
+    display: block;
+    margin: 7px 0 0;
+    color: var(--dm07-muted) !important;
+    font-size: .72rem;
+    line-height: 1.4;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  body.customer-manager-tone .ai-chat-window :is(button, a, input, select):focus-visible,
+  body.customer-manager-tone .ai-chat-toggle:focus-visible {
+    outline: 3px solid #38bdf8 !important;
+    outline-offset: 2px;
+  }
+}
+@media screen and (max-width: 560px) {
+  body.customer-manager-tone .ai-chat-toggle {
+    right: 8px !important;
+    bottom: max(10px, env(safe-area-inset-bottom)) !important;
+  }
+  body.customer-manager-tone .ai-chat-window:not(.maximized) {
+    top: auto !important;
+    left: 8px !important;
+    right: 8px !important;
+    bottom: max(8px, env(safe-area-inset-bottom)) !important;
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px) !important;
+    height: min(510px, 58dvh) !important;
+    max-height: calc(100dvh - 16px) !important;
+    min-height: 0 !important;
+    border-radius: 17px !important;
+  }
+  body.customer-manager-tone .ai-chat-window.maximized {
+    top: max(8px, env(safe-area-inset-top)) !important;
+    bottom: max(8px, env(safe-area-inset-bottom)) !important;
+    left: 8px !important;
+    right: 8px !important;
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px) !important;
+    height: calc(100dvh - 16px) !important;
+    max-height: calc(100dvh - 16px) !important;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-chat-header {
+    min-height: 58px;
+    padding: 9px !important;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-chat-header-btn {
+    flex-basis: 31px;
+    width: 31px;
+    min-width: 31px;
+    height: 32px;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-chat-messages,
+  body.customer-manager-tone .ai-chat-window.maximized .ai-chat-messages {
+    padding: 12px 10px 14px !important;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-chat-input-area {
+    padding: 9px !important;
+    gap: 6px;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-chat-mic-btn,
+  body.customer-manager-tone .ai-chat-window .ai-voice-options-toggle {
+    width: 37px !important;
+    min-width: 37px;
+    max-width: 37px;
+    flex-basis: 37px;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-chat-send {
+    width: 49px;
+    min-width: 49px;
+    flex-basis: 49px;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-voice-panel {
+    max-height: min(190px, 35dvh) !important;
+  }
+}
+@media screen and (max-width: 355px) {
+  body.customer-manager-tone .ai-chat-window .ai-assistant-mark { display: none !important; }
+  body.customer-manager-tone .ai-chat-window .ai-assistant-caption { display: none !important; }
+  body.customer-manager-tone .ai-chat-window .ai-chat-header h3 { font-size: .77rem !important; }
+}
+@media screen and (max-height: 450px) {
+  body.customer-manager-tone .ai-chat-window:not(.maximized) {
+    height: min(300px, calc(100dvh - 18px)) !important;
+    max-height: calc(100dvh - 18px) !important;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-voice-panel {
+    max-height: 36dvh !important;
+  }
+}
+@media screen {
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window {
+    --dm07-panel: #1b2b3d;
+    --dm07-header: #142b3e;
+    --dm07-canvas: #172535;
+    --dm07-surface: #2c4054;
+    --dm07-soft: #24364a;
+    --dm07-input: #21374a;
+    --dm07-border: #3c5668;
+    --dm07-text: #edf3f8;
+    --dm07-muted: #bac8d6;
+    --dm07-accent: #0f766e;
+    --dm07-accent-text: #ffffff;
+    background: var(--dm07-panel) !important;
+    color: var(--dm07-text) !important;
+    border-color: var(--dm07-border) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-chat-header {
+    background: var(--dm07-header) !important;
+    color: var(--dm07-text) !important;
+    border-color: var(--dm07-border) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-chat-header :is(h3, .ai-assistant-caption) {
+    color: var(--dm07-text) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-assistant-caption {
+    color: var(--dm07-muted) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-chat-header-btn,
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-chat-mic-btn,
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-voice-options-toggle,
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-reply-actions button,
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-quick-question {
+    background: var(--dm07-soft) !important;
+    color: var(--dm07-text) !important;
+    border-color: var(--dm07-border) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-chat-messages {
+    background: var(--dm07-canvas) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-message.assistant .ai-bubble,
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-recommendation-card,
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-voice-panel {
+    background: var(--dm07-surface) !important;
+    color: var(--dm07-text) !important;
+    border-color: var(--dm07-border) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-quick-questions {
+    background: transparent !important;
+    background-image: none !important;
+    border: 0 !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-quick-questions-label,
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-recommendations-caption,
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-recommendation-body p {
+    color: var(--dm07-muted) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-recommendation-body strong {
+    color: var(--dm07-text) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-chat-input-area {
+    background: var(--dm07-panel) !important;
+    border-color: var(--dm07-border) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-chat-input-area input {
+    background: var(--dm07-input) !important;
+    color: var(--dm07-text) !important;
+    border-color: var(--dm07-border) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-chat-input-area input::placeholder {
+    color: var(--dm07-muted) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-voice-panel :is(.ai-voice-auto-label, #aiVoiceStatus, .ai-voice-info) {
+    color: var(--dm07-muted) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-message.user .ai-bubble,
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-chat-send {
+    background: var(--dm07-accent) !important;
+    color: #fff !important;
+  }
+}
+@media screen and (prefers-reduced-motion: reduce) {
+  body.customer-manager-tone .ai-chat-window * { scroll-behavior: auto !important; transition: none !important; }
+}
+
+/* DM-08: User-selected New Chat, Transcription, and Mic vector symbols.
+ * Keep SVG strokes aligned and icons readable at all phone sizes. */
+@media screen {
+  body.customer-manager-tone .ai-chat-window .ai-chat-icon-btn svg {
+    display: block;
+    width: 19px;
+    height: 19px;
+    max-width: 100%;
+    max-height: 100%;
+    fill: none;
+    stroke: currentColor;
+    flex: none;
+    pointer-events: none;
+  }
+  body.customer-manager-tone .ai-chat-window #aiNewChatBtn svg {
+    width: 19px;
+    height: 19px;
+  }
+  body.customer-manager-tone .ai-chat-window #aiVoiceOptionsToggle svg {
+    width: 20px;
+    height: 20px;
+  }
+  body.customer-manager-tone .ai-chat-window #aiMicBtn svg {
+    width: 20px;
+    height: 20px;
+  }
+  body.customer-manager-tone .ai-chat-window .ai-chat-icon-btn {
+    line-height: 1 !important;
+  }
+}
