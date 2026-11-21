@@ -26,6 +26,8 @@ const {
 const { matchCheapestInquiry, pickCheapestRows, cheapestReply } =
   require("./aiAffordableFollowup");
 const { isResortQuestion, resortOnlyReply } = require("./aiResortScopeGuard");
+const { isPersonalizedRecommendation, explicitGuestCount, savedGuestCount,
+  guestCountQuestion, guestCountFollowUp } = require("./aiRecommendationIntake");
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -1119,6 +1121,83 @@ exports.chatWithGemini = async (req, res) => {
         alternative_dates: [], booking_preview: null,
         recommendation_cards: [],
       });
+    }
+
+    // AI-37: Personalized recommendations need the party size first.
+    // Browsing the room catalog ("What rooms do you have?") is NOT a
+    // personalized suggestion, so it keeps its old verified preview path.
+    // A simple reply like "4 kami" then uses a fresh SQL catalog read,
+    // without paid Gemini intent extraction or stale pricing.
+    const recommendationSaved = req.body.context &&
+      typeof req.body.context === "object" && !Array.isArray(req.body.context)
+      ? req.body.context : {};
+    const recommendationHistory = normalizeRecentTurns(req.body.recent_turns);
+    const recommendationFollowUp = guestCountFollowUp(
+      message, recommendationHistory, recommendationSaved,
+    );
+    if (recommendationFollowUp) {
+      const language = normalizeLanguageStyle(req.body.voice_language) ||
+        detectLanguageFromMessage(message) ||
+        normalizeLanguageStyle(req.body.language_style) ||
+        normalizeLanguageStyle(recommendationSaved.language_style) || "taglish";
+      const catalog = await getAccommodationCatalog();
+      // Use a fresh query expression with an explicit group size, never a
+      // previously recommended room ID. SQL stays read-only.
+      const query = "Recommend a " + recommendationFollowUp.category +
+        " for " + recommendationFollowUp.guests + " guests";
+      const selection = selectVerifiedPreviews(
+        catalog, query, [], { guests: recommendationFollowUp.guests },
+      );
+      const updated = {
+        ...recommendationSaved,
+        guests: recommendationFollowUp.guests,
+        language_style: language,
+        intent: "ask_recommendation",
+      };
+      // Multiple matching previews aren't a confirmed single-room focus.
+      delete updated.room_id;
+      delete updated.room_name;
+      if (selection.rows.length === 1) {
+        updated.room_id = selection.rows[0].id;
+        updated.room_name = selection.rows[0].room_name;
+      }
+      return res.status(200).json({
+        success: true, mode: "verified_accommodation_preview",
+        reply: verifiedPreviewReply(selection, language),
+        extracted_context: updated,
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null,
+        recommendation_cards: verifiedAccommodationCards(selection.rows, false),
+      });
+    }
+    if (isPersonalizedRecommendation(message)) {
+      const guestCount = explicitGuestCount(message) ||
+        savedGuestCount({ guests: req.body.guests }) ||
+        savedGuestCount(recommendationSaved);
+      if (!guestCount) {
+        const language = normalizeLanguageStyle(req.body.voice_language) ||
+          detectLanguageFromMessage(message) ||
+          (/\b(?:ano|anong|magandang|masusuggest|massuggest|po|kayo)\b/i.test(message)
+            ? "taglish" : null) ||
+          normalizeLanguageStyle(req.body.language_style) ||
+          normalizeLanguageStyle(recommendationSaved.language_style) || "taglish";
+        const updated = {
+          ...recommendationSaved, guests: null,
+          intent: "ask_recommendation", language_style: language,
+        };
+        // Don't carry an unrelated selected accommodation into a NEW
+        // personal recommendation before the guest gives their party size.
+        delete updated.room_id;
+        delete updated.room_name;
+        return res.status(200).json({
+          success: true, mode: "recommendation_needs_guest_count",
+          reply: guestCountQuestion(language),
+          extracted_context: updated,
+          matched_rooms: [], catalog_recommendations: [],
+          alternative_dates: [], booking_preview: null,
+          recommendation_cards: [],
+        });
+      }
     }
 
     // Simple inventory COUNT intent comes before previews and rate/payment
