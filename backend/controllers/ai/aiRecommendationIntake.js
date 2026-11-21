@@ -24,7 +24,11 @@ function isPersonalizedRecommendation(message) {
   // Exclude amenity and explicit per-room payment queries.
   if (/\b(?:payment|deposit|downpayment|refund|cancel|amenit(?:y|ies)|cr|bathroom|aircon|wi-?fi)\b/i.test(q))
     return false;
-  return suggest && (target || broad);
+  // "Anong room ang maganda para sa dalawa?" is a personal room
+  // recommendation too: the adjective can come AFTER the room noun.
+  const descriptive = /\bmaganda(?:ng)?\b/i.test(q) &&
+    /\b(?:ano|anong|which|what|may|meron|pwede|puwede)\b/i.test(q);
+  return (suggest || descriptive) && (target || broad);
 }
 
 // Read simple explicit counts (4 kami, 4 pax, 4 guests, 4 po,
