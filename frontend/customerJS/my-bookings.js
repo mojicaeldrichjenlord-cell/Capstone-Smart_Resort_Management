@@ -416,7 +416,7 @@ function getStatusBadgeStyles(status) {
 
 function getLoadingBox() {
   return `
-    <div style="
+    <div class="customer-booking-feedback" style="
       background: rgba(255,255,255,0.95);
       border: 1px solid rgba(219,231,239,0.92);
       border-radius: 22px;
@@ -432,7 +432,7 @@ function getLoadingBox() {
 
 function getEmptyBox(message) {
   return `
-    <div style="
+    <div class="customer-booking-feedback" style="
       background: rgba(255,255,255,0.95);
       border: 1px solid rgba(219,231,239,0.92);
       border-radius: 22px;
@@ -448,7 +448,7 @@ function getEmptyBox(message) {
 
 function getErrorBox(message) {
   return `
-    <div style="
+    <div class="customer-booking-feedback customer-booking-feedback-error" style="
       background: rgba(255,255,255,0.95);
       border: 1px solid #fecaca;
       border-radius: 22px;
