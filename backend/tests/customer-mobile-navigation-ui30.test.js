@@ -158,7 +158,7 @@ test("UI-30 compact and maximized mobile chat use genuinely different dimensions
     const html = read("frontend/customerHTML/" + page);
     // UI-38 bumps only the shared chat layout; UI-30 resize behavior is preserved.
     assert.match(html, /ai-chat-layout\.css\?v=20261121-ui38/,page);
-    assert.match(html, /ai-chat\.js\?v=20261120-ui30/,page);
+    assert.match(html, /ai-chat\.js\?v=20261121-ai45/,page);
     assert.match(html, /ai-chat-polish\.js\?v=20261120-ui30/,page);
   }
   for (const page of ["index.html","rooms.html"]) {
