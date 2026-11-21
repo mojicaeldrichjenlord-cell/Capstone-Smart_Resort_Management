@@ -175,7 +175,7 @@ function renderBookingCard(booking) {
             ${escapeHtml(booking.room_name || "Accommodation")}
           </h3>
 
-          <span class="customer-booking-history-status" style="
+          <span class="customer-booking-history-status" data-status="${escapeHtml(status)}" style="
             white-space:nowrap;
             padding:8px 12px;
             border-radius:999px;
