@@ -263,6 +263,27 @@ exports.markHousekeepingCleaned = async (req, res) => {
   } catch (error) { return sendError(res, error, "mark cleaned"); }
 };
 
+// MANAGER: A legacy Cleaned task without a photo cannot be verified.
+// Return it to the assigned staff's In Progress queue so proof can be added.
+// This is not a reservation, payment or accommodation listing mutation.
+exports.requestCleaningProofForLegacyTask = async (req,res) => {
+  const id = positiveId(req.params.id), version = versionFrom(req.body);
+  if (!id || version === null) return res.status(400).json({
+    success:false,message:"Invalid task version."});
+  try {
+    const [result] = await db.promise().query(
+      "UPDATE housekeeping_tasks ht SET ht.status='in_progress', ht.cleaned_at=NULL, " +
+      "ht.version=ht.version+1 WHERE ht.id=? AND ht.status='cleaned' AND ht.version=? " +
+      "AND NOT EXISTS (SELECT 1 FROM housekeeping_cleaning_proofs p WHERE p.task_id=ht.id)",
+      [id,version]);
+    if (!Number(result.affectedRows)) return res.status(409).json({
+      success:false,code:"TASK_CHANGED",
+      message:"Task changed or already has photo proof. Refresh to review."});
+    return res.json({success:true,
+      message:"Task returned to Housekeeping for photo proof. No booking status was changed."});
+  } catch(error) { return sendError(res,error,"request legacy photo"); }
+};
+
 // MANAGER: Cleaned -> Verified Ready only when no checked-in booking occupies
 // this accommodation. This DOES NOT make the accommodation bookable automatically.
 // Only a Manager can approve the transition from Cleaned to Verified Ready.
