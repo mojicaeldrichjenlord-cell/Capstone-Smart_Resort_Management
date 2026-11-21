@@ -30,10 +30,12 @@ const RESORT_TOPICS = [
   /\b(?:family\s+trip|family\s+outing|company\s+outing|team\s+building|day\s+trip|bakasyon|magbakasyon)\b/i,
   // The existing chat has multilingual customer conversations.
   /\b(?:habitación|habitaciones|alojamiento|reservar|reserva|reservación|pago|tarifa|piscina|estacionamiento|cabaña|cancelar\s+mi\s+reserva)\b/i,
-  /(?:预订|预约|房间|客房|度假村|酒店|入住|退房|退款|取消预订|停车|游泳池|住宿|房费|费用|价格|支付|付款|押金)/u,
+  /(?:预订|预约|房间|客房|空房|度假村|酒店|入住|退房|退款|取消预订|停车|游泳池|住宿|房费|费用|价格|支付|付款|押金)/u,
+  // Pinyin booking requests without a Chinese keyboard, not generic chit-chat.
+  /\b(?:fangjian|yuding|jiudian|dujiacun|tingche|youyongchi|shoufei|jiage)\b/i,
 ];
 
-const GREETING = /^(?:hi|hello|hey|hola|kumusta|kamusta|good\s+(?:morning|afternoon|evening)|magandang\s+(?:umaga|hapon|gabi)|你好|嗨|salamat|thank\s+you|thanks|gracias|谢谢|ok(?:ay)?|sige|opo|yes\s+po|no\s+po|bye|goodbye)[!?.\s😊👋]*$/iu;
+const GREETING = /^(?:hi|hello|hey|hola|kumusta|kamusta|good\s+(?:morning|afternoon|evening)|magandang\s+(?:umaga|hapon|gabi)|你好|嗨|ni\\s*hao(?:\\s*ma)?|nihao|xie\\s*xie|salamat|thank\s+you|thanks|gracias|谢谢|ok(?:ay)?|sige|opo|yes\s+po|no\s+po|bye|goodbye)[!?.\s😊👋]*$/iu;
 
 // Unambiguous non-resort tasks should never be executed just because the
 // user happened to mention the word "booking" or "resort" somewhere else.
