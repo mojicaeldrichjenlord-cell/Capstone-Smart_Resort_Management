@@ -1462,6 +1462,14 @@ exports.chatWithGemini = async (req, res) => {
         delete nextContext.room_name;
       }
       if (selection.requestedGuests) nextContext.guests = selection.requestedGuests;
+      // AI-45: An actual guest-qualified accommodation search is a live
+      // recommendation, even without the literal word "recommend". Keep
+      // its scope for a follow-up like "Pito pala kami" / "7 pala kami".
+      // An unrelated saved guest count alone never creates this state.
+      if (explicitGuestCount(message) > 0) {
+        nextContext.intent = "ask_recommendation";
+        nextContext.recommendation_category = selection.category || "room";
+      }
       return res.status(200).json({
         success: true, mode: "verified_accommodation_preview",
         reply: verifiedPreviewReply(selection, language),
