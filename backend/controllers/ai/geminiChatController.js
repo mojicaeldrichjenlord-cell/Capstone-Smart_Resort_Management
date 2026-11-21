@@ -145,6 +145,11 @@ function normalizeLanguageStyle(value) {
   if (text.includes("spanish") || text.includes("español")) return "spanish";
   if (text.includes("mandarin") || text.includes("chinese") ||
       text.includes("中文") || text.includes("普通话")) return "mandarin";
+  if (text.includes("japanese")) return "japanese";
+  if (text.includes("korean")) return "korean";
+  if (text.includes("french")) return "french";
+  if (text.includes("german")) return "german";
+  if (text.includes("arabic")) return "arabic";
   if (text.includes("english")) return "english";
 
   return null;
@@ -192,6 +197,13 @@ function detectLanguageFromMessage(message) {
   if (!text) return null;
   // A bare Filipino slot answer should use Filipino rather than default English.
   if (/^(?:umaga|gabi|day tour po|night po)$/.test(text)) return "tagalog";
+
+  // Detect other common guest languages from unique scripts first.
+  if (/[\u3040-\u30ff]/u.test(text)) return "japanese";
+  if (/[\uac00-\ud7af]/u.test(text)) return "korean";
+  if (/[\u0600-\u06ff]/u.test(text)) return "arabic";
+  if (/\b(?:bonjour|merci|chambre|réservation|réserver|combien|hôtel|piscine)\b/iu.test(text)) return "french";
+  if (/\b(?:guten\s+tag|danke|zimmer|buchung|übernachtung|preise?|wie\s+viel)\b/iu.test(text)) return "german";
 
   // Mandarin characters are a reliable signal even after an English turn.
   if (/[\u3400-\u9FFF]/u.test(text)) return "mandarin";
@@ -2025,7 +2037,12 @@ exports.chatWithGemini = async (req, res) => {
         ? "Reply entirely in natural Spanish."
         : mergedContext.language_style === "mandarin"
         ? "Reply entirely in Mandarin Chinese, using Simplified Chinese characters."
-        : "Reply in the language of the CURRENT guest utterance when clearly identifiable (including languages beyond the four common presets); otherwise use clear English.";
+        : mergedContext.language_style === "japanese" ? "Reply in natural Japanese."
+        : mergedContext.language_style === "korean" ? "Reply in natural Korean."
+        : mergedContext.language_style === "french" ? "Reply in natural French."
+        : mergedContext.language_style === "german" ? "Reply in natural German."
+        : mergedContext.language_style === "arabic" ? "Reply in natural Arabic."
+        : "Reply in the language of the CURRENT guest utterance when clearly identifiable; otherwise use clear English.";
 
     const missingDetailsText = missingCoreDetails.length
       ? missingCoreDetails.join(", ")
