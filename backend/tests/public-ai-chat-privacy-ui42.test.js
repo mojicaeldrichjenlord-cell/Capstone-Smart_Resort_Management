@@ -92,7 +92,7 @@ function browserEnvironment(surface, sharedStorage) {
 test("UI-42 full chat script remains valid JavaScript and landing fetches fresh version", () => {
   assert.doesNotThrow(() => new vm.Script(chat));
   assert.match(landing, /data-ai-chat-surface="public"/);
-  assert.match(landing, /js\/ai-chat\.js\?v=20261121-ui42/);
+  assert.match(landing, /js\/ai-chat\.js\?v=20261121-ai45/);
   assert.doesNotMatch(home, /data-ai-chat-surface="public"/);
 });
 
