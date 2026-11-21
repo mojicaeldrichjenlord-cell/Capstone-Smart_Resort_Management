@@ -33,10 +33,10 @@ document.addEventListener("DOMContentLoaded", () => {
       filter.querySelector('button[type="submit"]'),
       createForm.querySelector('button[type="submit"]'),
       ...tbody.querySelectorAll("button, select"),
-      verifyProof,
     ]) {
       if (control) control.disabled = next;
     }
+    verifyProof.disabled = next || proofImage.hidden || !selectedTask;
     message.setAttribute("aria-busy", String(next));
   }
 
@@ -161,8 +161,15 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
           const pending = document.createElement("span");
           pending.className = "hk-proof-pending";
-          pending.textContent = "No photo proof submitted";
+          pending.textContent = "Legacy task: photo needed";
           controls.appendChild(pending);
+          const returnButton = document.createElement("button");
+          returnButton.type = "button"; returnButton.className = "manager-inventory-edit";
+          returnButton.textContent = "Request Photo";
+          returnButton.addEventListener("click", () => perform(
+            "tasks/" + task.id + "/request-proof", {version:task.version},
+            "Return " + task.accommodation + " to the assigned Housekeeping staff for photo proof?"));
+          controls.appendChild(returnButton);
         }
       } else {
         controls.textContent = task.status === "verified_ready" ?
@@ -211,6 +218,7 @@ document.addEventListener("DOMContentLoaded", () => {
         throw new Error(error.message || "Could not load cleaning photo.");
       }
       const blob = await result.blob();
+      if (selectedTask?.id !== task.id || !proofDialog.open) return;
       if (!["image/jpeg","image/png","image/webp"].includes(blob.type)) {
         throw new Error("The cleaning proof is not a supported image.");
       }
