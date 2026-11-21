@@ -32,6 +32,57 @@ body {
   opacity: 0.75;
 }
 
+/* MGR-47: One shared logo and brand layout for all five Manager pages.
+   Explicitly override the old generic vertical navbar div selector. */
+.manager-navbar > .manager-brand {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 0 0 auto;
+}
+.manager-navbar .manager-brand-logo {
+  display: block;
+  width: 52px;
+  height: 52px;
+  padding: 4px;
+  border-radius: 12px;
+  background: #fff;
+  object-fit: contain;
+  flex: 0 0 52px;
+}
+.manager-navbar .manager-brand-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+.manager-navbar .manager-brand-text strong {
+  color: #fff;
+  font-size: 1.12rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.manager-navbar .manager-brand-text span {
+  margin-top: 3px;
+  font-size: .76rem;
+  line-height: 1.2;
+  color: #e0f2fe;
+  opacity: 1;
+  white-space: nowrap;
+}
+@media (max-width: 420px) {
+  .manager-navbar > .manager-brand { gap: 9px; }
+  .manager-navbar .manager-brand-logo {
+    width: 44px;
+    height: 44px;
+    flex-basis: 44px;
+  }
+  .manager-navbar .manager-brand-text strong { font-size: 1rem; }
+  .manager-navbar .manager-brand-text span { font-size: .72rem; }
+}
+
 .manager-navbar button {
   border: 1px solid rgba(255, 255, 255, 0.3);
   background: rgba(255, 255, 255, 0.1);

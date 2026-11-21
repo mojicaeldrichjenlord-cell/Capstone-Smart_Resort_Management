@@ -130,7 +130,12 @@ test("Backend answers payment questions before broad recommendation and with no 
     "../controllers/ai/geminiChatController.js"),"utf8");
   const pathPosition=source.indexOf("if (isRoomPaymentInquiry(message))");
   assert.ok(pathPosition>0);
-  assert.ok(pathPosition<source.indexOf("if (isVerifiedPreviewRequest(message))"));
+  // AI-45: Preview shortcut now includes a booking-window safety guard.
+  const previewPosition = source.indexOf(
+    "if (isVerifiedPreviewRequest(message) && !previewMustUseBookingFlow)"
+  );
+  assert.ok(previewPosition > pathPosition);
+  assert.match(source, /req\.body\.check_in \|\| req\.body\.check_out/);
   const tail=source.slice(pathPosition,source.indexOf("// Fixed resort-policy FAQ:",pathPosition));
   assert.match(tail,/getAccommodationCatalog/);
   assert.match(tail,/resolvePaymentRoom/);

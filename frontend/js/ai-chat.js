@@ -136,10 +136,9 @@ async function sendAiMessage(options = {}) {
     recent_turns: recentTurns,
     ...pageContext,
     context: freshSearch ? getStoredAiContext() : storedContext,
-    // Voice sessions use a fixed selected language; typed chat stays adaptive.
-    ...(options.source === "voice"
-      ? { voice_language: window.ArvicVoice?.getLanguage?.() || "english" }
-      : {}),
+    // AI-44: Voice transcripts use the very same per-message language
+    // detection as typed chat. No language selection is sent or persisted.
+    ...(options.source === "voice" ? { input_source: "voice" } : {}),
   };
 
   try {
@@ -216,9 +215,7 @@ async function sendAiMessage(options = {}) {
     if (["GEMINI_BUSY", "GEMINI_RATE_LIMIT", "AI_LOCAL_BUDGET", "AI_RATE_LIMIT"].includes(error.code)) {
       // Upstream demand/quota issues do not mean a room is unavailable.
       // Keep booking context unchanged, and do not invent rates.
-      const voiceLanguage = options.source === "voice"
-        ? window.ArvicVoice?.getLanguage?.()
-        : null;
+      const voiceLanguage = detectOfflineLanguage(message, storedContext);
       const messages = {
         english: "Sorry, our AI assistant is busy right now. Please try again in a moment.",
         taglish: "Pasensya na po, busy muna ang AI assistant. Pakisubukan ulit maya-maya.",
@@ -251,9 +248,7 @@ async function sendAiMessage(options = {}) {
       spanish: "Lo siento, el servicio de inteligencia artificial no está disponible temporalmente. Puede intentarlo de nuevo o continuar en la página de reservas.",
       mandarin: "抱歉，人工智能服务暂时无法使用。您可以稍后再试，或前往预订页面继续操作。",
     };
-    const voiceLanguage = options.source === "voice"
-      ? window.ArvicVoice?.getLanguage?.()
-      : null;
+    const voiceLanguage = detectOfflineLanguage(message, storedContext);
     const safeReply = voiceFallbacks[voiceLanguage] || fallback.reply;
     appendAiMessage("assistant", safeReply);
     return safeReply;
@@ -514,6 +509,10 @@ function mergeContext(oldContext = {}, newContext = {}) {
     room_name: newContext.room_name ?? oldContext.room_name ?? null,
     room_id: newContext.room_id ?? oldContext.room_id ?? null,
     intent: newContext.intent ?? oldContext.intent ?? null,
+    // Keep the original accommodation category for follow-up corrections:
+    // 2 guests -> 7 guests should refresh the same type of room.
+    recommendation_category:
+      newContext.recommendation_category ?? oldContext.recommendation_category ?? null,
     wants_booking: newContext.wants_booking ?? oldContext.wants_booking ?? null,
     language_style: newContext.language_style ?? oldContext.language_style ?? null,
     payment_method: newContext.payment_method ?? oldContext.payment_method ?? null,
@@ -541,6 +540,10 @@ function summarizeContext(context = {}) {
 
 function detectOfflineLanguage(message, context = {}) {
   const text = String(message || "").toLowerCase();
+  // AI-44: Even when the API is unavailable, don't use stale language
+  // when the latest message is recognizably Mandarin or Spanish.
+  if (/[\u3400-\u9fff]/u.test(text) || /\b(?:ni\s*hao(?:\s*ma)?|nihao|xie\s*xie|fangjian|yuding)\b/i.test(text)) return "mandarin";
+  if (/\b(?:hola|gracias|habitaciones?|cu[aá]nto|reservaci[oó]n|precio|quiero|tienen)\b/i.test(text)) return "spanish";
   // Short Filipino slot replies must not suddenly switch to English offline.
   if (/^(?:umaga|gabi|day tour po|night po)$/.test(text.trim())) return "tagalog";
 

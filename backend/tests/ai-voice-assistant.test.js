@@ -12,7 +12,8 @@ const script = fs.readFileSync(
 
 function mount({ recognizerAvailable = true, savedLanguage = null, voices = [], customerToken = null,
   cloudStatus = 503, audioAvailable = false, ios = false,
-  recentTurns = [], recordedTranscript = "How do I book a room?" } = {}) {
+  recentTurns = [], recordedTranscript = "How do I book a room?",
+  assistantReply = "Hello! Available accommodations can be checked." } = {}) {
   const nodes = {};
   const recognitionInstances = [];
   const speechUtterances = [];
@@ -179,7 +180,7 @@ function mount({ recognizerAvailable = true, savedLanguage = null, voices = [], 
     sendAiMessage: async opts => {
       requests.push({ opts, message: nodes.aiChatInput.value });
       nodes.aiChatInput.value = "";
-      return "Hello! Available accommodations can be checked.";
+      return assistantReply;
     },
     setTimeout: callback => {
       const id = ++nextTimer;
@@ -191,6 +192,9 @@ function mount({ recognizerAvailable = true, savedLanguage = null, voices = [], 
 
   vm.runInNewContext(script, context, { filename: "ai-voice.js" });
   documentHandlers.DOMContentLoaded();
+  // Simulate an internal TTS locale for legacy browser-voice tests. The real
+  // UI has no language selector or persisted language preference.
+  if (savedLanguage) fakeWindow.ArvicVoice.setLanguage(savedLanguage);
   function fire(id, name = "click") { element(id).fire(name); }
   function runScheduled() {
     const tasks = [...pendingTimers.values()];
@@ -215,8 +219,9 @@ function mount({ recognizerAvailable = true, savedLanguage = null, voices = [], 
 test("Voice toolbar initializes without making backend or speech calls", () => {
   const h = mount();
   assert.equal(h.voice.getLanguage(), "english");
-  assert.equal(h.nodes.aiVoiceLanguage.value, "english");
-  assert.match(h.nodes.aiVoiceStatus.textContent, /dictate and review/i);
+  assert.doesNotMatch(script, /id="aiVoiceLanguage"/);
+  assert.match(script, /Automatic language detection/);
+  assert.match(h.nodes.aiVoiceStatus.textContent, /Gemini mic ready|Browser voice recognition/i);
   assert.equal(h.recognitionInstances.length, 0);
   assert.equal(h.requests.length, 0);
 });
@@ -258,8 +263,9 @@ test("Live mode sends recognized turn, speaks response, and listens again", asyn
   assert.equal(h.voice.isLiveActive(), false);
 });
 
-test("Mandarin fixed voice selection applies to recognition and synthesized speech", async () => {
-  const h = mount({ savedLanguage: "mandarin" });
+test("Mandarin transcript produces Mandarin playback with the device fallback" , async () => {
+  const h = mount({ savedLanguage: "mandarin",
+    assistantReply: "您好！度假村有多种客房可供选择。" });
   h.fire("aiVoiceLive");
   assert.equal(h.recognitionInstances[0].lang, "zh-CN");
   h.recognitionInstances[0].say("我想预订一个房间");
@@ -269,15 +275,13 @@ test("Mandarin fixed voice selection applies to recognition and synthesized spee
   assert.equal(h.voice.getLanguage(), "mandarin");
 });
 
-test("Changing voice language stops live session and keeps a future session fixed", () => {
+test("Automatic language does not expose a selector or persist a chosen language", () => {
   const h = mount();
-  h.fire("aiVoiceLive");
-  h.nodes.aiVoiceLanguage.value = "spanish";
-  h.fire("aiVoiceLanguage", "change");
-  assert.equal(h.voice.isLiveActive(), false);
-  assert.equal(h.stored.get("smartresort_ai_voice_language_v1"), "spanish");
-  h.fire("aiVoiceLive");
-  assert.equal(h.recognitionInstances[1].lang, "es-ES");
+  assert.doesNotMatch(script, /<select id="aiVoiceLanguage"/);
+  h.voice.setLanguage("spanish"); // internal TTS compatibility only
+  assert.equal(h.voice.getLanguage(), "spanish");
+  assert.equal(h.stored.get("smartresort_ai_voice_language_v1"), undefined);
+  assert.equal(h.nodes.aiVoiceLanguage.listeners.change, undefined);
 });
 
 test("Interrupt stops ongoing TTS and accepts a new voice turn", async () => {
@@ -341,17 +345,18 @@ test("Customer pages load AI chat before interactive voice and include voice sty
   for (const page of ["index.html", "rooms.html"]) {
     const html = fs.readFileSync(path.resolve(
       __dirname, "../../frontend/customerHTML", page), "utf8");
-    const chatIndex = html.indexOf('src="../js/ai-chat.js"');
-    const voiceIndex = html.indexOf('src="../js/ai-voice.js?v=20261117-accurate2"');
+    const chatIndex = html.indexOf('src="../js/ai-chat.js');
+    const voiceIndex = html.indexOf('src="../js/ai-voice.js?v=20261121-auto44"');
     assert.ok(chatIndex > 0 && voiceIndex > chatIndex);
     assert.match(html, /sharedCSS\/ai-voice\.css/);
   }
 });
-test("Voice language is passed only by voice-origin requests, not ordinary text chat", () => {
+test("Voice origin is marked without pinning a voice language", () => {
   const source = fs.readFileSync(path.resolve(
     __dirname, "../../frontend/js/ai-chat.js"), "utf8");
   assert.match(source, /options\.source === "voice"/);
-  assert.match(source, /voice_language: window\.ArvicVoice\?\.getLanguage/);
+  assert.match(source, /input_source: "voice"/);
+  assert.doesNotMatch(source, /voice_language: window\.ArvicVoice/);
   assert.match(source, /aiMessageInFlight/);
   assert.match(source, /async function sendAiMessage/);
   assert.match(source, /return aiReply;/);
@@ -458,9 +463,10 @@ test("Available Azure Blessica plays MP3 instead of browser TTS", async () => {
 test("Voice picker is removed while language and live controls remain", () => {
   const h = mount();
   assert.equal(h.voice.getLanguage(), "english");
-  assert.match(h.nodes.aiVoiceStatus.textContent, /dictate and review/i);
+  assert.match(h.nodes.aiVoiceStatus.textContent, /Gemini mic ready|Browser voice recognition/i);
   assert.doesNotMatch(script, /aiVoiceChoice|aiVoicePreview|voiceChoice/);
-  assert.match(script, /aiVoiceLanguage/);
+  assert.doesNotMatch(script, /id="aiVoiceLanguage"/);
+  assert.match(script, /Automatic language detection/);
   assert.match(script, /aiVoiceLive/);
   assert.equal(h.recognitionInstances.length, 0);
   assert.match(script, /id="aiVoiceInfo"/);
@@ -596,7 +602,7 @@ test("Recorded Gemini STT faithfully preserves a returned transcript without for
   h.fire("aiMicBtn");
   await h.settle();
   assert.equal(h.nodes.aiChatInput.value, "May premyo ka ba?");
-  assert.equal(h.transcriptionRequests[0].opts.headers["X-Arvic-Voice-Language"], "taglish");
+  assert.equal(h.transcriptionRequests[0].opts.headers["X-Arvic-Voice-Language"], "auto");
   assert.equal(h.requests.length, 0);
 });
 
@@ -623,7 +629,7 @@ test("Taglish on a recording-capable Edge desktop defaults to accurate audio STT
   const h = mount({ savedLanguage:"taglish", audioAvailable:true,
     customerToken:"fake-customer-token", recordedTranscript:"Anong ibang cottage ang meron kayo?" });
   assert.equal(h.voice.getState().inputMode,"accurate");
-  assert.equal(h.nodes.aiVoiceInputMode.value,"accurate");
+  assert.equal(h.nodes.aiVoiceInputMode.listeners.change, undefined);
   h.fire("aiVoiceLive"); await h.settle();
   assert.equal(h.recognitionInstances.length,0,"Gemini audio STT must replace browser STT in accurate mode");
   assert.equal(h.audioProcessors.length,1);
@@ -631,7 +637,7 @@ test("Taglish on a recording-capable Edge desktop defaults to accurate audio STT
   for(let n=0;n<43;n++) h.audioProcessors[0].feed(0);
   await h.settle();
   assert.equal(h.transcriptionRequests.length,1);
-  assert.equal(h.transcriptionRequests[0].opts.headers["X-Arvic-Voice-Language"],"taglish");
+  assert.equal(h.transcriptionRequests[0].opts.headers["X-Arvic-Voice-Language"],"auto");
   assert.equal(h.requests[0].message,"Anong ibang cottage ang meron kayo?");
   assert.equal(h.requests.length,1,"One utterance submits only one AI chat request");
 });
@@ -647,27 +653,23 @@ test("General accurate transcription respects arbitrary words instead of diction
   assert.equal(h.transcriptionRequests.length,1);
 });
 
-test("Fast browser mode remains available for Taglish to save Gemini credits", async () => {
-  const h = mount({ savedLanguage:"taglish",audioAvailable:true,
-    customerToken:"fake-customer-token" });
-  h.nodes.aiVoiceInputMode.value="fast";
-  h.fire("aiVoiceInputMode","change");
-  assert.equal(h.voice.getState().inputMode,"fast");
-  assert.equal(h.stored.get("arvic_ai_voice_input_mode_v1"),"fast");
-  h.fire("aiVoiceLive");
-  assert.equal(h.recognitionInstances.length,1);
-  h.recognitionInstances[0].say("What accommodations do you have?");
-  h.recognitionInstances[0].stop(); await h.settle();
-  assert.equal(h.requests.length,1);
-  assert.equal(h.transcriptionRequests.length,0);
+test("Automatic language prioritizes multilingual Gemini recording over legacy fast mode", async () => {
+  const h = mount({audioAvailable:true, customerToken:"fake-customer-token",
+    recordedTranscript:"我想预订一个房间" });
+  h.voice.setInputMode("fast");
+  h.fire("aiVoiceLive"); await h.settle();
+  assert.equal(h.recognitionInstances.length,0);
+  for(let n=0;n<4;n++) h.audioProcessors[0].feed(0.1);
+  for(let n=0;n<43;n++) h.audioProcessors[0].feed(0);
+  await h.settle();
+  assert.equal(h.transcriptionRequests.length,1);
+  assert.equal(h.transcriptionRequests[0].opts.headers["X-Arvic-Voice-Language"],"auto");
+  assert.equal(h.requests[0].message,"我想预订一个房间");
 });
 
 test("English can explicitly enable accurate audio transcription without forcing Taglish corrections", async () => {
   const h = mount({ savedLanguage:"english",audioAvailable:true,
     customerToken:"fake-customer-token",recordedTranscript:"What are the options for tomorrow?" });
-  assert.equal(h.voice.getState().inputMode,"fast");
-  h.nodes.aiVoiceInputMode.value="accurate";
-  h.fire("aiVoiceInputMode","change");
   assert.equal(h.voice.getState().inputMode,"accurate");
   h.fire("aiMicBtn"); await h.settle();
   for(let n=0;n<3;n++) h.audioProcessors[0].feed(0.1);
@@ -677,19 +679,12 @@ test("English can explicitly enable accurate audio transcription without forcing
   assert.equal(h.requests.length,0);
 });
 
-test("Switching to Filipino selects accurate input unless user chose fast explicitly", () => {
+test("A different spoken language never requires a UI language choice", () => {
   const h=mount({audioAvailable:true});
-  assert.equal(h.voice.getState().inputMode,"fast");
-  h.nodes.aiVoiceLanguage.value="taglish";
-  h.fire("aiVoiceLanguage","change");
   assert.equal(h.voice.getState().inputMode,"accurate");
-  h.nodes.aiVoiceInputMode.value="fast";
-  h.fire("aiVoiceInputMode","change");
-  h.nodes.aiVoiceLanguage.value="english";
-  h.fire("aiVoiceLanguage","change");
-  h.nodes.aiVoiceLanguage.value="taglish";
-  h.fire("aiVoiceLanguage","change");
-  assert.equal(h.voice.getState().inputMode,"fast");
+  assert.equal(h.nodes.aiVoiceLanguage.listeners.change,undefined);
+  assert.doesNotMatch(script, /<select id="aiVoiceLanguage"/);
+  assert.match(script, /X-Arvic-Voice-Language": "auto"/);
 });
 
 test("Changing input provider ends current hands-free session safely", () => {
@@ -702,8 +697,8 @@ test("Changing input provider ends current hands-free session safely", () => {
 });
 
 test("Existing alternate languages, transcript review, and cloud voice controls remain", () => {
-  assert.match(script,/Accurate \(Gemini\)/);
-  assert.match(script,/Fast \(browser\)/);
+  assert.match(script,/Automatic language detection/);
+  assert.match(script,/X-Arvic-Voice-Language": "auto"/);
   assert.match(script,/autoGainControl: true/);
   assert.match(script,/elapsed - active.lastSpeech >= 1\.6/);
   assert.match(script,/const text = String\(body.transcript/);

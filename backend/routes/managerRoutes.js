@@ -20,7 +20,7 @@ router.patch("/accommodations/:id/operations", updateManagerAccommodationOperati
 const {
   listManagerHousekeepingTasks, listHousekeepingStaff,
   listEligibleHousekeepingItems, createHousekeepingTask,
-  reassignHousekeepingTask, verifyHousekeepingTask,
+  reassignHousekeepingTask, verifyHousekeepingTask, requestCleaningProofForLegacyTask,
 } = require("../controllers/housekeeping/housekeepingTasksController");
 // Manager-only housekeeping endpoints are under the same signed Manager guard.
 // They never expose guest contact or payment details.
@@ -33,7 +33,13 @@ router.get("/housekeeping/eligible-items", listEligibleHousekeepingItems);
 router.post("/housekeeping/tasks", createHousekeepingTask);
 // Assign/reassign before cleaning starts, using a version check.
 router.put("/housekeeping/tasks/:id/assign", reassignHousekeepingTask);
+// Private image proof is never a public accommodation-gallery URL.
+const { getManagerCleaningProof, reviewManagerCleaningProof } =
+  require("../controllers/housekeeping/housekeepingProofController");
+router.get("/housekeeping/tasks/:id/proof", getManagerCleaningProof);
+router.post("/housekeeping/tasks/:id/proof/review", reviewManagerCleaningProof);
 // Manager alone signs off a cleaned task, not room listing availability.
+router.put("/housekeeping/tasks/:id/request-proof", requestCleaningProofForLegacyTask);
 router.put("/housekeeping/tasks/:id/verify", verifyHousekeepingTask);
 
 module.exports = router;

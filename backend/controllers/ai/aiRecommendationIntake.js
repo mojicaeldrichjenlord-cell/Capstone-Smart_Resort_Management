@@ -16,7 +16,7 @@ function isPersonalizedRecommendation(message) {
   const q = normal(message);
   if (!q || q.length > 500) return false;
   if (/^recommend this accommodation for me\s*:/i.test(q)) return false;
-  const suggest = /\b(?:recommend(?:ation|ations)?|suggest(?:ion|ions)?|marerecommend|marecommend|mairerecommend|irerecommend|mare-recommend|ma-recommend|massuggest|masusuggest|masuggest|ma-suggest|best\s+(?:room|accommodation)|magandang\s+(?:room|kwarto|kuwarto|cottage)|suitable\s+(?:room|accommodation)|help\s+me\s+(?:choose|find)\s+(?:a\s+)?(?:room|cottage|accommodation))\b/i.test(q);
+  const suggest = /\b(?:recommend(?:ation|ations)?|suggest(?:ion|ions)?|marerecommend|marecommend|mairerecommend|irerecommend|mare-recommend|ma-recommend|massuggest|masusuggest|masuggest|ma-suggest|best\s+(?:room|accommodation)|maganda(?:ng)?\s+(?:(?:para\s+sa)\s+)?(?:room|rooms|kwarto|kuwarto|cottage)|suitable\s+(?:room|accommodation)|help\s+me\s+(?:choose|find)\s+(?:a\s+)?(?:room|cottage|accommodation))\b/i.test(q);
   const target = /\b(?:rooms?|kwarto|kuwarto|cottages?|kubo|nipa|huts?|accommodations?|pavilions?|function\s+areas?|shades?|stays?)\b/i.test(q);
   // "Ano ang marerecommend mo?" can be a follow-up to a previous room
   // discussion, but without a category we conservatively request guests.
@@ -24,7 +24,11 @@ function isPersonalizedRecommendation(message) {
   // Exclude amenity and explicit per-room payment queries.
   if (/\b(?:payment|deposit|downpayment|refund|cancel|amenit(?:y|ies)|cr|bathroom|aircon|wi-?fi)\b/i.test(q))
     return false;
-  return suggest && (target || broad);
+  // "Anong room ang maganda para sa dalawa?" is a personal room
+  // recommendation too: the adjective can come AFTER the room noun.
+  const descriptive = /\bmaganda(?:ng)?\b/i.test(q) &&
+    /\b(?:ano|anong|which|what|may|meron|pwede|puwede)\b/i.test(q);
+  return (suggest || descriptive) && (target || broad);
 }
 
 // Read simple explicit counts (4 kami, 4 pax, 4 guests, 4 po,

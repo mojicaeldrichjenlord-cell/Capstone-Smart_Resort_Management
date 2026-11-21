@@ -229,7 +229,7 @@ test("AI-36 history trivia is politely refused with zero Gemini credits or SQL r
 test("AI-36 second non-resort turn is still blocked even after prior refusal", async () => {
   const result = await post("/api/ai/chat", {
     message: "si jose rizal",
-    voice_language: "english",
+    input_source: "voice",
     context: { room_id: 61, language_style: "taglish" },
     recent_turns: [
       { role: "user", text: "ano full name ni bonifacio" },
@@ -238,7 +238,7 @@ test("AI-36 second non-resort turn is still blocked even after prior refusal", a
   });
   assert.equal(result.status, 200);
   assert.equal(result.body.mode, "resort_scope_only");
-  assert.match(result.body.reply, /I can help with Arvic Seaside Resort/i);
+  assert.match(result.body.reply, /Resort inquiries lang po/i);
   assert.doesNotMatch(result.body.reply, /Jose|Protacio|Mercado|Rizal/i);
   assert.equal(modelCalls, 0);
   assert.equal(queries.length, 0);
@@ -441,7 +441,8 @@ test("AI-LIVE-05 unknown scope asks rooms or cottages without spending credits",
     context: { room_id: 61, room_name: "Family Room A" },
   });
   assert.equal(response.body.mode, "verified_cheapest_accommodation");
-  assert.match(response.body.reply, /rooms, cottages, o function areas/i);
+  // Per-message Filipino detection may naturally say "kuwarto" here.
+  assert.match(response.body.reply, /(?:rooms, cottages, o function areas|kuwarto, cottage, o function area)/i);
   assert.equal(queries.length, 0);
   assert.equal(modelCalls, 0);
   assert.equal(response.body.booking_preview, null);
@@ -737,6 +738,77 @@ test("AI-38 original family-room scope persists after revising 10 guests to 7", 
   assert.equal(modelCalls, 0);
 });
 
+
+test("AI-45 natural two-to-seven follow-up retains group search even after language switch", async () => {
+  catalogRows = [
+    { ...exampleRoom, id: 71, room_name: "Double Room 1", capacity: 7, day_price: 4000 },
+    { ...exampleRoom, id: 72, room_name: "Small Room", capacity: 3, day_price: 2000 },
+    { ...exampleRoom, id: 94, room_name: "Family Room B", capacity: 20, day_price: 8000 },
+  ];
+  const original = "Anong room ang maganda para sa dalawa?";
+  const first = await post("/api/ai/chat", {
+    message: original,
+    context: { language_style: "mandarin" },
+    recent_turns: [
+      {role:"user",text:"Nihao ma?"},
+      {role:"assistant",text:"你好！欢迎咨询 Arvic Seaside Resort。"},
+    ],
+  });
+  assert.equal(first.status, 200);
+  assert.equal(first.body.mode, "verified_accommodation_preview");
+  assert.equal(first.body.extracted_context.guests, 2);
+  assert.equal(first.body.extracted_context.intent, "ask_recommendation");
+  assert.equal(first.body.extracted_context.recommendation_category, "room");
+  assert.deepEqual(first.body.recommendation_cards.map(room => room.id), [72,71,94]);
+  assert.equal(modelCalls, 0);
+  const recent = [
+    {role:"user",text:"Nihao ma?"},
+    {role:"assistant",text:"你好！欢迎咨询 Arvic Seaside Resort。"},
+    {role:"user",text:original},
+    {role:"assistant",text:first.body.reply},
+  ];
+  for (const message of ["Pito pala kami", "7 pala kami"]) {
+    queries = [];
+    const result = await post("/api/ai/chat", {
+      message, context:first.body.extracted_context, recent_turns:recent,
+    });
+    assert.equal(result.status, 200, message);
+    assert.equal(result.body.mode, "verified_accommodation_preview", message);
+    assert.equal(result.body.extracted_context.guests, 7, message);
+    assert.equal(result.body.extracted_context.intent, "ask_recommendation", message);
+    assert.deepEqual(result.body.recommendation_cards.map(room => room.id), [71,94], message);
+    assert.match(result.body.reply, /7 guests na|7位客人/, message);
+    assert.equal(modelCalls, 0, message);
+    assert.equal(queries.length, 1, message);
+    assert.equal(result.body.booking_preview, null, message);
+  }
+});
+
+test("AI-45 a guest-specific family-room preview keeps category on count correction", async () => {
+  catalogRows = [
+    { ...exampleRoom, id: 11, room_name: "Family Room A", capacity: 7 },
+    { ...exampleRoom, id: 12, room_name: "Family Room B", capacity: 10 },
+    { ...exampleRoom, id: 13, room_name: "Double Room 1", capacity: 7 },
+  ];
+  const initial = "Anong family room ang maganda para sa dalawa?";
+  const first = await post("/api/ai/chat", {message:initial});
+  assert.equal(first.body.mode,"verified_accommodation_preview");
+  assert.equal(first.body.extracted_context.recommendation_category, "family");
+  const second = await post("/api/ai/chat", {
+    message:"Pito pala kami",
+    context:first.body.extracted_context,
+    recent_turns:[
+      {role:"user",text:initial},
+      {role:"assistant",text:first.body.reply},
+    ],
+  });
+  assert.equal(second.body.mode,"verified_accommodation_preview");
+  assert.deepEqual(second.body.recommendation_cards.map(r=>r.id),[11,12]);
+  assert.equal(second.body.extracted_context.guests,7);
+  assert.equal(second.body.extracted_context.recommendation_category,"family");
+  assert.equal(modelCalls,0);
+});
+
 test("AI-38 stale or unrelated numeric messages cannot bypass resort-only restriction", async () => {
   const previous = [
     { role: "user", text: "Recommend a room" },
@@ -949,61 +1021,59 @@ test("Mandarin text chat overrides an older Spanish chat-language preference", a
   assert.equal(result.body.extracted_context.language_style, "mandarin");
   assert.match(modelPrompts[1], /Simplified Chinese characters/);
 });
-test("English voice session replies in English even if guest changes spoken language", async () => {
+test("Voice response switches to Mandarin when the guest speaks Mandarin", async () => {
   const result = await post("/api/ai/chat", {
     message: "你好，我想预订一个房间。",
-    voice_language: "english",
-    context: { language_style: "mandarin" },
-  });
-  assert.equal(result.status, 200);
-  assert.equal(result.body.extracted_context.language_style, "english");
-  assert.match(modelPrompts[1], /Reply in clear English/);
-});
-test("Mandarin voice session replies in Mandarin even if transcript is English", async () => {
-  const result = await post("/api/ai/chat", {
-    message: "Do you have a family room?",
-    voice_language: "mandarin",
+    input_source: "voice",
     context: { language_style: "english" },
   });
   assert.equal(result.status, 200);
   assert.equal(result.body.extracted_context.language_style, "mandarin");
-  // Simple catalog requests now skip the extraction call.
-  assert.equal(modelCalls, 1);
-  assert.match(modelPrompts.at(-1), /Reply entirely in Mandarin Chinese/);
+  assert.match(modelPrompts.at(-1), /Simplified Chinese characters/);
 });
-test("Taglish and Spanish voice preferences use the selected fixed reply language", async () => {
+test("Voice response switches back to English when the guest speaks English", async () => {
+  const result = await post("/api/ai/chat", {
+    message: "Do you have a family room?",
+    input_source: "voice",
+    context: { language_style: "mandarin" },
+  });
+  assert.equal(result.status, 200);
+  assert.equal(result.body.extracted_context.language_style, "english");
+  assert.equal(modelCalls, 1);
+  assert.match(modelPrompts.at(-1), /The CURRENT guest message controls reply language/);
+});
+test("AI-44 Taglish and Spanish voice messages follow the latest guest language", async () => {
   const taglish = await post("/api/ai/chat", {
-    message: "Hello", voice_language: "taglish",
+    message: "May room available po ba kayo?",
+    input_source: "voice",
+    context: { language_style: "spanish" },
   });
   assert.equal(taglish.status, 200);
   assert.equal(taglish.body.extracted_context.language_style, "taglish");
-  assert.match(modelPrompts[1], /Reply in casual, everyday Filipino-English Taglish/);
-  assert.match(modelPrompts[1], /LIVE SPOKEN CONVERSATION/);
-  modelCalls = 0;
-  successfulModelCalls = 0;
-  injectedFailures = 0;
-  injectedStatus = 503;
-  modelPrompts = [];
+  modelCalls = 0; successfulModelCalls = 0; injectedFailures = 0;
+  injectedStatus = 503; modelPrompts = [];
   const spanish = await post("/api/ai/chat", {
-    message: "Hello", voice_language: "spanish",
+    message: "Hola, tienen habitaciones?",
+    input_source: "voice",
+    context: { language_style: "taglish" },
   });
   assert.equal(spanish.status, 200);
   assert.equal(spanish.body.extracted_context.language_style, "spanish");
-  assert.match(modelPrompts[1], /Reply entirely in natural Spanish/);
 });
 
-
-test("Live voice Gemini prompt is concise and conversational while retaining booking rules", async () => {
+test("Live voice Gemini prompt remains concise and obeys booking rules", async () => {
   const result = await post("/api/ai/chat", {
     message: "Help me find a family cottage.",
-    voice_language: "english",
+    input_source: "voice",
   });
   assert.equal(result.status, 200);
-  assert.match(modelPrompts[1], /LIVE SPOKEN CONVERSATION/);
-  assert.match(modelPrompts[1], /one or two short sentences/);
-  assert.match(modelPrompts[1], /Ask at most ONE useful follow-up question/);
-  assert.match(modelPrompts[1], /Never invent or promise a booking/);
+  assert.match(modelPrompts.at(-1), /LIVE SPOKEN CONVERSATION/);
+  assert.match(modelPrompts.at(-1), /one or two short sentences/);
+  assert.match(modelPrompts.at(-1), /Ask at most ONE useful follow-up question/);
+  assert.match(modelPrompts.at(-1), /Never invent or promise a booking/);
+  assert.match(modelPrompts.at(-1), /same language as the current spoken message/);
 });
+
 test("Normal text chat is not forced into live spoken-conversation style", async () => {
   const result = await post("/api/ai/chat", {
     message: "How can I book?",
@@ -1213,17 +1283,17 @@ test("Maintenance rooms are excluded from 429 offline recommendations", async ()
   assert.equal(result.body.booking_preview, null);
 });
 
-test("Voice session maintains the selected Taglish language during 429 backup", async () => {
+test("Voice quota fallback uses language of current spoken question", async () => {
   injectedFailures = 1;
   injectedStatus = 429;
   const result = await post("/api/ai/chat", {
     message: "Do you have a room?",
-    voice_language: "taglish",
+    input_source: "voice",
   });
   assert.equal(result.status, 200);
   assert.equal(result.body.mode, "database_fallback");
-  assert.match(result.body.reply, /Temporarily limited ang AI/i);
-  assert.equal(result.body.extracted_context.language_style, "taglish");
+  assert.match(result.body.reply, /Our AI service is temporarily limited/i);
+  assert.equal(result.body.extracted_context.language_style, "english");
   assert.equal(result.body.booking_preview, null);
 });
 
@@ -1373,16 +1443,16 @@ test("Undated preview retains saved guest count and excludes undersized cottages
   assert.equal(result.body.booking_preview, null);
 });
 
-test("Voice catalog reply remains fixed-language without intent extraction", async () => {
+test("Voice catalog reply uses current English and retains speech prompt", async () => {
   const result = await post("/api/ai/chat", {
     message: "What accommodations do you offer?",
-    voice_language: "english",
+    input_source: "voice",
   });
   assert.equal(result.status, 200);
   assert.equal(modelCalls, 1);
   assert.equal(result.body.extracted_context.language_style, "english");
   assert.match(modelPrompts[0], /LIVE SPOKEN CONVERSATION/);
-  assert.match(modelPrompts[0], /Reply in clear English/);
+  assert.match(modelPrompts[0], /The CURRENT guest message controls reply language/);
 });
 
 test("Optimized prompt does not duplicate full booking context and live details", async () => {
@@ -1411,16 +1481,16 @@ test("Quota fallback does not issue a second catalog SQL read after optimized Ge
   assert.equal(response.body.booking_preview, null);
 });
 
-test("Mandarin voice with one-call catalog stays fixed-language on quota fallback", async () => {
+test("English spoken catalog quota fallback does not inherit old Mandarin", async () => {
   injectedFailures = 1;
   injectedStatus = 429;
   const response = await post("/api/ai/chat", {
     message: "Do you have a family room?",
-    voice_language: "mandarin",
+    input_source: "voice",
   });
   assert.equal(response.status, 200);
-  assert.equal(response.body.extracted_context.language_style, "mandarin");
-  assert.match(response.body.reply, /^AI 服务暂时受限/);
+  assert.equal(response.body.extracted_context.language_style, "english");
+  assert.match(response.body.reply, /^Our AI service is temporarily limited/);
   assert.equal(modelCalls, 1);
   assert.equal(queries.length, 1);
   assert.equal(response.body.booking_preview, null);
@@ -2127,7 +2197,7 @@ test("AI-41 Ask About This follows the visitor's genuine Taglish question, not c
   assert.equal(queries.length, 1);
 });
 
-test("AI-41 English visitors get natural English; live voice's explicit language still wins", async () => {
+test("AI-44 clicked room description uses guest English for both text and voice", async () => {
   catalogRows = [{ ...exampleRoom, id: 72, room_name: "Double Room 2",
     category_name: "Room", capacity: 7, description: "",
     amenities: "", day_price: 4000, overnight_price: 4000 }];
@@ -2143,9 +2213,24 @@ test("AI-41 English visitors get natural English; live voice's explicit language
   assert.match(english.body.reply, /amenities aren't specified yet/i);
   assert.doesNotMatch(english.body.reply, /private CR|aircon|balcony/i);
   const voice = await post("/api/ai/chat", {
-    ...payload, voice_language: "taglish",
+    ...payload, input_source: "voice",
   });
-  assert.match(voice.body.reply, /^Yung Double Room 2 po/);
+  assert.match(voice.body.reply, /^Double Room 2 can accommodate up to 7 guests/);
   assert.equal(modelCalls, 0);
   assert.equal(queries.length, 2);
+});
+
+
+test("AI-44 Mandarin pinyin greeting is answered in Chinese with no model call", async () => {
+  const oldCalls = modelCalls;
+  const oldQueries = queries.length;
+  const response = await post("/api/ai/chat", { message: "ni hao ma?" });
+  assert.equal(response.status, 200);
+  assert.equal(response.body.mode, "resort_greeting");
+  assert.equal(response.body.extracted_context.language_style, "mandarin");
+  assert.match(response.body.reply, /你好/);
+  assert.match(response.body.reply, /Arvic Seaside Resort/);
+  assert.doesNotMatch(response.body.reply, /Resort inquiries lang|questions regarding/i);
+  assert.equal(modelCalls, oldCalls);
+  assert.equal(queries.length, oldQueries);
 });

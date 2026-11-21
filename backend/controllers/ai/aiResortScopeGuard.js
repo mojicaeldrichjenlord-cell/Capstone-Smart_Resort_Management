@@ -30,10 +30,18 @@ const RESORT_TOPICS = [
   /\b(?:family\s+trip|family\s+outing|company\s+outing|team\s+building|day\s+trip|bakasyon|magbakasyon)\b/i,
   // The existing chat has multilingual customer conversations.
   /\b(?:habitación|habitaciones|alojamiento|reservar|reserva|reservación|pago|tarifa|piscina|estacionamiento|cabaña|cancelar\s+mi\s+reserva)\b/i,
-  /(?:预订|预约|房间|客房|度假村|酒店|入住|退房|退款|取消预订|停车|游泳池|住宿|房费|费用|价格|支付|付款|押金)/u,
+  /(?:预订|预约|房间|客房|空房|度假村|酒店|入住|退房|退款|取消预订|停车|游泳池|住宿|房费|费用|价格|支付|付款|押金)/u,
+  // Pinyin booking requests without a Chinese keyboard, not generic chit-chat.
+  /\b(?:fangjian|yuding|jiudian|dujiacun|tingche|youyongchi|shoufei|jiage)\b/i,
+  // Additional common, clearly resort-related guest questions in their
+  // languages. Do not admit arbitrary foreign-language trivia or tasks.
+  /(?:部屋|客室|予約|宿泊|料金|ホテル|リゾート|駐車場|プール)/u,
+  /(?:객실|호텔|리조트|예약|숙박|요금|주차|수영장)/u,
+  /(?:غرفة|حجز|فندق|منتجع|مسبح|موقف سيارات|أسعار)/u,
+  /\b(?:chambre|chambres|réserver|réservation|hôtel|piscine|tarifs?|zimmer|buchung|übernachtung|preise?|schwimmbad)\b/iu,
 ];
 
-const GREETING = /^(?:hi|hello|hey|hola|kumusta|kamusta|good\s+(?:morning|afternoon|evening)|magandang\s+(?:umaga|hapon|gabi)|你好|嗨|salamat|thank\s+you|thanks|gracias|谢谢|ok(?:ay)?|sige|opo|yes\s+po|no\s+po|bye|goodbye)[!?.\s😊👋]*$/iu;
+const GREETING = /^(?:hi|hello|hey|hola|kumusta|kamusta|good\s+(?:morning|afternoon|evening)|magandang\s+(?:umaga|hapon|gabi)|你好|嗨|こんにちは|안녕하세요|bonjour|guten\s+tag|مرحبا|ni\s*hao(?:\s*ma)?|nihao|xie\s*xie|salamat|thank\s+you|thanks|gracias|谢谢|ok(?:ay)?|sige|opo|yes\s+po|no\s+po|bye|goodbye)[!?.\s😊👋]*$/iu;
 
 // Unambiguous non-resort tasks should never be executed just because the
 // user happened to mention the word "booking" or "resort" somewhere else.
@@ -88,6 +96,11 @@ function resortOnlyReply(language = "taglish") {
     case "mandarin": return "我主要回答 Arvic Seaside Resort 的住宿、预订、设施和度假村政策相关问题。您想了解哪方面呢？";
     case "spanish": return "Puedo ayudarte con habitaciones, reservas, servicios y políticas de Arvic Seaside Resort. ¿Qué necesitas saber del resort?";
     case "tagalog": return "Tungkol lang po sa Arvic Seaside Resort ang masasagot ko—mga kuwarto, booking, amenities at policies. Ano po ang gusto ninyong malaman?";
+    case "japanese": return "Arvic Seaside Resort の客室、予約、設備やルールについてご案内できます。何をお知りになりたいですか？";
+    case "korean": return "Arvic Seaside Resort의 객실, 예약, 시설 및 이용 규정에 대해 안내해 드릴 수 있습니다. 무엇이 궁금하신가요?";
+    case "french": return "Je peux vous renseigner sur les chambres, réservations et services d'Arvic Seaside Resort. Que souhaitez-vous savoir ?";
+    case "german": return "Ich helfe gern bei Fragen zu Zimmern, Buchungen und Einrichtungen im Arvic Seaside Resort. Was möchten Sie wissen?";
+    case "arabic": return "يمكنني مساعدتك في الاستفسارات عن غرف ومنشآت وحجوزات منتجع Arvic Seaside Resort. ما الذي تود معرفته؟";
     case "english": return "I can help with Arvic Seaside Resort rooms, bookings, amenities and policies. What would you like to know about the resort?";
     default: return "Resort inquiries lang po ang masasagot ko—rooms, bookings, amenities at policies ng Arvic Seaside. Ano po ang gusto niyong malaman?";
   }

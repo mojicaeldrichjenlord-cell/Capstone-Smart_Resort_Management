@@ -145,6 +145,11 @@ function normalizeLanguageStyle(value) {
   if (text.includes("spanish") || text.includes("español")) return "spanish";
   if (text.includes("mandarin") || text.includes("chinese") ||
       text.includes("中文") || text.includes("普通话")) return "mandarin";
+  if (text.includes("japanese")) return "japanese";
+  if (text.includes("korean")) return "korean";
+  if (text.includes("french")) return "french";
+  if (text.includes("german")) return "german";
+  if (text.includes("arabic")) return "arabic";
   if (text.includes("english")) return "english";
 
   return null;
@@ -193,8 +198,18 @@ function detectLanguageFromMessage(message) {
   // A bare Filipino slot answer should use Filipino rather than default English.
   if (/^(?:umaga|gabi|day tour po|night po)$/.test(text)) return "tagalog";
 
+  // Detect other common guest languages from unique scripts first.
+  if (/[\u3040-\u30ff]/u.test(text)) return "japanese";
+  if (/[\uac00-\ud7af]/u.test(text)) return "korean";
+  if (/[\u0600-\u06ff]/u.test(text)) return "arabic";
+  if (/\b(?:bonjour|merci|chambre|réservation|réserver|combien|hôtel|piscine)\b/iu.test(text)) return "french";
+  if (/\b(?:guten\s+tag|danke|zimmer|buchung|übernachtung|preise?|wie\s+viel)\b/iu.test(text)) return "german";
+
   // Mandarin characters are a reliable signal even after an English turn.
   if (/[\u3400-\u9FFF]/u.test(text)) return "mandarin";
+  // Also identify everyday Romanized Mandarin phrases and booking words.
+  if (/\b(?:ni\s*hao(?:\s*ma)?|nihao|xie\s*xie|zaoshang\s*hao|wo\s*xiang\s*(?:yuding|ding)|fangjian|jiudian|dujiacun|yuding|duo\s*shao\s*qian)\b/i.test(text))
+    return "mandarin";
 
   // Detect common Spanish resort questions without relying on prior
   // conversation settings. Single "para" is ambiguous with Tagalog.
@@ -208,13 +223,15 @@ function detectLanguageFromMessage(message) {
     "gusto", "pwede", "puwede", "kuwarto", "kwarto", "magkano", "kailan",
     "saan", "petsa", "bayad", "bisita", "ilan", "meron", "wala", "naka",
     "lang", "muna", "nga", "dito", "iyan", "yan", "ito", "para", "pa",
-    "paano", "hanggang", "mula", "oras"
+    "paano", "hanggang", "mula", "oras", "may", "ba", "bang", "anong",
+    "ano", "pahingi", "pakita", "pwedeng", "niyo", "nyo", "yung", "ilang"
   ];
 
   const englishWords = [
     "room", "booking", "check-in", "check-out", "guest", "payment", "price",
     "available", "recommend", "book", "cash", "online", "view", "aircon",
-    "nights", "date", "dates", "how", "where", "what", "time"
+    "nights", "date", "dates", "how", "where", "what", "time",
+    "accommodation", "accommodations", "offer", "have", "need", "please", "do", "can"
   ];
 
   let tagalogScore = 0;
@@ -843,7 +860,7 @@ async function buildQuotaLimitedAccommodationReply(payload, requestCatalog = nul
   // Short Tagalog questions such as "magkano ang downpayment?" may not
   // contain enough tokens for the full conversation language detector.
   const shortFilipinoQuestion = /\b(?:magkano|paano|bayad|puwede|pwede|kailangan|po)\b/i.test(message);
-  const language = normalizeLanguageStyle(payload?.voice_language) ||
+  const language = 
     detectLanguageFromMessage(message) ||
     (shortFilipinoQuestion ? "taglish" : null) ||
     normalizeLanguageStyle(context.language_style) || "english";
@@ -938,7 +955,7 @@ async function buildQuotaLimitedAccommodationReply(payload, requestCatalog = nul
     }
   }
 
-  const voiceMode = Boolean(normalizeLanguageStyle(payload?.voice_language));
+  const voiceMode = payload?.input_source === "voice";
   const shown = candidates.slice(0, voiceMode ? 2 : 3);
   const money = value => Number(value) > 0 && Number.isFinite(Number(value))
     ? "PHP " + formatCurrency(value) : "Ask Front Desk";
@@ -1019,6 +1036,20 @@ exports.chatWithGemini = async (req, res) => {
       });
     }
 
+    // AI-44: Recognize a short Romanized Mandarin greeting as a greeting,
+    // without charging a Gemini call or weakening resort-only restrictions.
+    if (/^\s*(?:ni\s*hao(?:\s*ma)?|nihao|xie\s*xie)[!?.。！？，,\s]*$/i.test(String(message))) {
+      const greeting = /xie\s*xie/i.test(String(message))
+        ? "不客气！需要了解 Arvic Seaside Resort 的房间或预订吗？"
+        : "你好！欢迎咨询 Arvic Seaside Resort。想了解客房、价格还是预订呢？";
+      return res.status(200).json({
+        success: true, mode: "resort_greeting", reply: greeting,
+        extracted_context: mergeContext(req.body?.context || {}, { language_style: "mandarin" }),
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null, recommendation_cards: [],
+      });
+    }
+
     // UI-36: A receptionist is NOT a general-purpose search assistant.
     // Apply a deterministic resort-scope gate before ALL paid Gemini
     // extraction, all MySQL catalog reads and the verified-policy routes.
@@ -1035,7 +1066,7 @@ exports.chatWithGemini = async (req, res) => {
     if (!isResortQuestion(message, scopeContext, recentScopeTurns) &&
         !pendingGuestRecommendationAnswer(message, recentScopeTurns, scopeContext) &&
         !guestCorrection) {
-      const language = normalizeLanguageStyle(req.body.voice_language) ||
+      const language = 
         detectLanguageFromMessage(message) ||
         normalizeLanguageStyle(req.body.language_style) ||
         normalizeLanguageStyle(scopeContext.language_style) || "taglish";
@@ -1055,7 +1086,7 @@ exports.chatWithGemini = async (req, res) => {
     // current generic downpayment question. Final peso amount is still
     // confirmed on the official booking/payment page.
     if (isGeneralOnlineDownpaymentQuestion(message)) {
-      const language = normalizeLanguageStyle(req.body.voice_language) ||
+      const language = 
         detectLanguageFromMessage(message) ||
         normalizeLanguageStyle(req.body.language_style) ||
         normalizeLanguageStyle(req.body.context?.language_style) ||
@@ -1084,7 +1115,7 @@ exports.chatWithGemini = async (req, res) => {
     // Gemini reasoning; this shortcut makes no reservation/payment changes.
     const resortInquiry = matchResortInquiry(message);
     if (resortInquiry) {
-      const language = normalizeLanguageStyle(req.body.voice_language) ||
+      const language = 
         guessInquiryLanguage(message) ||
         detectLanguageFromMessage(message) ||
         normalizeLanguageStyle(req.body.language_style) ||
@@ -1114,7 +1145,7 @@ exports.chatWithGemini = async (req, res) => {
       message, savedInquiryContext
     );
     if (unverifiedPolicy) {
-      const language = normalizeLanguageStyle(req.body.voice_language) ||
+      const language = 
         guessInquiryLanguage(message) ||
         detectLanguageFromMessage(message) ||
         normalizeLanguageStyle(req.body.language_style) ||
@@ -1147,7 +1178,7 @@ exports.chatWithGemini = async (req, res) => {
     if (recommendationFollowUp) {
       // A short count correction ("7 pala") inherits the conversation's
       // established language rather than accidentally switching to English.
-      const language = normalizeLanguageStyle(req.body.voice_language) ||
+      const language = 
         normalizeLanguageStyle(req.body.language_style) ||
         normalizeLanguageStyle(recommendationSaved.language_style) ||
         detectLanguageFromMessage(message) || "taglish";
@@ -1197,7 +1228,7 @@ exports.chatWithGemini = async (req, res) => {
         savedGuestCount({ guests: req.body.guests }) ||
         savedGuestCount(recommendationSaved);
       if (!guestCount) {
-        const language = normalizeLanguageStyle(req.body.voice_language) ||
+        const language = 
           detectLanguageFromMessage(message) ||
           (/\b(?:ano|anong|magandang|masusuggest|massuggest|po|kayo)\b/i.test(message)
             ? "taglish" : null) ||
@@ -1231,7 +1262,7 @@ exports.chatWithGemini = async (req, res) => {
     if (countIntent) {
       const saved = req.body.context && typeof req.body.context === "object" &&
         !Array.isArray(req.body.context) ? req.body.context : {};
-      const language = normalizeLanguageStyle(req.body.voice_language) ||
+      const language = 
         guessInquiryLanguage(message) || detectLanguageFromMessage(message) ||
         normalizeLanguageStyle(req.body.language_style) ||
         normalizeLanguageStyle(saved.language_style) || "taglish";
@@ -1268,7 +1299,7 @@ exports.chatWithGemini = async (req, res) => {
       message, normalizeRecentTurns(req.body.recent_turns), savedCheapestContext
     );
     if (cheapestIntent) {
-      const language = normalizeLanguageStyle(req.body.voice_language) ||
+      const language = 
         detectLanguageFromMessage(message) || guessInquiryLanguage(message) ||
         normalizeLanguageStyle(req.body.language_style) ||
         normalizeLanguageStyle(savedCheapestContext.language_style) || "taglish";
@@ -1346,7 +1377,7 @@ exports.chatWithGemini = async (req, res) => {
       const recent = normalizeRecentTurns(req.body.recent_turns);
       const catalog = await getAccommodationCatalog();
       const room = resolvePaymentRoom(catalog, message, savedContext, recent);
-      const language = normalizeLanguageStyle(req.body.voice_language) ||
+      const language = 
         detectLanguageFromMessage(message) ||
         normalizeLanguageStyle(req.body.language_style) ||
         normalizeLanguageStyle(savedContext.language_style) || "english";
@@ -1369,7 +1400,7 @@ exports.chatWithGemini = async (req, res) => {
     // dates, prices or room availability. No real transaction is performed.
     const policyKind = matchGeneralPolicyQuestion(message);
     if (policyKind) {
-      const language = normalizeLanguageStyle(req.body.voice_language) ||
+      const language = 
         inferPolicyLanguage(message) ||
         detectLanguageFromMessage(message) ||
         normalizeLanguageStyle(req.body.language_style) ||
@@ -1394,7 +1425,19 @@ exports.chatWithGemini = async (req, res) => {
     // invent photos, room IDs or prices, and never create a reservation here.
     // This also handles large-group cottage questions with honest Function
     // Area alternatives when no cottage has the requested listed capacity.
-    if (isVerifiedPreviewRequest(message)) {
+    // A guest count in written words ("for three guests") now qualifies for
+    // previews, but never let that shortcut bypass explicit booking-window
+    // validation or reservation_items collision checks. A booking page with
+    // dates/times or a real booking intent stays on the guarded full path.
+    const previewMustUseBookingFlow = Boolean(
+      req.body.check_in || req.body.check_out ||
+      req.body.check_in_time || req.body.check_out_time ||
+      req.body.wants_booking === true ||
+      req.body.context?.check_in || req.body.context?.check_out ||
+      req.body.context?.check_in_time || req.body.context?.check_out_time ||
+      req.body.context?.wants_booking === true
+    );
+    if (isVerifiedPreviewRequest(message) && !previewMustUseBookingFlow) {
       const storedPreviewContext = req.body.context &&
         typeof req.body.context === "object" && !Array.isArray(req.body.context)
         ? req.body.context : {};
@@ -1405,7 +1448,7 @@ exports.chatWithGemini = async (req, res) => {
         ...storedPreviewContext,
         ...(pageGuests ? { guests: pageGuests } : {}),
       };
-      const language = normalizeLanguageStyle(req.body.voice_language) ||
+      const language = 
         (/\b(?:may|anong|ano|mga|para|sa|po|patingin|pakita|larawan|litrato|tao)\b/i.test(String(message))
           ? "taglish" : null) ||
         detectLanguageFromMessage(message) ||
@@ -1431,6 +1474,14 @@ exports.chatWithGemini = async (req, res) => {
         delete nextContext.room_name;
       }
       if (selection.requestedGuests) nextContext.guests = selection.requestedGuests;
+      // AI-45: An actual guest-qualified accommodation search is a live
+      // recommendation, even without the literal word "recommend". Keep
+      // its scope for a follow-up like "Pito pala kami" / "7 pala kami".
+      // An unrelated saved guest count alone never creates this state.
+      if (explicitGuestCount(message) > 0) {
+        nextContext.intent = "ask_recommendation";
+        nextContext.recommendation_category = selection.category || "room";
+      }
       return res.status(200).json({
         success: true, mode: "verified_accommodation_preview",
         reply: verifiedPreviewReply(selection, language),
@@ -1444,7 +1495,7 @@ exports.chatWithGemini = async (req, res) => {
     // Broad category amenities can be answered from the resort's confirmed
     // policy without spending Gemini credits. This is strictly for generic
     // Cottage/Function Area inquiries; specific rooms use fresh DB lookups.
-    const generalAmenityLanguage = normalizeLanguageStyle(req.body.voice_language) ||
+    const generalAmenityLanguage = 
       (/\b(?:ano|anong|mga|may|meron|kasama|po|kubo)\b/i.test(message)
         ? "taglish" : null) ||
       detectLanguageFromMessage(message) ||
@@ -1498,7 +1549,7 @@ exports.chatWithGemini = async (req, res) => {
         if (record && (explicitName ||
             !hasSelectedName ||
             String(record.room_name).trim().toLowerCase() === selectedName.toLowerCase())) {
-          const language = normalizeLanguageStyle(req.body.voice_language) ||
+          const language = 
             (/\b(?:ilang|ilan|may|meron|ba|po|kasama|libreng?|sa|ng)\b/i.test(message)
               ? "taglish" : null) ||
             detectLanguageFromMessage(message) ||
@@ -1575,7 +1626,7 @@ exports.chatWithGemini = async (req, res) => {
           // Text messages with Filipino cues should not be classified as
           // English only because they include room names or "aircon".
           // An explicitly selected live voice language still takes priority.
-          const language = normalizeLanguageStyle(req.body.voice_language) ||
+          const language = 
             (/\b(?:may|meron|ba|bang|yung|sarili(?:ng)?|po|kasama)\b/i.test(String(message))
               ? "taglish" : null) ||
             // Use current question over older Taglish chat context:
@@ -1616,7 +1667,7 @@ exports.chatWithGemini = async (req, res) => {
       const safeSaved = { ...saved };
       delete safeSaved.room_id;
       delete safeSaved.room_name;
-      const language = normalizeLanguageStyle(req.body.voice_language) ||
+      const language = 
         (/\b(?:may|meron|ba|bang|yung|po|sya|siya|niya|nya)\b/i.test(message)
           ? "taglish" : null) ||
         detectLanguageFromMessage(message) ||
@@ -1692,7 +1743,7 @@ exports.chatWithGemini = async (req, res) => {
         const focusedMatches = chosen || !name ||
           String(room?.room_name || "").trim().toLowerCase() === name.toLowerCase();
         if (room && focusedMatches) {
-          const language = normalizeLanguageStyle(req.body.voice_language) ||
+          const language = 
             (/^(?:what|does|do|can you|describe|explain)/i.test(String(message).trim())
               ? "english" : null) ||
             (/\b(?:ano|anong|meron|kasama|po|mga|kwarto)\b/i.test(message)
@@ -1747,7 +1798,7 @@ exports.chatWithGemini = async (req, res) => {
         const isCardPrompt = /^tell me (?:more )?about\b/i.test(String(message).trim());
         const priorFilipino = /\b(?:ano|anong|ilan|ilang|magkano|pwede|puwede|paano|kayo|kami|meron|may|ba|bang|po|ninyo|nyo|niyo|saan)\b/i.test(genuineQuestion);
         const priorEnglish = /^(?:what|which|where|when|why|how|can|do|does|is|are|please|recommend|show|suggest|tell)\b/i.test(genuineQuestion);
-        const language = normalizeLanguageStyle(req.body.voice_language) ||
+        const language = 
           (isCardPrompt && priorFilipino ? "taglish" : null) ||
           (isCardPrompt && priorEnglish ? "english" : null) ||
           (isCardPrompt ? normalizeLanguageStyle(req.body.context?.language_style) : null) ||
@@ -1823,14 +1874,9 @@ exports.chatWithGemini = async (req, res) => {
     if (directSlot) mergedContext.slot_preference = directSlot;
 
     const detectedLanguage = detectLanguageFromMessage(message);
-    // Only the live voice mode locks response language. Normal text chat
-    // adapts to each new message while retaining previous booking details.
-    const fixedVoiceLanguage = normalizeLanguageStyle(req.body.voice_language);
-    if (fixedVoiceLanguage) {
-      mergedContext.language_style = fixedVoiceLanguage;
-    } else if (detectedLanguage) {
-      mergedContext.language_style = detectedLanguage;
-    }
+    // AI-44: Every turn—including voice—uses the current guest language.
+    const isSpokenTurn = req.body.input_source === "voice";
+    if (detectedLanguage) mergedContext.language_style = detectedLanguage;
 
     // Never silently roll an explicitly past booking date to the next year.
     // Only Gemini extraction may choose a future year for an AMBIGUOUS
@@ -2013,7 +2059,12 @@ exports.chatWithGemini = async (req, res) => {
         ? "Reply entirely in natural Spanish."
         : mergedContext.language_style === "mandarin"
         ? "Reply entirely in Mandarin Chinese, using Simplified Chinese characters."
-        : "Reply in clear English.";
+        : mergedContext.language_style === "japanese" ? "Reply in natural Japanese."
+        : mergedContext.language_style === "korean" ? "Reply in natural Korean."
+        : mergedContext.language_style === "french" ? "Reply in natural French."
+        : mergedContext.language_style === "german" ? "Reply in natural German."
+        : mergedContext.language_style === "arabic" ? "Reply in natural Arabic."
+        : "Reply in the language of the CURRENT guest utterance when clearly identifiable; otherwise use clear English.";
 
     const missingDetailsText = missingCoreDetails.length
       ? missingCoreDetails.join(", ")
@@ -2051,6 +2102,12 @@ If the user switches topics, follow their new topic instead of a booking checkli
 Never claim to be human; when asked, say you're the resort's AI assistant.
 
 ${replyLanguage}
+The CURRENT guest message controls reply language, not any old saved chat
+settings or earlier voice transcript. If they switch languages during the
+conversation, switch too. Respect their natural Tagalog/English mix.
+Mandarin replies use Chinese characters even when the guest types pinyin.
+For other clearly recognized languages, answer naturally in that language.
+Never change resort-only scope or verified facts to match language.
 
 Current resort date: ${resortToday} (Asia/Manila, Philippines).
 - Never use old example dates (for example, a year that has already passed).
@@ -2060,7 +2117,7 @@ Current resort date: ${resortToday} (Asia/Manila, Philippines).
 - For Taglish: use simple everyday Filipino plus familiar English service/booking terms. Polite "po" and "kayo" are enough; natural "niyo" or "yung" are fine. Never force deep Tagalog or excessively repeat "ninyo".
 - Never change the source facts, numeric amounts, room identities, or availability status just to sound casual.
 
-${fixedVoiceLanguage ? `
+${isSpokenTurn ? `
 LIVE SPOKEN CONVERSATION (important):
 - Speak naturally like a warm, attentive human resort receptionist, not a text-reading robot.
 - Respond directly to what the guest just said, as in a real conversation.
@@ -2069,7 +2126,7 @@ LIVE SPOKEN CONVERSATION (important):
 - Avoid repetitive greetings, stiff scripts, excessive apologies, bullet lists, numbered lists, and repeating dates/guest counts unnecessarily.
 - Do not recite saved context or booking summaries unless the guest asks.
 - Use natural conversational pacing and everyday words suitable for speech.
-- Answer in the requested fixed voice language above, regardless of the language of the transcript.
+- Answer in the same language as the current spoken message, including if the guest switched language from previous turns.
 - Only explain rates, availability, or policies that are supported by system data. Never invent or promise a booking.
 ` : ""}
 

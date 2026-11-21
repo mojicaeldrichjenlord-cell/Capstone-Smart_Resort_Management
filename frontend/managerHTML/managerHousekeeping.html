@@ -4,14 +4,22 @@
 <meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>Housekeeping Tasks | Resort Manager</title>
 <link rel="stylesheet" href="../sharedCSS/global.css" />
-<link rel="stylesheet" href="../managerCSS/managerDashboard.css" />
+<link rel="stylesheet" href="../managerCSS/managerDashboard.css?v=20261121-mgr47" />
+<link rel="stylesheet" href="../managerCSS/managerHousekeeping-review.css?v=20261121-hk46" />
     <!-- Consistent, centered confirmation for accidental logout clicks. -->
     <link rel="stylesheet" href="../sharedCSS/logout-confirm.css" />
   </head>
-<body>
+<body class="hk-manager-layout">
 <a href="#mainContent" class="manager-skip-link">Skip to main content</a>
 <header class="manager-navbar">
-<div><strong>Arvic Seaside</strong><span>Resort Manager</span></div>
+<div class="manager-brand">
+  <img class="manager-brand-logo" src="../images/arvic-logo.png"
+    alt="Arvic Seaside Beach Resort and Hotel logo" width="52" height="52" />
+  <div class="manager-brand-text">
+    <strong>Arvic Seaside</strong>
+    <span>Resort Manager</span>
+  </div>
+</div>
 <!-- Shared Manager navigation; Housekeeping screen remains Manager-only. -->
 <nav class="manager-nav" aria-label="Manager navigation">
 <a href="managerDashboard.html">Dashboard</a>
@@ -29,11 +37,22 @@
 <section class="manager-hero">
 <p>RESORT MANAGER</p>
 <h1>Housekeeping Task Management</h1>
-<span>Assign turnover cleaning after completed stays, coordinate staff, and verify cleaned accommodations. This workflow never changes reservation or accommodation availability status.</span>
+<span>Monitor assigned cleaning, review staff photo proofs, and verify completed work. Cleaning status never changes booking availability.</span>
 </section>
+<nav class="hk-manager-jumps" aria-label="Housekeeping quick navigation">
+<a href="#hkTasksSection">Review cleaning proofs</a>
+<a href="#hkAssignSection">Assign a task</a>
+<a href="#hkDateSection">Change date</a>
+</nav>
+<div class="hk-manager-stats" aria-label="Cleaning task totals">
+<div><span>Needs cleaning</span><strong id="hkCountNeeds">0</strong></div>
+<div><span>In progress</span><strong id="hkCountProgress">0</strong></div>
+<div><span>Awaiting Manager review</span><strong id="hkCountReview">0</strong></div>
+<div><span>Verified ready</span><strong id="hkCountVerified">0</strong></div>
+</div>
 <!-- Select a checkout date; this only filters and reads task records. -->
-<section class="manager-activity">
-<h2>Task Date</h2>
+<section class="manager-activity" id="hkDateSection">
+<h2>Filter by checkout date</h2>
 <form id="hkManagerFilter" class="manager-filters">
 <label for="hkManagerDate">Completed stay checkout date
 <input type="date" id="hkManagerDate" required /></label>
@@ -43,8 +62,10 @@
 <p class="manager-list-note">Only completed reservation items can produce a turnover task. A Manager must assign an active, verified Housekeeping staff account. One task per reservation item, even if multiple stays share a room on the same day.</p>
 </section>
 <!-- Create a task for a COMPLETED reservation item; assign verified staff. -->
-<section class="manager-activity">
-<h2>Create & Assign Turnover Task</h2>
+<section class="manager-activity" id="hkAssignSection">
+<details class="hk-manager-assign-details">
+<summary>Create & Assign Turnover Task</summary>
+<p class="manager-list-note">Assign an active Housekeeping staff member to a completed checkout.</p>
 <form id="hkCreateForm" class="manager-filters">
 <label for="hkEligibleItem">Completed reservation item
 <select id="hkEligibleItem" required><option value="">Select a completed checkout</option></select></label>
@@ -52,12 +73,25 @@
 <select id="hkAssignee" required><option value="">Select an active staff member</option></select></label>
 <button type="submit">Create Cleaning Task</button>
 </form>
+</details>
 </section>
 <!-- Manager can reassign before work begins and verify after staff marks cleaned. -->
-<section class="manager-activity">
-<h2>Cleaning Task Status</h2>
+<section class="manager-activity" id="hkTasksSection">
+<div class="hk-manager-task-heading">
+<div><h2>Cleaning Tasks & Proof Review</h2>
+<p>Open a photo proof and inspect it before verifying the accommodation.</p></div>
+<label for="hkManagerStatusFilter">Show tasks
+<select id="hkManagerStatusFilter">
+<option value="all">All tasks</option>
+<option value="cleaned">Awaiting review</option>
+<option value="in_progress">In progress</option>
+<option value="needs_cleaning">Needs cleaning</option>
+<option value="verified_ready">Verified</option>
+</select>
+</label>
+</div>
 <!-- Wide task columns remain scrollable on narrow screens. -->
-<p class="manager-mobile-table-hint">Swipe the table sideways to see staff, status, and actions &harr;</p>
+<p class="manager-mobile-table-hint">Task details appear as easy-to-read cards on mobile.</p>
 <div class="activity-scroll" role="region" aria-label="Scrollable Housekeeping task list" tabindex="0">
 <!-- Task status rows and buttons are built safely by managerHousekeeping.js. -->
 <table aria-label="Housekeeping tasks" class="manager-task-table">
@@ -65,11 +99,24 @@
 <tbody id="hkManagerRows"><tr><td colspan="6">Loading tasks…</td></tr></tbody>
 </table>
 </div>
-<p class="manager-list-note">Workflow: Needs Cleaning → In Progress → Cleaned → Verified Ready. Verified Ready is a housekeeping inspection result, not a booking availability guarantee.</p>
+<p class="manager-list-note">Workflow: Needs Cleaning → In Progress → Photo Uploaded → Cleaned → Manager Photo Review → Verified Ready. Verification never changes accommodation booking availability.</p>
 </section>
+<dialog id="hkManagerProofDialog" class="hk-manager-proof-dialog" aria-labelledby="hkProofTitle">
+<div class="hk-manager-proof-head">
+<h2 id="hkProofTitle">Cleaning Photo Proof</h2>
+<button id="hkProofClose" type="button" aria-label="Close photo proof">Close ✕</button>
+</div>
+<p id="hkProofDescription">Review the cleaning photo submitted by Housekeeping.</p>
+<img id="hkProofImage" alt="" class="hk-manager-proof-image" hidden />
+<p id="hkProofMessage" role="status" aria-live="polite"></p>
+<div class="hk-manager-proof-actions">
+<button type="button" id="hkProofVerifyBtn" class="manager-approve" disabled>Reviewed — Verify Ready</button>
+<button type="button" id="hkProofCancelBtn">Close</button>
+</div>
+</dialog>
 </main>
 <script src="../sharedJS/api-config.js"></script>
 <!-- The script calls only signed Manager housekeeping endpoints. -->
-<script src="../managerJS/managerHousekeeping.js"></script>
+<script src="../managerJS/managerHousekeeping.js?v=20261121-hk46"></script>
     <script src="../sharedJS/logout-confirm.js"></script>
   </body></html>

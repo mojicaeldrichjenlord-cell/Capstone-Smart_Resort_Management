@@ -7,6 +7,7 @@
 
     <link rel="stylesheet" href="../sharedCSS/global.css" />
     <link rel="stylesheet" href="../housekeepingCSS/housekeepingDashboard.css" />
+    <link rel="stylesheet" href="../housekeepingCSS/housekeepingProof.css?v=20261121-hk46" />
       <!-- Consistent, centered confirmation for accidental logout clicks. -->
     <link rel="stylesheet" href="../sharedCSS/logout-confirm.css" />
   </head>
@@ -100,7 +101,7 @@
         <div class="hk-panel-header">
           <div>
             <h2 id="hkTaskHeading">My Cleaning Tasks</h2>
-            <p>Manager-assigned turnover cleaning tasks, including older unfinished assignments.</p>
+            <p>Start cleaning, upload a clear photo, then mark Cleaned. Your Manager will inspect the proof before verifying.</p>
           </div>
           <button type="button" id="hkRefreshTasks" class="hk-action">Refresh My Tasks</button>
         </div>
@@ -109,13 +110,14 @@
         <!-- Keep the cleaning status and action discoverable on narrow screens. -->
         <p class="hk-mobile-table-hint">Swipe sideways in the table to see task status and actions &harr;</p>
         <div class="hk-table-region" role="region" aria-label="Scrollable assigned cleaning tasks" tabindex="0">
-          <table aria-label="Assigned housekeeping cleaning tasks">
+          <table class="hk-task-list-table" aria-label="Assigned housekeeping cleaning tasks">
             <thead><tr><th>Accommodation</th><th>Reservation</th><th>Checkout Date</th><th>Cleaning Status</th><th>Next Action</th></tr></thead>
             <tbody id="hkTaskRows"><tr><td colspan="5">Loading…</td></tr></tbody>
           </table>
         </div>
         <p class="permission-note">
-          Workflow: Needs Cleaning → In Progress → Cleaned → Manager Verified Ready.
+          Workflow: Needs Cleaning → In Progress → Upload Photo Proof → Cleaned → Manager Photo Review → Verified Ready.
+          One JPG, PNG or WebP photo (up to 2 MB after optimization) is required for each cleaning task.
           Only your assigned tasks can be started or marked cleaned.
           <strong>Verified Ready is not the same as accommodation booking availability.</strong>
         </p>
@@ -126,7 +128,7 @@
     <script src="../sharedJS/api-config.js"></script>
     <!-- Schedule and cleaning tasks use separate scripts and protected endpoints. -->
     <script src="../housekeepingJS/housekeepingDashboard.js"></script>
-    <script src="../housekeepingJS/housekeepingTasks.js"></script>
+    <script src="../housekeepingJS/housekeepingTasks.js?v=20261121-hk46"></script>
       <script src="../sharedJS/logout-confirm.js"></script>
   </body>
 </html>

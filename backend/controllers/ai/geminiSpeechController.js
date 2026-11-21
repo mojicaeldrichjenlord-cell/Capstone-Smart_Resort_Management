@@ -27,19 +27,14 @@ function createTranscribeVoice({
         message: "Voice transcription is temporarily unavailable. Please type your message." });
     }
     try {
-      // Language hint is an allowlisted UI setting, never a free-form prompt.
-      // Resort vocabulary helps distinguish Filipino/English homophones such
-      // as "preview"/"premyo" and "Pool Shade"/"full shade". It must never
-      // override what the audio actually says.
-      const language = String(req.get("x-arvic-voice-language") || "").toLowerCase();
-      const languageHint = ({
-        english: "English (Philippines)",
-        taglish: "Taglish / Filipino mixed with English (Philippines)",
-        spanish: "Spanish",
-        mandarin: "Mandarin Chinese",
-      })[language] || "English, Filipino/Taglish, Spanish, or Mandarin";
+      // AI-44: The user no longer selects a voice language. Ask Gemini
+      // to recognize the spoken language automatically, every turn.
+      // No transcript translation and no preferred-language override.
       const prompt =
-        "Transcribe the speech faithfully in " + languageHint + ". " +
+        "Detect the spoken language automatically and transcribe faithfully " +
+        "in that same language and its natural writing system. " +
+        "This may be English, Filipino, Taglish, Mandarin, Spanish or another language. " +
+        "Never translate into English; preserve original words and meaningful code-switching. " +
         "The conversation is about Arvic Seaside Resort accommodations. " +
         "Relevant proper names include Pool Shade, Big Shade, Small Shade, " +
         "Nipa Hut, Pool Pavilion, Beach Pavilion, Family Room, Double Room, " +
