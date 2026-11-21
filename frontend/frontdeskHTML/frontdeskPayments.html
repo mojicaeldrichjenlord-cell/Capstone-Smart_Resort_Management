@@ -55,8 +55,8 @@
           <h1>Payment Management</h1>
 
           <p>
-            Review GCash/Maya payment references and proof screenshots, verify
-            submitted 50% online downpayments, and monitor remaining balances.
+            Monitor PayPal online downpayments and payment status across online
+            and manual reservations. Review records and track payments.
           </p>
         </div>
 
@@ -70,8 +70,8 @@
       ===================================================== -->
       <section class="payments-summary-grid">
         <article class="payment-summary-card attention">
-          <span>Needs Verification</span>
-          <strong id="needsVerificationCount">0</strong>
+          <span>Pending / Unpaid</span>
+          <strong id="pendingPaymentCount">0</strong>
         </article>
 
         <article class="payment-summary-card">
@@ -84,24 +84,20 @@
           <strong id="paidCount">0</strong>
         </article>
 
-        <article class="payment-summary-card">
-          <span>Remaining Balance</span>
-          <strong id="remainingBalanceTotal">₱0.00</strong>
-        </article>
       </section>
 
       <!-- ====================================================
          PAYMENT POLICY NOTE
       ===================================================== -->
       <section class="payment-policy-note">
-        <strong>Front Desk Payment Rule:</strong>
+        <strong>Payment Guidelines:</strong>
 
         <span>
-          Verify only payment proof that matches the customer's submitted
-          GCash/Maya reference. Verification records the required 50%
-          accommodation downpayment as partially paid and confirms the
-          reservation. Remaining accommodation balance and entrance fee are
-          collected during the guest check-in flow.
+          Customer online bookings use PayPal for the required 50% accommodation
+          downpayment. Successful PayPal payments are recorded and the reservation
+          is confirmed automatically. Front Desk manual reservations follow
+          their own Cash, GCash, or Maya payment rules. Outstanding accommodation
+          balances and entrance fees are handled during guest check-in.
         </span>
       </section>
 
@@ -113,7 +109,7 @@
           <div>
             <h2>Search and Filter</h2>
             <p>
-              Default view shows records that currently need payment attention.
+              View payment statuses for online and manual reservations.
             </p>
           </div>
         </div>
@@ -133,11 +129,11 @@
             <label for="paymentViewFilter">Payment View</label>
 
             <select id="paymentViewFilter">
-              <option value="attention" selected>Needs Attention</option>
+              <option value="attention">Legacy Proof Review</option>
               <option value="pending">Pending / Unpaid</option>
               <option value="partially_paid">Partially Paid</option>
               <option value="paid">Paid</option>
-              <option value="all">All Payment Records</option>
+              <option value="all" selected>All Payment Records</option>
             </select>
           </div>
 
@@ -146,6 +142,7 @@
 
             <select id="methodFilter">
               <option value="">All</option>
+              <option value="paypal">PayPal</option>
               <option value="gcash">GCash</option>
               <option value="paymaya">Maya</option>
               <option value="cash">Cash</option>
@@ -173,8 +170,8 @@
             <h2>Payment Records</h2>
 
             <p>
-              Online pending payments with proof/reference can be verified here.
-              Manual reservations remain visible for monitoring.
+              Track payment records from PayPal online bookings and Front Desk
+              manual reservations. Legacy proof submissions remain available for review.
             </p>
           </div>
 
