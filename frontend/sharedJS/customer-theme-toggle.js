@@ -34,7 +34,7 @@
     button.setAttribute("title", isDark ? "Switch to light mode" : "Switch to dark mode");
     const icon = button.querySelector(".customer-theme-icon");
     const text = button.querySelector(".customer-theme-label");
-    if (icon) icon.textContent = isDark ? "☀" : "☾";
+    if (icon) icon.textContent = isDark ? "☾" : "☀";
     if (text) text.textContent = isDark ? "Light Mode" : "Dark Mode";
   }
 
