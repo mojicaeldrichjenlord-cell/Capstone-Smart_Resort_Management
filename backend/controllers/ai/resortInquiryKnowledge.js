@@ -74,12 +74,13 @@ function isOpeningHoursInquiry(message) {
   if (!t || t.length > 350) return false;
   const patterns = [
     /\b(?:tuwing\s+)?(?:kailan|kelan)\s+(?:(?:po|ba|nga|kaya)\s+)*(?:(?:kayo|ang\s+(?:resort|hotel))\s+)?(?:open|bukas|nagbubukas|magbubukas|nag[ -]?oopen|nagsasara|sarado|close)\b/i,
-    /\b(?:hanggang\s+)?(?:anong\s+oras|anong\s+araw|anong\s+mga\s+araw)\s+(?:(?:po|ba)\s+)*(?:(?:kayo|ang\s+(?:resort|hotel))\s+)?(?:open|bukas|nagbubukas|nagsasara|nag[ -]?oopen|sarado|close)\b/i,
+    /\b(?:hanggang\s+)?(?:anong\s+oras|anong\s+araw|anong\s+mga\s+araw|anong\s+days?)\s+(?:(?:po|ba)\s+)*(?:(?:kayo|ang\s+(?:resort|hotel))\s+)?(?:open|bukas|nagbubukas|nagsasara|nag[ -]?oopen|sarado|close)\b/i,
     /\b(?:open|bukas|sarado|closed)\s+(?:(?:po|ba|pa|din|rin)\s+)*(?:kayo|ang\s+(?:resort|hotel))\b/i,
     /\b(?:kayo|ang\s+(?:resort|hotel))\s+(?:po\s+)?(?:ba\s+)?(?:open|bukas|sarado|closed)\b/i,
-    /\b(?:are\s+you|is\s+(?:the\s+)?(?:resort|hotel))\s+open\b/i,
+    /\b(?:are\s+you|is\s+(?:the\s+)?(?:resort|hotel))\s+open\b(?=\s*(?:[?!.]|$|(?:now|today|tomorrow|on|every|at|24|during|weekends?|weekdays?|daily)\b))/i,
     /\b(?:when|what\s+days?|what\s+time|how\s+late)\s+(?:(?:are|do)\s+you|is\s+(?:the\s+)?resort)?\s*(?:open|close|closed)\b/i,
-    /\b(?:what\s+time\s+do\s+you|when\s+do\s+you)\s+(?:open|close)\b/i,
+    /\b(?:what\s+time\s+do\s+you|when\s+do\s+you|until\s+what\s+time\s+are\s+you)\s+(?:open|close)\b/i,
+    /\b(?:tuwing|every)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|lunes|martes|miyerkules|huwebes|biyernes|sabado|linggo|weekends?)\s+(?:(?:po|ba|kayo|ang)\s+){0,4}(?:open|bukas)\b/i,
     /\b(?:what\s+(?:are\s+)?your\s+)?(?:operating|opening|business)\s+(?:hours?|days?|schedule)\b/i,
     /\b24\s*(?:\/\s*7|hours?|oras)\b.{0,65}\b(?:kayo|resort|hotel|open|bukas)\b|\b(?:kayo|resort|hotel|open|bukas)\b.{0,65}\b24\s*(?:\/\s*7|hours?|oras)\b/i,
   ];
