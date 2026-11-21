@@ -441,7 +441,8 @@ test("AI-LIVE-05 unknown scope asks rooms or cottages without spending credits",
     context: { room_id: 61, room_name: "Family Room A" },
   });
   assert.equal(response.body.mode, "verified_cheapest_accommodation");
-  assert.match(response.body.reply, /rooms, cottages, o function areas/i);
+  // Per-message Filipino detection may naturally say "kuwarto" here.
+  assert.match(response.body.reply, /(?:rooms, cottages, o function areas|kuwarto, cottage, o function area)/i);
   assert.equal(queries.length, 0);
   assert.equal(modelCalls, 0);
   assert.equal(response.body.booking_preview, null);
