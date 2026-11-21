@@ -1,53 +1,77 @@
 /*
- * DM-02 — Customer Navbar Theme Toggle.
- * Inherits existing nav look, same button on desktop and mobile menu.
- * Scope: Customer navbar only; do not change fixed navbar positioning,
- * booking/payment confirmation or the AI widget.
+ * DM-04 | Compact accessible sun/moon SLIDING SWITCH.
+ * One real button (keyboard & touch), no duplicated navbar controls.
+ * aria-pressed true = dark; false = light; preference logic unchanged.
  */
 @media screen {
   body.customer-manager-tone > .navbar nav .customer-theme-toggle {
+    position: relative;
+    isolation: isolate;
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    flex: 0 0 82px;
+    width: 82px;
+    min-width: 82px;
+    height: 44px;
+    min-height: 44px;
+    margin: 0;
+    padding: 5px;
+    border-radius: 999px;
+    border: 1px solid #c4d0dc;
+    background: #e7eef4;
+    background-image: none;
+    box-shadow: inset 0 1px 4px rgba(13,31,50,.18);
+    cursor: pointer;
+    font: inherit;
+    -webkit-tap-highlight-color: transparent;
+    transition: background-color .18s ease, border-color .18s ease;
+  }
+  body.customer-manager-tone > .navbar nav .customer-theme-toggle .customer-theme-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 7px;
-    flex: 0 0 auto;
-    min-height: 44px;
-    min-width: 118px;
-    padding: 10px 14px;
-    margin: 0;
-    border: 1px solid rgba(255, 255, 255, .27);
-    border-radius: 999px;
-    background: rgba(255, 255, 255, .12);
-    background-image: none;
-    color: #fff;
-    font: inherit;
-    font-size: .88rem;
+    flex: 0 0 32px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #ffffff;
+    color: #273649;
+    font-size: 1.12rem;
     font-weight: 800;
-    line-height: 1.1;
-    text-align: center;
-    white-space: nowrap;
-    cursor: pointer;
-    transition: background-color .2s ease, border-color .2s ease;
-    box-shadow: none;
+    line-height: 1;
+    box-shadow: 0 1px 4px rgba(10, 25, 40, .20);
+    transform: translateX(0);
+    transition: transform .18s ease, background-color .18s ease;
+    pointer-events: none;
+  }
+  body.customer-manager-tone > .navbar nav .customer-theme-toggle[aria-pressed="true"] {
+    background: #253448;
+    border-color: #60788e;
+  }
+  body.customer-manager-tone > .navbar nav .customer-theme-toggle[aria-pressed="true"] .customer-theme-icon {
+    transform: translateX(38px);
+    background: #edf3f8;
+    color: #172535;
   }
   body.customer-manager-tone > .navbar nav .customer-theme-toggle:hover {
-    background: rgba(255, 255, 255, .21);
-    border-color: rgba(255, 255, 255, .45);
+    border-color: #93c5d6;
+    box-shadow: inset 0 1px 4px rgba(13,31,50,.18), 0 0 0 2px rgba(124,193,208,.14);
   }
   body.customer-manager-tone > .navbar nav .customer-theme-toggle:focus-visible {
     outline: 3px solid var(--customer-focus, #5eead4);
     outline-offset: 3px;
   }
-  body.customer-manager-tone > .navbar nav .customer-theme-icon {
-    font-size: 1.1rem;
-    line-height: 1;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 20px;
-    height: 20px;
+  /* Keep the screen-reader readable action while showing only the switch. */
+  body.customer-manager-tone > .navbar nav .customer-theme-toggle .customer-theme-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    white-space: nowrap;
+    clip-path: inset(50%);
   }
-  /* Avoid desktop nav overflow once Profile → Theme → Logout includes 7 items. */
+  /* Existing compact desktop nav remains intact. */
   @media (min-width: 901px) and (max-width: 1240px) {
     body.customer-manager-tone > .navbar {
       padding-left: 20px;
@@ -60,25 +84,19 @@
       padding: 10px 9px;
       font-size: .87rem;
     }
-    body.customer-manager-tone > .navbar nav .customer-theme-toggle {
-      min-width: 102px;
-      padding: 10px 9px;
-      font-size: .83rem;
-    }
   }
   @media (max-width: 900px) {
     body.customer-manager-tone > .navbar nav .customer-theme-toggle {
-      width: 100%;
-      min-width: 0;
-      justify-content: flex-start;
-      padding: 12px 14px;
-      border-radius: 10px;
-      text-align: left;
-      font-size: .95rem;
+      width: 82px;
+      flex: 0 0 82px;
+      min-width: 82px;
+      min-height: 44px;
+      margin: 5px 10px;
     }
   }
   @media (prefers-reduced-motion: reduce) {
-    body.customer-manager-tone > .navbar nav .customer-theme-toggle {
+    body.customer-manager-tone > .navbar nav .customer-theme-toggle,
+    body.customer-manager-tone > .navbar nav .customer-theme-icon {
       transition: none;
     }
   }
