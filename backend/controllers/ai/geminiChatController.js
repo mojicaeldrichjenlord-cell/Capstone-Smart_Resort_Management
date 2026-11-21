@@ -223,13 +223,15 @@ function detectLanguageFromMessage(message) {
     "gusto", "pwede", "puwede", "kuwarto", "kwarto", "magkano", "kailan",
     "saan", "petsa", "bayad", "bisita", "ilan", "meron", "wala", "naka",
     "lang", "muna", "nga", "dito", "iyan", "yan", "ito", "para", "pa",
-    "paano", "hanggang", "mula", "oras"
+    "paano", "hanggang", "mula", "oras", "may", "ba", "bang", "anong",
+    "ano", "pahingi", "pakita", "pwedeng", "niyo", "nyo", "yung", "ilang"
   ];
 
   const englishWords = [
     "room", "booking", "check-in", "check-out", "guest", "payment", "price",
     "available", "recommend", "book", "cash", "online", "view", "aircon",
-    "nights", "date", "dates", "how", "where", "what", "time"
+    "nights", "date", "dates", "how", "where", "what", "time",
+    "accommodation", "accommodations", "offer", "have", "need", "please", "do", "can"
   ];
 
   let tagalogScore = 0;
