@@ -80,7 +80,10 @@ test("Frontend cards provide View Details, booking link and focused follow-up", 
   assert.match(source, /function getAiRecentConversationTurns/);
   const roomPage = fs.readFileSync(path.join(__dirname, "../../frontend/customerJS/rooms.js"), "utf8");
   assert.match(roomPage, /function focusRequestedAiAccommodation/);
-  assert.match(roomPage, /room-card-\$\{Number\(room\.id\)\}/);
+  // UI-43 extracts a validated roomId before building the card and
+  // expanding its mobile/iPad accordion via the AI deep link.
+  assert.match(roomPage, /room-card-\$\{(?:Number\(room\.id\)|roomId)\}/);
+  assert.match(roomPage, /function focusRequestedAiAccommodation\(/);
 });
 
 test("Focused accommodation amenities use both Admin description and inclusions", () => {
