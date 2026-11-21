@@ -1211,17 +1211,17 @@ test("Maintenance rooms are excluded from 429 offline recommendations", async ()
   assert.equal(result.body.booking_preview, null);
 });
 
-test("Voice session maintains the selected Taglish language during 429 backup", async () => {
+test("Voice quota fallback uses language of current spoken question", async () => {
   injectedFailures = 1;
   injectedStatus = 429;
   const result = await post("/api/ai/chat", {
     message: "Do you have a room?",
-    voice_language: "taglish",
+    input_source: "voice",
   });
   assert.equal(result.status, 200);
   assert.equal(result.body.mode, "database_fallback");
-  assert.match(result.body.reply, /Temporarily limited ang AI/i);
-  assert.equal(result.body.extracted_context.language_style, "taglish");
+  assert.match(result.body.reply, /Our AI service is temporarily limited/i);
+  assert.equal(result.body.extracted_context.language_style, "english");
   assert.equal(result.body.booking_preview, null);
 });
 
@@ -1371,16 +1371,16 @@ test("Undated preview retains saved guest count and excludes undersized cottages
   assert.equal(result.body.booking_preview, null);
 });
 
-test("Voice catalog reply remains fixed-language without intent extraction", async () => {
+test("Voice catalog reply uses current English and retains speech prompt", async () => {
   const result = await post("/api/ai/chat", {
     message: "What accommodations do you offer?",
-    voice_language: "english",
+    input_source: "voice",
   });
   assert.equal(result.status, 200);
   assert.equal(modelCalls, 1);
   assert.equal(result.body.extracted_context.language_style, "english");
   assert.match(modelPrompts[0], /LIVE SPOKEN CONVERSATION/);
-  assert.match(modelPrompts[0], /Reply in clear English/);
+  assert.match(modelPrompts[0], /The CURRENT guest message controls reply language/);
 });
 
 test("Optimized prompt does not duplicate full booking context and live details", async () => {
@@ -1409,16 +1409,16 @@ test("Quota fallback does not issue a second catalog SQL read after optimized Ge
   assert.equal(response.body.booking_preview, null);
 });
 
-test("Mandarin voice with one-call catalog stays fixed-language on quota fallback", async () => {
+test("English spoken catalog quota fallback does not inherit old Mandarin", async () => {
   injectedFailures = 1;
   injectedStatus = 429;
   const response = await post("/api/ai/chat", {
     message: "Do you have a family room?",
-    voice_language: "mandarin",
+    input_source: "voice",
   });
   assert.equal(response.status, 200);
-  assert.equal(response.body.extracted_context.language_style, "mandarin");
-  assert.match(response.body.reply, /^AI 服务暂时受限/);
+  assert.equal(response.body.extracted_context.language_style, "english");
+  assert.match(response.body.reply, /^Our AI service is temporarily limited/);
   assert.equal(modelCalls, 1);
   assert.equal(queries.length, 1);
   assert.equal(response.body.booking_preview, null);
@@ -2125,7 +2125,7 @@ test("AI-41 Ask About This follows the visitor's genuine Taglish question, not c
   assert.equal(queries.length, 1);
 });
 
-test("AI-41 English visitors get natural English; live voice's explicit language still wins", async () => {
+test("AI-44 clicked room description uses guest English for both text and voice", async () => {
   catalogRows = [{ ...exampleRoom, id: 72, room_name: "Double Room 2",
     category_name: "Room", capacity: 7, description: "",
     amenities: "", day_price: 4000, overnight_price: 4000 }];
@@ -2141,9 +2141,9 @@ test("AI-41 English visitors get natural English; live voice's explicit language
   assert.match(english.body.reply, /amenities aren't specified yet/i);
   assert.doesNotMatch(english.body.reply, /private CR|aircon|balcony/i);
   const voice = await post("/api/ai/chat", {
-    ...payload, voice_language: "taglish",
+    ...payload, input_source: "voice",
   });
-  assert.match(voice.body.reply, /^Yung Double Room 2 po/);
+  assert.match(voice.body.reply, /^Double Room 2 can accommodate up to 7 guests/);
   assert.equal(modelCalls, 0);
   assert.equal(queries.length, 2);
 });
