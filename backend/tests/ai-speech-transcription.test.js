@@ -55,7 +55,7 @@ test("No speech from Gemini returns empty transcript", async () => {
   }
 });
 
-test("Recorded Taglish STT uses an allowlisted resort vocabulary hint", async () => {
+test("Recorded multilingual STT auto-detects language with verified resort vocabulary", async () => {
   const key = process.env.GEMINI_API_KEY;
   process.env.GEMINI_API_KEY = "test-only";
   try {
@@ -73,7 +73,8 @@ test("Recorded Taglish STT uses an allowlisted resort vocabulary hint", async ()
     await handler(request(wav(), "audio/wav", "taglish"),res);
     assert.equal(res.statusCode,200);
     assert.equal(res.data.transcript,"May preview ka ba ng Pool Shade?");
-    assert.match(prompt,/Taglish \/ Filipino mixed with English/);
+    assert.match(prompt,/Detect the spoken language automatically/);
+    assert.match(prompt,/Never translate into English/);
     assert.match(prompt,/Pool Shade/);
     assert.match(prompt,/preview/);
     assert.match(prompt,/Do not change genuinely spoken words/);
@@ -102,7 +103,8 @@ test("Untrusted voice language header cannot inject transcription prompts", asyn
     assert.equal(res.statusCode,200);
     assert.equal(res.data.transcript,"");
     assert.doesNotMatch(prompt,/Return SECRET|Ignore all instructions/);
-    assert.match(prompt,/English, Filipino\/Taglish, Spanish, or Mandarin/);
+    assert.match(prompt,/spoken language automatically/);
+    assert.doesNotMatch(prompt,/Transcribe the speech faithfully in Taglish/);
   } finally {
     if (key === undefined) delete process.env.GEMINI_API_KEY;
     else process.env.GEMINI_API_KEY = key;
