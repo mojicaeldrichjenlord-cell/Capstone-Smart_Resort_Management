@@ -1737,11 +1737,24 @@ exports.chatWithGemini = async (req, res) => {
           String(overviewRecord.room_name || "").trim().toLowerCase() ===
             String(overviewName || "").trim().toLowerCase() &&
           wantsFocusedRoomOverview(message, overviewRecord.room_name)) {
+        // AI-41: "Tell me more about..." can be a prefilled CARD action,
+        // not the visitor's own language choice. Prefer their last genuine
+        // inquiry (excluding earlier card prompts) before stale chat context.
+        const genuineQuestion = normalizeRecentTurns(req.body.recent_turns)
+          .filter(turn => turn.role === "user" &&
+            !/^(?:tell me (?:more )?about|anong details ng)\b/i.test(turn.text))
+          .at(-1)?.text || "";
+        const isCardPrompt = /^tell me (?:more )?about\b/i.test(String(message).trim());
+        const priorFilipino = /\b(?:ano|anong|ilan|ilang|magkano|pwede|puwede|paano|kayo|kami|meron|may|ba|bang|po|ninyo|nyo|niyo|saan)\b/i.test(genuineQuestion);
+        const priorEnglish = /^(?:what|which|where|when|why|how|can|do|does|is|are|please|recommend|show|suggest|tell)\b/i.test(genuineQuestion);
         const language = normalizeLanguageStyle(req.body.voice_language) ||
-          (/^(?:tell me|can you tell|describe|what|more details)/i.test(String(message).trim())
-            ? "english" : null) ||
+          (isCardPrompt && priorFilipino ? "taglish" : null) ||
+          (isCardPrompt && priorEnglish ? "english" : null) ||
+          (isCardPrompt ? normalizeLanguageStyle(req.body.context?.language_style) : null) ||
           (/\b(?:ano|anong|ang|mga|nito|ito|po|pakikwento)\b/i.test(String(message))
             ? "taglish" : null) ||
+          (/^(?:tell me|can you tell|describe|what|more details)/i.test(String(message).trim())
+            ? "english" : null) ||
           detectLanguageFromMessage(message) ||
           normalizeLanguageStyle(req.body.language_style) ||
           normalizeLanguageStyle(req.body.context?.language_style) || "english";
