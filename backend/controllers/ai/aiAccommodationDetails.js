@@ -62,9 +62,16 @@ function conversationalAmenities(room, filipino) {
     ? ["2 separate bedrooms", "air conditioner in each bedroom", "cabinets in each bedroom"]
     : []);
   const terms = facts.filter(x => !special.has(x.toLowerCase())).map(x => {
-    if (filipino && /^private cr$/i.test(x)) return "sariling CR";
-    if (!filipino && /^private cr$/i.test(x)) return "private bathroom";
-    return x.charAt(0).toLowerCase() + x.slice(1);
+    const normalized = x.toLowerCase().replace(/\s+/g, " ").trim();
+    if (/^private\s+(?:cr|comfort room|bathroom)$/.test(normalized))
+      return filipino ? "sariling CR" : "private bathroom";
+    if (/^(?:tv|television|smart tv|led tv)$/.test(normalized)) return normalized === "tv" ? "TV" : normalized.replace(/tv$/, "TV");
+    if (/^(?:air[ -]?(?:conditioned|conditioning|conditioner|con)|a\/c|ac)$/.test(normalized))
+      return filipino ? "aircon" : "air conditioning";
+    if (/^(?:wifi|wi-fi)$/.test(normalized)) return "Wi-Fi";
+    // Most Admin amenity labels use Title Case. Lowercase them as ordinary
+    // sentence terms rather than producing "tV" or "air Conditioned".
+    return normalized;
   });
   if (grouped) {
     const features = [
