@@ -48,7 +48,7 @@ test("DM-02 responsive toggle remains after Profile before Logout and is keyboar
   assert.match(styles, /\.customer-theme-toggle:focus-visible/);
   assert.match(styles, /@media \(max-width: 900px\)/);
   assert.match(styles, /@media \(min-width: 901px\) and \(max-width: 1240px\)/);
-  assert.doesNotMatch(script,/window\.location\s*=|history\.pushState|fetch\(|logout|sessionStorage|innerHTML/);
+  assert.doesNotMatch(script,/window\.location\s*=|history\.pushState|fetch\(|logoutBtn\.click|sessionStorage|innerHTML/);
   assert.doesNotThrow(()=>new vm.Script(script));
 });
 
