@@ -1,4 +1,6 @@
 "use strict";
+// AI-39: Both resort scope and the verified FAQ use the same operations intent.
+const { isOpeningHoursInquiry } = require("./resortInquiryKnowledge");
 /**
  * UI-36 — Only Arvic Seaside Resort guest-service inquiries reach Gemini.
  * All off-topic refusals are deterministic and cost ZERO API/DB calls.
@@ -74,6 +76,9 @@ function isResortQuestion(message, context = {}, recentTurns = []) {
   if (HISTORICAL_PERSON.test(text) && !CURRENT_ACCOMMODATION_REFERENCE.test(text))
     return false;
   if (GREETING.test(text)) return true;
+  // Common phrasing like "tuwing kelan po kayo open?" is resort-related,
+  // even if the visitor did not explicitly say "resort" or "hours".
+  if (isOpeningHoursInquiry(text)) return true;
   if (hasResortTopic(text)) return true;
   return isRecognizedResortFollowUp(text, context, recentTurns);
 }
