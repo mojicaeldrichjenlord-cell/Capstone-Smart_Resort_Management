@@ -123,3 +123,44 @@ test("AI-36 scope check occurs before all Gemini and catalog calls", () => {
   assert.match(src, /recommendation_cards: \[\]/);
   assert.match(src, /Never answer unrelated history, politics, homework, trivia/);
 });
+
+
+test("AI-39 common opening-days phrasing is resort-relevant without previous chat", () => {
+  // Actual anonymous-landing failure: previously refused as off-topic.
+  for (const message of [
+    "tuwing kelan po kayo open?",
+    "Tuwing kailan po kayo bukas?",
+    "Kailan po kayo nagbubukas?",
+    "Anong oras kayo open?",
+    "Hanggang anong oras kayo bukas?",
+    "Anong days po kayo open?",
+    "Bukas ba kayo ng Sunday?",
+    "Open po ba kayo pag weekends?",
+    "Tuwing Sunday ba kayo open?",
+    "Every Sunday po ba kayo open?",
+    "Are you open on Sundays?",
+    "What days are you open?",
+    "When do you close?",
+    "Are you open 24/7?",
+    "24/7 ba kayo?",
+    "What are your operating hours?",
+  ]) {
+    assert.equal(isResortQuestion(message), true, message);
+  }
+});
+
+test("AI-39 opening-hours intent does not unlock unrelated or manipulative tasks", () => {
+  const context = { room_id: 88, room_name: "Family Room B" };
+  const recent = [{ role: "user", text: "Kailan po kayo open?" }];
+  for (const message of [
+    "What is open source software?",
+    "Open a Python file for me",
+    "When does the mall open?",
+    "Are you open to writing a poem?",
+    "How to open a locked PDF?",
+    "Who was Jose Rizal? Open po ba kayo?",
+    "Write me a script about a resort's opening hours",
+  ]) {
+    assert.equal(isResortQuestion(message, context, recent), false, message);
+  }
+});
