@@ -60,6 +60,7 @@ jobs:
             tests/customer-landing-receipt-ui32.test.js \
             tests/admin-report-manual-preview-ui34.test.js \
             tests/booking-payment-action-alignment-ui35.test.js \
+            tests/customer-home-hero-ui36.test.js \
             tests/ai-resort-scope.test.js \
             tests/ai-recommendation-intake.test.js \
             > "$RUNNER_TEMP/ai-regression.log" 2>&1
