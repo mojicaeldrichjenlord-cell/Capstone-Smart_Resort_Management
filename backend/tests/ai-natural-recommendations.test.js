@@ -265,7 +265,8 @@ test("UI-26 Gemini is the default mic transcription without an input-mode dropdo
   assert.doesNotMatch(voice, /'<label for="aiVoiceInputMode"/);
   assert.doesNotMatch(voice, /localStorage\.getItem\(INPUT_MODE_KEY\)/);
   assert.match(voice, /uses Gemini credits/);
-  assert.match(voice, /#aiVoiceLanguage/);
+  assert.doesNotMatch(voice, /<select id="aiVoiceLanguage"/);
+  assert.match(voice, /Automatic language detection/);
   assert.match(voice, /#aiVoiceLive/);
   assert.match(voice, /microphone\.addEventListener\("click", toggleDictation\)/);
 });
@@ -283,7 +284,7 @@ test("UI-26 airy chatbot theme loads after Customer theme on both pages", () => 
     const mainTheme = html.indexOf("customer-manager-tone.css");
     const assistantTheme = html.indexOf("ai-chat-airy.css");
     assert.ok(mainTheme !== -1 && assistantTheme > mainTheme, page);
-    assert.match(html, /ai-voice\.js\?v=20261119-gemini-default/);
+    assert.match(html, /ai-voice\.js\?v=20261121-auto44/);
     assert.match(html, /id="aiMicBtn"/);
     assert.match(html, /id="aiChatSendBtn"|id="aiSendBtn"/);
   }
@@ -437,7 +438,7 @@ test("UI-28 open voice settings remain compact while preserving voice controls a
   assert.match(css, /max-height: min\(132px, 26dvh\)/);
   assert.match(css, /\.ai-voice-panel \.ai-voice-actions:first-child/);
   assert.match(css, /grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1\.18fr\)/);
-  assert.match(css, /#aiVoiceLanguage/);
+  assert.doesNotMatch(voice, /<select id="aiVoiceLanguage"/);
   assert.match(css, /#aiVoiceLive/);
   assert.match(css, /#aiVoiceStatus/);
   assert.match(css, /overflow-y: auto/);
@@ -449,6 +450,6 @@ test("UI-28 open voice settings remain compact while preserving voice controls a
     const html = fs.readFileSync(
       path.join(__dirname, "../../frontend/customerHTML", page), "utf8");
     assert.match(html, /ai-chat-airy\.css\?v=20261120-ui30/);
-    assert.match(html, /ai-voice\.js\?v=20261119-gemini-default-compact28/);
+    assert.match(html, /ai-voice\.js\?v=20261121-auto44/);
   }
 });
