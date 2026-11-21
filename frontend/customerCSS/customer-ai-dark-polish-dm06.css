@@ -1,0 +1,160 @@
+/*
+ * DM-06 — Customer Soft Dark AI Concierge contrast polish.
+ * The existing light-theme AI styles create white quick-questions, pale
+ * voice labels, and light option banners, even when the shell is dark.
+ * This sheet is intentionally screen-only + Customer/Dark scoped.
+ * No chat, voice, translation, microphone, recommendations or API logic.
+ */
+@media screen {
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window {
+    --ai-dark-bg: #172535;
+    --ai-dark-surface: #24364a;
+    --ai-dark-surface-raised: #2c4054;
+    --ai-dark-subtle: #203145;
+    --ai-dark-border: #3c5668;
+    --ai-dark-primary: #f1f5f9;
+    --ai-dark-muted: #b7c5d5;
+    --ai-dark-accent: #a5f3e5;
+  }
+
+  /* Quiet chat chrome, no white flashes or harsh high-contrast blocks. */
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-chat-header {
+    background: #142b3e !important;
+    color: var(--ai-dark-primary) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-chat-header :is(
+    h3, .ai-assistant-caption
+  ) {
+    color: var(--ai-dark-primary) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-chat-header-btn {
+    background: #273b50 !important;
+    color: var(--ai-dark-primary) !important;
+    border: 1px solid #486175 !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-chat-header-btn:hover {
+    background: #354e63 !important;
+  }
+
+  /* Voice Options accordion and its automatic-language indicator. */
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-voice-options-toggle,
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-voice-options-toggle[aria-expanded="true"] {
+    background: var(--ai-dark-subtle) !important;
+    color: var(--ai-dark-accent) !important;
+    border-color: var(--ai-dark-border) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-voice-panel {
+    background: var(--ai-dark-surface) !important;
+    color: var(--ai-dark-primary) !important;
+    border-bottom-color: var(--ai-dark-border) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-voice-panel :is(
+    .ai-voice-auto-label,
+    .ai-voice-actions label
+  ) {
+    color: #c4ede6 !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-voice-panel :is(
+    #aiVoiceStatus, .ai-voice-info
+  ) {
+    color: var(--ai-dark-muted) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-voice-panel.listening #aiVoiceStatus {
+    color: var(--ai-dark-accent) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-voice-panel .ai-voice-actions select {
+    background: #21374a !important;
+    color: var(--ai-dark-primary) !important;
+    border-color: #577084 !important;
+    color-scheme: dark;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-voice-panel #aiVoiceLive:not(.active) {
+    background: #0f766e !important;
+    border-color: #0f766e !important;
+    color: #ffffff !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-voice-panel #aiVoiceLive.active {
+    background: #9f333c !important;
+    border-color: #c96f76 !important;
+    color: #ffffff !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-voice-panel #aiVoiceInterrupt:not([hidden]) {
+    background: #4b3c28 !important;
+    border-color: #997449 !important;
+    color: #f9e6ad !important;
+  }
+
+  /* Bright-white suggested-questions box was visually jarring in dark mode. */
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-quick-questions {
+    background: var(--ai-dark-surface) !important;
+    background-image: none !important;
+    color: var(--ai-dark-primary) !important;
+    border: 1px solid var(--ai-dark-border) !important;
+    box-shadow: none !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-quick-questions-label {
+    color: var(--ai-dark-muted) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-quick-question {
+    background: var(--ai-dark-subtle) !important;
+    background-image: none !important;
+    color: var(--ai-dark-primary) !important;
+    border: 1px solid #526a7c !important;
+    box-shadow: none !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-quick-question:hover {
+    background: #354d61 !important;
+    border-color: #7297a1 !important;
+  }
+
+  /* Readable assistant replies, controls, recommendation and chat composer. */
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-chat-messages {
+    background: var(--ai-dark-bg) !important;
+    scrollbar-color: #526a7c transparent;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-message.assistant .ai-bubble {
+    background: var(--ai-dark-surface-raised) !important;
+    color: var(--ai-dark-primary) !important;
+    border-color: var(--ai-dark-border) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-reply-actions button {
+    background: var(--ai-dark-subtle) !important;
+    color: var(--ai-dark-primary) !important;
+    border-color: #526a7c !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-reply-actions button:hover {
+    background: #354d61 !important;
+    color: #ffffff !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-recommendation-card {
+    background: var(--ai-dark-surface) !important;
+    color: var(--ai-dark-primary) !important;
+    border-color: var(--ai-dark-border) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-recommendation-body :is(
+    strong, p, .ai-recommendation-price
+  ) {
+    color: var(--ai-dark-primary) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-chat-input-area {
+    background: var(--ai-dark-surface) !important;
+    border-color: var(--ai-dark-border) !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-chat-input-area input {
+    background: #21374a !important;
+    color: var(--ai-dark-primary) !important;
+    border-color: #577084 !important;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-chat-input-area input::placeholder {
+    color: var(--ai-dark-muted) !important;
+    opacity: 1;
+  }
+  html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window :is(
+    .ai-chat-input-area input, .ai-quick-question, .ai-reply-actions button,
+    .ai-voice-options-toggle, .ai-voice-actions button, .ai-voice-actions select
+  ):focus-visible {
+    outline: 3px solid #5eead4 !important;
+    outline-offset: 2px;
+  }
+}
+/* Light Mode and printed receipts intentionally receive no overrides. */

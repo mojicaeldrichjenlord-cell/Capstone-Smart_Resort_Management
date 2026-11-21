@@ -21,7 +21,7 @@ test("DM-05 scoped mobile stylesheet is last across 8 authenticated Customer pag
     assert.equal(s.split(ref).length-1,1,page+" should load exactly once");
     assert.ok(head.includes(ref),page+" mobile CSS must load in head");
     assert.ok(head.indexOf("customer-comfort-polish-dm04.css")<head.indexOf(ref),page+" mobile CSS should override earlier theme");
-    assert.ok(head.lastIndexOf('rel="stylesheet"')<head.indexOf(ref),page+" mobile stylesheet is final CSS");
+    assert.ok(head.indexOf(ref)<head.indexOf("customer-ai-dark-polish-dm06.css"),page+" mobile stylesheet before DM-06 contrast polish");
     assert.match(s,/id="menuToggle"/);
     assert.match(s,/id="mobileNav"/);
     assert.match(s,/id="logoutBtn"/);
