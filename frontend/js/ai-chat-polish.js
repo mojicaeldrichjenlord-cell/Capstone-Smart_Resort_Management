@@ -41,9 +41,20 @@ document.addEventListener("DOMContentLoaded", () => {
     if (mark) mark.textContent = "AI";
     const caption = brand?.querySelector(".ai-assistant-caption");
     if (caption) caption.textContent = "Resort inquiries & bookings";
+    // DM-08: Inline SVGs match the three user-selected icons. They are local,
+    // decorative only, and never replace the existing click handlers.
+    const NEW_CHAT_ICON = [
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"',
+      ' stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"',
+      ' aria-hidden="true" focusable="false">',
+      '<path d="M18 12.5v4A3 3 0 0 1 15 19H8l-4 3v-3.7a3 3 0 0 1-2-2.8V6a3 3 0 0 1 3-3h11a3 3 0 0 1 3 3v1"/>',
+      '<path d="m12.8 14.5 6.5-6.5a1.6 1.6 0 0 1 2.3 2.3l-6.5 6.5-3.2.8z"/>',
+      '</svg>'
+    ].join("");
     const newChat = document.getElementById("aiNewChatBtn");
     if (newChat) {
-      newChat.textContent = "+";
+      newChat.innerHTML = NEW_CHAT_ICON;
+      newChat.classList.add("ai-chat-icon-btn");
       newChat.title = "New chat";
       newChat.setAttribute("aria-label", "Start new chat");
     }
@@ -124,8 +135,8 @@ document.addEventListener("DOMContentLoaded", () => {
     voiceToggle.className = "ai-voice-options-toggle";
     voiceToggle.setAttribute("aria-controls", panel.id);
     voiceToggle.setAttribute("aria-expanded", "false");
-    voiceToggle.title = "Voice settings";
-    voiceToggle.setAttribute("aria-label", "Voice settings");
+    voiceToggle.title = customerSurface ? "Transcription and voice options" : "Voice settings";
+    voiceToggle.setAttribute("aria-label", voiceToggle.title);
     const composer = chat.querySelector(".ai-chat-input-area");
     const microphone = document.getElementById("aiMicBtn");
     if (customerSurface && composer && microphone) {
@@ -135,10 +146,13 @@ document.addEventListener("DOMContentLoaded", () => {
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"',
         ' stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"',
         ' aria-hidden="true" focusable="false">',
-        '<path d="M4 7h9m4 0h3M4 17h3m4 0h9"/>',
-        '<circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
+        '<path d="M13.5 2.5H6a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/>',
+        '<path d="M13.5 2.5V7H18M7 11h6M7 14h4"/>',
+        '<path d="M12.5 17h1.8l2-1.5v5l-2-1.5h-1.8z"/>',
+        '<path d="M18 16.4a2 2 0 0 1 0 2.1M19.8 14.9a4.3 4.3 0 0 1 0 5"/>',
         '</svg>'
       ].join("");
+      voiceToggle.classList.add("ai-chat-icon-btn");
       composer.insertBefore(voiceToggle, microphone);
     } else {
       // Keep the original non-Customer widget presentation unchanged.
