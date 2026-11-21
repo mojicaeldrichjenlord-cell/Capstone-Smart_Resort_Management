@@ -518,3 +518,79 @@
     color: #fff3cd !important;
   }
 }
+
+/*
+ * FD-DM-05 | Manual reservation status-bar contrast
+ * These are JS-generated status elements, NOT disabled inputs:
+ *   .manual-slot-status       (next to Time Slot)
+ *   .manual-item-availability (below accommodation preview)
+ * Keep the validation state colors clear, without white bars in dark mode.
+ * Scoped only to Front Desk + dark mode; Light Mode and Admin are untouched.
+ */
+@media screen {
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .walkin-wrapper :is(
+    .manual-slot-status, .manual-item-availability
+  ) {
+    background: #23374b !important;
+    background-image: none !important;
+    color: #dce9f3 !important;
+    border: 1px solid #4b6379 !important;
+    box-shadow: none !important;
+    opacity: 1 !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .walkin-wrapper :is(
+    .manual-slot-status, .manual-item-availability
+  )[data-state="checking"] {
+    background: #183c55 !important;
+    color: #c4e9ff !important;
+    border-color: #4089b0 !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .walkin-wrapper :is(
+    .manual-slot-status, .manual-item-availability
+  )[data-state="available"] {
+    background: #193d38 !important;
+    color: #c4f5df !important;
+    border-color: #328f77 !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .walkin-wrapper :is(
+    .manual-slot-status, .manual-item-availability
+  )[data-state="mixed"],
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .walkin-wrapper :is(
+    .manual-slot-status, .manual-item-availability
+  )[data-state="error"] {
+    background: #463b2a !important;
+    color: #ffe5a3 !important;
+    border-color: #b08343 !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .walkin-wrapper :is(
+    .manual-slot-status, .manual-item-availability
+  )[data-state="unavailable"] {
+    background: #482f37 !important;
+    color: #ffd0d9 !important;
+    border-color: #b85a71 !important;
+  }
+  /* Display-only capacity: readable, but still unmistakably non-editable. */
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .walkin-wrapper input.capacity-display[readonly] {
+    background: #21374a !important;
+    color: #e6f0f8 !important;
+    border-color: #4b6379 !important;
+    opacity: 1 !important;
+    -webkit-text-fill-color: #e6f0f8 !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .walkin-wrapper :is(
+    input:disabled, select:disabled, textarea:disabled
+  ) {
+    background: #283b4e !important;
+    color: #cbdbe8 !important;
+    border-color: #435e70 !important;
+    opacity: 1 !important;
+    -webkit-text-fill-color: #cbdbe8 !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .walkin-wrapper :is(
+    input:disabled, textarea:disabled
+  )::placeholder {
+    color: #b7cad8 !important;
+    opacity: 1 !important;
+    -webkit-text-fill-color: #b7cad8 !important;
+  }
+}
