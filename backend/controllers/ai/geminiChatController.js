@@ -27,7 +27,8 @@ const { matchCheapestInquiry, pickCheapestRows, cheapestReply } =
   require("./aiAffordableFollowup");
 const { isResortQuestion, resortOnlyReply } = require("./aiResortScopeGuard");
 const { isPersonalizedRecommendation, explicitGuestCount, savedGuestCount,
-  guestCountQuestion, guestCountFollowUp, recommendationLookupMessage
+  guestCountQuestion, guestCountFollowUp: pendingGuestRecommendationAnswer,
+  recommendationLookupMessage
 } = require("./aiRecommendationIntake");
 
 const ai = new GoogleGenAI({
@@ -1029,7 +1030,7 @@ exports.chatWithGemini = async (req, res) => {
     // Short numeric responses ("4", "apat kami") are resort-relevant ONLY
     // after this assistant explicitly requested guest count.
     if (!isResortQuestion(message, scopeContext, recentScopeTurns) &&
-        !guestCountFollowUp(message, recentScopeTurns, scopeContext)) {
+        !pendingGuestRecommendationAnswer(message, recentScopeTurns, scopeContext)) {
       const language = normalizeLanguageStyle(req.body.voice_language) ||
         detectLanguageFromMessage(message) ||
         normalizeLanguageStyle(req.body.language_style) ||
@@ -1136,7 +1137,7 @@ exports.chatWithGemini = async (req, res) => {
       typeof req.body.context === "object" && !Array.isArray(req.body.context)
       ? req.body.context : {};
     const recommendationHistory = normalizeRecentTurns(req.body.recent_turns);
-    const recommendationFollowUp = guestCountFollowUp(
+    const recommendationFollowUp = pendingGuestRecommendationAnswer(
       message, recommendationHistory, recommendationSaved,
     );
     if (recommendationFollowUp) {
