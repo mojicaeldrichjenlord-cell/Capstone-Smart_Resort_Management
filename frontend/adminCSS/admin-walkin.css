@@ -508,3 +508,30 @@
   box-shadow: none;
   transform: none;
 }
+
+
+/* UI-35: Walk-in and Facebook manual reservations share one action order.
+   Keep Cancel on the left and Next to Payment on the right at every width. */
+.walkin-actions {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.walkin-actions .btn-secondary,
+.walkin-actions #manualNextPaymentBtn {
+  flex: 0 1 auto;
+  width: auto;
+  min-height: 44px;
+  max-width: 100%;
+  text-align: center;
+}
+.walkin-actions .btn-secondary { margin-right: auto; }
+.walkin-actions #manualNextPaymentBtn { margin-left: auto; }
+@media (max-width: 780px) {
+  .walkin-actions { flex-direction: row; }
+  .walkin-actions .btn-secondary,
+  .walkin-actions #manualNextPaymentBtn { width: auto; }
+}
