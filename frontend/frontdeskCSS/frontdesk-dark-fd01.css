@@ -335,3 +335,51 @@
     border-color: var(--fd-line) !important;
   }
 }
+
+
+/* Preserve operational state distinctions instead of neutralizing them. */
+@media screen {
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .guest-record-card.state-ready,
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .guest-summary-card.ready {
+    border-color: #16877f !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .guest-record-card.state-needs_payment,
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .guest-record-card.state-passed {
+    border-color: #997449 !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .guest-summary-card.attention {
+    background: #4b3c28 !important;
+    border-color: #997449 !important;
+    color: #f9e6ad !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .guest-summary-card.attention :is(span,strong) {
+    color: #f9e6ad !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .guest-summary-card.ready {
+    background: #203e41 !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .guest-summary-card.ready :is(span,strong) {
+    color: #d8f6ee !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .guest-action-disabled:not(.warning) {
+    background: #263447 !important;
+    border-color: var(--fd-line) !important;
+    color: var(--fd-muted) !important;
+  }
+}
+@media screen and (min-width: 901px) and (max-width: 1210px) {
+  body.frontdesk-manager-tone > header.navbar { padding-inline: 15px !important; gap: 10px; }
+  body.frontdesk-manager-tone > header.navbar .logo { font-size: 1.32rem !important; }
+  body.frontdesk-manager-tone > header.navbar nav { gap: 3px !important; flex-wrap: nowrap; }
+  body.frontdesk-manager-tone > header.navbar nav a {
+    font-size: .82rem !important;
+    padding: 8px 9px !important;
+    white-space: nowrap;
+  }
+}
+@media screen and (max-width: 900px) {
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone > header.navbar nav.mobile-open {
+    background: #142b3e !important;
+    border: 1px solid #3c5668 !important;
+  }
+}
