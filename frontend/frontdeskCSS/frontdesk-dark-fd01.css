@@ -1,0 +1,295 @@
+/*
+ * FD-DM-01 | Front Desk soft-dark screen theme
+ * All selectors require both the Front Desk body class and saved dark theme.
+ * Avoid hardcoded status badges, validation alerts, amounts, payment proofs,
+ * operational JS classes, receipt print and state-dependent warning colors.
+ * Light Mode uses original styles without overrides.
+ */
+@media screen {
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone {
+    --fd-page: #172535;
+    --fd-page-bottom: #1b2b3d;
+    --fd-card: #24364a;
+    --fd-raised: #2c4054;
+    --fd-soft: #203145;
+    --fd-input: #21374a;
+    --fd-text: #f1f5f9;
+    --fd-muted: #b7c5d5;
+    --fd-line: #3c5668;
+    --fd-line-strong: #577084;
+    --fd-teal: #0f766e;
+    --navy: #142b3e;
+    --navy-2: #20374a;
+    --seafoam: #203e41;
+    --sky: #1b2b3d;
+    --line: #3c5668;
+    --text: #f1f5f9;
+    --slate: #b7c5d5;
+    color: var(--fd-text) !important;
+    background: linear-gradient(180deg, var(--fd-page) 0%, var(--fd-page-bottom) 100%) !important;
+    color-scheme: dark;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone.manual-payment-page {
+    --manual-page: #172535;
+    --manual-card: #24364a;
+    --manual-text: #f1f5f9;
+    --manual-muted: #b7c5d5;
+    --manual-border: #3c5668;
+    --manual-teal: #16877f;
+    --manual-teal-tint: #203e41;
+  }
+
+  /* Consistent low-glare nav and hero palette; preserve active link behavior. */
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .navbar {
+    background: linear-gradient(100deg, #142b3e, #185e63) !important;
+    background-image: linear-gradient(100deg, #142b3e, #185e63) !important;
+    border-bottom-color: #3c5668 !important;
+    box-shadow: 0 8px 20px rgba(8, 20, 33, .22) !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .navbar :is(.logo, nav a) { color: #f1f5f9 !important; }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .navbar nav a.active-nav {
+    background: rgba(220, 235, 244, .15) !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone :is(
+    .frontdesk-hero, .frontdesk-reservations-hero, .payments-hero,
+    .guests-hero, .walkin-hero
+  ) {
+    background: linear-gradient(120deg, #142b3e, #185e63) !important;
+    background-image: linear-gradient(120deg, #142b3e, #185e63) !important;
+    color: #f1f5f9 !important;
+    border: 1px solid rgba(133, 176, 189, .19) !important;
+    box-shadow: 0 12px 28px rgba(8, 20, 33, .19) !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone :is(
+    .frontdesk-hero, .frontdesk-reservations-hero, .payments-hero,
+    .guests-hero, .walkin-hero
+  ) :is(h1, h2, p:not(.hero-eyebrow):not(.frontdesk-eyebrow), strong) {
+    color: #f1f5f9 !important;
+  }
+
+  /* Flat dark surfaces for the 4 core Front Desk screens. */
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone :is(
+    .frontdesk-card, .frontdesk-account-card, .frontdesk-access-note,
+    .summary-card, .frontdesk-panel,
+    .payment-summary-card:not(.attention), .payments-panel,
+    .guest-summary-card:not(.attention):not(.ready), .guests-panel,
+    .frontdesk-reservation-card, .frontdesk-payment-card, .guest-record-card,
+    .record-count
+  ) {
+    background: var(--fd-card) !important;
+    background-image: none !important;
+    border-color: var(--fd-line) !important;
+    color: var(--fd-text) !important;
+    box-shadow: 0 8px 20px rgba(7, 18, 29, .14) !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone :is(
+    .reservation-detail-box, .payment-detail-box, .guest-info-box,
+    .reservation-state-box:not(.error), .payment-state-box:not(.error),
+    .guest-state-box:not(.error), .guest-state-message:not(.error),
+    .guest-card-footer, .payment-card-footer
+  ) {
+    background: var(--fd-soft) !important;
+    background-image: none !important;
+    border-color: var(--fd-line) !important;
+    color: var(--fd-text) !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone :is(
+    .frontdesk-card, .frontdesk-account-card, .frontdesk-panel,
+    .payments-panel, .guests-panel,
+    .frontdesk-reservation-card, .frontdesk-payment-card, .guest-record-card
+  ) :is(h2, h3, strong:not(.payment-badge):not(.status-badge)) {
+    color: var(--fd-text) !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone :is(
+    .frontdesk-card, .frontdesk-account-card, .frontdesk-access-note,
+    .frontdesk-panel, .payments-panel, .guests-panel,
+    .frontdesk-reservation-card, .frontdesk-payment-card, .guest-record-card
+  ) :is(p, small, .detail-label, .info-label, .panel-heading p,
+         .reservation-id, .record-count, .payment-record-note) {
+    color: var(--fd-muted) !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone :is(
+    .summary-card, .payment-summary-card:not(.attention),
+    .guest-summary-card:not(.attention):not(.ready)
+  ) span { color: var(--fd-muted) !important; }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone :is(
+    .summary-card, .payment-summary-card:not(.attention),
+    .guest-summary-card:not(.attention):not(.ready)
+  ) strong { color: #a5f3e5 !important; }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .frontdesk-card-number { color: #a5f3e5 !important; }
+
+  /* Forms/filters: do not alter dates, input IDs, hidden states or validation. */
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone :is(
+    .filter-group, .walkin-group, .payment-form-group,
+    .guest-adjustment-form-group, .stay-form-group,
+    .extra-bed-form-group, .additional-charges-form-group,
+    .entrance-adjustment-form-group
+  ) :is(label, small, .field-help) { color: var(--fd-muted) !important; }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone :is(
+    input:not([type="checkbox"]):not([type="radio"]),
+    select, textarea, .accommodation-search-input
+  ) {
+    background: var(--fd-input) !important;
+    background-image: none !important;
+    color: var(--fd-text) !important;
+    border-color: var(--fd-line-strong) !important;
+    color-scheme: dark;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone :is(input, textarea)::placeholder {
+    color: var(--fd-muted) !important;
+    opacity: 1;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone select option {
+    color: var(--fd-text);
+    background: var(--fd-input);
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone :is(input, select, textarea):disabled {
+    background: #263447 !important;
+    opacity: .72;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone :is(input, select, textarea, button, a):focus-visible {
+    outline: 3px solid #5eead4 !important;
+    outline-offset: 2px;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone :is(
+    .back-btn, .page-btn:not(.primary), .btn-secondary,
+    .guest-action-link, .proof-btn, .view-final-receipt-btn
+  ) {
+    background: var(--fd-soft) !important;
+    background-image: none !important;
+    color: var(--fd-text) !important;
+    border-color: var(--fd-line) !important;
+  }
+
+  /* The role-aware manual reservation form shares Front Desk preference only. */
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone :is(
+    .walkin-card, .section-box, .booking-item-card, .summary-box,
+    .highlight-box, .accommodation-picker-panel, .accommodation-picker-button,
+    .accommodation-option-btn, .accommodation-empty-state,
+    .slot-preview
+  ) {
+    background: var(--fd-card) !important;
+    background-image: none !important;
+    color: var(--fd-text) !important;
+    border-color: var(--fd-line) !important;
+    box-shadow: none !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone :is(
+    .booking-item-card, .summary-box, .highlight-box, .slot-preview,
+    .accommodation-option-btn, .accommodation-picker-button
+  ) {
+    background: var(--fd-soft) !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone :is(
+    .walkin-card, .section-box, .booking-item-card, .summary-box,
+    .highlight-box, .accommodation-picker-panel
+  ) :is(h2, h3, strong, .booking-item-title, .accommodation-picker-label) {
+    color: var(--fd-text) !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone :is(
+    .walkin-card, .section-box, .booking-item-card, .summary-box,
+    .highlight-box, .accommodation-picker-panel
+  ) :is(p, small, label, .field-help, .accommodation-option-btn span) {
+    color: var(--fd-muted) !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .accommodation-option-btn:hover {
+    background: var(--fd-raised) !important;
+  }
+
+  /* Shared manual-payment screen: override its coastal-minimal light-only CSS. */
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone.manual-payment-page :is(
+    .payment-hero, .payment-card, .payment-grid > .section-box,
+    .payment-breakdown, .summary-item, .payment-row,
+    .proof-preview, .payment-note:not(.success-note)
+  ) {
+    background: var(--fd-card) !important;
+    background-image: none !important;
+    color: var(--fd-text) !important;
+    border-color: var(--fd-line) !important;
+    box-shadow: none !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone.manual-payment-page :is(
+    .payment-card, .payment-grid > .section-box, .payment-breakdown, .summary-item
+  ) :is(h2, h3, strong) { color: var(--fd-text) !important; }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone.manual-payment-page :is(
+    .payment-form-group label, .field-help, .summary-item span,
+    .payment-row span, .manual-payment-intro
+  ) { color: var(--fd-muted) !important; }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone.manual-payment-page .payment-hero :is(h1,p) {
+    color: var(--fd-text) !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone.manual-payment-page :is(
+    .payment-due-highlight, .payment-note.success-note
+  ) {
+    background: #203e41 !important;
+    border-color: #3a726d !important;
+    color: #e2faf4 !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone.manual-payment-page .payment-due-highlight :is(strong,span,p) {
+    color: #e2faf4 !important;
+  }
+
+  /* Operational modals and tabs retain their original heights and action flows. */
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone :is(
+    .proof-modal-card, .guest-adjustment-modal-box, .stay-modal-box,
+    .accommodation-balance-modal-box, .final-checkout-modal-box,
+    .extra-bed-modal-box, .additional-charges-modal-box,
+    .unpaid-charges-modal-box, .entrance-adjustment-modal-box,
+    .fd-tabbed-modal-box
+  ) {
+    background: var(--fd-card) !important;
+    color: var(--fd-text) !important;
+    border-color: var(--fd-line) !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone :is(
+    .guest-adjustment-summary-item, .guest-adjustment-charge-preview,
+    .stay-preview, .accommodation-balance-detail-grid > div,
+    .final-checkout-status-grid > div, .extra-bed-summary-item,
+    .extra-bed-breakdown, .additional-charges-summary-item,
+    .additional-charge-row:not(.unpaid):not(.paid),
+    .unpaid-summary-item:not(.paid):not(.due),
+    .unpaid-category-box, .unpaid-charge-row,
+    .entrance-adjustment-meta-item, .entrance-adjustment-breakdown,
+    .fd-tab-panel, .fd-tab-body, .fd-tab-footer, .fd-tab-nav
+  ) {
+    background: var(--fd-soft) !important;
+    color: var(--fd-text) !important;
+    border-color: var(--fd-line) !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone :is(
+    .proof-modal-card, .guest-adjustment-modal-box, .stay-modal-box,
+    .accommodation-balance-modal-box, .final-checkout-modal-box,
+    .extra-bed-modal-box, .additional-charges-modal-box,
+    .unpaid-charges-modal-box, .entrance-adjustment-modal-box
+  ) :is(h2, h3, strong:not(.payment-badge)) {
+    color: var(--fd-text) !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone :is(
+    .guest-adjustment-summary-item, .stay-preview,
+    .accommodation-balance-detail-grid > div, .final-checkout-status-grid > div,
+    .extra-bed-summary-item, .additional-charges-summary-item,
+    .unpaid-summary-item, .entrance-adjustment-meta-item
+  ) :is(span, small, p) { color: var(--fd-muted) !important; }
+
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .fd-tab-trigger {
+    background: var(--fd-card) !important;
+    color: var(--fd-muted) !important;
+    border-color: var(--fd-line) !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .fd-tab-trigger[aria-selected="true"] {
+    background: #0f766e !important;
+    color: #fff !important;
+    border-color: #16877f !important;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone :is(
+    .guest-adjustment-cancel-btn, .stay-cancel-btn,
+    .accommodation-balance-cancel-btn, .final-checkout-cancel-btn,
+    .extra-bed-cancel-btn, .additional-charges-cancel-btn,
+    .unpaid-charges-cancel-btn
+  ) {
+    background: var(--fd-soft) !important;
+    color: var(--fd-text) !important;
+    border-color: var(--fd-line) !important;
+  }
+  /* State badges and attention/error/ready panels intentionally untouched. */
+}
