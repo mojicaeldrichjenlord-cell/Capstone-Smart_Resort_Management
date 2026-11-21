@@ -14,9 +14,9 @@ const homeHtml = fs.readFileSync(
 );
 
 test("UI-36 homepage hero advertises AI Chatbot Assistant", () => {
-  const heroBadge = homeHtml.match(/<div class="hero-badge">([\\s\\S]*?)<\\/div>/)?.[1];
+  const heroBadge = homeHtml.match(/<div class="hero-badge">([\s\S]*?)<\/div>/)?.[1];
   assert.ok(heroBadge, "Customer homepage hero badge is missing");
-  const normalized = heroBadge.replace(/\\s+/g, " ").trim();
+  const normalized = heroBadge.replace(/\s+/g, " ").trim();
   assert.equal(
     normalized,
     "Seaside comfort • Easy online booking • AI Chatbot Assistant"
