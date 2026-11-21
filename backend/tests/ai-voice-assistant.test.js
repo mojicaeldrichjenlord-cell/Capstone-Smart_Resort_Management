@@ -12,7 +12,8 @@ const script = fs.readFileSync(
 
 function mount({ recognizerAvailable = true, savedLanguage = null, voices = [], customerToken = null,
   cloudStatus = 503, audioAvailable = false, ios = false,
-  recentTurns = [], recordedTranscript = "How do I book a room?" } = {}) {
+  recentTurns = [], recordedTranscript = "How do I book a room?",
+  assistantReply = "Hello! Available accommodations can be checked." } = {}) {
   const nodes = {};
   const recognitionInstances = [];
   const speechUtterances = [];
@@ -179,7 +180,7 @@ function mount({ recognizerAvailable = true, savedLanguage = null, voices = [], 
     sendAiMessage: async opts => {
       requests.push({ opts, message: nodes.aiChatInput.value });
       nodes.aiChatInput.value = "";
-      return "Hello! Available accommodations can be checked.";
+      return assistantReply;
     },
     setTimeout: callback => {
       const id = ++nextTimer;
@@ -263,7 +264,8 @@ test("Live mode sends recognized turn, speaks response, and listens again", asyn
 });
 
 test("Mandarin transcript produces Mandarin playback with the device fallback" , async () => {
-  const h = mount({ savedLanguage: "mandarin" });
+  const h = mount({ savedLanguage: "mandarin",
+    assistantReply: "您好！度假村有多种客房可供选择。" });
   h.fire("aiVoiceLive");
   assert.equal(h.recognitionInstances[0].lang, "zh-CN");
   h.recognitionInstances[0].say("我想预订一个房间");
@@ -343,7 +345,7 @@ test("Customer pages load AI chat before interactive voice and include voice sty
   for (const page of ["index.html", "rooms.html"]) {
     const html = fs.readFileSync(path.resolve(
       __dirname, "../../frontend/customerHTML", page), "utf8");
-    const chatIndex = html.indexOf('src="../js/ai-chat.js"');
+    const chatIndex = html.indexOf('src="../js/ai-chat.js');
     const voiceIndex = html.indexOf('src="../js/ai-voice.js?v=20261121-auto44"');
     assert.ok(chatIndex > 0 && voiceIndex > chatIndex);
     assert.match(html, /sharedCSS\/ai-voice\.css/);
@@ -627,7 +629,7 @@ test("Taglish on a recording-capable Edge desktop defaults to accurate audio STT
   const h = mount({ savedLanguage:"taglish", audioAvailable:true,
     customerToken:"fake-customer-token", recordedTranscript:"Anong ibang cottage ang meron kayo?" });
   assert.equal(h.voice.getState().inputMode,"accurate");
-  assert.equal(h.nodes.aiVoiceInputMode.value,"accurate");
+  assert.equal(h.nodes.aiVoiceInputMode.listeners.change, undefined);
   h.fire("aiVoiceLive"); await h.settle();
   assert.equal(h.recognitionInstances.length,0,"Gemini audio STT must replace browser STT in accurate mode");
   assert.equal(h.audioProcessors.length,1);
