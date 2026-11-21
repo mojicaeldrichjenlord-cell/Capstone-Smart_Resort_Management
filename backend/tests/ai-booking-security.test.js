@@ -2096,3 +2096,56 @@ test("AI-40 stale selected room IDs and renamed listings are not silently descri
   }
   assert.equal(modelCalls, 0);
 });
+
+
+test("AI-41 Ask About This follows the visitor's genuine Taglish question, not card English", async () => {
+  catalogRows = [{ ...exampleRoom, id: 71, room_name: "Family Room A",
+    category_name: "Room", capacity: 7,
+    description: "Room accommodation for 3-7 pax",
+    amenities: "Private Cottage, Living Room, Kitchen, Private CR, 2 Separate Bedrooms, Air Conditioner in Each Bedroom, Cabinets in Each Bedroom",
+    day_price: 3500, overnight_price: 3500, extended_price: 6000,
+    free_entrance_pax: 3 }];
+  const response = await post("/api/ai/chat", {
+    message: "Tell me more about Family Room A.",
+    context: { room_id: 71, room_name: "Family Room A", language_style: "english" },
+    recent_turns: [
+      { role: "user", text: "anong room ang pwede sa 7 na tao" },
+      { role: "assistant", text: "Ito po yung mga room na good for 7 guests." },
+    ],
+  });
+  assert.equal(response.body.mode, "verified_accommodation_overview");
+  assert.match(response.body.reply, /^Yung Family Room A po, good for up to 7 guests\./);
+  assert.match(response.body.reply, /sariling CR/i);
+  assert.match(response.body.reply, /2 bedrooms na parehong may aircon at cabinets/i);
+  assert.match(response.body.reply, /₱3,500 po for Day Tour or Night/);
+  assert.match(response.body.reply, /₱6,000 for Extended/);
+  assert.match(response.body.reply, /free entrance din po for 3 guests/);
+  assert.doesNotMatch(response.body.reply,
+    /Description:|Listed amenities:|Listed rates:|Room accommodation for 3-7 pax/i);
+  assert.ok(response.body.reply.length < 480, "A card overview should be conversational, not an inventory dump");
+  assert.equal(modelCalls, 0, "Verified overview should not spend Gemini tokens");
+  assert.equal(queries.length, 1);
+});
+
+test("AI-41 English visitors get natural English; live voice's explicit language still wins", async () => {
+  catalogRows = [{ ...exampleRoom, id: 72, room_name: "Double Room 2",
+    category_name: "Room", capacity: 7, description: "",
+    amenities: "", day_price: 4000, overnight_price: 4000 }];
+  const payload = {
+    message: "Tell me more about Double Room 2.",
+    context: { room_id: 72, room_name: "Double Room 2", language_style: "taglish" },
+    recent_turns: [{ role: "user", text: "Which rooms can accommodate seven guests?" }],
+  };
+  const english = await post("/api/ai/chat", payload);
+  assert.equal(english.body.mode, "verified_accommodation_overview");
+  assert.match(english.body.reply, /^Double Room 2 can accommodate up to 7 guests\./);
+  assert.match(english.body.reply, /both ₱4,000/);
+  assert.match(english.body.reply, /amenities aren't specified yet/i);
+  assert.doesNotMatch(english.body.reply, /private CR|aircon|balcony/i);
+  const voice = await post("/api/ai/chat", {
+    ...payload, voice_language: "taglish",
+  });
+  assert.match(voice.body.reply, /^Yung Double Room 2 po/);
+  assert.equal(modelCalls, 0);
+  assert.equal(queries.length, 2);
+});
