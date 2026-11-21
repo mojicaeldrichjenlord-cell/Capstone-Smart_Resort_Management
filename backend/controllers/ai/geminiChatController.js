@@ -16,8 +16,8 @@ const { generalCategoryAmenitiesReply } = require("./aiAccommodationCategoryPoli
 const { isNaturalRoomDetailsQuestion, naturalRoomDetailsReply } = require("./aiNaturalRoomDetails");
 const { isFreeEntranceQuestion, explicitEntranceRoomName, verifiedFreeEntranceReply } = require("./aiAccommodationEntrance");
 const { wantsFocusedRoomOverview, focusedRoomOverview } = require("./aiAccommodationDetails");
-const { isVerifiedPreviewRequest, selectVerifiedPreviews, verifiedPreviewReply } =
-  require("./aiVerifiedPreview");
+const { isVerifiedPreviewRequest, selectVerifiedPreviews, verifiedPreviewReply,
+  requestedCategory } = require("./aiVerifiedPreview");
 const { isRoomPaymentInquiry, resolvePaymentRoom, paymentReply } =
   require("./aiFocusedPaymentReply");
 const {
