@@ -2038,7 +2038,8 @@ test("AI-40 Ask About This returns verified facts for every selected accommodati
     assert.equal(response.body.extracted_context.room_name, room.room_name);
     assert.ok(response.body.reply.includes(room.room_name), room.room_name);
     assert.match(response.body.reply, new RegExp(String(room.capacity) + " guests"));
-    assert.match(response.body.reply, /Listed rates:/);
+    assert.match(response.body.reply, /₱/);
+    assert.doesNotMatch(response.body.reply, /Description:|Listed amenities:|Listed rates:/i);
     assert.ok(response.body.reply.includes(
       Number(room.day_price).toLocaleString("en-PH")), room.room_name);
     assert.doesNotMatch(response.body.reply,
@@ -2070,7 +2071,7 @@ test("AI-40 empty amenities still return capacity and rates, not only a Front De
   assert.match(response.body.reply, /Double Room 1/);
   assert.match(response.body.reply, /7 guests/);
   assert.match(response.body.reply, /4,000/);
-  assert.match(response.body.reply, /amenities are not listed/i);
+  assert.match(response.body.reply, /amenities aren't specified yet/i);
   assert.doesNotMatch(response.body.reply, /Private pool|balcony|Karaoke|9,999/i);
   assert.equal(modelCalls, 0);
   assert.equal(queries.length, 1);
