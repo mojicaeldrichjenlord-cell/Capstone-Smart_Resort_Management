@@ -136,10 +136,9 @@ async function sendAiMessage(options = {}) {
     recent_turns: recentTurns,
     ...pageContext,
     context: freshSearch ? getStoredAiContext() : storedContext,
-    // Voice sessions use a fixed selected language; typed chat stays adaptive.
-    ...(options.source === "voice"
-      ? { voice_language: window.ArvicVoice?.getLanguage?.() || "english" }
-      : {}),
+    // AI-44: Voice transcripts use the very same per-message language
+    // detection as typed chat. No language selection is sent or persisted.
+    ...(options.source === "voice" ? { input_source: "voice" } : {}),
   };
 
   try {
@@ -216,9 +215,7 @@ async function sendAiMessage(options = {}) {
     if (["GEMINI_BUSY", "GEMINI_RATE_LIMIT", "AI_LOCAL_BUDGET", "AI_RATE_LIMIT"].includes(error.code)) {
       // Upstream demand/quota issues do not mean a room is unavailable.
       // Keep booking context unchanged, and do not invent rates.
-      const voiceLanguage = options.source === "voice"
-        ? window.ArvicVoice?.getLanguage?.()
-        : null;
+      const voiceLanguage = detectOfflineLanguage(message, storedContext);
       const messages = {
         english: "Sorry, our AI assistant is busy right now. Please try again in a moment.",
         taglish: "Pasensya na po, busy muna ang AI assistant. Pakisubukan ulit maya-maya.",
@@ -251,9 +248,7 @@ async function sendAiMessage(options = {}) {
       spanish: "Lo siento, el servicio de inteligencia artificial no está disponible temporalmente. Puede intentarlo de nuevo o continuar en la página de reservas.",
       mandarin: "抱歉，人工智能服务暂时无法使用。您可以稍后再试，或前往预订页面继续操作。",
     };
-    const voiceLanguage = options.source === "voice"
-      ? window.ArvicVoice?.getLanguage?.()
-      : null;
+    const voiceLanguage = detectOfflineLanguage(message, storedContext);
     const safeReply = voiceFallbacks[voiceLanguage] || fallback.reply;
     appendAiMessage("assistant", safeReply);
     return safeReply;
