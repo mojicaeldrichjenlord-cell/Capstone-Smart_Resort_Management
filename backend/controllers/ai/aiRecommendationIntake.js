@@ -89,6 +89,60 @@ function guestCountFollowUp(message, recentTurns = [], context = {}) {
     ? { ...pending, guests } : null;
 }
 
+// AI-38: A correction like "7 pala" immediately after a VERIFIED room
+// recommendation is still a resort request, even without "room"/"guest".
+// Require BOTH an active recommendation context and a recent recommendation
+// answer; otherwise short numbers could hijack unrelated conversations.
+function correctedGuestCount(message) {
+  const q = normal(message).replace(/[’‘]/g, "'").trim();
+  if (!q || q.length > 75 ||
+      /(?:₱|\b(?:php|pesos?|price|rate|room\s*#?|am|pm|minutes?|hours?|date|november|december)\b|\d{4}-\d{2}-\d{2})/i.test(q))
+    return 0;
+  const countWords = {
+    isa:1, isang:1, dalawa:2, tatlo:3, apat:4, lima:5,
+    anim:6, pito:7, walo:8, siyam:9, sampu:10,
+  };
+  // Limit correction syntax to guest counts, not questions involving
+  // unrelated people or facts. "5 na lang kami" and "actually 7" work.
+  const match = q.match(/^(?:(?:sorry|ay|oops|actually|wait|correction|make it|we are|we're)\s+){0,2}(\d{1,3}|isa|isang|dalawa|tatlo|apat|lima|anim|pito|walo|siyam|sampu)(?:\s+(?:na\s+lang|na\s+pala|na\s+kami|lang|pala|kami|po|guests?|pax|people|persons?|tao|instead|actually|sorry|oops|ay|ah)){0,4}\s*[.!?]?$/i);
+  if (!match) return 0;
+  const guests = /^\d+$/.test(match[1]) ? Number(match[1]) : countWords[match[1]];
+  return Number.isSafeInteger(guests) && guests >= 1 && guests <= 200 ? guests : 0;
+}
+
+function guestCountCorrection(message, recentTurns = [], context = {}) {
+  const guests = correctedGuestCount(message);
+  if (!guests || context?.intent !== "ask_recommendation" ||
+      !savedGuestCount(context) || !Array.isArray(recentTurns)) return null;
+  const recent = recentTurns.slice(-6).filter(turn => turn &&
+    (turn.role === "user" || turn.role === "assistant") &&
+    typeof turn.text === "string");
+  const latest = recent.at(-1);
+  // Only the immediate follow-up to our verified accommodation previews.
+  // A prior room_id alone is NOT proof of an active recommendation.
+  if (latest?.role !== "assistant" ||
+      !/(?:preview (?:ng|of|for)|matching accommodations?|matching previews?|listed accommodation|matching room|matching units?|matching options?|matching (?:cottage|function area)|listed capacity)/i.test(latest.text))
+    return null;
+  const previousUser = recent.slice(0, -1).reverse().find(t => t.role === "user");
+  if (!previousUser ||
+      !(explicitGuestCount(previousUser.text) ||
+        correctedGuestCount(previousUser.text))) return null;
+  // Reuse the user's original category, not the category/identity of
+  // the single last displayed room. A 10->7 correction may find smaller rooms.
+  const original = recent.slice(0, -1).reverse().find(t =>
+    t.role === "user" && isPersonalizedRecommendation(t.text));
+  const category = original ? requestedCategory(original.text) || "room" :
+    // If older turns are truncated, preserve the explicitly stored category.
+    String(context?.recommendation_category || "room");
+  const supported = new Set([
+    "room","single","family","double","single_poolside","single_cottage",
+    "cottage","shade","big_shade","small_shade","pool_shade","nipa_hut",
+    "big_nipa","small_nipa","function",
+  ]);
+  return { guests, category: supported.has(category) ? category : "room",
+    corrected: true };
+}
+
 // Translate category keys back to the spelling understood by the verified
 // accommodation catalog selector. A "family" recommendation MUST search
 // family rooms, not quietly return generic rooms or no cards.
@@ -108,5 +162,5 @@ function recommendationLookupMessage(category, guests) {
 module.exports = {
   isPersonalizedRecommendation, explicitGuestCount, savedGuestCount,
   guestCountQuestion, pendingRecommendation, guestCountFollowUp,
-  recommendationLookupMessage,
+  correctedGuestCount, guestCountCorrection, recommendationLookupMessage,
 };
