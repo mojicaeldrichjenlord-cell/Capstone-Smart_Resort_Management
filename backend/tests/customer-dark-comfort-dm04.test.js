@@ -54,7 +54,8 @@ test("DM-01 tokens loaded once after current theme on all eight signed-in Custom
     assert.match(styleAfter, /customer-dark-skin-dm03\.css\?v=20261121-dm03/, file + " DM-03 dark skin follows");
     assert.match(styleAfter, /customer-comfort-polish-dm04\.css\?v=20261121-dm04/, file + " DM-04 comfort polish follows");
     assert.match(styleAfter, /customer-mobile-nav-dm05\.css\?v=20261121-dm05/, file + " DM-05 mobile nav loaded last");
-    assert.equal((styleAfter.match(/rel="stylesheet"/g) || []).length, 4, file + " loads toggle, dark skin, polish, mobile nav");
+    assert.match(styleAfter, /customer-ai-dark-polish-dm06\.css\?v=20261121-dm06/, file + " DM-06 AI dark contrast polish loaded last");
+    assert.equal((styleAfter.match(/rel="stylesheet"/g) || []).length, 5, file + " loads toggle, dark skin, comfort, mobile, AI dark");
     assert.ok(styleAfter.indexOf("customer-theme-toggle.css") < styleAfter.indexOf("customer-dark-skin-dm03.css"), file);
     assert.ok(styleAfter.indexOf("customer-dark-skin-dm03.css") < styleAfter.indexOf("customer-comfort-polish-dm04.css"), file);
     assert.ok(styleAfter.indexOf("customer-comfort-polish-dm04.css") < styleAfter.indexOf("customer-mobile-nav-dm05.css"), file);
