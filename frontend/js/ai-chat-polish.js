@@ -8,6 +8,46 @@ document.addEventListener("DOMContentLoaded", () => {
   const maximize = document.getElementById("aiChatMaximize");
   const panel = document.getElementById("aiVoicePanel");
   if (!chat || !toggle) return;
+  const customerSurface = document.body.classList.contains("customer-manager-tone");
+
+  // DM-07: Home/Rooms embed a branded header; other Customer pages mount a
+  // simpler header dynamically. Give both the same compact, accessible face.
+  if (customerSurface) {
+    const header = chat.querySelector(".ai-chat-header");
+    const actions = header?.querySelector(".ai-chat-header-actions");
+    let brand = header?.querySelector(".ai-assistant-brand");
+    if (header && actions && !brand) {
+      const originalTitle = header.querySelector("h3");
+      if (originalTitle) {
+        brand = document.createElement("div");
+        brand.className = "ai-assistant-brand";
+        const mark = document.createElement("span");
+        mark.className = "ai-assistant-mark";
+        mark.setAttribute("aria-hidden", "true");
+        mark.textContent = "AI";
+        const heading = document.createElement("div");
+        heading.className = "ai-assistant-heading";
+        const caption = document.createElement("span");
+        caption.className = "ai-assistant-caption";
+        caption.textContent = "Resort inquiries & bookings";
+        heading.append(originalTitle, caption);
+        brand.append(mark, heading);
+        header.insertBefore(brand, actions);
+      }
+    }
+    const title = brand?.querySelector("h3");
+    if (title) title.textContent = "Arvic AI Assistant";
+    const mark = brand?.querySelector(".ai-assistant-mark");
+    if (mark) mark.textContent = "AI";
+    const caption = brand?.querySelector(".ai-assistant-caption");
+    if (caption) caption.textContent = "Resort inquiries & bookings";
+    const newChat = document.getElementById("aiNewChatBtn");
+    if (newChat) {
+      newChat.textContent = "+";
+      newChat.title = "New chat";
+      newChat.setAttribute("aria-label", "Start new chat");
+    }
+  }
 
   chat.setAttribute("role", "dialog");
   chat.setAttribute("aria-label", "Arvic Seaside Resort AI Assistant");
@@ -19,6 +59,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const open = chat.classList.contains("show");
     toggle.setAttribute("aria-expanded", String(open));
     toggle.hidden = open;
+    if (!open && customerSurface) {
+      const voicePanel = document.getElementById("aiVoicePanel");
+      const voiceButton = document.getElementById("aiVoiceOptionsToggle");
+      if (voicePanel) voicePanel.hidden = true;
+      voiceButton?.setAttribute("aria-expanded", "false");
+    }
     if (maximize) {
       const expanded = chat.classList.contains("maximized");
       maximize.title = expanded ? "Restore size" : "Maximize";
@@ -78,14 +124,35 @@ document.addEventListener("DOMContentLoaded", () => {
     voiceToggle.className = "ai-voice-options-toggle";
     voiceToggle.setAttribute("aria-controls", panel.id);
     voiceToggle.setAttribute("aria-expanded", "false");
-    voiceToggle.textContent = "🎤 Voice options  ▾";
-    panel.parentNode.insertBefore(voiceToggle, panel);
+    voiceToggle.title = "Voice settings";
+    voiceToggle.setAttribute("aria-label", "Voice settings");
+    const composer = chat.querySelector(".ai-chat-input-area");
+    const microphone = document.getElementById("aiMicBtn");
+    if (customerSurface && composer && microphone) {
+      // Keep voice configuration by the microphone, not as an always-visible
+      // full-width strip. The original live voice controls remain untouched.
+      voiceToggle.innerHTML = [
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor"',
+        ' stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"',
+        ' aria-hidden="true" focusable="false">',
+        '<path d="M4 7h9m4 0h3M4 17h3m4 0h9"/>',
+        '<circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
+        '</svg>'
+      ].join("");
+      composer.insertBefore(voiceToggle, microphone);
+    } else {
+      // Keep the original non-Customer widget presentation unchanged.
+      voiceToggle.textContent = "Voice options  ▾";
+      panel.parentNode.insertBefore(voiceToggle, panel);
+    }
     panel.hidden = true;
     voiceToggle.addEventListener("click", () => {
       panel.hidden = !panel.hidden;
       const expanded = !panel.hidden;
       voiceToggle.setAttribute("aria-expanded", String(expanded));
-      voiceToggle.textContent = expanded ? "🎤 Voice options  ▴" : "🎤 Voice options  ▾";
+      if (!customerSurface) {
+        voiceToggle.textContent = expanded ? "Voice options  ▴" : "Voice options  ▾";
+      }
     });
   }
 
