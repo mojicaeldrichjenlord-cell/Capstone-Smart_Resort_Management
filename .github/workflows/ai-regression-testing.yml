@@ -62,6 +62,7 @@ jobs:
             tests/booking-payment-action-alignment-ui35.test.js \
             tests/customer-home-hero-ui36.test.js \
             tests/public-landing-ai-ui37.test.js \
+            tests/ai-chat-bubble-ui38.test.js \
             tests/ai-resort-scope.test.js \
             tests/ai-recommendation-intake.test.js \
             > "$RUNNER_TEMP/ai-regression.log" 2>&1
