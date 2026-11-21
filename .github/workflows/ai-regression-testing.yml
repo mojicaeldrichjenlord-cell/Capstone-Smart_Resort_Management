@@ -75,6 +75,7 @@ jobs:
             tests/manager-navbar-logo-ui47.test.js \
             tests/customer-dark-theme-foundation-dm01.test.js \
             tests/customer-theme-toggle-dm02.test.js \
+            tests/customer-soft-dark-skin-dm03.test.js \
             > "$RUNNER_TEMP/ai-regression.log" 2>&1
           status=$?
           cat "$RUNNER_TEMP/ai-regression.log"
