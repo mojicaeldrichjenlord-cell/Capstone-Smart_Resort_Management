@@ -651,27 +651,23 @@ test("General accurate transcription respects arbitrary words instead of diction
   assert.equal(h.transcriptionRequests.length,1);
 });
 
-test("Fast browser mode remains available for Taglish to save Gemini credits", async () => {
-  const h = mount({ savedLanguage:"taglish",audioAvailable:true,
-    customerToken:"fake-customer-token" });
-  h.nodes.aiVoiceInputMode.value="fast";
-  h.fire("aiVoiceInputMode","change");
-  assert.equal(h.voice.getState().inputMode,"fast");
-  assert.equal(h.stored.get("arvic_ai_voice_input_mode_v1"),"fast");
-  h.fire("aiVoiceLive");
-  assert.equal(h.recognitionInstances.length,1);
-  h.recognitionInstances[0].say("What accommodations do you have?");
-  h.recognitionInstances[0].stop(); await h.settle();
-  assert.equal(h.requests.length,1);
-  assert.equal(h.transcriptionRequests.length,0);
+test("Automatic language prioritizes multilingual Gemini recording over legacy fast mode", async () => {
+  const h = mount({audioAvailable:true, customerToken:"fake-customer-token",
+    recordedTranscript:"我想预订一个房间" });
+  h.voice.setInputMode("fast");
+  h.fire("aiVoiceLive"); await h.settle();
+  assert.equal(h.recognitionInstances.length,0);
+  for(let n=0;n<4;n++) h.audioProcessors[0].feed(0.1);
+  for(let n=0;n<43;n++) h.audioProcessors[0].feed(0);
+  await h.settle();
+  assert.equal(h.transcriptionRequests.length,1);
+  assert.equal(h.transcriptionRequests[0].opts.headers["X-Arvic-Voice-Language"],"auto");
+  assert.equal(h.requests[0].message,"我想预订一个房间");
 });
 
 test("English can explicitly enable accurate audio transcription without forcing Taglish corrections", async () => {
   const h = mount({ savedLanguage:"english",audioAvailable:true,
     customerToken:"fake-customer-token",recordedTranscript:"What are the options for tomorrow?" });
-  assert.equal(h.voice.getState().inputMode,"fast");
-  h.nodes.aiVoiceInputMode.value="accurate";
-  h.fire("aiVoiceInputMode","change");
   assert.equal(h.voice.getState().inputMode,"accurate");
   h.fire("aiMicBtn"); await h.settle();
   for(let n=0;n<3;n++) h.audioProcessors[0].feed(0.1);
@@ -681,19 +677,12 @@ test("English can explicitly enable accurate audio transcription without forcing
   assert.equal(h.requests.length,0);
 });
 
-test("Switching to Filipino selects accurate input unless user chose fast explicitly", () => {
+test("A different spoken language never requires a UI language choice", () => {
   const h=mount({audioAvailable:true});
-  assert.equal(h.voice.getState().inputMode,"fast");
-  h.nodes.aiVoiceLanguage.value="taglish";
-  h.fire("aiVoiceLanguage","change");
   assert.equal(h.voice.getState().inputMode,"accurate");
-  h.nodes.aiVoiceInputMode.value="fast";
-  h.fire("aiVoiceInputMode","change");
-  h.nodes.aiVoiceLanguage.value="english";
-  h.fire("aiVoiceLanguage","change");
-  h.nodes.aiVoiceLanguage.value="taglish";
-  h.fire("aiVoiceLanguage","change");
-  assert.equal(h.voice.getState().inputMode,"fast");
+  assert.equal(h.nodes.aiVoiceLanguage.listeners.change,undefined);
+  assert.doesNotMatch(script, /<select id="aiVoiceLanguage"/);
+  assert.match(script, /X-Arvic-Voice-Language": "auto"/);
 });
 
 test("Changing input provider ends current hands-free session safely", () => {
