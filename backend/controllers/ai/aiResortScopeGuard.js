@@ -35,7 +35,7 @@ const RESORT_TOPICS = [
   /\b(?:fangjian|yuding|jiudian|dujiacun|tingche|youyongchi|shoufei|jiage)\b/i,
 ];
 
-const GREETING = /^(?:hi|hello|hey|hola|kumusta|kamusta|good\s+(?:morning|afternoon|evening)|magandang\s+(?:umaga|hapon|gabi)|你好|嗨|ni\\s*hao(?:\\s*ma)?|nihao|xie\\s*xie|salamat|thank\s+you|thanks|gracias|谢谢|ok(?:ay)?|sige|opo|yes\s+po|no\s+po|bye|goodbye)[!?.\s😊👋]*$/iu;
+const GREETING = /^(?:hi|hello|hey|hola|kumusta|kamusta|good\s+(?:morning|afternoon|evening)|magandang\s+(?:umaga|hapon|gabi)|你好|嗨|ni\s*hao(?:\s*ma)?|nihao|xie\s*xie|salamat|thank\s+you|thanks|gracias|谢谢|ok(?:ay)?|sige|opo|yes\s+po|no\s+po|bye|goodbye)[!?.\s😊👋]*$/iu;
 
 // Unambiguous non-resort tasks should never be executed just because the
 // user happened to mention the word "booking" or "resort" somewhere else.
