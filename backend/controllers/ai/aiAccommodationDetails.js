@@ -104,7 +104,7 @@ function focusedRoomOverview(room, language = "english") {
       : "This listing is not currently marked available.");
   }
   sentences.push(filipino
-    ? "Exact date at slot availability, sa booking page pa mache-check."
+    ? "Check niyo na lang po yung date at slot sa booking page para sa actual availability."
     : "Exact date and slot availability must still be checked on the booking page.");
 
   return sentences.join(" ");
