@@ -50,8 +50,10 @@ test("DM-01 tokens loaded once after current theme on all eight signed-in Custom
     assert.ok(themePos < closingHead && themePos > 0, file + " must load theme CSS in <head>");
     assert.ok(themePos > html.indexOf("customer-manager-tone.css"), file + " tokens load after current palette");
     const styleAfter = html.slice(themePos, closingHead);
-    assert.match(styleAfter, /customer-theme-toggle\.css\?v=20261121-dm02/, file + " only DM-02 toggle styles may follow theme tokens");
-    assert.equal((styleAfter.match(/rel="stylesheet"/g) || []).length, 1, file + " should not add unrelated theme layers");
+    assert.match(styleAfter, /customer-theme-toggle\.css\?v=20261121-dm02/, file + " DM-02 toggle remains loaded");
+    assert.match(styleAfter, /customer-dark-skin-dm03\.css\?v=20261121-dm03/, file + " DM-03 dark skin follows");
+    assert.equal((styleAfter.match(/rel="stylesheet"/g) || []).length, 2, file + " loads only toggle and dark skin after tokens");
+    assert.ok(styleAfter.indexOf("customer-theme-toggle.css") < styleAfter.indexOf("customer-dark-skin-dm03.css"), file);
     assert.doesNotMatch(html, /id="customerThemeToggle"/, file + " toggle is injected once by shared JS");
   }
 });
