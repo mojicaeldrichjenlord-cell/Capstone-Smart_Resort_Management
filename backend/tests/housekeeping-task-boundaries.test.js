@@ -512,3 +512,108 @@ test("Invalid or missing optimistic versions cannot mutate cleaning task state",
   assert.equal(task.status, "needs_cleaning");
   assert.equal(task.version, 0);
 });
+
+
+test("HK-46 cleaning cannot be marked complete until a valid photo is uploaded", async () => {
+  await createAndCheck();
+  assert.equal((await start()).code,200);
+  const denied = await call(hk + "/tasks/45/cleaned",{
+    method:"PUT",token:staffToken,body:{version:1},
+  });
+  assert.equal(denied.code,409);
+  assert.equal(task.status,"in_progress");
+  assert.equal(proof,null);
+  assert.equal((await uploadPhoto(staffToken,1)).code,201);
+  const listed = await call(hk + "/tasks?date=" + currentDay,{token:staffToken});
+  assert.equal(listed.data.tasks[0].has_proof,true);
+  const good = await call(hk + "/tasks/45/cleaned",{
+    method:"PUT",token:staffToken,body:{version:1},
+  });
+  assert.equal(good.code,200);
+  assert.equal(task.status,"cleaned");
+});
+test("HK-46 non-assignee and Manager cannot upload someone else's cleaning proof", async () => {
+  await createAndCheck(); await start();
+  assert.equal((await uploadPhoto(otherToken,1)).code,409);
+  assert.equal((await uploadPhoto(managerToken,1)).code,401);
+  assert.equal(proof,null);
+});
+test("HK-46 no proof can be reviewed or verified and Manager image remains private", async () => {
+  await createAndCheck(); await start();
+  await uploadPhoto();
+  const noPhotoYet = await fetch(base + mgr + "/tasks/45/proof",{
+    headers:{Authorization:"Bearer " + managerToken},
+  });
+  assert.equal(noPhotoYet.status,404);
+  await cleaned();
+  // Status is cleaned, but the Manager must inspect/review before signing off.
+  const directVerify = await call(mgr + "/tasks/45/verify",{
+    method:"PUT",body:{version:2},
+  });
+  assert.equal(directVerify.code,409);
+  assert.equal(task.status,"cleaned");
+  const unauthorized = await fetch(base + mgr + "/tasks/45/proof",{
+    headers:{Authorization:"Bearer " + staffToken},
+  });
+  assert.equal(unauthorized.status,401);
+  const authorized = await fetch(base + mgr + "/tasks/45/proof",{
+    headers:{Authorization:"Bearer " + managerToken},
+  });
+  assert.equal(authorized.status,200);
+  assert.equal(authorized.headers.get("content-type"),"image/png");
+  assert.match(authorized.headers.get("cache-control"),/no-store/);
+  assert.deepEqual(Buffer.from(await authorized.arrayBuffer()),photoBytes);
+  const reviewed = await call(mgr + "/tasks/45/proof/review",{
+    method:"POST",body:{version:2},
+  });
+  assert.equal(reviewed.code,200);
+  assert.equal(proof.reviewed_by,1);
+  assert.equal((await call(mgr + "/tasks/45/verify",{
+    method:"PUT",body:{version:2},
+  })).code,200);
+  assert.equal(task.status,"verified_ready");
+});
+test("HK-46 malformed and non-image files are rejected before any proof DB write", async () => {
+  await createAndCheck(); await start();
+  const form = new FormData();
+  form.append("version","1");
+  form.append("proof",new Blob([Buffer.from("fake")],{type:"image/png"}),"fake.png");
+  const r = await fetch(base + hk + "/tasks/45/proof",{
+    method:"POST",headers:{Authorization:"Bearer " + staffToken},body:form,
+  });
+  assert.equal(r.status,415);
+  assert.equal(proof,null);
+  const unsupported = new FormData();
+  unsupported.append("version","1");
+  unsupported.append("proof",new Blob(["<svg/>"],{type:"image/svg+xml"}),"bad.svg");
+  const r2 = await fetch(base + hk + "/tasks/45/proof",{
+    method:"POST",headers:{Authorization:"Bearer " + staffToken},body:unsupported,
+  });
+  assert.equal(r2.status,415);
+  assert.equal(proof,null);
+});
+test("HK-46 legacy cleaned task without proof can be returned to staff for new photo", async () => {
+  await createAndCheck(); await start();
+  task.status = "cleaned";task.version=2; // Pre-migration historical task only
+  const r = await call(mgr + "/tasks/45/request-proof",{
+    method:"PUT",body:{version:2},
+  });
+  assert.equal(r.code,200);
+  assert.equal(task.status,"in_progress");
+  assert.equal(task.version,3);
+  assert.equal((await uploadPhoto(staffToken,3)).code,201);
+  assert.equal((await call(hk + "/tasks/45/cleaned",{
+    method:"PUT",token:staffToken,body:{version:3},
+  })).code,200);
+  assert.equal(task.version,4);
+});
+test("HK-46 migration stores staff proof in a private table, not public media or bookings", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const sql = fs.readFileSync(path.resolve(
+    __dirname,"../../database/migrations/2026-11-21_housekeeping_cleaning_proofs.sql"),"utf8");
+  assert.match(sql,/CREATE TABLE IF NOT EXISTS housekeeping_cleaning_proofs/);
+  assert.match(sql,/MEDIUMBLOB NOT NULL/);
+  assert.match(sql,/UNIQUE KEY uq_housekeeping_cleaning_proof_task/);
+  assert.doesNotMatch(sql,/ALTER TABLE\s+(?:reservations|accommodations|reservation_items)/i);
+});
