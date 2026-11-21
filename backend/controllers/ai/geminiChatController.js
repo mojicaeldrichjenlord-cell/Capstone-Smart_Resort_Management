@@ -28,7 +28,7 @@ const { matchCheapestInquiry, pickCheapestRows, cheapestReply } =
 const { isResortQuestion, resortOnlyReply } = require("./aiResortScopeGuard");
 const { isPersonalizedRecommendation, explicitGuestCount, savedGuestCount,
   guestCountQuestion, guestCountFollowUp: pendingGuestRecommendationAnswer,
-  recommendationLookupMessage
+  guestCountCorrection, recommendationLookupMessage
 } = require("./aiRecommendationIntake");
 
 const ai = new GoogleGenAI({
@@ -1029,8 +1029,12 @@ exports.chatWithGemini = async (req, res) => {
     const recentScopeTurns = normalizeRecentTurns(req.body.recent_turns);
     // Short numeric responses ("4", "apat kami") are resort-relevant ONLY
     // after this assistant explicitly requested guest count.
+    const guestCorrection = guestCountCorrection(
+      message, recentScopeTurns, scopeContext,
+    );
     if (!isResortQuestion(message, scopeContext, recentScopeTurns) &&
-        !pendingGuestRecommendationAnswer(message, recentScopeTurns, scopeContext)) {
+        !pendingGuestRecommendationAnswer(message, recentScopeTurns, scopeContext) &&
+        !guestCorrection) {
       const language = normalizeLanguageStyle(req.body.voice_language) ||
         detectLanguageFromMessage(message) ||
         normalizeLanguageStyle(req.body.language_style) ||
@@ -1139,12 +1143,14 @@ exports.chatWithGemini = async (req, res) => {
     const recommendationHistory = normalizeRecentTurns(req.body.recent_turns);
     const recommendationFollowUp = pendingGuestRecommendationAnswer(
       message, recommendationHistory, recommendationSaved,
-    );
+    ) || guestCorrection;
     if (recommendationFollowUp) {
+      // A short count correction ("7 pala") inherits the conversation's
+      // established language rather than accidentally switching to English.
       const language = normalizeLanguageStyle(req.body.voice_language) ||
-        detectLanguageFromMessage(message) ||
         normalizeLanguageStyle(req.body.language_style) ||
-        normalizeLanguageStyle(recommendationSaved.language_style) || "taglish";
+        normalizeLanguageStyle(recommendationSaved.language_style) ||
+        detectLanguageFromMessage(message) || "taglish";
       const catalog = await getAccommodationCatalog();
       // Use a fresh query expression with an explicit group size, never a
       // previously recommended room ID. SQL stays read-only.
@@ -1159,6 +1165,7 @@ exports.chatWithGemini = async (req, res) => {
         guests: recommendationFollowUp.guests,
         language_style: language,
         intent: "ask_recommendation",
+        recommendation_category: recommendationFollowUp.category,
       };
       // Multiple matching previews aren't a confirmed single-room focus.
       delete updated.room_id;
@@ -1169,7 +1176,16 @@ exports.chatWithGemini = async (req, res) => {
       }
       return res.status(200).json({
         success: true, mode: "verified_accommodation_preview",
-        reply: verifiedPreviewReply(selection, language),
+        reply: recommendationFollowUp.corrected
+          ? (language === "english" ? "Noted, " :
+             language === "tagalog" ? "Sige po, " :
+             language === "spanish" ? "Entendido, " :
+             language === "mandarin" ? "好的，" : "Noted po, ") +
+            (language === "mandarin"
+              ? recommendationFollowUp.guests + "位客人。"
+              : recommendationFollowUp.guests + " guests na. ") +
+            verifiedPreviewReply(selection, language)
+          : verifiedPreviewReply(selection, language),
         extracted_context: updated,
         matched_rooms: [], catalog_recommendations: [],
         alternative_dates: [], booking_preview: null,
@@ -1190,6 +1206,7 @@ exports.chatWithGemini = async (req, res) => {
         const updated = {
           ...recommendationSaved, guests: null,
           intent: "ask_recommendation", language_style: language,
+          recommendation_category: requestedCategory(message) || "room",
         };
         // Don't carry an unrelated selected accommodation into a NEW
         // personal recommendation before the guest gives their party size.
