@@ -8,22 +8,22 @@
  */
 @media screen {
   body.customer-manager-tone {
-    --navy: #172554;
+    --navy: var(--customer-nav-start, #172554);
     --navy-2: #1e3a5f;
-    --teal: #0f766e;
-    --teal-dark: #115e59;
-    --seafoam: #f1f5f9;
-    --sky: #f8fafc;
-    --line: #e2e8f0;
-    color: #0f172a;
-    background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%) !important;
+    --teal: var(--customer-accent, #0f766e);
+    --teal-dark: var(--customer-accent-hover, #115e59);
+    --seafoam: var(--customer-card-subtle, #f1f5f9);
+    --sky: var(--customer-page-top, #f8fafc);
+    --line: var(--customer-border, #e2e8f0);
+    color: var(--customer-text-primary, #0f172a);
+    background: linear-gradient(180deg, var(--customer-page-top, #f8fafc) 0%, var(--customer-page-bottom, #eef2ff) 100%) !important;
   }
 
   /* Muted shared navbar, without changing sticky/scroll/mobile behavior. */
   body.customer-manager-tone .navbar,
   body.customer-manager-tone .landing-navbar {
-    background: linear-gradient(135deg, #172554 0%, #0f766e 100%) !important;
-    background-image: linear-gradient(135deg, #172554 0%, #0f766e 100%) !important;
+    background: linear-gradient(135deg, var(--customer-nav-start, #172554) 0%, var(--customer-nav-end, #0f766e) 100%) !important;
+    background-image: linear-gradient(135deg, var(--customer-nav-start, #172554) 0%, var(--customer-nav-end, #0f766e) 100%) !important;
     border-bottom-color: rgba(255, 255, 255, 0.12);
     box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12) !important;
   }
@@ -31,7 +31,7 @@
   body.customer-manager-tone .navbar nav a.active {
     background: rgba(255, 255, 255, 0.17) !important;
     background-image: none !important;
-    color: #fff !important;
+    color: var(--customer-contrast-on-accent, #fff) !important;
     box-shadow: none !important;
   }
   body.customer-manager-tone .navbar nav a:hover,
@@ -41,9 +41,9 @@
   body.customer-manager-tone .navbar .menu-toggle,
   body.customer-manager-tone .landing-menu-toggle,
   body.customer-manager-tone .landing-nav-links .nav-register {
-    background: #0f766e !important;
+    background: var(--customer-accent, #0f766e) !important;
     background-image: none !important;
-    color: #fff !important;
+    color: var(--customer-contrast-on-accent, #fff) !important;
     box-shadow: none !important;
   }
 
@@ -57,9 +57,9 @@
     .map-hero,
     .pricing-guide-card
   ) {
-    background: linear-gradient(135deg, #172554 0%, #0f766e 100%) !important;
-    background-image: linear-gradient(135deg, #172554 0%, #0f766e 100%) !important;
-    color: #fff !important;
+    background: linear-gradient(135deg, var(--customer-nav-start, #172554) 0%, var(--customer-nav-end, #0f766e) 100%) !important;
+    background-image: linear-gradient(135deg, var(--customer-nav-start, #172554) 0%, var(--customer-nav-end, #0f766e) 100%) !important;
+    color: var(--customer-contrast-on-accent, #fff) !important;
     box-shadow: 0 16px 34px rgba(15, 23, 42, 0.12) !important;
   }
   body.customer-manager-tone .hero-section::after {
@@ -82,16 +82,16 @@
     .map-filter-panel,
     .receipt-shell
   ) {
-    background: #fff !important;
+    background: var(--customer-card, #fff) !important;
     background-image: none !important;
-    border-color: #e2e8f0 !important;
-    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.05) !important;
+    border-color: var(--customer-border, #e2e8f0) !important;
+    box-shadow: var(--customer-shadow, 0 8px 22px rgba(15, 23, 42, 0.05)) !important;
   }
   /* Checkout-minimal intentionally uses a transparent wrapper and white subcards. */
   body.customer-manager-tone.customer-payment-page {
-    --checkout-page: #f8fafc;
-    --checkout-teal: #0f766e;
-    --checkout-teal-tint: #f0fdfa;
+    --checkout-page: var(--customer-page-top, #f8fafc);
+    --checkout-teal: var(--customer-accent, #0f766e);
+    --checkout-teal-tint: var(--customer-teal-tint, #f0fdfa);
   }
 
   /* Keep disabled, error, success and payment status indicators meaningful. */
@@ -102,9 +102,9 @@
     .pricing-guide-btn,
     .map-link-btn
   ) {
-    background: #0f766e !important;
+    background: var(--customer-accent, #0f766e) !important;
     background-image: none !important;
-    color: #fff !important;
+    color: var(--customer-contrast-on-accent, #fff) !important;
     box-shadow: none !important;
   }
   body.customer-manager-tone :is(
@@ -114,7 +114,7 @@
     .pricing-guide-btn,
     .map-link-btn
   ):focus-visible {
-    outline: 3px solid #5eead4;
+    outline: 3px solid var(--customer-focus, #5eead4);
     outline-offset: 3px;
   }
 
@@ -122,11 +122,11 @@
   body.customer-manager-tone .ai-chat-toggle,
   body.customer-manager-tone .ai-chat-window .ai-chat-send,
   body.customer-manager-tone .ai-chat-window .ai-message.user .ai-bubble {
-    background: #0f766e !important;
+    background: var(--customer-accent, #0f766e) !important;
     background-image: none !important;
-    color: #fff !important;
+    color: var(--customer-contrast-on-accent, #fff) !important;
   }
   body.customer-manager-tone .ai-chat-window .ai-chat-header {
-    background: #172554 !important;
+    background: var(--customer-nav-start, #172554) !important;
   }
 }
