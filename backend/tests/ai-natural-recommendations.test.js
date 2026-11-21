@@ -173,7 +173,10 @@ test("AI focused-room details are concise, from DB facts, and never invent a rat
     day_price: 3000, overnight_price: 3000,
   }, "taglish");
   assert.match(verified, /Single Room \(Pool side\) C/);
-  assert.match(verified, /Private CR/);
+  assert.match(verified, /sariling CR/);
+  assert.match(verified, /TV/);
+  assert.match(verified, /aircon/);
+  assert.doesNotMatch(verified, /tV|air Conditioned|Description:|Listed amenities:/);
   assert.match(verified, /4 guests/);
   assert.match(verified, /₱3,000/);
   assert.doesNotMatch(verified, /available (?:on|for)|confirmed (?:available|booking)/i);
