@@ -6,13 +6,12 @@
 // - Front Desk role guard
 // - Load payment/reservation records
 // - Search/filter payment records
-// - View GCash/Maya reference + proof
-// - Verify valid online 50% downpayment proof
-// - Monitor partially paid / paid / remaining balance
+// - Monitor PayPal online payments alongside manual and legacy payment records
+// - Keep historical proof review available without treating it as the default
+// - Show pending, partially paid, and fully paid status counts
 //
-// Important:
-// Remaining onsite balance collection is intentionally handled by
-// the later Guest Check-In flow, not manually marked here.
+// Important: PayPal confirmation is automated; onsite balances and entrance
+// fee collection belong to the Guest Check-In flow, not this report.
 // ============================================================
 
 let allFrontDeskPayments = [];
@@ -168,9 +167,11 @@ async function loadPayments() {
 // ============================================================
 
 function updateSummary() {
-  const needsVerification = allFrontDeskPayments.filter(
-    needsPaymentVerification,
-  ).length;
+  const pendingPayment = allFrontDeskPayments.filter((booking) => {
+    const status = getReservationStatus(booking);
+    return ["pending", "unpaid"].includes(getPaymentStatus(booking)) &&
+      !["cancelled", "completed", "rejected", "no_show"].includes(status);
+  }).length;
 
   const partiallyPaid = allFrontDeskPayments.filter(
     (booking) => getPaymentStatus(booking) === "partially_paid",
@@ -180,20 +181,9 @@ function updateSummary() {
     (booking) => getPaymentStatus(booking) === "paid",
   ).length;
 
-  const remaining = allFrontDeskPayments.reduce((sum, booking) => {
-    const status = getReservationStatus(booking);
-
-    if (["cancelled", "completed", "rejected", "no_show"].includes(status)) {
-      return sum;
-    }
-
-    return sum + toMoney(booking.remaining_balance);
-  }, 0);
-
-  setText("needsVerificationCount", needsVerification);
+  setText("pendingPaymentCount", pendingPayment);
   setText("partiallyPaidCount", partiallyPaid);
   setText("paidCount", paid);
-  setText("remainingBalanceTotal", `₱${formatMoney(remaining)}`);
 }
 
 function setText(id, value) {
@@ -244,7 +234,7 @@ function applyFilters() {
     .toLowerCase();
 
   const paymentView = String(
-    document.getElementById("paymentViewFilter")?.value || "attention",
+    document.getElementById("paymentViewFilter")?.value || "all",
   )
     .trim()
     .toLowerCase();
@@ -837,6 +827,7 @@ function formatSource(source) {
 
 function formatPaymentMethod(method) {
   const labels = {
+    paypal: "PayPal",
     gcash: "GCash",
     paymaya: "Maya",
     maya: "Maya",
