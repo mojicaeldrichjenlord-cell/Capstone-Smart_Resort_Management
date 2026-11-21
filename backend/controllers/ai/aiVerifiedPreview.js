@@ -37,9 +37,30 @@ function requestedCategory(value) {
 
 function guestCountFromText(value) {
   const text = String(value || "");
-  const match = text.match(/\b(\d{1,3})\s*(?:na\s*)?(?:tao|pax|guests?|persons?|people)\b/i) ||
+  const match = text.match(/\b(\d{1,3})\s*(?:na\s*)?(?:tao|pax|guests?|persons?|people|kami)\b/i) ||
     text.match(/\b(?:para\s+sa|good\s+for|for)\s+(\d{1,3})\b/i);
-  return match ? Number(match[1]) : 0;
+  if (match) {
+    const count = Number(match[1]);
+    return Number.isSafeInteger(count) && count > 0 && count <= 200 ? count : 0;
+  }
+  // AI-45: Written-out counts in genuine group-size phrases (not room
+  // names, day/night slot numbers or arbitrary history trivia).
+  const words = {
+    isa: 1, isang: 1, dalawa: 2, tatlo: 3, apat: 4, lima: 5,
+    anim: 6, pito: 7, walo: 8, siyam: 9, sampu: 10,
+    one: 1, two: 2, three: 3, four: 4, five: 5,
+    six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
+  };
+  const wordList = Object.keys(words).join("|");
+  const phrase = new RegExp(
+    "\\b(?:para\\s+sa|good\\s+for|for)\\s+(?:mga\\s+)?(" +
+    wordList + ")(?=\\b)", "i"
+  );
+  const people = new RegExp(
+    "\\b(" + wordList + ")\\s+(?:tao|kami|guests?|people|persons?|pax)\\b", "i"
+  );
+  const named = text.match(phrase) || text.match(people);
+  return named ? words[named[1].toLowerCase()] || 0 : 0;
 }
 
 function isVerifiedPreviewRequest(message) {
