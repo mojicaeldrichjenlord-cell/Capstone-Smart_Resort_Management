@@ -13,7 +13,7 @@ const normalize = value => String(value || "").normalize("NFKC")
 
 const RESORT_TOPICS = [
   // Resort identity, access, operations, contact and guest services.
-  /\b(?:arvic|seaside|resort|hotel|front[\s-]?desk|reception|contact|hotline)\b/i,
+  /\b(?:arvic|seaside|resort|hotel|front[\s-]?desk|reception|contact|hotline|makontak|manager|resort\s+staff)\b/i,
   /\b(?:parking|paradahan|mag[ -]?park|park(?:ing)?\s+(?:car|motor|van|bus))\b/i,
   /\b(?:address|location|directions?|how\s+(?:do\s+i|to)\s+get\s+there|operating\s+hours?|opening\s+hours?|open\s+(?:today|tomorrow|24|everyday)|hours?\s+(?:open|of operation)|nasaan|saan\s+(?:kayo|po\s+kayo)|bukas\s+ba\s+kayo)\b/i,
   /\b(?:pool|swimming|lifeguard|amenit(?:y|ies)|facilit(?:y|ies)|wifi|wi-fi|internet|pets?|dogs?|cats?|corkage|outside\s+food|pagkain|towels?|bathroom|restroom|shower|private\s+cr|aircon|air[- ]?conditioning|refrigerator|kitchen|cabinet)\b/i,
@@ -22,6 +22,8 @@ const RESORT_TOPICS = [
   /\b(?:guest(?:s)?|pax|capacity|vacanc(?:y|ies)|available|availability|rate(?:s)?\s+(?:of|for)\s+(?:a|the|rooms?|cottage)|entrance\s+fee|entrance\s+payment|down[\s-]?payment|deposit|paypal|cash\s+payment|payment|pay\s+(?:online|for|on|onsite)|refund|cancel(?:lation)?|discount|senior\s+citizen|pwd|additional\s+charges?|damages?|reschedule|slot(?:s)?)\b/i,
   /\b(?:bayad|babayaran|paunang\s+bayad|libre(?:ng)?\s+(?:parking|entrance|room|kubo)|pasok|pamasahe|sakay|schedule|iskedyul|presyo|mga\s+accommodation)\b/i,
   /\b(?:login|log[\s-]?in|register|registration|sign[\s-]?up|my\s+bookings|account|password|receipt|reference\s+(?:code|number)|booking\s+status)\b/i,
+  /\b(?:can\s+i|how\s+(?:do\s+i|can\s+i|can\s+you\s+help\s+me)|may\s+i|could\s+i|where\s+can\s+i|paano\s+(?:po\s+)?(?:ako|kami))\s+(?:\w+\s+){0,4}book\b/i,
+  /\b(?:may|meron|do\s+you\s+(?:have|serve)|is\s+there)\s+(?:\w+\s+){0,3}(?:food|foods|meals|kainan)\b/i,
   /\b(?:family\s+trip|family\s+outing|company\s+outing|team\s+building|day\s+trip|bakasyon|magbakasyon)\b/i,
   // The existing chat has multilingual customer conversations.
   /\b(?:habitación|habitaciones|alojamiento|reservar|reserva|reservación|pago|tarifa|piscina|estacionamiento|cabaña|cancelar\s+mi\s+reserva)\b/i,
@@ -32,7 +34,7 @@ const GREETING = /^(?:hi|hello|hey|hola|kumusta|kamusta|good\s+(?:morning|aftern
 
 // Unambiguous non-resort tasks should never be executed just because the
 // user happened to mention the word "booking" or "resort" somewhere else.
-const NON_RESORT_TASK = /\b(?:write\s+(?:me\s+)?(?:a\s+)?(?:code|program|essay|poem|story|song|script)|(?:solve|calculate)\s+(?:this|the|my|an?|equation|math)|homework|quiz\s+(?:answers?|questions?)|who\s+(?:is|was)\s+(?:andres|jose|bonifacio|rizal)|full\s+name\s+(?:ni|of)\s+(?:jose|andres|bonifacio|rizal)|(?:capital|president)\s+of\s+(?:the\s+)?(?:philippines|japan|usa)|(?:recipe|luto)\s+(?:ng|for)|(?:weather\s+forecast|stock\s+price|bitcoin|nba|valorant))\b|(?:\b(?:bonifacio|rizal)\b.*\b(?:full\s+name|buong\s+pangalan)\b)|(?:\b(?:full\s+name|buong\s+pangalan)\b.*\b(?:bonifacio|rizal)\b)/iu;
+const NON_RESORT_TASK = /\b(?:(?:write|create|generate|build)\s+(?:\w+\s+){0,4}(?:code|program|essay|poem|story|script)|write\s+(?:me\s+)?(?:a\s+)?(?:code|program|essay|poem|story|song|script)|(?:solve|calculate)\s+(?:this|the|my|an?|equation|math)|homework|quiz\s+(?:answers?|questions?)|who\s+(?:is|was)\s+(?:andres|jose|bonifacio|rizal)|full\s+name\s+(?:ni|of)\s+(?:jose|andres|bonifacio|rizal)|(?:capital|president)\s+of\s+(?:the\s+)?(?:philippines|japan|usa)|(?:recipe|luto)\s+(?:ng|for)|(?:weather\s+forecast|stock\s+price|bitcoin|nba|valorant))\b|(?:\b(?:bonifacio|rizal)\b.*\b(?:full\s+name|buong\s+pangalan)\b)|(?:\b(?:full\s+name|buong\s+pangalan)\b.*\b(?:bonifacio|rizal)\b)/iu;
 
 // An explicit unrelated person/topic wins over stale saved room/guest context.
 // If guests explicitly ask about a resort facility named after someone, the
