@@ -13,6 +13,11 @@
     taglish: { stt: "fil-PH", tts: "fil-PH", label: "Taglish" },
     spanish: { stt: "es-ES", tts: "es-ES", label: "Español" },
     mandarin: { stt: "zh-CN", tts: "zh-CN", label: "中文 (Mandarin)" },
+    japanese: { stt: "ja-JP", tts: "ja-JP", label: "日本語" },
+    korean: { stt: "ko-KR", tts: "ko-KR", label: "한국어" },
+    french: { stt: "fr-FR", tts: "fr-FR", label: "Français" },
+    german: { stt: "de-DE", tts: "de-DE", label: "Deutsch" },
+    arabic: { stt: "ar-SA", tts: "ar-SA", label: "العربية" },
   });
   // UI-44: No persistent voice-language picker. Each turn is auto-detected.
   const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -73,11 +78,19 @@
   // fall back to the browser's voice rather than pretending to be native.
   function inferReplyLanguage(raw) {
     const text = String(raw || "").trim();
-    if (/[\u3400-\u9fff]/u.test(text) || /\b(?:ni\s*hao|xie\s*xie|fangjian|yuding)\b/i.test(text)) return "mandarin";
-    if (/\b(?:hola|gracias|habitaciones?|reservar|precio|cu[aá]nto|buenos|tienen|quiero|puedo|por favor)\b/i.test(text)) return "spanish";
-    const filipino = /\b(?:po|opo|kayo|meron|may|kwarto|kuwarto|magkano|paano|saan|ilan|puwede|pwede|yung|ninyo|niyo|salamat)\b/i.test(text);
-    const english = /\b(?:room|booking|available|price|check.in|check.out|payment|guest|resort|rate|can|how|this|that)\b/i.test(text);
-    if (filipino) return english ? "taglish" : "taglish";
+    if (/[\u3040-\u30ff]/u.test(text)) return "japanese";
+    if (/[\uac00-\ud7af]/u.test(text)) return "korean";
+    if (/[\u0600-\u06ff]/u.test(text)) return "arabic";
+    if (/[\u3400-\u9fff]/u.test(text) ||
+        /\b(?:ni\s*hao|nihao|xie\s*xie|fangjian|yuding)\b/i.test(text)) return "mandarin";
+    if (/\b(?:hola|gracias|habitaciones?|reservar|reservaci[oó]n|precios?|cu[aá]nto|buenos|tienen|quiero|puedo|por\s+favor|estamos|ofrecemos|está|están|sí)\b/iu.test(text))
+      return "spanish";
+    if (/\b(?:bonjour|merci|chambre|chambres|réservation|réserver|hôtel|piscine|combien|nous\s+avons)\b/iu.test(text))
+      return "french";
+    if (/\b(?:guten\s+tag|danke|zimmer|buchung|übernachtung|preise?|schwimmbad)\b/iu.test(text))
+      return "german";
+    if (/\b(?:po|opo|kayo|meron|may|kwarto|kuwarto|magkano|paano|saan|ilan|puwede|pwede|yung|ninyo|niyo|salamat)\b/i.test(text))
+      return "taglish";
     return "english";
   }
 
@@ -679,8 +692,8 @@
     recognizer.onstart = () => {
       if (state.recognizer !== recognizer) return;
       status(kind === "dictation"
-        ? "Recording speech as text. Press ■ to review and send."
-        : "Listening in " + getLocale().label + "…");
+        ? "Browser speech recognition (device language may be limited). Review text before sending."
+        : "Browser listening · speech language may be limited on this device.");
       updateControls();
     };
     recognizer.onresult = event => {
