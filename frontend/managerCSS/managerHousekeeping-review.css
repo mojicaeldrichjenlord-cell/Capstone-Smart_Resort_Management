@@ -1,16 +1,6 @@
 /* HK-46 Manager Housekeeping UX; scoped so other Manager pages remain unchanged. */
 .hk-manager-layout .manager-navbar { gap: 16px; }
-.hk-manager-layout .manager-hk-brand {
-  display: flex; flex-direction: row; align-items: center; gap: 12px;
-  min-width: 200px;
-}
-.hk-manager-layout .manager-hk-logo {
-  width: 52px; height: 52px; padding: 4px; background: #fff;
-  object-fit: contain; border-radius: 12px; flex: 0 0 auto;
-}
-.hk-manager-layout .manager-hk-brand-copy { display: flex; flex-direction: column; gap: 2px; }
-.hk-manager-layout .manager-hk-brand-copy strong { color: #fff; font-size: 1.12rem; }
-.hk-manager-layout .manager-hk-brand-copy span { color: #e0f2fe; margin-top: 0; }
+/* Manager navbar branding is now shared by all five pages in managerDashboard.css. */
 .hk-manager-layout .manager-page { max-width: 1200px; }
 .hk-manager-layout .manager-hero { padding: 25px 30px; }
 .hk-manager-layout .manager-hero h1 { font-size: clamp(1.65rem, 3vw, 2.35rem); }
