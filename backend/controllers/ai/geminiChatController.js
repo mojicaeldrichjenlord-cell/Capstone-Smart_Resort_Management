@@ -1147,10 +1147,15 @@ exports.chatWithGemini = async (req, res) => {
     // existing approved policy helpers first; only attach an OPTIONAL card
     // for an active room verified against the fresh admin-managed catalog.
     const compoundPolicy = compoundTopics(message);
-    if (compoundPolicy) {
-      const language = detectLanguageFromMessage(message) ||
-        normalizeLanguageStyle(req.body.language_style) ||
-        normalizeLanguageStyle(scopeContext.language_style) || "taglish";
+    const compoundLanguage = detectLanguageFromMessage(message) ||
+      normalizeLanguageStyle(req.body.language_style) ||
+      normalizeLanguageStyle(scopeContext.language_style) || "taglish";
+    // For languages without localized verified replies, retain the normal
+    // grounded multilingual path rather than forcing an English response.
+    if (compoundPolicy && [
+      "english", "tagalog", "taglish", "bisaya", "spanish", "mandarin"
+    ].includes(compoundLanguage)) {
+      const language = compoundLanguage;
       const guests = explicitGuestCount(message);
       let focusedRoom = null;
       if (guests && (
