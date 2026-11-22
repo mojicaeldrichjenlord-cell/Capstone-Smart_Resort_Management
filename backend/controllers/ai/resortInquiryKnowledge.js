@@ -215,7 +215,7 @@ function matchVerifiedGuestAmenities(message) {
   if (/\b(?:refund|cancel(?:lation)?|downpayment|deposit|paypal|booking\s+status|room\s+rates?|price\s+of\s+(?:a\s+)?room|magkano\s+(?:ang\s+)?kwarto|karaoke|videoke|alcohol|beer|liquor|alak|smoking|vaping|cigarettes?|yosi|sigarilyo)\b/i.test(t)) return null;
   const wifi=/\b(?:wi[\s-]?fi|wireless\s+internet|internet\s+(?:connection|access|signal))\b/i.test(t);
   const food=/\b(?:corkage|outside[\s-]?food|outside[\s-]?drinks?|own\s+(?:food|drinks?|beverages?)|bring(?:ing)?\s+(?:(?:my|our|your|their|some|own)\s+)?(?:food|drinks?|snacks?|beverages?)|baon|magbaon|dalang\s+(?:pagkain|inumin|food)|magdala\s+(?:ng\s+)?(?:pagkain|inumin|food)|pagkain\s+(?:mula\s+sa\s+labas|na\s+dala)|(?:pwede|puwede)\s+.*\b(?:pagkain|inumin)\b|food\s+policy|food\s+allowed)\b/i.test(t);
-  const pool=/\b(?:swimming\s+pool|pool(?![\s-]?(?:shade|side|pavilion|pavillion))|swim(?:ming)?\s+(?:time|hours?|attire|wear|clothes|dress\s+code|at\s+night)|swimwear|panglangoy|palanguyan|piscina)\b/i.test(t) || /(?:泳池|游泳池)/u.test(t);
+  const pool=/\b(?:swimming\s+pool|pool(?![\s-]?(?:shade|side|pavilion|pavillion))|swim(?:ming)?\s+(?:time|hours?|attire|wear|clothes|dress\s+code|at\s+night|at\s+\d{1,2}\s*(?:am|pm)|anytime)|swimwear|panglangoy|palanguyan|piscina)\b/i.test(t) || /(?:泳池|游泳池)/u.test(t);
   if (!wifi && !food && !pool) return null;
   const parking=/\b(?:parking|park(?:ing)?\s+(?:lot|area)|paradahan)\b/i.test(t);
   const pets=/\b(?:pets?|pet[\s-]?friendly|dogs?|cats?|animals?|aso|pusa|hayop|mascotas?)\b/i.test(t);
@@ -225,7 +225,7 @@ function matchVerifiedGuestAmenities(message) {
   const wifiDetail=/\b(?:password|speed|mbps|signal\s+strength|connection\s+speed|fast|reliable)\b/i.test(t);
   const corkage=/\b(?:corkage|charge|fee|free|libre|libreng|bayad|magkano|how\s+much|waived)\b/i.test(t)&&food;
   const poolFee=/\b(?:entrance|admission|fees?|ticket|free|libre|magkano|how\s+much|bayad)\b/i.test(t)&&pool;
-  const poolRule=/\b(?:lifeguard|child(?:ren)?|bata|safety|supervis|age|depth|deep|float|inflat|rules?|restrictions?)\b/i.test(t)&&pool;
+  const poolRule=/\b(?:life[\s-]?guards?|child(?:ren)?|bata|safety|supervis|age|depth|deep|float|inflat|rules?|restrictions?)\b/i.test(t)&&pool;
   return {wifi,food,pool,parking,pets,cottage,rooms,wifiDetail,corkage,poolFee,poolRule};
 }
 
@@ -351,33 +351,33 @@ function verifiedPetPolicyReply(match, language = "taglish") {
   const extras = {
     english: {
       parking: "Parking for vehicles is free.",
-      wifi: "Wi-Fi availability has not been verified; please ask Front Desk.",
-      food: "The outside-food/corkage policy has not been verified; please ask Front Desk.",
+      wifi: "Free Wi-Fi is available in rooms only, not cottages or common areas.",
+      food: "You may bring your own food and drinks. Corkage fees haven't been confirmed; please ask Front Desk.",
     },
     tagalog: {
       parking: "Libre po ang paradahan ng mga sasakyan.",
-      wifi: "Hindi pa po kumpirmado ang Wi-Fi; pakitanong sa Front Desk.",
-      food: "Hindi pa po kumpirmado ang patakaran sa dalang pagkain at corkage; pakitanong sa Front Desk.",
+      wifi: "Sa mga kuwarto lamang po may libreng Wi-Fi, hindi sa cottages o common areas.",
+      food: "Maaari pong magdala ng sariling pagkain at inumin. Hindi pa kumpirmado ang corkage fee; pakitanong sa Front Desk.",
     },
     taglish: {
       parking: "Free naman po ang parking ng vehicles.",
-      wifi: "Hindi pa po confirmed ang Wi-Fi policy; pa-check sa Front Desk.",
-      food: "Hindi pa po confirmed ang outside food/corkage policy; pa-check sa Front Desk.",
+      wifi: "Free Wi-Fi po ay nasa rooms lang, hindi sa cottages o common areas.",
+      food: "Puwede magdala ng sariling food at drinks. Hindi pa confirmed ang corkage fee; pa-check sa Front Desk.",
     },
     bisaya: {
       parking: "Libre ang parking sa mga sakyanan.",
-      wifi: "Wala pa makumpirma ang Wi-Fi; palihog pangutana sa Front Desk.",
-      food: "Wala pa makumpirma ang outside food/corkage; palihog pangutana sa Front Desk.",
+      wifi: "Libre ang Wi-Fi sa mga kwarto ra, dili sa cottages ug common areas.",
+      food: "Pwede magdala og kaugalingong pagkaon ug ilimnon. Wala pa makumpirma ang corkage fee.",
     },
     spanish: {
       parking: "El estacionamiento de vehículos es gratuito.",
-      wifi: "La disponibilidad de Wi-Fi no está confirmada; consulte con recepción.",
-      food: "La política de alimentos externos no está confirmada; consulte con recepción.",
+      wifi: "El Wi-Fi gratuito solo está disponible en las habitaciones, no en cabañas o zonas comunes.",
+      food: "Puede traer su propia comida y bebidas. No se ha confirmado el cargo por descorche.",
     },
     mandarin: {
       parking: "车辆停车免费。",
-      wifi: "Wi-Fi 使用情况尚未核实，请咨询前台。",
-      food: "自带食物及开瓶费政策尚未核实，请咨询前台。",
+      wifi: "免费 Wi-Fi 仅限客房使用，小屋和公共区域不提供。",
+      food: "允许自带食物和饮料；是否收取相关费用尚未确认，请咨询前台。",
     },
   };
   const locale=answers[language] ? language : "english";
@@ -406,7 +406,7 @@ function getUnverifiedResortPolicyReply(match, language) {
   if (!match) return null;
   if (!["english", "tagalog", "taglish"].includes(language)) {
     // Mixed known/unknown questions can preserve the independently verified
-    // free-parking fact, but never imply Wi-Fi, pets or corkage is approved.
+    // Free parking and known guest policies may accompany another unknown fee.
     const freeParking = {
       bisaya: "Libre ang parking para sa tanang sakyanan. ",
       spanish: "El estacionamiento es gratuito para cualquier vehículo. ",
@@ -442,8 +442,9 @@ function resortInquiryPromptLines() {
     "Use these facts naturally for paraphrased questions; do NOT require a customer to use any specific keywords.",
     "Resort-wide parking being free does NOT mean entrance, room, or pool admission is free.",
     "The confirmed resort-wide NO-ANIMALS/NO-PETS policy applies to all accommodations. Do not invent exceptions.",
-    "For unverified Wi-Fi, outside food/corkage, parking security/space guarantees,",
-    "pool fees or safety, early check-in, and other missing resort policies: never invent a yes/no,",
+    "Own food/drinks ARE permitted; Wi-Fi is FREE ONLY in Rooms; pool ALWAYS OPEN with no specific swimwear restrictions.",
+    "Corkage fees, Wi-Fi passwords/speeds, parking security/space guarantees remain unverified.",
+    "Pool entrance fees or other safety rules, early check-in, alcohol, smoking, videoke rules and other missing policies: never invent a yes/no,",
     "rate or promise. State that it is not yet confirmed and refer to Front Desk.",
     "If a guest asks multiple unrelated questions, answer verified parts briefly and qualify unknown parts.",
   ].join("\n");
