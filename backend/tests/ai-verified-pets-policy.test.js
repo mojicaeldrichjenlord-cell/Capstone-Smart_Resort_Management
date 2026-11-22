@@ -49,12 +49,13 @@ test("Known parking can accompany pet policy without implying pet permission",()
   assert.match(reply,/Parking for vehicles is free/);
   assert.doesNotMatch(reply,/pets.*free parking/i);
 });
-test("Mixed pets + Wi-Fi/corkage answer known and unknown parts separately",()=>{
+test("Mixed pets + Wi-Fi/corkage answer newly verified facts and still-unknown corkage separately",()=>{
   const reply=verifiedPetPolicyReply(
     matchVerifiedPetPolicy("Can I bring my dog and is there Wi-Fi or corkage?"),"english");
   assert.match(reply,/not allowed/);
-  assert.match(reply,/Wi-Fi availability has not been verified/);
-  assert.match(reply,/outside-food\/corkage policy has not been verified/);
+  assert.match(reply,/Free Wi-Fi is available in rooms only/);
+  assert.match(reply,/You may bring your own food and drinks/);
+  assert.match(reply,/Corkage fees haven't been confirmed/);
 });
 test("Unrelated topics do not produce pet-policy answer",()=>{
   assert.equal(matchVerifiedPetPolicy("Do you have free parking?"),null);
