@@ -51,12 +51,12 @@ function conciergeGuideReply(kind, language = "taglish") {
       mandarin: "婚礼、生日、团队活动或定制活动套餐，请直接联系前台讨论需求。目前记录中没有已确认的定制套餐价格或折扣。电话：" + CONTACT_PRIMARY + " / " + CONTACT_ALTERNATE + "；邮箱：" + CONTACT_EMAIL + "。",
     },
     entrance_corkage: {
-      english: "Entrance fees are separate from the 50% accommodation downpayment. The booking page shows an estimate; Front Desk confirms the applicable fees and discounts onsite. The outside-food and corkage policy isn't confirmed in the current records, so please check with Front Desk at " + CONTACT_PRIMARY + ".",
-      taglish: "Separate po ang entrance fee sa 50% accommodation downpayment. Estimate muna sa booking page; Front Desk ang magfi-finalize ng fees at applicable discounts onsite. Hindi pa confirmed sa records ang corkage o outside-food policy. Pa-check po sa " + CONTACT_PRIMARY + ".",
-      tagalog: "Hiwalay po ang entrance fee sa 50% na paunang bayad sa matutuluyan. Tantiya muna ang makikita sa booking page; ang Front Desk ang magkukumpirma ng final fees at naaangkop na diskuwento sa resort. Hindi pa kumpirmado sa records ang patakaran sa dalang pagkain at corkage. Tumawag sa " + CONTACT_PRIMARY + ".",
-      bisaya: "Lahi ang entrance fee sa 50% nga accommodation downpayment. Estimate lang sa booking page; ang Front Desk mag-confirm sa fees ug angay nga discounts didto sa resort. Wala pay kumpirmadong corkage o outside-food policy sa records. Kontaka ang " + CONTACT_PRIMARY + ".",
-      spanish: "La entrada se cobra aparte del anticipo del alojamiento del 50 %. La página de reservas muestra una estimación y recepción confirma las tarifas y descuentos aplicables. La política sobre comida externa y descorche no está confirmada en los registros. Consulta con recepción: " + CONTACT_PRIMARY + ".",
-      mandarin: "入场费不包含在住宿费用的 50% 订金中。预订页面提供估算，前台会在现场确认费用和适用优惠。外带食品及开瓶费规定尚未在记录中核实，请联系前台：" + CONTACT_PRIMARY + "。",
+      english: "Entrance fees are separate from the 50% accommodation downpayment. The booking page shows an estimate; Front Desk confirms the applicable fees and discounts onsite. You may bring your own food and drinks with no corkage fee.",
+      taglish: "Separate po ang entrance fee sa 50% accommodation downpayment. Estimate muna sa booking page; Front Desk ang magfi-finalize ng fees at applicable discounts onsite. Puwede kayong magdala ng sariling food at drinks, at walang corkage fee.",
+      tagalog: "Hiwalay po ang entrance fee sa 50% na paunang bayad sa matutuluyan. Tantiya muna ang makikita sa booking page; ang Front Desk ang magkukumpirma ng final fees at naaangkop na diskuwento sa resort. Puwede pong magdala ng sariling pagkain at inumin nang walang corkage fee.",
+      bisaya: "Lahi ang entrance fee sa 50% nga accommodation downpayment. Estimate lang sa booking page; ang Front Desk mag-confirm sa fees ug angay nga discounts didto sa resort. Pwede magdala sa kaugalingong pagkaon ug ilimnon ug walay corkage fee.",
+      spanish: "La entrada se cobra aparte del anticipo del alojamiento del 50 %. La página de reservas muestra una estimación y recepción confirma las tarifas y descuentos aplicables. Puede traer su propia comida y bebidas sin cargo de descorche.",
+      mandarin: "入场费不包含在住宿费用的 50% 订金中。预订页面提供估算，前台会在现场确认费用和适用优惠。允许自带食物和饮料，不收取外带费。",
     },
   };
   return variants[kind]?.[language] || null;
