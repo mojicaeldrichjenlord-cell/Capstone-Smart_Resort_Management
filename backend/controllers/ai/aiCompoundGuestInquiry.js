@@ -39,9 +39,12 @@ function compoundTopics(message) {
   const audioWord = /\b(?:videoke|karaoke|mag[\s-]?videoke|mag[\s-]?karaoke|speakers?|bluetooth\s+speaker|sound\s+system)\b/i.test(q);
   const audio = audioWord && bring && !PROVIDES_EQUIPMENT.test(q);
   const facilities = verifiedResortFacilityMentions(q);
-  // Hours are now verified. Menus, goods, prices and sales remain unknown.
+  // Hours and general food/drinks at the restobar are verified. Do not
+  // treat menu, brands, alcoholic beverages or individual items as verified.
   if ((facilities.store || facilities.restobar) &&
-      /\b(?:sell|sold|serve|serves|menus?|prices?|rates?|products?|items?|inventory|stock|breakfast|lunch|dinner)\b/i.test(q)) return null;
+      /\b(?:sell|sold|menus?|prices?|rates?|products?|items?|inventory|stock|breakfast|lunch|dinner|beer|alcohol|wine|liquor|cocktails?)\b/i.test(q)) return null;
+  if ((facilities.store || facilities.restobar) &&
+      /\b(?:such\s+as|for\s+example|what\s+(?:food|drinks?|dishes|beverages?)|which\s+(?:food|drinks?|dishes|beverages?)|what\s+kinds?\s+of|anong\s+(?:klase\s+ng\s+)?(?:pagkain|inumin)|specific\s+(?:food|drinks?|items?))\b/i.test(q)) return null;
   const facilityHours = facilityHoursRequested(q) &&
     (facilities.store || facilities.restobar);
   const facilityOfferings = facilityFoodAndDrinksRequested(q);
