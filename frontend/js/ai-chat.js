@@ -42,6 +42,13 @@ document.addEventListener("DOMContentLoaded", () => {
   setupAiChat();
 });
 
+function aiReplyForSurface(reply) {
+  const text = String(reply || "");
+  if (!AI_IS_PUBLIC_LANDING) return text;
+  return text.replace(/\bView Details\b/gi, "Login for Details")
+    .replace(/\bBook This\b/gi, "Login to Book");
+}
+
 function setupAiChat() {
   const toggleBtn = document.getElementById("aiChatToggle");
   const closeBtn = document.getElementById("aiChatClose");
@@ -188,7 +195,9 @@ async function sendAiMessage(options = {}) {
       // Save silently. Repeating context summaries on every reply feels robotic.
     }
 
-    const aiReply = data.reply || "No reply generated.";
+    // UI-49: Match public recommendation card labels without changing
+    // signed-in Customer wording, authentication or backend behavior.
+    const aiReply = aiReplyForSurface(data.reply || "No reply generated.");
     appendAiMessage("assistant", aiReply);
 
     if (Array.isArray(data.recommendation_cards) && data.recommendation_cards.length) {
