@@ -1378,7 +1378,10 @@ function getOfflineVerifiedResortReply(message, language, context) {
     const cottage = /\b(?:cottages?|kubo|nipa\s+hut|pavilions?|function\s+areas?|lobby|common\s+areas?|poolside)\b/i.test(t) &&
       !/\bsingle\s+room\s+cottage\b/i.test(t);
     const asksCorkage = food && /\b(?:corkage|charge|fee|free|libre|bayad|magkano|how\s+much)\b/i.test(t);
-    const asksPoolFee = pool && /\b(?:entrance|admission|fees?|ticket|free|libre|magkano|how\s+much|bayad)\b/i.test(t);
+    const asksPoolFee = pool && (
+      /\b(?:pool|swimming|piscina)\b.{0,55}\b(?:entrance|admission|fees?|ticket|price|cost|libre|free|magkano|how\s+much|bayad)\b/i.test(t) ||
+      /\b(?:entrance|admission|fees?|ticket|price|cost|magkano|how\s+much|bayad)\b.{0,55}\b(?:pool|swimming|piscina)\b/i.test(t)
+    );
     const asksPoolRule = pool && /\b(?:life[\s-]?guards?|children|bata|safety|supervis|age|depth|rules?|restrictions?)\b/i.test(t);
     const answer=[];
     if (wifi) answer.push(cottage ? reply(
@@ -1429,7 +1432,7 @@ function getOfflineVerifiedResortReply(message, language, context) {
 
   // Unsupported general policies are handled conservatively even offline.
   // Parking being free does not imply that Wi-Fi or corkage is also free.
-  const unknownPolicy = /\b(?:alcohol|beer|liquor|wine|alak|smoking|vaping|yosi|sigarilyo|videoke|karaoke)\b/i.test(t);
+  const unknownPolicy = /\b(?:alcohol|beer|liquor|wine|alak|smoking|vaping|yosi|sigarilyo)\b/i.test(t);
   if (unknownPolicy) return withReply(reply(
     (park ? "Parking is free for all vehicles. " : "") +
       "That resort policy has not yet been confirmed. Please ask Front Desk at 0956-912-5625.",
