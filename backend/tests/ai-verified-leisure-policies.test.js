@@ -21,7 +21,7 @@ function reply(question,lang="taglish"){
 test("Confirmed alcoholic drinks permission, without inventing beverage sales or corkage waivers",()=>{
   const taglish=reply("Pwede po magdala ng alak?");
   assert.match(taglish,/puwede magdala ng alcoholic drinks/);
-  assert.match(taglish,/walang specific time restrictions/i);
+  assert.match(taglish,/Wala pong specific time restrictions/i);
   const english=reply("Are alcoholic drinks allowed?","english");
   assert.match(english,/guests may bring alcoholic drinks/);
   for(const q of ["Do you sell beer?","Do you serve wine?","Can I buy alcohol at your resort?"]){
