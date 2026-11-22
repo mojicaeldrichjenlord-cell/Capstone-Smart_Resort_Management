@@ -30,7 +30,7 @@ const RESORT_TOPICS = [
   /\b(?:login|log[\s-]?in|register|registration|sign[\s-]?up|my\s+bookings|account|password|receipt|reference\s+(?:code|number)|booking\s+status)\b/i,
   /\b(?:can\s+i|how\s+(?:do\s+i|can\s+i|can\s+you\s+help\s+me)|may\s+i|could\s+i|where\s+can\s+i|paano\s+(?:po\s+)?(?:ako|kami))\s+(?:\w+\s+){0,4}book\b/i,
   /\b(?:may|meron|do\s+you\s+(?:have|serve)|is\s+there)\s+(?:\w+\s+){0,3}(?:food|foods|meals|kainan)\b/i,
-  /\b(?:family\s+trip|family\s+outing|company\s+outing|team\s+building|day\s+trip|bakasyon|magbakasyon)\b/i,
+  /\b(?:family\s+trip|family\s+outing|company\s+outing|team[ -]?building|day\s+trip|bakasyon|magbakasyon|wedding|kasal|birthday|debut|corporate\s+event|custom(?:ized)?\s+(?:event|package|discount)|special\s+(?:event|package|request)|event\s+package|event\s+quotation|party\s+package|catering\s+package)\b/i,
   // The existing chat has multilingual customer conversations.
   /\b(?:habitación|habitaciones|alojamiento|reservar|reserva|reservación|pago|tarifa|piscina|estacionamiento|cabaña|cancelar\s+mi\s+reserva)\b/i,
   /(?:预订|预约|房间|客房|空房|度假村|酒店|入住|退房|退款|取消预订|停车|游泳池|住宿|房费|费用|价格|支付|付款|押金)/u,
