@@ -182,6 +182,7 @@ async function sendAiMessage(options = {}) {
       // an unrelated Nipa Hut (mergeContext uses nullish fallbacks).
       if (((data.mode === "verified_accommodation_preview" ||
              data.mode === "verified_cheapest_accommodation" ||
+             data.mode === "verified_room_price_followup" ||
              data.mode === "verified_pair_recommendation") &&
             !Object.prototype.hasOwnProperty.call(data.extracted_context, "room_id")) ||
           data.mode === "accommodation_selection_needed" ||
