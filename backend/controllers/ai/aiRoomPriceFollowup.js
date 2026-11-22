@@ -111,9 +111,12 @@ function shortlistRoomFollowup(rows,intent,context={}) {
       : amountFor(r,intent.stay)??Infinity;
     return p;
   };
-  matching.sort((a,b)=>score(a)-score(b)||
-    Number(a.capacity)-Number(b.capacity)||Number(a.id)-Number(b.id));
-  return {rows:matching.slice(0,3),baseline,scope,guests:n,stay:intent.stay,
+  // A changed guest count needs one NEW best-fit room focus so a later
+  // "may mas mura ba diyan?" unambiguously compares with that new room.
+  matching.sort((a,b)=>intent.kind==="group"
+    ? Number(a.capacity)-Number(b.capacity)||score(a)-score(b)||Number(a.id)-Number(b.id)
+    : score(a)-score(b)||Number(a.capacity)-Number(b.capacity)||Number(a.id)-Number(b.id));
+  return {rows:matching.slice(0,intent.kind==="group"?1:3),baseline,scope,guests:n,stay:intent.stay,
     kind:intent.kind,hasLower: Boolean(baseline && intent.kind==="cheaper" && matching.length)};
 }
 const peso = n => "₱"+Number(n).toLocaleString("en-PH",{
