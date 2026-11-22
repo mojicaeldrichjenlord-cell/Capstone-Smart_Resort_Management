@@ -20,6 +20,34 @@ const UNKNOWN_REPLIES = Object.freeze({
   arabic: "عذرًا، هذه المعلومة غير مؤكدة في سجلات المنتجع الحالية. هل ترغب في معلومات التواصل مع الاستقبال؟",
 });
 
+
+// A genuinely underspecified resort inquiry deserves ONE simple follow-up,
+// rather than a guess, a scripted multi-question form or an off-topic refusal.
+// No model tokens or database queries are needed for these bare prompts.
+function clarifyAmbiguousResortQuestion(message, language = "english") {
+  const text = String(message || "").normalize("NFKC").trim().toLowerCase()
+    .replace(/[?!。！？.,]+$/gu, "").trim();
+  const price = /^(?:magkano|hm|how\s+much|what(?:'s|\s+is)\s+(?:the\s+)?price|price|presyo|tagpila|pila\s+(?:ang\s+)?presyo)(?:\s+po|\s+please|\s+pls)?$/iu.test(text);
+  const suggestion = /^(?:ano(?:ng)?\s+ma-?suggest\s+mo|ano\s+ma-?recommend\s+mo|what\s+do\s+you\s+recommend|any\s+recommendation|recommend\s+something|suggest\s+something|unsa\s+imong\s+ma-?recommend)(?:\s+po|\s+please|\s+pls)?$/iu.test(text);
+  if (!price && !suggestion) return null;
+  const replies = suggestion ? {
+    english: "Sure! How many guests are you booking for?",
+    tagalog: "Sige po! Ilan po kayong bisita?",
+    taglish: "Sure po! Ilan po kayong guests?",
+    bisaya: "Sige! Pila mo kabuok nga guests?",
+    spanish: "¡Claro! ¿Para cuántas personas buscas alojamiento?",
+    mandarin: "当然可以！请问有几位客人？",
+  } : {
+    english: "Which accommodation would you like the rate for?",
+    tagalog: "Aling accommodation po ang gusto ninyong malaman ang presyo?",
+    taglish: "Aling room o cottage po ang gusto niyong malaman ang rate?",
+    bisaya: "Unsang kwarto o cottage ang gusto ninyong pangutan-on og presyo?",
+    spanish: "¿De qué alojamiento quieres saber el precio?",
+    mandarin: "您想了解哪间客房或哪种住宿的价格？",
+  };
+  return replies[language] || replies.english;
+}
+
 function unknownRecordReply(language = "english") {
   return UNKNOWN_REPLIES[language] || UNKNOWN_REPLIES.english;
 }
@@ -87,6 +115,6 @@ function guardUnsupportedPesoClaims(reply, { language = "english", records = [],
 }
 
 module.exports = {
-  unknownRecordReply, matchUnverifiedServiceQuestion, extractPesoAmounts,
+  unknownRecordReply, clarifyAmbiguousResortQuestion, matchUnverifiedServiceQuestion, extractPesoAmounts,
   verifiedMoneyAmounts, guardUnsupportedPesoClaims,
 };
