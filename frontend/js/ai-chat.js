@@ -1432,7 +1432,7 @@ function getOfflineVerifiedResortReply(message, language, context) {
 
   // Unsupported general policies are handled conservatively even offline.
   // Parking being free does not imply that Wi-Fi or corkage is also free.
-  const unknownPolicy = /\b(?:alcohol|beer|liquor|wine|alak|smoking|vaping|yosi|sigarilyo)\b/i.test(t);
+  const unknownPolicy = /\b(?:alcohol(?:ic)?|beer|liquor|wine|alak|smoking|vaping|yosi|sigarilyo)\b/i.test(t);
   if (unknownPolicy) return withReply(reply(
     (park ? "Parking is free for all vehicles. " : "") +
       "That resort policy has not yet been confirmed. Please ask Front Desk at 0956-912-5625.",
