@@ -185,6 +185,14 @@ function roomPriceFollowupReply(selection,language="taglish"){
       : "Yes po, ito ang "+typePlural+" na may mas mababang listed rate kaysa "+
         selection.baseline.room_name+" sa kaparehong stay slot: ")+items+"."+note;
   }
+  if(selection.rows.length===1) {
+    return (english
+      ? "For "+num+" guests, "+describeRate(selection.rows[0],slot,language)+
+        " is a suitable listed option. Its preview is below."
+      : "Para sa "+num+" guests, puwede po ang "+
+        describeRate(selection.rows[0],slot,language)+
+        ". Nasa ibaba ang room preview.")+note;
+  }
   return (english ? "For "+num+" guests, here are "+typePlural+" from the current listing: "
       : "Para sa "+num+" guests, ito po ang mga "+typePlural+" mula sa current listing: ")+
     items+"."+note;
