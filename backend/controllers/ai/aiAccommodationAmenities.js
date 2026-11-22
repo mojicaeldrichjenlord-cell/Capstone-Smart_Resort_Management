@@ -87,6 +87,25 @@ function amenityEvidence(room, kind) {
 function amenityReply(room, kind, message, language = "english") {
   const name = String(room?.room_name || room?.name || "accommodation").slice(0, 110);
   const status = amenityEvidence(room, kind);
+  if (language === "bisaya") {
+    const feature = {
+      private_cr: "pribadong CR", cr: "CR", aircon: "aircon",
+      ref: "refrigerator", karaoke: "karaoke", table: "lamesa",
+      monoblock: "monoblock chairs",
+    }[kind] || "kini nga amenity";
+    if (status === "none_included")
+      return "Walay apil nga amenities sa " + name + " sumala sa listing.";
+    if (status === "yes") {
+      if (kind === "cr" && amenityEvidence(room, "private_cr") === "yes")
+        return "Oo, naay pribadong CR ang " + name + ".";
+      return "Oo, naay " + feature + " ang " + name + ".";
+    }
+    if (status === "no")
+      return "Sumala sa listing, walay " + feature + " ang " + name + ".";
+    if (status === "listed_unspecified" && kind === "private_cr")
+      return "Naay CR sa listing sa " + name + ", pero wala gikumpirma kung pribado ba. Palihog pangutana sa Front Desk.";
+    return "Wala pa makumpirma sa listing sa " + name + " kung naa bay " + feature + ". Mahimo ninyo kining pangutan-on sa Front Desk.";
+  }
   // For live voice, an explicitly chosen language must win over speech
   // transcript wording. Typed chat passes the detected conversation language.
   const filipino = ["tagalog", "taglish"].includes(String(language).toLowerCase());
