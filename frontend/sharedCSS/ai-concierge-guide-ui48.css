@@ -93,3 +93,19 @@ body[data-ai-chat-surface="public"] .ai-chat-window .ai-quick-question:hover {
   .ai-chat-window .ai-quick-question,
   .ai-chat-window .ai-concierge-action-link { transition: none; }
 }
+
+
+/* Signed-in Customer dark mode: keep action links readable with muted contrast. */
+html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-concierge-action-link {
+  color: #d7f4ef;
+  background: #203d49;
+  border-color: #42746f;
+}
+html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-concierge-action-link:first-child {
+  color: #fff;
+  background: #0e7775;
+  border-color: #25938b;
+}
+html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-concierge-action-link:hover {
+  background: #2d5260;
+}
