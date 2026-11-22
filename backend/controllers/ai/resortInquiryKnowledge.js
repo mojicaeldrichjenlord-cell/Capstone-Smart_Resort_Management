@@ -25,7 +25,7 @@ const RESORT_INQUIRY_FACTS = Object.freeze({
   outsideFood: "CLIENT-VERIFIED 2026-11-23: Guests MAY bring their own food and drinks into the resort, including alcoholic drinks, with NO CORKAGE FEE. Do not confuse corkage with separately charged entrance fees, accommodations or other verified charges.",
   leisurePolicies: "CLIENT-VERIFIED 2026-11-22: Guests MAY bring alcoholic drinks; smoking and vaping are permitted; bringing and using their OWN videoke/karaoke equipment and speakers is permitted. The resort sets NO TIME RESTRICTIONS for these activities. This permission is separate from whether a room provides built-in karaoke/speakers. Do NOT invent extra equipment, unverified fees, smoking areas, noise limits, age restrictions or local-law exemptions.",
   convenienceStore: "CLIENT-VERIFIED 2026-11-23: A convenience store exists INSIDE Arvic Seaside Resort and is OPEN 24 HOURS A DAY, 7 DAYS A WEEK (24/7). Do not invent merchandise, inventory, prices or other services.",
-  restobar: "CLIENT-VERIFIED 2026-11-23: A restobar exists INSIDE Arvic Seaside Resort and is OPEN DAILY 6:00 PM to 6:00 AM THE NEXT DAY, closing at 6:00 AM. The restobar is NOT 24/7. Do not invent its menu, prices, alcohol sales or other special service features.",
+  restobar: "CLIENT-VERIFIED 2026-11-23: A restobar exists INSIDE Arvic Seaside Resort, SERVES FOOD AND DRINKS (general categories only), and is OPEN DAILY 6:00 PM to 6:00 AM THE NEXT DAY, closing at 6:00 AM. The restobar is NOT 24/7. Food and drinks are confirmed but no specific dishes, menu items, brands, prices, or alcoholic-drink sales are verified; never invent these or other special service features.",
   roomWifi: "CLIENT-VERIFIED 2026-11-22: FREE Wi-Fi is available ONLY in room accommodations. It is not included in cottages, function areas or common areas. Never invent a network password, speed, or guaranteed coverage beyond the rooms.",
   location: "The resort is at 17 Mahogany Street, Brgy. Bagong Karsada, Naic, Cavite, Philippines. Do not invent directions or transport routes.",
   openingHours: "The resort is open 24 hours a day, Monday to Sunday. This does NOT mean guests may choose custom check-in/out hours; accommodation booking follows fixed Day/Night slots.",
@@ -562,15 +562,32 @@ function facilityHoursRequested(message) {
   return /\b(?:what\s+time|when\s+does|until\s+what\s+time|how\s+late|anong\s+oras|hanggang\s+anong\s+oras|oras\s+ng|hours?|opening|closing|opens?|closes?|closed|opened|schedule|timings?|24[/-]7|24\s*hours?|everyday|every\s+day|daily|bukas|sarado|nagsasara|nagbubukas|all\s+night|right\s+now)\b/i.test(q);
 }
 
+// AI-67: The client confirms general FOOD AND DRINKS at the restobar,
+// not a specific dish, alcoholic beverage, price or published menu.
+function facilityFoodAndDrinksRequested(message) {
+  const q = normalizeQuestion(message);
+  const mentioned = verifiedResortFacilityMentions(q);
+  if (!mentioned.restobar) return false;
+  const foodOrDrinks = /\b(?:food|foods|meals?|dining|pagkain|kainan|drinks?|beverages?|refreshments?|inumin|pwedeng\s+kumain|puwedeng\s+kumain|makakain)\b/i.test(q);
+  if (!foodOrDrinks) return false;
+  // A question about BRINGING your own food is a separate policy.
+  if (/\b(?:bring|bringing|own\s+food|outside\s+food|magdala|dalang|baon|corkage)\b/i.test(q)) return false;
+  return true;
+}
+
 function matchVerifiedResortFacilities(message) {
   const q = normalizeQuestion(message);
   if (!q || q.length > 400) return null;
   const mentions = verifiedResortFacilityMentions(q);
   if (!mentions.store && !mentions.restobar) return null;
-  // Mixed policy, room and other-service questions go through the existing
-  // grounded routing instead. A time/schedule inquiry is NOW verified.
-  if (/\b(?:room|cottage|booking|reservation|refund|cancel|payment|prices?|costs?|fees?|magkano|how\s+much|rates?|menus?|sell|sold|stock|inventory|items?|products?|available\s+for\s+sale|food|drinks?|beer|alcohol|wifi|wi-fi|pool|parking|pets?|videoke|speakers?|entrance|corkage|deliver|delivery|kitchen|breakfast|lunch|dinner|service|serve|serves)\b/i.test(q)) return null;
-  return {...mentions, hours: facilityHoursRequested(q)};
+  // Prices, menus, stock, specific items, alcohol sales and unrelated
+  // policies remain outside the verified fast path. Only broad restobar
+  // food/drinks service may bypass the former food/service exclusion.
+  if (/\b(?:room|cottage|booking|reservation|refund|cancel|payment|prices?|costs?|fees?|magkano|how\s+much|rates?|menus?|sell|sold|selling|stock|inventory|items?|products?|available\s+for\s+sale|beer|alcohol|wine|liquor|cocktails?|wifi|wi-fi|pool|parking|pets?|videoke|speakers?|entrance|corkage|deliver|delivery|kitchen|breakfast|lunch|dinner)\b/i.test(q)) return null;
+  const foodOrDrinks = /\b(?:food|foods|meals?|dining|pagkain|kainan|drinks?|beverages?|refreshments?|inumin|serve|serves|serving|service|buy|order|kumain|makakain)\b/i.test(q);
+  const offerings = facilityFoodAndDrinksRequested(q);
+  if (foodOrDrinks && !offerings) return null;
+  return {...mentions, hours: facilityHoursRequested(q), offerings};
 }
 
 function verifiedResortFacilitiesReply(mentions, language = "taglish") {
@@ -601,9 +618,24 @@ function verifiedResortFacilitiesReply(mentions, language = "taglish") {
       restobar: "度假村内餐吧每天傍晚 6:00 开门，次日早上 6:00 关门。",
     },
   };
+  const offeringPhrases = {
+    english: "Yes, the restobar serves food and drinks. Specific menu items and prices are not confirmed.",
+    taglish: "Yes po, may food at drinks sa restobar. Hindi pa confirmed ang specific menu at prices.",
+    tagalog: "Opo, may pagkain at inumin sa restobar. Wala pang kumpirmadong partikular na menu o presyo.",
+    bisaya: "Oo, naay pagkaon ug ilimnon sa restobar. Wala pay kumpirmadong espesipikong menu ug presyo.",
+    spanish: "Sí, el restobar ofrece comidas y bebidas. No hay confirmación del menú ni de los precios específicos.",
+    mandarin: "餐吧提供食物和饮料，但具体菜单和价格尚未核实。",
+  };
   if (mentions.hours) {
     const p = hoursPhrases[language] || hoursPhrases.english;
-    return [mentions.store && p.store, mentions.restobar && p.restobar].filter(Boolean).join(" ");
+    return [mentions.store && p.store, mentions.restobar && p.restobar,
+      mentions.offerings && offeringPhrases[language] || (mentions.offerings && offeringPhrases.english)]
+      .filter(Boolean).join(" ");
+  }
+  if (mentions.offerings) {
+    const p = hoursPhrases[language] || hoursPhrases.english;
+    return [mentions.store && p.store, offeringPhrases[language] || offeringPhrases.english]
+      .filter(Boolean).join(" ");
   }
   const phrases = {
     english: {
@@ -644,6 +676,7 @@ function resortInquiryPromptLines() {
     "The confirmed resort-wide NO-ANIMALS/NO-PETS policy applies to all accommodations. Do not invent exceptions.",
     "Own food/drinks ARE permitted with NO corkage fee; Wi-Fi is FREE ONLY in Rooms; pool ALWAYS OPEN with no specific swimwear restrictions.",
     "Different schedules: the resort AND convenience store are open 24/7; the RESTOBAR is open DAILY 6:00 PM to 6:00 AM NEXT DAY and is NOT 24/7. Never confuse these hours.",
+    "The RESTOBAR serves FOOD AND DRINKS, confirmed by the resort; specific menu items, brands, prices and alcohol sales are NOT confirmed. Answer general food/drinks availability yes without guessing particulars.",
     "Alcoholic drinks, smoking/vaping and guests' OWN videoke/speakers ARE ALLOWED with NO resort time restrictions. This does not guarantee that a booked room includes equipment.",
     "NO corkage fees for guests bringing their own food and drinks; Wi-Fi passwords/speeds and parking security/space guarantees remain unverified.",
     "Pool entrance fees or other safety rules, early check-in, provided audio equipment, designated smoking areas and other missing policies: never invent a yes/no,",
@@ -661,4 +694,5 @@ module.exports = {
   matchUnverifiedResortPolicy, getUnverifiedResortPolicyReply,
   verifiedResortFacilityMentions, matchVerifiedResortFacilities,
   verifiedResortFacilitiesReply, facilityHoursRequested,
+  facilityFoodAndDrinksRequested,
 };
