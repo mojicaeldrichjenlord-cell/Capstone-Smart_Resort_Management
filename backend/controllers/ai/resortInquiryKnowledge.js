@@ -344,7 +344,7 @@ function matchVerifiedLeisurePolicies(message) {
   const smoking=/\b(?:smok(?:e|ing|ers?)|cigarettes?|tobacco|vapes?|vaping|e[\s-]?cigarettes?|yosi|sigarilyo|manigarilyo|mag[\s-]?yosi|hithit|fumar|vapear)\b/iu.test(t)||/(?:吸烟|抽烟|电子烟)/u.test(t);
   const audio=/\b(?:videoke|karaoke|mag[\s-]?videoke|mag[\s-]?karaoke|speakers?|bluetooth\s+speakers?|sound\s+system|sound\s+box|soundbox|music\s+system|microphone|mikropono|altavoces?|parlantes?)\b/iu.test(t)||/(?:卡拉OK|音响|扬声器)/u.test(t);
   if(!alcohol&&!smoking&&!audio)return null;
-  const providingContext = /\b(?:do\s+you\s+(?:have|provide|offer)|is\s+there|are\s+there|included|inclusions?|comes?\s+with|has\s+(?:a\s+)?(?:videoke|karaoke|speaker)|may\s+(?:(?:ba|po|sariling)\s+)*(?:videoke|karaoke|speaker)|meron\s+(?:(?:ba|po|sariling)\s+)*(?:videoke|karaoke|speaker)|kasama\s+(?:(?:ba|po|ang)\s+)*(?:videoke|karaoke|speaker)|equipped|provided|built[\s-]?in|rental|rent(?:ing)?)\b/i.test(t);
+  const providingContext = /\b(?:do\s+you\s+(?:have|provide|offer)|(?:is\s+there|are\s+there)\s+(?:(?:a|any|some)\s+)?(?:videoke|karaoke|speakers?|sound\s+system)|included|inclusions?|comes?\s+with|has\s+(?:a\s+)?(?:videoke|karaoke|speaker)|may\s+(?:(?:ba|po|sariling)\s+)*(?:videoke|karaoke|speaker)|meron\s+(?:(?:ba|po|sariling)\s+)*(?:videoke|karaoke|speaker)|kasama\s+(?:(?:ba|po|ang)\s+)*(?:videoke|karaoke|speaker)|equipped|provided|built[\s-]?in|rental|rent(?:ing)?)\b/i.test(t);
   const askingToBring = /\b(?:bring|bringing|brought|dalhin|magdala|mag[\s-]?dala|pwede|puwede|allowed|permit|bawal|can\s+we\s+use|can\s+i\s+use|can\s+we\s+bring)\b/i.test(t);
   const providedEquipmentInquiry=audio && providingContext && !askingToBring;
   if(providedEquipmentInquiry) return null;
@@ -352,11 +352,15 @@ function matchVerifiedLeisurePolicies(message) {
   // current accommodation DB route or Function Area amenity logic.
   if(providedEquipmentInquiry&&!alcohol&&!smoking)return null;
 
+  // Permissions are resort-wide; a specific room/balcony smoking location
+  // has not been confirmed and must not be promised implicitly.
+  const smokingPlace=smoking &&
+    /\b(?:inside\s+(?:a|the|our|my)\s+room|in\s+(?:a|the|our|my)\s+room|sa\s+(?:loob\s+ng\s+)?(?:room|kwarto|kuwarto|cottage)|indoors?|balcony|poolside|designated\s+(?:area|zone))\b/i.test(t);
   const audioAllowed=audio&&!providedEquipmentInquiry;
   // Context in mixed "is smoking allowed AND does the room provide karaoke?"
   // is not simple permission; let grounded model answer every part.
   if(providedEquipmentInquiry)return null;
-  return {alcohol,smoking,audio:audioAllowed};
+  return {alcohol,smoking,audio:audioAllowed,smokingPlace};
 }
 
 function verifiedLeisurePoliciesReply(match,language="taglish") {
@@ -367,37 +371,43 @@ function verifiedLeisurePoliciesReply(match,language="taglish") {
       alcohol:"Yes, guests may bring alcoholic drinks.",
       smoking:"Smoking and vaping are allowed.",
       audio:"You may bring and use your own videoke/karaoke equipment or speakers.",
-      hours:"The resort has no specific time restrictions for these activities."
+      hours:"The resort has no specific time restrictions for these activities.",
+      location:"Whether smoking/vaping is permitted inside a specific room or area hasn't been confirmed; please check with Front Desk."
     },
     tagalog:{
       alcohol:"Opo, maaari pong magdala ng mga inuming may alkohol.",
       smoking:"Pinapayagan po ang paninigarilyo at paggamit ng vape.",
       audio:"Maaari po kayong magdala at gumamit ng sarili ninyong videoke o speakers.",
-      hours:"Wala pong itinakdang oras ng pagbabawal ang resort para sa mga gawaing ito."
+      hours:"Wala pong itinakdang oras ng pagbabawal ang resort para sa mga gawaing ito.",
+      location:"Hindi pa po kumpirmado kung puwedeng manigarilyo o mag-vape sa mismong kuwarto o partikular na lugar; pakitanong po sa Front Desk."
     },
     taglish:{
       alcohol:"Yes po, puwede magdala ng alcoholic drinks.",
       smoking:"Allowed po ang smoking at vaping.",
       audio:"Puwede rin po magdala at gumamit ng sariling videoke at speakers.",
-      hours:"Wala pong specific time restrictions ang resort para sa mga ito."
+      hours:"Wala pong specific time restrictions ang resort para sa mga ito.",
+      location:"Hindi pa po confirmed kung puwede mismo sa loob ng room o specific area; pa-check sa Front Desk."
     },
     bisaya:{
       alcohol:"Oo, pwede magdala og alcoholic drinks.",
       smoking:"Gitugotan ang smoking ug vaping.",
       audio:"Pwede magdala ug mogamit sa inyong kaugalingong videoke o speakers.",
-      hours:"Walay espesipikong time restrictions sa resort niini nga mga kalihokan."
+      hours:"Walay espesipikong time restrictions sa resort niini nga mga kalihokan.",
+      location:"Wala pa makumpirma kung pwede sa sulod mismo sa kwarto o partikular nga lugar; pangutana sa Front Desk."
     },
     spanish:{
       alcohol:"Sí, se pueden traer bebidas alcohólicas.",
       smoking:"Se permite fumar y vapear.",
       audio:"Puede traer y usar su propio karaoke o altavoces.",
-      hours:"El resort no establece restricciones horarias específicas para estas actividades."
+      hours:"El resort no establece restricciones horarias específicas para estas actividades.",
+      location:"No está confirmado si se puede fumar dentro de una habitación o una zona específica; consulte con recepción."
     },
     mandarin:{
       alcohol:"允许携带酒精饮料。",
       smoking:"允许吸烟和使用电子烟。",
       audio:"允许自带并使用卡拉OK设备或音响。",
-      hours:"度假村对这些活动没有特定时间限制。"
+      hours:"度假村对这些活动没有特定时间限制。",
+      location:"是否可以在具体客房或区域内吸烟尚未确认，请咨询前台。"
     }
   };
   const p=phrases[locale];
@@ -407,6 +417,7 @@ function verifiedLeisurePoliciesReply(match,language="taglish") {
   if(match.audio)parts.push(p.audio);
   if(!parts.length)return null;
   parts.push(p.hours);
+  if(match.smokingPlace)parts.push(p.location);
   return parts.join(" ");
 }
 
