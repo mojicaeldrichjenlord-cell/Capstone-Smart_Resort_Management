@@ -6,8 +6,11 @@ const test=require("node:test");
 const assert=require("node:assert/strict");
 const fs=require("node:fs");
 const path=require("node:path");
-const {compoundTopics,compoundRoom,compoundGuestReply}=
+const {compoundTopics,compoundRoom,compoundGuestReply,asksForAccommodationRecommendation}=
   require("../controllers/ai/aiCompoundGuestInquiry");
+const {explicitGuestCount,recommendationLookupMessage}=
+  require("../controllers/ai/aiRecommendationIntake");
+const {selectVerifiedPreviews} = require("../controllers/ai/aiVerifiedPreview");
 const {isResortQuestion}=require("../controllers/ai/aiResortScopeGuard");
 const {verifiedAccommodationCards}=require("../controllers/ai/aiConversationStyle");
 
@@ -122,4 +125,66 @@ test("Compound-policy handler executes BEFORE preview and attaches only verified
   assert.match(source,/mode: "verified_compound_guest_inquiry"/);
   assert.match(source,/compoundRoom\(catalog, message, scopeContext\)/);
   assert.match(source,/verifiedAccommodationCards\(\[combined\.previewRoom\], false\)/);
+});
+
+
+test("AI-64: exact customer screenshot parses 10 po kami and recommends a fresh capacity match",()=>{
+  const q="Hello! 10 po kami at overnight sana. Anong room ang mare-recommend mo? Pwede ba kaming magdala ng sariling food and drinks, pati videoke? May free Wi-Fi rin ba sa room?";
+  assert.equal(explicitGuestCount(q),10);
+  assert.equal(asksForAccommodationRecommendation(q),true);
+  const policies=compoundTopics(q);
+  assert.ok(policies);
+  assert.equal(policies.food,true);
+  assert.equal(policies.audio,true);
+  assert.equal(policies.wifi,true);
+  const selection=selectVerifiedPreviews(rooms,
+    recommendationLookupMessage("room",10),[],{guests:10});
+  assert.equal(selection.rows[0].id,8);
+  const answer=compoundGuestReply(policies,q,{},"taglish",selection.rows[0],true);
+  assert.equal(answer.previewRoom.id,8);
+  assert.equal(verifiedAccommodationCards([answer.previewRoom],false).length,1);
+  assert.match(answer.reply,/Family Room B/);
+  assert.match(answer.reply,/listed capacity.*20/);
+  assert.match(answer.reply,/sariling food at drinks/);
+  assert.match(answer.reply,/sariling videoke at speakers/);
+  assert.match(answer.reply,/free Wi-Fi sa rooms/);
+  assert.doesNotMatch(answer.reply,/guaranteed.*available|confirmed.*availability/i);
+});
+test("AI-64: English combined recommendations and polite spelled-out counts",()=>{
+  const q="Which room would you recommend for 10 guests overnight? Can we bring our own food and speakers, and is Wi-Fi free in rooms?";
+  assert.equal(asksForAccommodationRecommendation(q),true);
+  const recommended=selectVerifiedPreviews(rooms,
+    recommendationLookupMessage("room",10),[],{guests:10}).rows[0];
+  const answer=compoundGuestReply(compoundTopics(q),q,{},"english",recommended,true);
+  assert.equal(answer.previewRoom.id,8);
+  assert.match(answer.reply,/Family Room B/);
+  assert.match(answer.reply,/own food and drinks/);
+  assert.match(answer.reply,/own videoke\/karaoke equipment or speakers/);
+  assert.match(answer.reply,/free Wi-Fi/);
+  assert.equal(explicitGuestCount("Sampu po kami at overnight, puwede bang food at videoke?"),10);
+  assert.equal(explicitGuestCount("10 po kaming guests, puwede ba?"),10);
+});
+test("AI-64: policy-only requests never cause unsolicited accommodation cards",()=>{
+  const q="Pwede po magdala ng food and drinks? May Wi-Fi ba sa room?";
+  assert.equal(asksForAccommodationRecommendation(q),false);
+  assert.equal(asksForAccommodationRecommendation("Can you recommend bringing my own speaker?"),false);
+  const answer=compoundGuestReply(compoundTopics(q),q,{},"taglish",null,false);
+  assert.equal(answer.previewRoom,null);
+});
+test("AI-64: no fabricated match if capacity is insufficient or inventory is empty",()=>{
+  const q="Recommend a room for 10 guests, can we bring own food and speakers? Is there Wi-Fi?";
+  const roomOptions=selectVerifiedPreviews(rooms.slice(0,1),
+    recommendationLookupMessage("room",10),[],{guests:10});
+  assert.equal(roomOptions.rows.length,0);
+  const answer=compoundGuestReply(compoundTopics(q),q,{},"english",null,true);
+  assert.equal(answer.previewRoom,null);
+  assert.match(answer.reply,/couldn't find a listed room with enough capacity/);
+});
+test("AI-64: controller routes combined recommendations through fresh catalog",()=>{
+  const source=fs.readFileSync(path.join(__dirname,
+    "../controllers/ai/geminiChatController.js"),"utf8");
+  assert.match(source,/asksForAccommodationRecommendation\(message\)/);
+  assert.match(source,/recommendationLookupMessage\(/);
+  assert.match(source,/selectVerifiedPreviews\(\s*suitableCatalog, query, \[\], \{ guests \}/);
+  assert.match(source,/recommendation_cards: combined\.previewRoom/);
 });
