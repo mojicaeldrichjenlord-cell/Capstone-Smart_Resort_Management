@@ -9,6 +9,7 @@
  */
 const {
   verifiedGuestAmenitiesReply, verifiedLeisurePoliciesReply,
+  verifiedResortFacilityMentions, verifiedResortFacilitiesReply,
 } = require("./resortInquiryKnowledge");
 const { explicitGuestCount } = require("./aiRecommendationIntake");
 const { isPlainCottageCategory, isFunctionAreaCategory } =
@@ -36,10 +37,14 @@ function compoundTopics(message) {
   const smoking = /\b(?:smok(?:e|ing)|vapes?|vaping|yosi|sigarilyo)\b/i.test(q);
   const audioWord = /\b(?:videoke|karaoke|mag[\s-]?videoke|mag[\s-]?karaoke|speakers?|bluetooth\s+speaker|sound\s+system)\b/i.test(q);
   const audio = audioWord && bring && !PROVIDES_EQUIPMENT.test(q);
+  const facilities = verifiedResortFacilityMentions(q);
+  // Existence is confirmed, but store inventory/menu/hours/prices are not.
+  if ((facilities.store || facilities.restobar) &&
+      /\b(?:sell|sold|serve|serves|menu|prices?|rates?|hours?|open\s+now|closing|opening|products?|items?|inventory|stock|breakfast|lunch|dinner)\b/i.test(q)) return null;
   // Don't treat an asked-for resort service as permission to bring it.
   if ((audioWord && !audio) || (alcohol && RETAIL_ALCOHOL.test(q))) return null;
-  const count=[food,wifi,pool,parking,pets,alcohol,smoking,audio].filter(Boolean).length;
-  return count>=2 ? {food,corkage,wifi,wifiDetails,pool,parking,pets,alcohol,smoking,audio} : null;
+  const count=[food,wifi,pool,parking,pets,alcohol,smoking,audio,facilities.store,facilities.restobar].filter(Boolean).length;
+  return count>=2 ? {food,corkage,wifi,wifiDetails,pool,parking,pets,alcohol,smoking,audio,store:facilities.store,restobar:facilities.restobar} : null;
 }
 const WORDS={
   english:{
@@ -153,6 +158,8 @@ function compoundGuestReply(topics,message,context={},language="taglish",room=nu
     rooms:true,cottage:Boolean(room &&
       (isPlainCottageCategory(room) || isFunctionAreaCategory(room))),
   },locale));
+  if(topics.store||topics.restobar)parts.push(
+    verifiedResortFacilitiesReply({store:topics.store,restobar:topics.restobar},locale));
   if(topics.pool||topics.parking||topics.pets)parts.push(
     verifiedGuestAmenitiesReply({
       pool:topics.pool,parking:topics.parking,pets:topics.pets,
