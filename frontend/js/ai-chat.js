@@ -1347,6 +1347,67 @@ function getOfflineVerifiedResortReply(message, language, context) {
     /(?:宠物|猫|狗)/u.test(t);
   const wifi = /\b(?:wi-?fi|wireless|internet)\b/i.test(t);
   const food = /\b(?:corkage|outside[\s-]?food|outside[\s-]?drinks?|own\s+(?:food|drinks?|beverages?)|bring(?:ing)?\s+(?:(?:my|our|your|their|some|own)\s+)?(?:food|drinks?|snacks?|beverages?)|baon|magbaon|dalang\s+(?:pagkain|inumin|food)|magdala\s+(?:ng\s+)?(?:pagkain|inumin|food)|(?:pwede|puwede)\s+.*\b(?:pagkain|inumin)\b|food\s+policy|food\s+allowed)\b/i.test(t);
+  // AI-62: Same resort-confirmed guest permissions offline, without claiming
+  // any booked accommodation includes karaoke/audio equipment. In multi-part
+  // inquiries, include the other verified facts rather than ignoring them.
+  const guestAlcohol = /\b(?:alcohol(?:ic)?|beer|liquor|wine|spirits|alak|inuming\s+may\s+alkohol)\b/i.test(t);
+  const guestSmoke = /\b(?:smok(?:e|ing)|cigarettes?|tobacco|vap(?:e|ing)|e[\s-]?cigarettes?|yosi|sigarilyo|manigarilyo|mag[\s-]?yosi)\b/i.test(t);
+  const guestAudio = /\b(?:videoke|karaoke|mag[\s-]?videoke|mag[\s-]?karaoke|speakers?|bluetooth\s+speakers?|sound\s+system|soundbox|music\s+system|microphone|mikropono)\b/i.test(t);
+  const audioProvided = guestAudio &&
+    /\b(?:do\s+you\s+(?:have|provide|offer)|is\s+there|are\s+there|included|inclusions?|comes?\s+with|may\s+(?:(?:ba|po|sariling)\s+)*(?:videoke|karaoke|speaker)|meron\s+(?:(?:ba|po|sariling)\s+)*(?:videoke|karaoke|speaker)|kasama\s+(?:(?:ba|po|ang)\s+)*(?:videoke|karaoke|speaker)|provided|built[\s-]?in|rental|rent(?:ing)?)\b/i.test(t) &&
+    !/\b(?:bring|bringing|own|our|my|dalhin|magdala|pwede|puwede|allowed|bawal)\b/i.test(t);
+  const alcoholRetail = guestAlcohol && /\b(?:sell|selling|sold|serve|serving|provide|buy|purchase|order|for\s+sale|magbenta|nagbebenta|tinda)\b/i.test(t);
+  const otherFinancial = /\b(?:downpayment|deposit|paypal|refund|booking\s+total|room\s+rate|room\s+price|magkano\s+(?:ang\s+)?(?:room|kwarto))\b/i.test(t);
+  if ((guestAlcohol || guestSmoke || guestAudio) && !audioProvided &&
+      !alcoholRetail && !otherFinancial) {
+    const answer=[];
+    if (guestAlcohol) answer.push(reply(
+      "Yes, guests may bring alcoholic drinks.",
+      "Opo, maaaring magdala ng mga inuming may alkohol.",
+      "Yes po, puwede magdala ng alcoholic drinks."
+    ));
+    if (guestSmoke) answer.push(reply(
+      "Smoking and vaping are allowed.",
+      "Pinapayagan po ang paninigarilyo at paggamit ng vape.",
+      "Allowed po ang smoking at vaping."
+    ));
+    if (guestAudio) answer.push(reply(
+      "You may bring and use your own videoke or speakers.",
+      "Maaari pong magdala at gumamit ng sariling videoke o speakers.",
+      "Puwede po magdala at gumamit ng sariling videoke at speakers."
+    ));
+    answer.push(reply(
+      "The resort has no specific time restrictions for these activities.",
+      "Wala pong itinakdang oras ng pagbabawal ang resort para sa mga gawaing ito.",
+      "Wala pong specific time restrictions ang resort para sa mga ito."
+    ));
+    if (pet) answer.push(reply(
+      "Pets and other animals are not allowed.",
+      "Bawal po ang mga alagang hayop at iba pang hayop.",
+      "Bawal po ang pets at ibang hayop."
+    ));
+    if (wifi) answer.push(reply(
+      "Free Wi-Fi is provided in rooms only, not cottages or common areas.",
+      "Sa mga kuwarto lamang po may libreng Wi-Fi, hindi sa cottages o common areas.",
+      "Sa rooms lang po may free Wi-Fi, hindi sa cottages o common areas."
+    ));
+    if (food) answer.push(reply(
+      "Guests may bring food and drinks. Corkage fees are not yet confirmed.",
+      "Maaaring magdala ng pagkain at inumin. Hindi pa kumpirmado ang corkage fee.",
+      "Puwede magdala ng food at drinks; hindi pa confirmed ang corkage fee."
+    ));
+    if (pool) answer.push(reply(
+      "The pool is always open, with no specific swimwear restrictions.",
+      "Laging bukas ang pool at walang partikular na swimwear restrictions.",
+      "Always open po ang pool, walang specific swimwear restrictions."
+    ));
+    if (park) answer.push(reply(
+      "Vehicle parking is free.","Libre po ang paradahan ng mga sasakyan.",
+      "Free po ang parking ng vehicles."
+    ));
+    return withReply(answer.join(" "));
+  }
+
   if (pet && !/\b(?:downpayment|deposit|paypal|refund|booking\s+total|room\s+rate|magkano\s+(?:ang\s+)?(?:room|kwarto))\b/i.test(t)) {
     const policy = reply(
       "Sorry, animals and pets are not allowed at Arvic Seaside Resort, including dogs and cats.",
@@ -1372,7 +1433,7 @@ function getOfflineVerifiedResortReply(message, language, context) {
 
   // AI-61: Offline facts mirror the verified backend; don't guess corkage,
   // Wi-Fi credentials, pool entrance price or unrelated safety rules.
-  const alcoholRule = /\b(?:alcohol|beer|liquor|wine|alak|smoking|vaping|yosi|sigarilyo|videoke|karaoke)\b/i.test(t);
+  const alcoholRule = /\b(?:alcohol(?:ic)?|beer|liquor|wine|alak|smoking|vaping|yosi|sigarilyo|videoke|karaoke)\b/i.test(t);
   const otherBooking= /\b(?:downpayment|deposit|paypal|refund|booking\s+status|room\s+rate|magkano\s+(?:ang\s+)?(?:room|kwarto))\b/i.test(t);
   if ((wifi || food || pool) && !alcoholRule && !otherBooking) {
     const cottage = /\b(?:cottages?|kubo|nipa\s+hut|pavilions?|function\s+areas?|lobby|common\s+areas?|poolside)\b/i.test(t) &&
