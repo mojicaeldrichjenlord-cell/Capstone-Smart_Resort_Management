@@ -118,84 +118,98 @@ function peso(value) {
 }
 
 function paymentReply(message, context, room, language = "taglish") {
-  const filipino = language === "tagalog" || language === "taglish";
   const stay = getPaymentStayKind(message, context);
-  const field = stay === "overnight" ? room?.overnight_price :
-    stay === "day" ? room?.day_price : null;
-  const amount = validRate(field);
-  const name = room && String(room.room_name || room.name || "").trim();
-  const isListed = room && (!room.status ||
+  // AI-54: The deposit on a single standard slot is determinable without
+  // a Day/Night choice ONLY when BOTH live DB-listed rates are identical.
+  // Extended/multi-day requests require their own verified stay breakdown.
+  const nonStandard = /\b(?:extended|22\s*hours?|23\s*hours?|multi[\s-]?days?|multi[\s-]?nights?|several\s+nights?)\b/i.test(message) ||
+    /\b(?:[2-9]|[1-9][0-9]+)\s*(?:nights?|days?(?!\s*tour\b)|gabi|araw)\b/i.test(message);
+  const day = validRate(room?.day_price);
+  const night = validRate(room?.overnight_price);
+  const equalStandardRates = !stay && !nonStandard && day !== null &&
+    night !== null && Math.abs(day - night) < 0.005;
+  const amount = nonStandard ? null : stay === "overnight" ? night :
+    stay === "day" ? day : equalStandardRates ? day : null;
+  const name = room && String(room.room_name || room.name || "").trim()
+    .replace(/<[^>]*>/g," ").slice(0,100);
+  const listed = !!room && (!room.status ||
     String(room.status).toLowerCase().trim() === "available");
-  // Casual, spoken-friendly Taglish. Keep all calculations exactly the
-  // same as the other language paths and never imply a confirmed booking.
+  const verified = !!room && listed && amount !== null;
+  const half = verified ? peso(amount * 0.5) : null;
+  const rate = verified ? peso(amount) : null;
+
   if (language === "bisaya") {
-    let intro;
-    if (room && !isListed) {
-      intro = "Ang " + name + " wala karon gi-mark nga available sa listing, busa dili ko makahatag ug payable estimate.";
-    } else if (room && stay && amount !== null) {
-      intro = "Sa " + name + ", ang listed " + (stay === "overnight" ? "overnight" : "day tour") +
-        " rate kay " + peso(amount) + " alang sa usa ka standard slot. Ang estimated 50% downpayment kay " + peso(amount * 0.5) +
-        " pinaagi sa PayPal; ang nahibilin kay " + peso(amount * 0.5) + ".";
-    } else if (room) {
-      intro = "Day Tour ba o Night ang gusto ninyo sa " + name + "? Aron sakto ang rate nga ma-check.";
-    } else {
-      intro = "Unsang accommodation ang inyong plano i-book? Aron ma-check ang listed rate.";
-    }
-    return intro + " Lahi ang entrance fees ug ubang applicable charges. Ang booking page mag-confirm sa final amount ug slot availability.";
+    const intro = !room ? "Unsang accommodation ang inyong plano i-book?" :
+      !listed ? "Wala sa current available listing ang " + name + ", busa dili ko makahatag og booking estimate." :
+      verified ? "Sa " + name + ", " + (equalStandardRates ? "pareho ang listed Day Tour ug Night rate nga " : "ang listed rate kay ") +
+        rate + " alang sa usa ka standard slot. Ang estimated 50% downpayment kay " + half +
+        "; ang nahibiling accommodation balance kay " + half + "." :
+      nonStandard ? "Para sa extended o multi-day stay sa " + name +
+        ", kinahanglan i-check ang eksaktong duration ug total sa booking page." :
+        "Day Tour ba o Night slot ang gusto ninyo sa " + name + "? Lahi ang listed rates.";
+    return intro + " Sa online booking/payment page magbayad pinaagi sa PayPal. Automatic ang confirmation human sa successful PayPal capture; dili na kinahanglan mag-upload og payment screenshot. Ang nahibiling accommodation balance ug lahing entrance fees bayran sa resort. Ang final amount ug availability i-check sa booking page.";
   }
+
+  if (language === "spanish") {
+    const intro = !room ? "¿Qué alojamiento deseas reservar?" :
+      !listed ? name + " no figura como disponible en la lista actual, así que no puedo estimar la reserva." :
+      verified ? "Para " + name + ", " + (equalStandardRates ? "las tarifas de día y noche son iguales: " : "la tarifa indicada es ") +
+        rate + " por un turno estándar. El anticipo estimado del 50 % es " + half + " y el saldo del alojamiento es " + half + "." :
+      nonStandard ? "Para una estancia extendida en " + name + ", confirma la duración y el precio total en la página de reservas." :
+        "¿Prefieres el turno de día o de noche en " + name + "? Las tarifas son diferentes.";
+    return intro + " Paga el anticipo en PayPal desde la página de reservas. La confirmación es automática tras el cobro exitoso; no hace falta subir un comprobante. El saldo del alojamiento y las entradas se pagan en el resort. Confirma el importe final y la disponibilidad antes de pagar.";
+  }
+
+  if (language === "mandarin") {
+    const intro = !room ? "您准备预订哪间住宿？" :
+      !listed ? name + " 目前未被标记为可预订房源，因此无法估算付款。" :
+      verified ? name + " 的" + (equalStandardRates ? "日间与夜间挂牌价格相同，均为" : "当前挂牌价格为") +
+        rate + "（一个标准时段）；预计 50% 订金为 " + half + "，剩余住宿费为 " + half + "。" :
+      nonStandard ? "如需延长或多日入住，请在预订页面确认具体时长与费用。" :
+        "您想选择 " + name + " 的日间还是夜间时段？目前两种价格不同。";
+    return intro + " 在线预订付款页面通过 PayPal 支付订金；成功扣款后系统自动确认，无需上传付款截图。剩余住宿费和单独的入场费在度假村支付。最终金额及可用时段以预订页面为准。";
+  }
+
   if (language === "taglish") {
-    let lead;
-    if (room && !isListed) {
-      lead = "Sorry po, hindi currently available sa listing yung " + name +
-        ", kaya hindi pa tayo makakapagbigay ng booking estimate.";
-    } else if (room && stay && amount !== null) {
-      lead = "For " + name + " po, " + peso(amount) + " yung listed " +
-        (stay === "overnight" ? "overnight" : "day tour") +
-        " rate for one standard slot. Estimated 50% downpayment is " +
-        peso(amount * 0.5) + " via PayPal, then " + peso(amount * 0.5) +
-        " yung remaining room balance.";
-    } else if (room) {
-      lead = "For " + name + " po, day tour or overnight ba ang plan niyo? " +
-        "Para tama yung rate na ma-estimate natin.";
-    } else {
-      lead = "Anong room po ang balak niyong i-book? " +
-        "Para ma-check natin yung correct listed rate.";
-    }
-    const fees = "Separate pa po ang entrance fees and other charges na babayaran onsite.";
-    const notice = "Final amount and slot availability sa booking page pa po mache-check.";
-    return [lead, fees, notice].join(" ");
+    const intro = !room ? "Anong accommodation po ang balak niyong i-book?" :
+      !listed ? "Hindi currently available sa listing ang " + name +
+        ", kaya hindi pa ako makapagbigay ng payable estimate." :
+      verified ? "For " + name + " po, " + (equalStandardRates
+        ? "parehong " + rate + " ang listed Day Tour at Night rate"
+        : rate + " ang listed " + (stay === "overnight" ? "Night" : "Day Tour") + " rate") +
+        " for one standard slot. Estimated 50% downpayment: " + half +
+        "; remaining accommodation balance: " + half + "." :
+      nonStandard ? "Para sa extended o multi-day stay ng " + name +
+        ", sa booking page pa natin mache-check ang exact duration at total." :
+        "For " + name + " po, Day Tour or Night ba ang plan niyo? Magkaiba kasi ang listed rates.";
+    return intro + " Sa online booking/payment page po magbabayad via PayPal. Automatic ang confirmation kapag successful ang payment capture—walang screenshot upload na kailangan. Yung remaining accommodation balance, separate entrance fees at applicable charges ay sa resort babayaran. Estimated standard rate lang ito; final amount at slot availability sa booking page pa mache-check.";
   }
-  let rateLine;
-  if (room && !isListed) {
-    rateLine = filipino
-      ? "Ang " + name + " po ay hindi kasalukuyang listed as available. Hindi muna ako magbibigay ng payable quote para rito."
-      : name + " is not currently listed as available, so I cannot give a payable quote for it.";
-  } else if (room && stay && amount !== null) {
-    rateLine = filipino
-      ? "Para po sa " + name + ", ang listed " + (stay === "overnight" ? "overnight" : "day tour") +
-        " rate para sa isang standard slot ay " + peso(amount) +
-        ". Estimated 50% downpayment: " + peso(amount * 0.5) +
-        "; natitirang accommodation balance: " + peso(amount * 0.5) + "."
-      : "For " + name + ", the listed " + (stay === "overnight" ? "overnight" : "day-tour") +
-        " rate for one standard slot is " + peso(amount) +
-        ". Estimated 50% downpayment: " + peso(amount * 0.5) +
-        "; remaining accommodation balance: " + peso(amount * 0.5) + ".";
-  } else if (room) {
-    rateLine = filipino
-      ? "Para po sa " + name + ", kailangan munang i-confirm ang exact stay type para ma-compute ang applicable accommodation rate."
-      : "For " + name + ", please confirm the stay type so I can estimate the applicable accommodation rate.";
-  } else {
-    rateLine = filipino
-      ? "Aling accommodation po ang balak ninyong i-book? Para mabigyan ko kayo ng tamang estimated amount."
-      : "Which accommodation are you considering? I can help estimate the amount from its listed rate.";
+
+  if (language === "tagalog") {
+    const intro = !room ? "Aling accommodation po ang balak ninyong i-book?" :
+      !listed ? "Hindi po kasalukuyang available sa listing ang " + name + ", kaya hindi pa ako makapagbigay ng tantiya." :
+      verified ? "Para po sa " + name + ", " + (equalStandardRates
+        ? "parehong " + rate + " ang nakatalang Day Tour at Night na presyo"
+        : rate + " ang nakatalang presyo sa " + (stay === "overnight" ? "gabi" : "araw")) +
+        " para sa isang karaniwang slot. Tinatayang 50% na paunang bayad: " + half +
+        "; natitirang bayad sa matutuluyan: " + half + "." :
+      nonStandard ? "Para sa extended o maraming araw na pananatili sa " + name +
+        ", sa booking page pa po kukumpirmahin ang tagal at kabuuang halaga." :
+        "Day Tour po ba o Night slot ang pipiliin ninyo sa " + name + "? Magkaiba po ang nakatalang presyo.";
+    return intro + " Sa online booking/payment page magbabayad gamit ang PayPal. Awtomatikong makukumpirma ang booking matapos ang matagumpay na payment capture; hindi na kailangang mag-upload ng resibo. Sa resort babayaran ang natitirang halaga at hiwalay na entrance fees. Ang pinal na presyo at availability ay sa booking page pa makukumpirma.";
   }
-  const paymentLine = filipino
-    ? "Sa kasalukuyang online checkout, PayPal ang ginagamit sa 50% accommodation downpayment. Sa resort babayaran ang natitirang accommodation balance, entrance fees, at applicable charges."
-    : "The current online checkout uses PayPal for the 50% accommodation downpayment. The remaining accommodation balance, entrance fees, and applicable charges are paid at the resort.";
-  const disclaimer = filipino
-    ? "Estimate lang po ito; hindi pa verified ang petsa, booking slot, o final total. Ang booking/payment page ang magko-confirm ng babayaran."
-    : "This is only an estimate: the date, slot and final total have not been verified. The booking/payment page confirms the amount.";
-  return [rateLine, paymentLine, disclaimer].join(" ");
+
+  const intro = !room ? "Which accommodation are you planning to book?" :
+    !listed ? name + " is not currently listed as available, so I can't give a booking estimate." :
+    verified ? "For " + name + ", " + (equalStandardRates
+      ? "both the listed Day Tour and Night rate are " + rate
+      : "the listed " + (stay === "overnight" ? "Night" : "Day Tour") + " rate is " + rate) +
+      " for one standard slot. Estimated 50% downpayment: " + half +
+      "; remaining accommodation balance: " + half + "." :
+    nonStandard ? "For extended or multi-day stays at " + name +
+      ", confirm the exact duration and total on the booking page." :
+      "Would you prefer Day Tour or Night at " + name + "? The listed rates differ.";
+  return intro + " Pay the online downpayment via PayPal on the booking/payment page. Successful PayPal capture automatically confirms the reservation; no screenshot upload is required. The remaining accommodation balance, separate entrance fees and applicable charges are paid at the resort. Final price and slot availability must be checked on the booking page.";
 }
 
 module.exports = {
