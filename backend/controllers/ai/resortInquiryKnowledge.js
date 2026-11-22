@@ -508,6 +508,13 @@ function matchUnverifiedResortPolicy(message, context = {}) {
 
 function getUnverifiedResortPolicyReply(match, language) {
   if (!match) return null;
+  // AI-65: This formerly unverified fallback must not contradict the
+  // client-confirmed zero-corkage policy when other matchers miss a paraphrase.
+  if (match.kind === "food") {
+    const parking = match.mentionsParking
+      ? verifiedGuestAmenitiesReply({parking:true},language) + " " : "";
+    return parking + verifiedGuestAmenitiesReply({food:true,corkage:true},language);
+  }
   if (!["english", "tagalog", "taglish"].includes(language)) {
     // Mixed known/unknown questions can preserve the independently verified
     // Free parking and known guest policies may accompany another unknown fee.
