@@ -1153,8 +1153,8 @@ exports.chatWithGemini = async (req, res) => {
     const resortInquiry = matchResortInquiry(message);
     if (resortInquiry) {
       const language = 
-        guessInquiryLanguage(message) ||
         detectLanguageFromMessage(message) ||
+        guessInquiryLanguage(message) ||
         normalizeLanguageStyle(req.body.language_style) ||
         normalizeLanguageStyle(req.body.context?.language_style) ||
         "english";
@@ -1183,8 +1183,8 @@ exports.chatWithGemini = async (req, res) => {
     );
     if (unverifiedPolicy) {
       const language = 
-        guessInquiryLanguage(message) ||
         detectLanguageFromMessage(message) ||
+        guessInquiryLanguage(message) ||
         normalizeLanguageStyle(req.body.language_style) ||
         normalizeLanguageStyle(savedInquiryContext.language_style) || "english";
       return res.status(200).json({
