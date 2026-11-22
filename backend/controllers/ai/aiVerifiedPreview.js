@@ -38,7 +38,11 @@ function requestedCategory(value) {
 function guestCountFromText(value) {
   const text = String(value || "");
   const match = text.match(/\b(\d{1,3})\s*(?:na\s*)?(?:tao|pax|guests?|persons?|people|kami)\b/i) ||
-    text.match(/\b(?:para\s+sa|good\s+for|for)\s+(\d{1,3})\b/i);
+    text.match(/\b(?:para\s+sa|good\s+for|for)\s+(\d{1,3})\b/i) ||
+    // AI-65: English group-size phrasing in compound resort questions.
+    text.match(/\b(?:group|party)\s+of\s+(\d{1,3})\b/i) ||
+    text.match(/\b(?:we(?:'re| are)|there are)\s+(\d{1,3})\s+(?:of\s+us|guests?|people)\b/i) ||
+    text.match(/\b(\d{1,3})\s+of\s+us\b/i);
   if (match) {
     const count = Number(match[1]);
     return Number.isSafeInteger(count) && count > 0 && count <= 200 ? count : 0;
@@ -120,7 +124,8 @@ function categoryMatches(room, category) {
   if (category === "cottage") return /cottage|shade|hut/.test(kind) ||
     /cottage|nipa hut|shade/.test(name);
   if (category === "single") return /single room/.test(name);
-  if (category === "room") return /\broom\b/.test(kind) && !/function/.test(kind);
+  // Both "Room" and "Rooms" are valid Admin-managed category labels.
+  if (category === "room") return /\brooms?\b/.test(kind) && !/function/.test(kind);
   return false;
 }
 
@@ -203,6 +208,16 @@ function selectVerifiedPreviews(catalog, message, recentTurns = [], context = {}
 function verifiedPreviewReply(selection, language) {
   // Keep the separate pure-Tagalog wording while using everyday Taglish in
   // voice and text chat. Room selection and card facts remain unchanged.
+  if (language === "bisaya") {
+    if (!selection?.targetKnown) return "Unsang kwarto o cottage ang gusto ninyong tan-awon?";
+    if (!selection.rows?.length) return "Walay nakalistang accommodation nga mohaom sa inyong gipangita. Suwayi og laing klase o guest count.";
+    if (selection.alternative) return "Walay cottage nga igo sa inyong grupo sumala sa listed capacity. Mao ni ang mas dagkong Function Areas; i-check gihapon ang date ug slot sa booking page.";
+    if (selection.rows.length === 1) {
+      const name = String(selection.rows[0].room_name || selection.rows[0].name || "accommodation");
+      return "Mao ni ang preview sa " + name + ". I-klik ang View Details para sa photos ug impormasyon.";
+    }
+    return "Mao ni ang mga accommodation nga mohaom sa inyong gipangita. Tan-awa ang photos ug details sa cards.";
+  }
   const taglish = language === "taglish";
   if (taglish) {
     if (!selection?.targetKnown) return "Sure po! Anong room or cottage ang gusto niyong makita?";

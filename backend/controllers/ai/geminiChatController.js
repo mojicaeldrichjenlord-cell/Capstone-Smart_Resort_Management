@@ -5,13 +5,18 @@ const { generateGemini, geminiPublicError, geminiErrorStatus } = require("./gemi
 const { matchGeneralPolicyQuestion, inferPolicyLanguage, getPolicyReply, policyPromptLines } = require("./resortPolicyKnowledge");
 const {
   matchResortInquiry, guessInquiryLanguage, getResortInquiryReply,
-  resortInquiryPromptLines, matchUnverifiedResortPolicy,
-  getUnverifiedResortPolicyReply,
+  resortInquiryPromptLines, matchVerifiedPetPolicy, verifiedPetPolicyReply,
+  matchVerifiedGuestAmenities, verifiedGuestAmenitiesReply,
+  matchVerifiedLeisurePolicies, verifiedLeisurePoliciesReply,
+  matchUnverifiedResortPolicy, getUnverifiedResortPolicyReply,
+  matchVerifiedResortFacilities, verifiedResortFacilitiesReply,
 } = require("./resortInquiryKnowledge");
 const { validateAiStayWindow, calendarDayDifference, addCalendarDays } = require("./resortStayWindow");
 const { normalizeRecentTurns, wantsAccommodationCards, verifiedAccommodationCards, tidyAssistantReply } =
   require("./aiConversationStyle");
-const { requestedAmenity, amenityReply } = require("./aiAccommodationAmenities");
+const {
+  requestedAmenities, amenityReply, multiAmenityReply,
+} = require("./aiAccommodationAmenities");
 const { generalCategoryAmenitiesReply } = require("./aiAccommodationCategoryPolicy");
 const { isNaturalRoomDetailsQuestion, naturalRoomDetailsReply } = require("./aiNaturalRoomDetails");
 const { isFreeEntranceQuestion, explicitEntranceRoomName, verifiedFreeEntranceReply } = require("./aiAccommodationEntrance");
@@ -20,6 +25,8 @@ const { isVerifiedPreviewRequest, selectVerifiedPreviews, verifiedPreviewReply,
   requestedCategory } = require("./aiVerifiedPreview");
 const { isRoomPaymentInquiry, resolvePaymentRoom, paymentReply } =
   require("./aiFocusedPaymentReply");
+const { compoundTopics, compoundRoom, compoundGuestReply,
+  asksForAccommodationRecommendation } = require("./aiCompoundGuestInquiry");
 const {
   matchAccommodationCountQuestion, countSummary, countReply,
 } = require("./aiAccommodationCounts");
@@ -30,6 +37,21 @@ const { isPersonalizedRecommendation, explicitGuestCount, savedGuestCount,
   guestCountQuestion, guestCountFollowUp: pendingGuestRecommendationAnswer,
   guestCountCorrection, recommendationLookupMessage
 } = require("./aiRecommendationIntake");
+const {
+  unknownRecordReply, clarifyAmbiguousResortQuestion,
+  matchUnverifiedServiceQuestion, guardUnsupportedPesoClaims,
+} = require("./aiGroundedResponseRules");
+const {
+  matchConciergeGuide, isMixedEntranceAndCorkage, conciergeGuideReply,
+  CONTACT_EMAIL,
+} = require("./aiConciergeGuidance");
+const {
+  isCatalogRateOverviewQuestion, catalogRateOverview,
+} = require("./aiCatalogRateGuide");
+const {
+  isComparisonQuestion, selectComparisonRooms, comparisonReply,
+  isPairRecommendationQuestion, pairForRecommendation, pairRecommendation,
+} = require("./aiAccommodationComparison");
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -142,6 +164,7 @@ function normalizeLanguageStyle(value) {
   if (!text) return null;
   if (text.includes("taglish") || text.includes("filipino")) return "taglish";
   if (text.includes("tagalog")) return "tagalog";
+  if (text.includes("bisaya") || text.includes("cebuano") || text.includes("binisaya")) return "bisaya";
   if (text.includes("spanish") || text.includes("español")) return "spanish";
   if (text.includes("mandarin") || text.includes("chinese") ||
       text.includes("中文") || text.includes("普通话")) return "mandarin";
@@ -195,6 +218,17 @@ function normalizeSlotPreference(value) {
 function detectLanguageFromMessage(message) {
   const text = normalizeText(message);
   if (!text) return null;
+  // Cebuano/Bisaya must not be mistaken for old Taglish chat context.
+  // Require distinctive Bisaya words; generic "po" or "ba" aren't enough.
+  const bisaya = text.match(/\b(?:naa|moy|aduna|pila|tagpila|unsa|asa|kanus-a|palihog|diha|dinha|kamo|namo|gikan|daghan|puy-anan|bai|salamat\s+kaayo)\b/giu) || [];
+  if (bisaya.length >= 2 ||
+      (/\b(?:tagpila|kanus-a|maayong\s+(?:buntag|udto|hapon|gabii))\b/iu.test(text)) ||
+      (/\b(?:naa|pila|unsa|asa)\b/iu.test(text) &&
+       /\b(?:moy|inyo|inyong|ninyo|kamo|diha|pud|gyud|ba|ang|ka)\b/iu.test(text))) return "bisaya";
+  // Clear English questions (including "May I...") must not inherit
+  // the previous guest's Taglish preference.
+  if (/^(?:may\s+i\b|do\s+you\b|does\s+the\b|is\s+there\b|are\s+there\b|how\s+(?:much|many)\b|what\s+(?:is|are)\b)/i.test(text) &&
+      !/\b(?:po|kayo|ba|bang|pwede|puwede|magkano|saan|yung|meron)\b/i.test(text)) return "english";
   // A bare Filipino slot answer should use Filipino rather than default English.
   if (/^(?:umaga|gabi|day tour po|night po)$/.test(text)) return "tagalog";
 
@@ -213,6 +247,9 @@ function detectLanguageFromMessage(message) {
 
   // Detect common Spanish resort questions without relying on prior
   // conversation settings. Single "para" is ambiguous with Tagalog.
+  if (/[¿¡]/u.test(text) &&
+      /\b(?:tienen|tiene|quiero|busco|cu[aá]nto|cuesta|habitaciones?|reserva|precio|piscina|alojamiento)\b/iu.test(text))
+    return "spanish";
   const spanishTokens = text.match(/\b(?:hola|habitaciones?|cu[aá]nto|cuesta|precios?|reservar|reservaci[oó]n|disponibles?|personas|noches|gracias|necesito|tenemos|quiero|busco|tienen|buenas|alojamiento)\b/giu) || [];
   if (spanishTokens.length >= 2 ||
       (/\b(?:hola|gracias|habitaciones?|cu[aá]nto|reservaci[oó]n)\b/iu.test(text)
@@ -243,8 +280,13 @@ function detectLanguageFromMessage(message) {
     if (new RegExp("\\b" + word + "\\b", "i").test(text)) tagalogScore++;
   });
 
+  // The official name "Family Room B" must not count as an English
+  // sentence when the guest speaks otherwise pure Tagalog. Keep the
+  // original message for intent and DB matching; only clean the score.
+  const languageScoreText = text.replace(
+    /\b(?:family|single|double)\s+room\s+[a-z0-9]+\b/giu, " ");
   englishWords.forEach((word) => {
-    if (new RegExp("\\b" + word + "\\b", "i").test(text)) englishScore++;
+    if (new RegExp("\\b" + word + "\\b", "i").test(languageScoreText)) englishScore++;
   });
 
   if (tagalogScore >= 2 && englishScore >= 2) return "taglish";
@@ -374,7 +416,7 @@ async function getAccommodationCatalog() {
     SELECT
       a.id, a.name AS room_name, a.image, a.description, a.amenities, a.status,
       a.max_capacity AS capacity, a.day_price, a.overnight_price,
-      a.extended_price, c.name AS category_name
+      a.extended_price, a.free_entrance_pax, c.name AS category_name
     FROM accommodations a
     JOIN accommodation_categories c ON c.id = a.category_id
     ORDER BY a.id DESC
@@ -695,6 +737,8 @@ language_style rules:
 - Return "spanish" if the message is mostly Spanish.
 - Return "mandarin" if the message is Mandarin Chinese (including Simplified Chinese characters).
 - Return "english" if the message is mostly English.
+- Return "bisaya" if the message is in Cebuano/Bisaya.
+- For Japanese, Korean, Arabic, French, and German return their language names.
 - Do not infer a different language merely because stored conversation context uses one.
 
 Allowed intent values:
@@ -765,6 +809,7 @@ function getQuotaBookingGuidance(language) {
     english: "For online reservations, choose an accommodation and a fixed Day Tour (morning) or Night (evening) slot on the booking page; check-in/check-out times are not customizable. The required PayPal downpayment is 50% of the final accommodation price. Pay the remaining 50%, entrance fee, and applicable onsite charges at the resort. The secure payment page shows the exact amount before payment; a booking is not confirmed by this chat.",
     tagalog: "Para po sa online reservation, pumili kayo ng accommodation at fixed Day Tour (umaga) o Night (gabi) slot sa booking page; hindi custom ang check-in at check-out times. Ang kinakailangang downpayment sa PayPal ay 50% ng final accommodation price. Ang natitirang 50%, entrance fee, at iba pang applicable charges ay babayaran sa resort. Makikita ninyo ang eksaktong halaga sa secure payment page bago magbayad. Hindi po nakukumpirma ang booking sa chat.",
     taglish: "For online booking po, choose a room at fixed Day Tour or Night slot sa booking page. Hindi custom yung check-in time. 50% ng final room price ang downpayment via PayPal; yung remaining 50%, entrance fees, at other charges ay sa resort babayaran. Check niyo po yung final amount sa payment page. Hindi pa confirmed ang booking dito sa chat.",
+    bisaya: "Para sa online booking, pilia ang accommodation ug fixed Day Tour o Night slot sa booking page. 50% sa final presyo ang downpayment sa PayPal. Ang nahibiling bayad ug entrance fees bayran sa resort. Sa booking page makita ang final amount; dili makumpirma ang reservation dinhi sa chat.",
     spanish: "Para reservar en línea, elija alojamiento y horario en la página de reservas. El anticipo obligatorio por PayPal es el 50 % del precio final del alojamiento. El 50 % restante, la entrada y otros cargos se pagan en el resort. Confirme el importe exacto en la página de pago; el chat no confirma reservas.",
     mandarin: "在线预订时，请在预订页面选择住宿和时段。须通过 PayPal 支付最终住宿价格的 50% 作为订金。剩余 50%、入场费及其他现场费用在度假村支付。准确金额以安全付款页面为准；聊天不会确认预订。",
   }[language] || "For online reservations, pay 50% of the final accommodation price through PayPal on the secure booking page. Pay the balance and entrance fees onsite.";
@@ -774,6 +819,7 @@ function getQuotaBookingGuidance(language) {
 function getNaturalDownpaymentReply(language) {
   return {
     english: "The online downpayment is 50% of the final accommodation price via PayPal. The remaining 50% and separate entrance fees are paid onsite; check the final amount on the booking page.",
+    bisaya: "50% sa final presyo sa accommodation ang online downpayment pinaagi sa PayPal. Ang nahibiling 50% ug entrance fees bayran sa resort; tan-awa ang final amount sa booking page.",
     tagalog: "50% po ng final accommodation price ang online downpayment sa PayPal. Sa resort babayaran ang natitirang 50% at hiwalay na entrance fee; nasa booking page ang final amount.",
     taglish: "50% po ng final accommodation price ang online downpayment via PayPal. Yung remaining 50% at separate entrance fees ay onsite babayaran; final amount nasa booking page.",
     spanish: "El anticipo en línea es el 50 % del alojamiento por PayPal. La entrada se paga aparte; verá el total antes de pagar.",
@@ -1058,6 +1104,21 @@ exports.chatWithGemini = async (req, res) => {
     const scopeContext = req.body.context && typeof req.body.context === "object" &&
       !Array.isArray(req.body.context) ? req.body.context : {};
     const recentScopeTurns = normalizeRecentTurns(req.body.recent_turns);
+    // A bare "magkano?" or "what do you recommend?" refers to this resort
+    // chatbot but lacks the single essential detail. Ask one question first.
+    const clarificationLanguage = detectLanguageFromMessage(message) ||
+      normalizeLanguageStyle(scopeContext.language_style) || "taglish";
+    const clarification = clarifyAmbiguousResortQuestion(message, clarificationLanguage);
+    if (clarification) {
+      return res.status(200).json({
+        success: true, mode: "clarification_needed", reply: clarification,
+        extracted_context: mergeContext(scopeContext, {
+          language_style: clarificationLanguage,
+        }),
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null, recommendation_cards: [],
+      });
+    }
     // Short numeric responses ("4", "apat kami") are resort-relevant ONLY
     // after this assistant explicitly requested guest count.
     const guestCorrection = guestCountCorrection(
@@ -1075,6 +1136,238 @@ exports.chatWithGemini = async (req, res) => {
         mode: "resort_scope_only",
         resort_scope_allowed: false,
         reply: resortOnlyReply(language),
+        extracted_context: mergeContext(scopeContext, { language_style: language }),
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null, recommendation_cards: [],
+      });
+    }
+
+    // AI-63: Answer ALL questions in mixed confirmed-policy inquiries.
+    // Previously "10 guests ... food, own videoke, Wi-Fi?" only returned a
+    // room preview, dropping every policy sub-question. Cross-reference the
+    // existing approved policy helpers first; only attach an OPTIONAL card
+    // for an active room verified against the fresh admin-managed catalog.
+    const compoundPolicy = compoundTopics(message);
+    const compoundLanguage = detectLanguageFromMessage(message) ||
+      normalizeLanguageStyle(req.body.language_style) ||
+      normalizeLanguageStyle(scopeContext.language_style) || "taglish";
+    // For languages without localized verified replies, retain the normal
+    // grounded multilingual path rather than forcing an English response.
+    if (compoundPolicy && [
+      "english", "tagalog", "taglish", "bisaya", "spanish", "mandarin"
+    ].includes(compoundLanguage)) {
+      const language = compoundLanguage;
+      const guests = explicitGuestCount(message);
+      // AI-64: A mixed question can also ask "Anong room ang mare-recommend
+      // mo?" and "10 po kami". The AI-63 optional preview required a prior
+      // room selection, so it skipped new recommendation requests entirely.
+      const compoundRecommendation = asksForAccommodationRecommendation(message);
+      const recommendationCategory = requestedCategory(message) || "room";
+      let focusedRoom = null;
+      if (guests && (
+          compoundRecommendation ||
+          Number(scopeContext.room_id) > 0 ||
+          String(scopeContext.room_name || "").trim() ||
+          /\b(?:family|double|single)\s+room\b/i.test(message)
+        )) {
+        const catalog = await getAccommodationCatalog();
+        // Respect a room the guest EXPLICITLY named this turn, but never
+        // accidentally reuse an unrelated old room for a NEW recommendation.
+        const explicitlyNamed = compoundRoom(catalog, message, {});
+        if (compoundRecommendation && !explicitlyNamed) {
+          const query = recommendationLookupMessage(
+            recommendationCategory, guests,
+          );
+          // Night-stay recommendations need a listed overnight rate; neither
+          // that nor Admin's listing status guarantees a bookable date/slot.
+          const suitableCatalog = /\b(?:overnight|night|gabi)\b/i.test(message)
+            ? catalog.filter(room => Number(room.overnight_price) > 0)
+            : catalog;
+          const selection = selectVerifiedPreviews(
+            suitableCatalog, query, [], { guests },
+          );
+          focusedRoom = selection.rows[0] || null;
+        } else {
+          focusedRoom = explicitlyNamed ||
+            compoundRoom(catalog, message, scopeContext);
+        }
+      }
+      const combined = compoundGuestReply(
+        compoundPolicy, message, scopeContext, language, focusedRoom,
+        compoundRecommendation,
+      );
+      const nextContext = mergeContext(scopeContext, {
+        language_style: language,
+        ...(combined.guests ? { guests: combined.guests } : {}),
+        ...(compoundRecommendation ? {
+          intent: "ask_recommendation",
+          recommendation_category: recommendationCategory,
+        } : {}),
+        ...(combined.previewRoom ? {
+          room_id: combined.previewRoom.id,
+          room_name: combined.previewRoom.room_name,
+        } : {}),
+      });
+      if (compoundRecommendation && !combined.previewRoom) {
+        delete nextContext.room_id;
+        delete nextContext.room_name;
+      }
+      return res.status(200).json({
+        success: true, mode: "verified_compound_guest_inquiry",
+        inquiry_topic: Object.keys(compoundPolicy)
+          .filter(k => compoundPolicy[k]).join(","),
+        reply: combined.reply,
+        extracted_context: nextContext,
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null,
+        recommendation_cards: combined.previewRoom
+          ? verifiedAccommodationCards([combined.previewRoom], false) : [],
+      });
+    }
+
+    // AI-65: Client-confirmed convenience store and restobar inside the resort.
+    // Deterministic existence-only answers: no invented inventory/menu/pricing.
+    const verifiedFacilities = matchVerifiedResortFacilities(message);
+    if (verifiedFacilities) {
+      const language = detectLanguageFromMessage(message) ||
+        normalizeLanguageStyle(req.body.language_style) ||
+        normalizeLanguageStyle(scopeContext.language_style) || "taglish";
+      return res.status(200).json({
+        success: true, mode: "verified_resort_facilities",
+        reply: verifiedResortFacilitiesReply(verifiedFacilities, language),
+        inquiry_topic: [verifiedFacilities.store && "convenience_store",
+          verifiedFacilities.restobar && "restobar"].filter(Boolean).join(","),
+        extracted_context: mergeContext(scopeContext, { language_style: language }),
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null, recommendation_cards: [],
+      });
+    }
+
+    // AI-48: Common public concierge journeys use only VERIFIED payment,
+    // login and contact facts. Show safe first-party booking links in the UI;
+    // never claim the chatbot itself creates or confirms a reservation.
+    // Other foreign languages continue through the grounded Gemini path.
+    const conciergeLanguage = detectLanguageFromMessage(message) ||
+      normalizeLanguageStyle(req.body.language_style) ||
+      normalizeLanguageStyle(scopeContext.language_style) || "taglish";
+    const supportedConciergeLanguages = new Set([
+      "english", "tagalog", "taglish", "bisaya", "spanish", "mandarin"
+    ]);
+    const conciergeIntent = matchConciergeGuide(message);
+    const combinedPolicy = isMixedEntranceAndCorkage(message);
+    if (supportedConciergeLanguages.has(conciergeLanguage) &&
+        (conciergeIntent || combinedPolicy)) {
+      const kind = conciergeIntent || "entrance_corkage";
+      return res.status(200).json({
+        success: true, mode: "concierge_" + kind,
+        reply: conciergeGuideReply(kind, conciergeLanguage),
+        handoff: kind === "booking" ? "booking" :
+          kind === "special_event" ? "human" : null,
+        extracted_context: mergeContext(scopeContext, {
+          language_style: conciergeLanguage,
+        }),
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null, recommendation_cards: [],
+      });
+    }
+
+    // AI-48: Explicit broad "room and cottage rates" is answered directly
+    // from the FRESH Admin-managed catalog, not a model's guessed rate.
+    // Never claim that listing status means a date/slot is bookable.
+    if (isCatalogRateOverviewQuestion(message)) {
+      const catalog = await getAccommodationCatalog();
+      const language = conciergeLanguage;
+      const overview = catalogRateOverview(catalog, message, language);
+      return res.status(200).json({
+        success: true, mode: "verified_catalog_rates",
+        reply: overview.reply,
+        extracted_context: mergeContext(scopeContext, { language_style: language }),
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null,
+        recommendation_cards: verifiedAccommodationCards(overview.rows, false),
+      });
+    }
+
+    // AI-62: Client-approved activity permissions; no Gemini or DB needed
+    // for direct questions about drinks, smoking/vaping or OWN audio equipment.
+    // Only match permissions, not questions about equipment INCLUDED in rooms.
+    const leisurePolicy = matchVerifiedLeisurePolicies(message);
+    if (leisurePolicy) {
+      const language = detectLanguageFromMessage(message) ||
+        guessInquiryLanguage(message) ||
+        normalizeLanguageStyle(req.body.language_style) ||
+        normalizeLanguageStyle(scopeContext.language_style) || "taglish";
+      return res.status(200).json({
+        success: true, mode: "verified_leisure_policies",
+        inquiry_topic: [
+          leisurePolicy.alcohol && "alcoholic_drinks",
+          leisurePolicy.smoking && "smoking_vaping",
+          leisurePolicy.audio && "own_videoke_speakers"
+        ].filter(Boolean).join(","),
+        reply: verifiedLeisurePoliciesReply(leisurePolicy, language),
+        extracted_context: mergeContext(scopeContext, { language_style: language }),
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null,
+        recommendation_cards: [],
+      });
+    }
+
+    // AI-61: Approved general guest policies: own food/drinks allowed,
+    // complimentary Wi-Fi only in rooms, and pool always open with no
+    // swimwear restrictions. Corkage amounts and pool safety remain unknown.
+    // Check BEFORE old unverified and per-room routes, zero Gemini credits.
+    const verifiedGuestPolicy = matchVerifiedGuestAmenities(message);
+    if (verifiedGuestPolicy) {
+      const language = detectLanguageFromMessage(message) ||
+        guessInquiryLanguage(message) ||
+        normalizeLanguageStyle(req.body.language_style) ||
+        normalizeLanguageStyle(scopeContext.language_style) || "taglish";
+      return res.status(200).json({
+        success: true, mode: "verified_guest_policies",
+        inquiry_topic: [
+          verifiedGuestPolicy.wifi && "wifi",
+          verifiedGuestPolicy.food && "outside_food",
+          verifiedGuestPolicy.pool && "pool"
+        ].filter(Boolean).join(","),
+        reply: verifiedGuestAmenitiesReply(verifiedGuestPolicy, language),
+        extracted_context: mergeContext(scopeContext, { language_style: language }),
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null,
+        recommendation_cards: [],
+      });
+    }
+
+    // AI-60: Resort-confirmed NO ANIMALS policy. This is property-wide
+    // even if a named room/cottage is mentioned; answer without paid Gemini
+    // calls, database access or invented pet exceptions.
+    const petPolicy = matchVerifiedPetPolicy(message);
+    if (petPolicy) {
+      const language = detectLanguageFromMessage(message) ||
+        guessInquiryLanguage(message) ||
+        normalizeLanguageStyle(req.body.language_style) ||
+        normalizeLanguageStyle(scopeContext.language_style) || "taglish";
+      return res.status(200).json({
+        success: true, mode: "verified_pet_policy",
+        inquiry_topic: "pets",
+        reply: verifiedPetPolicyReply(petPolicy, language),
+        extracted_context: mergeContext(scopeContext, { language_style: language }),
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null, recommendation_cards: [],
+      });
+    }
+
+    // AI-47: Standalone requests for services with no approved source get
+    // a clear answer instead of prompting Gemini to invent a policy.
+    // The verified resort-policy and accommodation fast paths remain separate.
+    const currentGuestLanguage = detectLanguageFromMessage(message);
+    const unknownService = matchUnverifiedServiceQuestion(message);
+    if (unknownService) {
+      const language = currentGuestLanguage ||
+        normalizeLanguageStyle(scopeContext.language_style) || "english";
+      return res.status(200).json({
+        success: true, mode: "unverified_resort_service",
+        inquiry_topic: unknownService,
+        reply: unknownRecordReply(language),
         extracted_context: mergeContext(scopeContext, { language_style: language }),
         matched_rooms: [], catalog_recommendations: [],
         alternative_dates: [], booking_preview: null, recommendation_cards: [],
@@ -1116,8 +1409,8 @@ exports.chatWithGemini = async (req, res) => {
     const resortInquiry = matchResortInquiry(message);
     if (resortInquiry) {
       const language = 
-        guessInquiryLanguage(message) ||
         detectLanguageFromMessage(message) ||
+        guessInquiryLanguage(message) ||
         normalizeLanguageStyle(req.body.language_style) ||
         normalizeLanguageStyle(req.body.context?.language_style) ||
         "english";
@@ -1135,8 +1428,9 @@ exports.chatWithGemini = async (req, res) => {
       });
     }
 
-    // Unapproved general resort policies: reply honestly without Gemini,
-    // never turn an unverified Wi-Fi, pet or corkage question into a claim.
+    // Unapproved general resort policies: reply honestly without Gemini.
+    // Pets, room-only Wi-Fi, outside-food permission and pool hours are verified.
+    // Exact corkage/entrance costs and unapproved policies remain unverified.
     // Named-room questions continue to fresh accommodation data instead.
     const savedInquiryContext = req.body.context &&
       typeof req.body.context === "object" && !Array.isArray(req.body.context)
@@ -1146,8 +1440,8 @@ exports.chatWithGemini = async (req, res) => {
     );
     if (unverifiedPolicy) {
       const language = 
-        guessInquiryLanguage(message) ||
         detectLanguageFromMessage(message) ||
+        guessInquiryLanguage(message) ||
         normalizeLanguageStyle(req.body.language_style) ||
         normalizeLanguageStyle(savedInquiryContext.language_style) || "english";
       return res.status(200).json({
@@ -1161,6 +1455,87 @@ exports.chatWithGemini = async (req, res) => {
         alternative_dates: [], booking_preview: null,
         recommendation_cards: [],
       });
+    }
+
+
+    // AI-51: A recommendation between TWO named rooms must consider BOTH
+    // fresh records before filtering capacity. Previously the generic preview
+    // chose Family Room A first, rejected its 7-pax capacity for 10 guests,
+    // and incorrectly said there was no match despite Family Room B fitting.
+    if (isPairRecommendationQuestion(message)) {
+      const pairCatalog = await getAccommodationCatalog();
+      const pair = pairForRecommendation(pairCatalog, message, scopeContext);
+      if (pair) {
+        const guests = explicitGuestCount(message) ||
+          savedGuestCount({ guests: req.body.guests }) ||
+          savedGuestCount(scopeContext);
+        const language = detectLanguageFromMessage(message) ||
+          normalizeLanguageStyle(req.body.language_style) ||
+          normalizeLanguageStyle(scopeContext.language_style) || "taglish";
+        const recommendation = pairRecommendation(pair, guests, language);
+        const context = {
+          ...scopeContext, language_style: language,
+          ...(guests ? { guests } : {}),
+          intent: "ask_recommendation", recommendation_category: "room",
+          ...(pair.complete ? { compared_room_ids: pair.rows.map(r => Number(r.id)) } : {}),
+        };
+        // Never carry old room focus over when no recommendation is grounded.
+        delete context.room_id;
+        delete context.room_name;
+        if (recommendation.chosen) {
+          context.room_id = recommendation.chosen.id;
+          context.room_name = recommendation.chosen.room_name;
+        }
+        return res.status(200).json({
+          success: true, mode: "verified_pair_recommendation",
+          reply: recommendation.reply,
+          extracted_context: context,
+          matched_rooms: [], catalog_recommendations: [],
+          alternative_dates: [], booking_preview: null,
+          recommendation_cards: recommendation.chosen
+            ? verifiedAccommodationCards([recommendation.chosen], false) : [],
+        });
+      }
+    }
+
+    // AI-50: Compare TWO specifically named DB accommodations before the
+    // single-room preview/overview shortcuts. "Family Room B at A" is a pair,
+    // not a request to preview Family Room B only.
+    if (isComparisonQuestion(message)) {
+      const comparisonCatalog = await getAccommodationCatalog();
+      const comparison = selectComparisonRooms(comparisonCatalog, message);
+      if (comparison) {
+        const language = detectLanguageFromMessage(message) ||
+          normalizeLanguageStyle(req.body.language_style) ||
+          normalizeLanguageStyle(scopeContext.language_style) || "taglish";
+        const context = { ...scopeContext, language_style: language };
+        // Store only the pair's DB IDs; never trust saved context for facts.
+        // Follow-up "alin sa dalawang ito para sa 10 guests?" will read fresh
+        // capacity, status and rates again before choosing.
+        if (comparison.complete) {
+          context.compared_room_ids = comparison.rows.map(room => Number(room.id));
+        } else {
+          delete context.compared_room_ids;
+        }
+        // Two cards should not leave the stale single-room focus active.
+        delete context.room_id;
+        delete context.room_name;
+        // Compare both listings in the reply, but never show only one
+        // "available" preview if the other unit is inactive/under maintenance.
+        const cardRows = comparison.complete &&
+          comparison.rows.every(room =>
+            String(room.status || "").trim().toLowerCase() === "available")
+          ? comparison.rows : [];
+        return res.status(200).json({
+          success: true,
+          mode: "verified_accommodation_comparison",
+          reply: comparisonReply(comparison, language),
+          extracted_context: context,
+          matched_rooms: [], catalog_recommendations: [],
+          alternative_dates: [], booking_preview: null,
+          recommendation_cards: verifiedAccommodationCards(cardRows, false),
+        });
+      }
     }
 
     // AI-37: Personalized recommendations need the party size first.
@@ -1263,7 +1638,7 @@ exports.chatWithGemini = async (req, res) => {
       const saved = req.body.context && typeof req.body.context === "object" &&
         !Array.isArray(req.body.context) ? req.body.context : {};
       const language = 
-        guessInquiryLanguage(message) || detectLanguageFromMessage(message) ||
+        detectLanguageFromMessage(message) || guessInquiryLanguage(message) ||
         normalizeLanguageStyle(req.body.language_style) ||
         normalizeLanguageStyle(saved.language_style) || "taglish";
       const sql = "SELECT c.name AS category_name, " +
@@ -1399,10 +1774,13 @@ exports.chatWithGemini = async (req, res) => {
     // This is only for generic rules, never personal refunds, booking status,
     // dates, prices or room availability. No real transaction is performed.
     const policyKind = matchGeneralPolicyQuestion(message);
-    if (policyKind) {
+    // Existing fixed FAQ translations cover English/Filipino/Spanish/Mandarin.
+    // For other languages, let one grounded Gemini response use these same
+    // verified policy lines instead of incorrectly answering in English.
+    if (policyKind && !["bisaya","japanese","korean","french","german","arabic"].includes(currentGuestLanguage)) {
       const language = 
-        inferPolicyLanguage(message) ||
         detectLanguageFromMessage(message) ||
+        inferPolicyLanguage(message) ||
         normalizeLanguageStyle(req.body.language_style) ||
         normalizeLanguageStyle(req.body.context?.language_style) ||
         "english";
@@ -1576,7 +1954,8 @@ exports.chatWithGemini = async (req, res) => {
     // Amenity questions about the selected room use the FRESH Admin-managed
     // description and inclusions, not a guess from previous conversation.
     // This read-only path needs zero Gemini credits and never checks/creates bookings.
-    const amenityKind = requestedAmenity(message);
+    const amenityKinds = requestedAmenities(message);
+    const amenityKind = amenityKinds.length === 1 ? amenityKinds[0] : null;
     // When a guest names a different room, that EXPLICIT room wins over
     // any selected card from a previous turn. Never pick one of two names.
     const explicitlyNamedAmenityRoom = explicitEntranceRoomName(message);
@@ -1596,7 +1975,7 @@ exports.chatWithGemini = async (req, res) => {
       (rawFocusedRoomId === null || rawFocusedRoomId === undefined ||
         rawFocusedRoomId === "") &&
       focusedRoomName.length > 0 && focusedRoomName.length <= 110;
-    if (amenityKind && !unresolvedNamedAmenityRoom &&
+    if (amenityKinds.length && !unresolvedNamedAmenityRoom &&
         (explicitlyNamedAmenityRoom || hasFocusedId || canResolveByName)) {
       const byId = !explicitlyNamedAmenityRoom && hasFocusedId;
       const lookup = explicitlyNamedAmenityRoom ||
@@ -1642,7 +2021,9 @@ exports.chatWithGemini = async (req, res) => {
           return res.status(200).json({
             success: true,
             mode: "verified_accommodation_amenity",
-            reply: amenityReply(record, amenityKind, message, language),
+            reply: amenityKinds.length > 1
+              ? multiAmenityReply(record, amenityKinds, language)
+              : amenityReply(record, amenityKind, message, language),
             extracted_context: mergeContext(savedContext, {
               room_id: record.id, room_name: record.room_name,
               language_style: language,
@@ -1660,7 +2041,7 @@ exports.chatWithGemini = async (req, res) => {
     // accommodation. A short clarification is safer and uses zero credits.
     // The normal one-card preview path above now saves the selected room ID,
     // so "may CR ba sya?" goes through the fresh read-only amenity lookup.
-    if (amenityKind) {
+    if (amenityKinds.length) {
       const saved = req.body.context && typeof req.body.context === "object" &&
         !Array.isArray(req.body.context) ? req.body.context : {};
       // The client also clears its local focus for this response mode.
@@ -1873,8 +2254,8 @@ exports.chatWithGemini = async (req, res) => {
     const directSlot = normalizeSlotPreference(message);
     if (directSlot) mergedContext.slot_preference = directSlot;
 
-    const detectedLanguage = detectLanguageFromMessage(message);
-    // AI-44: Every turn—including voice—uses the current guest language.
+    const detectedLanguage = currentGuestLanguage;
+    // AI-44/47: Every turn—including voice—uses the current guest language.
     const isSpokenTurn = req.body.input_source === "voice";
     if (detectedLanguage) mergedContext.language_style = detectedLanguage;
 
@@ -2059,6 +2440,8 @@ exports.chatWithGemini = async (req, res) => {
         ? "Reply entirely in natural Spanish."
         : mergedContext.language_style === "mandarin"
         ? "Reply entirely in Mandarin Chinese, using Simplified Chinese characters."
+        : mergedContext.language_style === "bisaya"
+        ? "Reply fully in natural, everyday Cebuano/Bisaya. Do not switch to Tagalog or English apart from standard booking terms like room, price and check-in."
         : mergedContext.language_style === "japanese" ? "Reply in natural Japanese."
         : mergedContext.language_style === "korean" ? "Reply in natural Korean."
         : mergedContext.language_style === "french" ? "Reply in natural French."
@@ -2083,6 +2466,47 @@ celebrity, recipe, sports, or other general-knowledge questions.
 If an unrelated request reaches you, politely redirect to resort inquiries
 WITHOUT giving the unrelated answer, even if older context says "resort".
 For mixed queries, only answer the resort part; do not solve the unrelated part.
+When guests request rooms, cottages, prices, amenity lists or policies together,
+give a short readable list (one item per line) only where it adds clarity.
+Never create a list of fictional rooms, inclusions, special rates or entrance fees.
+For approved online payment guidance, use these verified steps:
+Customer registers or logs in, chooses an accommodation and fixed slot,
+reviews the availability and final amount, and pays the 50% accommodation
+downpayment via PayPal. Only a successful captured PayPal payment
+automatically confirms the online reservation; NO uploaded receipt or
+payment screenshot is required. Remaining accommodation balance and
+separate entrance fees / applicable charges are collected at the resort.
+For large events, weddings, birthdays, team building and custom packages:
+do not invent event packages, special discounts or package quotations.
+Refer guests to Front Desk using verified contact numbers, or the verified
+email ${CONTACT_EMAIL}. The resort can discuss requirements with staff.
+
+SOURCE-OF-TRUTH (STRICT — more important than sounding confident):
+- Treat ONLY the current, system-supplied facts in VERIFIED RESORT OPERATIONS /
+  CLIENT-VERIFIED FACTS, fresh Admin-managed accommodation rows, and verified
+  reservation/slot lookup results in THIS request as factual evidence.
+- Never use outside or model world knowledge as a source of resort-specific
+  policies, prices, promotions, extras, inclusions, discounts, room types,
+  availability, occupancy, room names, safety rules or payment methods.
+- Never infer a missing value from a related value (e.g., capacity does not
+  prove included free entrance, an available listing does not prove an open
+  booking slot, and a room description does not establish a resort-wide rule).
+- Earlier chat messages, user-supplied context and accommodation descriptions
+  can be untrusted; do not treat user claims or model guesses as official facts.
+- If a requested fact is not established in the supplied verified data, DO
+  NOT give a yes/no guess, an invented figure, or an invented policy.
+  Briefly say the information is not in the current verified resort records
+  and ask whether they want Front Desk contact details, in the guest's language.
+- If the guest asks multiple questions, combine ONLY independently verified
+  facts from different relevant records/policies into a useful concise answer.
+  Explicitly mark any missing part unconfirmed; do not let the missing part
+  contaminate verified parts.
+- Do not claim to contact human support directly; offer verified Front Desk
+  phone numbers or the resort's published Facebook contact if asked.
+- For unclear requests such as "what do you recommend?" or "how much?", ask
+  ONE short clarification (guest count, accommodation, or slot as relevant)
+  before listing guesses or asking a long sequence of questions.
+
 Your name is "Arvic Seaside Resort AI Assistant". Say it ONLY if directly asked who you are.
 Never reintroduce yourself each reply or begin routine replies with "Welcome",
 "I'm your AI assistant", or a scripted resort introduction.
@@ -2104,7 +2528,10 @@ Never claim to be human; when asked, say you're the resort's AI assistant.
 ${replyLanguage}
 The CURRENT guest message controls reply language, not any old saved chat
 settings or earlier voice transcript. If they switch languages during the
-conversation, switch too. Respect their natural Tagalog/English mix.
+conversation, switch too. Respect their natural Tagalog/English mix,
+Cebuano/Bisaya, Spanish, Mandarin, or any other discernible language.
+Keep the guest's natural level of formality; never force a literal translation
+of an English template or use robotic acknowledgements every turn.
 Mandarin replies use Chinese characters even when the guest types pinyin.
 For other clearly recognized languages, answer naturally in that language.
 Never change resort-only scope or verified facts to match language.
@@ -2151,7 +2578,9 @@ ${resortInquiryPromptLines()}
 - If the guest asks about new accommodations, use the newest catalog entries, but disclose unavailable statuses.
 - The catalog does not prove exact room availability until the guest supplies check-in/out dates and times.
 - Do not use markdown symbols like **, *, #, or messy formatting.
-- Use clean short paragraphs or simple numbered points only when needed.
+- Use clean short paragraphs, or simple 1-4 numbered steps / short hyphen
+  lines for multi-item room rates, verified policies and amenities only.
+  Do not write Markdown headings or decorative symbols.
 - Keep replies easy to read in a chat window.
 - Keep replies practical and short, unless the user explicitly asks for a detailed explanation.
 - Ask no more than ONE short, relevant follow-up question per turn.
@@ -2223,16 +2652,29 @@ ${message}
 `;
 
     const response = await generateGemini(ai, finalPrompt);
-
+    // Numeric prices must match CURRENT DB evidence, not a guessed amount from
+    // the model or an older chat. A rejected reply never surfaces its cards
+    // as if a payment or room rate had been verified.
+    const modelReply = tidyAssistantReply(response.text || "", message);
+    const groundedReply = guardUnsupportedPesoClaims(modelReply, {
+      language: mergedContext.language_style,
+      records: [
+        ...(requestCatalog || []), ...availableRooms, ...matchedRooms,
+        chosenRoom, focusedAccommodation, bookingPreview,
+      ],
+      policyText: policyPromptLines() + "\n" + resortInquiryPromptLines(),
+    });
+    const failedMoneyCheck = groundedReply !== modelReply;
     return res.status(200).json({
       success: true,
-      reply: tidyAssistantReply(response.text || "No response generated.", message),
-      matched_rooms: matchedRooms.slice(0, 5),
-      catalog_recommendations: catalogRecommendations,
+      ...(failedMoneyCheck ? { mode: "grounding_fallback" } : {}),
+      reply: groundedReply,
+      matched_rooms: failedMoneyCheck ? [] : matchedRooms.slice(0, 5),
+      catalog_recommendations: failedMoneyCheck ? [] : catalogRecommendations,
       extracted_context: mergedContext,
-      alternative_dates: alternativeDates,
-      booking_preview: bookingPreview,
-      recommendation_cards: recommendationCards,
+      alternative_dates: failedMoneyCheck ? [] : alternativeDates,
+      booking_preview: failedMoneyCheck ? null : bookingPreview,
+      recommendation_cards: failedMoneyCheck ? [] : recommendationCards,
     });
   } catch (error) {
     const status = geminiErrorStatus(error);

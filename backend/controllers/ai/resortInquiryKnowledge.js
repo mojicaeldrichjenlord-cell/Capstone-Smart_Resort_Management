@@ -1,22 +1,36 @@
 "use strict";
+const { unknownRecordReply } = require("./aiGroundedResponseRules");
 /*
  * Verified resort-wide inquiry knowledge. NOT accommodation inventory:
  * per-room amenities, prices, slots and capacity still come from fresh MySQL.
  *
  * Facts are approved by the client (parking, 2026-11-19) or are already
  * published on both Customer Home and the public Landing page (contact,
- * hours, location, swimming pool). Do not infer pool/parking charges beyond
- * the approved fact, reserved parking slots, safety/security, pets, corkage,
- * Wi-Fi, child rates, or parking capacity.
+ * hours, location, swimming pool). Client confirmation on 2026-11-22:
+ * animals/pets are NOT allowed in the resort. Additional client confirmations
+ * 2026-11-22: outside food and drinks are allowed with NO corkage fee,
+ * free Wi-Fi is available in ROOMS ONLY, the swimming pool is always open
+ * with NO swimming-attire restrictions. Do not infer pool/parking admission
+ * charges, other safety rules or Wi-Fi passwords/speeds.
+ * Additional client confirmation 2026-11-22: alcoholic drinks, smoking/vaping
+ * and guests' OWN videoke/speakers are allowed without resort time restrictions.
+ * This is NOT a promise of provided equipment, other waived fees, a specific smoking
+ * location, or permission to disregard applicable safety/local requirements.
  *
  * Add an approved fact here only after confirming it with the resort.
  */
 const RESORT_INQUIRY_FACTS = Object.freeze({
   parking: "The resort has FREE on-site parking for ANY type of vehicle, including motorcycles, cars, vans and buses. There is no parking fee. Do NOT claim unlimited spaces, a reserved/private parking bay, covered or guarded parking, or parking capacity.",
+  pets: "CLIENT-VERIFIED 2026-11-22: Animals and pets are NOT ALLOWED inside Arvic Seaside Beach Resort and Hotel. This includes dogs, cats and other animals. Never claim the property is pet-friendly or that guests may bring a pet for a fee. Do not invent exceptions or a pet boarding service.",
+  outsideFood: "CLIENT-VERIFIED 2026-11-23: Guests MAY bring their own food and drinks into the resort, including alcoholic drinks, with NO CORKAGE FEE. Do not confuse corkage with separately charged entrance fees, accommodations or other verified charges.",
+  leisurePolicies: "CLIENT-VERIFIED 2026-11-22: Guests MAY bring alcoholic drinks; smoking and vaping are permitted; bringing and using their OWN videoke/karaoke equipment and speakers is permitted. The resort sets NO TIME RESTRICTIONS for these activities. This permission is separate from whether a room provides built-in karaoke/speakers. Do NOT invent extra equipment, unverified fees, smoking areas, noise limits, age restrictions or local-law exemptions.",
+  convenienceStore: "CLIENT-VERIFIED 2026-11-23: A convenience store exists INSIDE Arvic Seaside Resort and is OPEN 24 HOURS A DAY, 7 DAYS A WEEK (24/7). Do not invent merchandise, inventory, prices or other services.",
+  restobar: "CLIENT-VERIFIED 2026-11-23: A restobar exists INSIDE Arvic Seaside Resort, SERVES FOOD AND DRINKS (general categories only), and is OPEN DAILY 6:00 PM to 6:00 AM THE NEXT DAY, closing at 6:00 AM. The restobar is NOT 24/7. Food and drinks are confirmed but no specific dishes, menu items, brands, prices, or alcoholic-drink sales are verified; never invent these or other special service features.",
+  roomWifi: "CLIENT-VERIFIED 2026-11-22: FREE Wi-Fi is available ONLY in room accommodations. It is not included in cottages, function areas or common areas. Never invent a network password, speed, or guaranteed coverage beyond the rooms.",
   location: "The resort is at 17 Mahogany Street, Brgy. Bagong Karsada, Naic, Cavite, Philippines. Do not invent directions or transport routes.",
   openingHours: "The resort is open 24 hours a day, Monday to Sunday. This does NOT mean guests may choose custom check-in/out hours; accommodation booking follows fixed Day/Night slots.",
   contact: "Published resort contact numbers: 0956-912-5625 and 0967-817-0662. For uncertain policies, refer the guest to the Front Desk.",
-  pool: "The resort has a swimming pool as shown on the official public Landing page. Pool admission charges, water depth, rules, and inclusions with any specific room are NOT confirmed by this fact.",
+  pool: "CLIENT-VERIFIED 2026-11-22: The swimming pool is ALWAYS OPEN, including at night. There are NO specific swimming attire or dress-code restrictions. Do not claim entry is free, promise lifeguards or make up supervision, safety, age, or depth rules. Pool access is separate from fixed accommodation booking slots.",
 });
 
 const SHORT_ANSWERS = Object.freeze({
@@ -56,11 +70,11 @@ const SHORT_ANSWERS = Object.freeze({
     mandarin: "您可以拨打度假村电话 0956-912-5625 或 0967-817-0662。",
   },
   pool: {
-    english: "Yes, the resort has a swimming pool. For pool entrance fees or specific rules, please confirm with Front Desk.",
-    taglish: "Yes po, may swimming pool ang resort! For pool fees or specific rules, pa-confirm na lang po sa Front Desk.",
-    tagalog: "Opo, may swimming pool ang resort. Para sa bayad at iba pang patakaran, pakikumpirma po sa Front Desk.",
-    spanish: "Sí, el resort tiene piscina. Consulte con recepción las tarifas y normas específicas.",
-    mandarin: "度假村有游泳池。泳池收费和具体规则请向前台确认。",
+    english: "Yes, the swimming pool is always open. There are no specific swimwear restrictions. Pool admission fees or other safety rules should be confirmed with Front Desk.",
+    taglish: "Yes po, always open ang pool! Wala rin pong specific swimwear restrictions. Yung pool fees at ibang safety rules, sa Front Desk pa po iko-confirm.",
+    tagalog: "Opo, laging bukas ang palanguyan at walang partikular na pagbabawal sa kasuotang panlangoy. Para sa bayad at iba pang patakaran sa kaligtasan, pakikumpirma po sa Front Desk.",
+    spanish: "Sí, la piscina está abierta siempre y no hay restricciones específicas de vestimenta para nadar. Las tarifas y otras normas deben confirmarse con recepción.",
+    mandarin: "有的，泳池始终开放，没有特别的泳装限制。入场收费和其他安全规则请向前台确认。",
   },
 });
 
@@ -145,8 +159,31 @@ function matchResortInquiry(message) {
   return { topic, qualified: false };
 }
 
+
+// AI-47: Only client-verified facts are rendered here. A Bisaya fast-path
+// must not silently fall back to English when no Gemini call is made.
+const BISAYA_SHORT_ANSWERS = Object.freeze({
+  parking: "Oo, libre ang parking sa Arvic Seaside Resort para sa tanang klase sa sakyanan—motor, awto, van ug bus. Wala'y parking fee.",
+  parkingEntrance: "Libre ang parking para sa tanang sakyanan. Lahi ang entrance fee; ang Front Desk maoy mokumpirma sa bayranan didto sa resort.",
+  location: "Ang Arvic Seaside Resort naa sa 17 Mahogany Street, Brgy. Bagong Karsada, Naic, Cavite.",
+  openingHours: "Abli ang resort 24 oras kada adlaw. Apan fixed gihapon ang check-in ug check-out slots sa accommodation.",
+  contact: "Mahimo ninyong tawagan ang resort sa 0956-912-5625 o 0967-817-0662.",
+  pool: "Oo, abli kanunay ang swimming pool ug walay espesipikong swimwear restrictions. Ang bayad ug ubang safety rules, kumpirmaha sa Front Desk.",
+});
+
 function getResortInquiryReply(match, language) {
   if (!match || !SHORT_ANSWERS[match.topic]) return null;
+  if (language === "bisaya") {
+    const base = BISAYA_SHORT_ANSWERS[match.topic];
+    if (!match.qualified) return base;
+    if (match.topic === "openingHours") {
+      return base + " Para sa holiday o emergency changes, kumpirmaha sa Front Desk: 0956-912-5625.";
+    }
+    if (match.topic === "parking") {
+      return "Libre ang parking sa tanang sakyanan, pero wala pa makumpirma ang espesipikong parking detail nga inyong gipangutana. Palihog kontaka ang Front Desk: 0956-912-5625.";
+    }
+    return "Naay swimming pool ang resort, pero wala pa makumpirma ang espesipikong bayad o rules. Palihog kontaka ang Front Desk: 0956-912-5625.";
+  }
   const locale = Object.hasOwn(SHORT_ANSWERS[match.topic], language) ? language : "english";
   if (match.qualified) {
     if (match.topic === "openingHours") {
@@ -172,13 +209,291 @@ function getResortInquiryReply(match, language) {
  * Room-specific amenities are deliberately excluded so DB-backed responses
  * remain authoritative for the selected accommodation.
  */
+
+// AI-61: Confirmed resort-wide policies are not inferred from individual
+// accommodations or free entrance; keep fee/password/safety exceptions unknown.
+// Route short single or mixed inquiries with zero Gemini credits.
+function matchVerifiedGuestAmenities(message) {
+  const t=normalizeQuestion(message);
+  if (!t || t.length>500) return null;
+  // Avoid answering only one item of an unrelated price, booking, or special
+  // event inquiry. Let the grounded full-context path combine facts instead.
+  if (/\b(?:refund|cancel(?:lation)?|downpayment|deposit|paypal|booking\s+status|room\s+rates?|price\s+of\s+(?:a\s+)?room|magkano\s+(?:ang\s+)?kwarto|karaoke|videoke|alcohol|beer|liquor|alak|smoking|vaping|cigarettes?|yosi|sigarilyo)\b/i.test(t)) return null;
+  const wifi=/\b(?:wi[\s-]?fi|wireless\s+internet|internet\s+(?:connection|access|signal))\b/i.test(t);
+  const food=/\b(?:corkage|outside[\s-]?food|outside[\s-]?drinks?|own\s+(?:food|drinks?|beverages?)|bring(?:ing)?\s+(?:(?:my|our|your|their|some|own)\s+)?(?:food|drinks?|snacks?|beverages?)|baon|magbaon|dalang\s+(?:pagkain|inumin|food)|magdala\s+(?:ng\s+)?(?:pagkain|inumin|food)|pagkain\s+(?:mula\s+sa\s+labas|na\s+dala)|(?:pwede|puwede)\s+.*\b(?:pagkain|inumin)\b|food\s+policy|food\s+allowed)\b/i.test(t);
+  const pool=/\b(?:swimming\s+pool|pool(?![\s-]?(?:shade|side|pavilion|pavillion))|swim(?:ming)?\s+(?:time|hours?|attire|wear|clothes|dress\s+code|at\s+night|at\s+\d{1,2}\s*(?:am|pm)|anytime)|swimwear|panglangoy|palanguyan|piscina)\b/i.test(t) || /(?:泳池|游泳池)/u.test(t);
+  if (!wifi && !food && !pool) return null;
+  const parking=/\b(?:parking|park(?:ing)?\s+(?:lot|area)|paradahan)\b/i.test(t);
+  const pets=/\b(?:pets?|pet[\s-]?friendly|dogs?|cats?|animals?|aso|pusa|hayop|mascotas?)\b/i.test(t);
+  const cottage=/\b(?:cottages?|kubo|nipa\s+hut|pavilions?|function\s+areas?|lobby|common\s+areas?|outside\s+(?:the\s+)?rooms?|poolside)\b/i.test(t) &&
+    !/\bsingle\s+room\s+cottage\b/i.test(t);
+  const rooms=/\b(?:rooms?|kwarto|kuwarto|family\s+room|double\s+room|single\s+room|bedrooms?)\b/i.test(t);
+  const wifiDetail=/\b(?:password|speed|mbps|signal\s+strength|connection\s+speed|fast|reliable)\b/i.test(t);
+  const corkage=/\b(?:corkage|charge|fee|free|libre|libreng|bayad|magkano|how\s+much|waived)\b/i.test(t)&&food;
+  const poolFee=pool && (
+    /\b(?:pool|swimming|piscina)\b.{0,55}\b(?:entrance|admission|fees?|ticket|price|cost|libre|free|magkano|how\s+much|bayad)\b/i.test(t) ||
+    /\b(?:entrance|admission|fees?|ticket|price|cost|magkano|how\s+much|bayad)\b.{0,55}\b(?:pool|swimming|piscina)\b/i.test(t)
+  );
+  const poolRule=/\b(?:life[\s-]?guards?|child(?:ren)?|bata|safety|supervis|age|depth|deep|float|inflat|rules?|restrictions?)\b/i.test(t)&&pool;
+  return {wifi,food,pool,parking,pets,cottage,rooms,wifiDetail,corkage,poolFee,poolRule};
+}
+
+function verifiedGuestAmenitiesReply(m,language="taglish") {
+  if (!m) return null;
+  const locale=["english","tagalog","taglish","bisaya","spanish","mandarin"].includes(language)?language:"english";
+  const phrases={
+    english:{
+      wifi:"Free Wi-Fi is available in room accommodations only, not in cottages or common areas.",
+      wifiRoom:"Yes, free Wi-Fi is available in resort rooms.",
+      wifiOutside:"Free Wi-Fi is available in rooms only, not in cottages, function areas or common areas.",
+      wifiDetails:"The Wi-Fi password, speed and signal strength aren't confirmed; please ask Front Desk.",
+      food:"Yes, you may bring your own food and drinks to the resort.",
+      corkage:"There is no corkage fee for bringing your own food and drinks.",
+      pool:"The swimming pool is always open, including at night, and there are no specific swimwear restrictions.",
+      poolFee:"Pool admission fees aren't confirmed; please ask Front Desk.",
+      poolRule:"Other pool safety, age and supervision rules aren't confirmed; please ask Front Desk.",
+      parking:"Parking for vehicles is free.",pets:"Pets and other animals aren't allowed."
+    },
+    tagalog:{
+      wifi:"Sa mga kuwarto lamang po may libreng Wi-Fi; wala nito sa cottages at mga common area.",
+      wifiRoom:"Opo, may libreng Wi-Fi sa mga kuwarto ng resort.",
+      wifiOutside:"Sa mga kuwarto lamang po may libreng Wi-Fi, hindi sa cottages, function areas o common areas.",
+      wifiDetails:"Hindi pa po kumpirmado ang Wi-Fi password, bilis at lakas ng signal; pakitanong sa Front Desk.",
+      food:"Opo, maaari po kayong magdala ng sariling pagkain at inumin sa resort.",
+      corkage:"Walang corkage fee po sa sariling pagkain at inumin.",
+      pool:"Laging bukas po ang palanguyan, kahit sa gabi, at walang partikular na pagbabawal sa kasuotang panlangoy.",
+      poolFee:"Hindi pa po kumpirmado ang bayad sa pool; pakitanong sa Front Desk.",
+      poolRule:"Hindi pa po kumpirmado ang ibang patakaran sa kaligtasan, edad o pagbabantay sa pool; pakitanong sa Front Desk.",
+      parking:"Libre po ang paradahan ng mga sasakyan.",pets:"Bawal po ang mga alagang hayop at iba pang hayop."
+    },
+    taglish:{
+      wifi:"Free Wi-Fi po ay available sa rooms lang, hindi sa cottages o common areas.",
+      wifiRoom:"Yes po, may free Wi-Fi sa rooms.",
+      wifiOutside:"Sa rooms lang po may free Wi-Fi, hindi sa cottages, function areas o common areas.",
+      wifiDetails:"Hindi pa po confirmed ang Wi-Fi password, speed at signal; pa-check sa Front Desk.",
+      food:"Yes po, puwede kayong magdala ng sariling food at drinks sa resort.",
+      corkage:"Walang corkage fee po sa sariling food at drinks.",
+      pool:"Always open po ang swimming pool, kahit gabi, at walang specific swimwear restrictions.",
+      poolFee:"Hindi pa po confirmed ang pool entrance fee; pa-check sa Front Desk.",
+      poolRule:"Hindi pa po confirmed ang ibang pool safety, age at supervision rules; pa-check sa Front Desk.",
+      parking:"Free po ang parking ng vehicles.",pets:"Bawal po ang pets at iba pang hayop sa resort."
+    },
+    bisaya:{
+      wifi:"Libre ang Wi-Fi sa mga kwarto ra, dili sa cottages o common areas.",
+      wifiRoom:"Oo, naay libreng Wi-Fi sa mga kwarto.",
+      wifiOutside:"Sa mga kwarto ra adunay libreng Wi-Fi, dili sa cottages o function areas.",
+      wifiDetails:"Wala pa makumpirma ang Wi-Fi password ug speed; pangutana sa Front Desk.",
+      food:"Oo, pwede magdala og kaugalingong pagkaon ug ilimnon sa resort.",
+      corkage:"Walay corkage fee sa inyong dalang pagkaon ug ilimnon.",
+      pool:"Pirming abli ang swimming pool, bisan gabii, ug walay espesipikong swimwear restrictions.",
+      poolFee:"Wala pa makumpirma ang pool admission fee; pangutana sa Front Desk.",
+      poolRule:"Ang ubang safety ug supervision rules sa pool wala pa makumpirma; pangutana sa Front Desk.",
+      parking:"Libre ang parking.",pets:"Bawal ang pets ug ubang hayop."
+    },
+    spanish:{
+      wifi:"El Wi-Fi gratuito está disponible solo en las habitaciones, no en cabañas ni áreas comunes.",
+      wifiRoom:"Sí, las habitaciones tienen Wi-Fi gratuito.",
+      wifiOutside:"El Wi-Fi gratuito solo está disponible en las habitaciones.",
+      wifiDetails:"La contraseña y velocidad del Wi-Fi no están confirmadas; consulte con recepción.",
+      food:"Sí, puede traer su propia comida y bebidas al resort.",
+      corkage:"No se cobra recargo por traer comida o bebidas propias.",
+      pool:"La piscina está abierta siempre, incluso por la noche, sin restricciones específicas de vestimenta para nadar.",
+      poolFee:"No está confirmado el coste de acceso a la piscina; consulte con recepción.",
+      poolRule:"Otras normas de seguridad y supervisión de la piscina no están confirmadas.",
+      parking:"El estacionamiento es gratuito.",pets:"No se permiten mascotas ni otros animales."
+    },
+    mandarin:{
+      wifi:"免费 Wi-Fi 仅限客房使用，不包括小屋或公共区域。",
+      wifiRoom:"是的，客房提供免费 Wi-Fi。",
+      wifiOutside:"免费 Wi-Fi 仅在客房提供，小屋及公共区域不提供。",
+      wifiDetails:"Wi-Fi 密码和网速尚未确认，请咨询前台。",
+      food:"可以自带食物和饮料进入度假村。",
+      corkage:"自带食品和饮料不收取开瓶费或外带费。",
+      pool:"游泳池始终开放，包括夜间，而且没有特定的泳装限制。",
+      poolFee:"泳池入场费用尚未确认，请咨询前台。",
+      poolRule:"其他泳池安全和监管规定尚未确认，请咨询前台。",
+      parking:"车辆可以免费停车。",pets:"禁止携带宠物及其他动物。"
+    }
+  };
+  const p=phrases[locale],answer=[];
+  if (m.wifi) answer.push(m.cottage?p.wifiOutside:m.rooms?p.wifiRoom:p.wifi);
+  if (m.wifiDetail) answer.push(p.wifiDetails);
+  if (m.food) answer.push(p.food + " " + p.corkage);
+  else if (m.corkage) answer.push(p.corkage);
+  if (m.pool) answer.push(p.pool);
+  if (m.poolFee) answer.push(p.poolFee);
+  if (m.poolRule) answer.push(p.poolRule);
+  if (m.parking) answer.push(p.parking);
+  if (m.pets) answer.push(p.pets);
+  return answer.join(" ");
+}
+
+// AI-62: Client-verified guest permissions for alcoholic drinks, tobacco/vapes
+// and their OWN videoke / speakers, with no resort activity time restrictions.
+// Distinguish "Can I BRING a speaker?" from "Does Family Room B HAVE karaoke?"
+// (the latter must remain DB-backed). Avoid charging Gemini for simple rules.
+function matchVerifiedLeisurePolicies(message) {
+  const t=normalizeQuestion(message);
+  if (!t || t.length>550) return null;
+  // Separate policies/room inventory must not be silently ignored.
+  if (/\b(?:refund|downpayment|deposit|paypal|cancell?ation|booking\s+status|price\s+of\s+(?:the\s+)?room|magkano\s+(?:ang\s+)?(?:room|kwarto)|room\s+rates?|wifi|wi-fi|internet|pool|swimming|pets?|dogs?|cats?|aso|pusa|corkage|parking|outside\s+food|outside\s+drinks?|pagkain)\b/i.test(t)) return null;
+
+  const alcohol=/\b(?:alcohol(?:ic)?|alcoholic\s+drinks?|beer|beers|liquor|wine|spirits|alak|inuming\s+may\s+alkohol|cerveza|bebidas\s+alcoh[oó]licas)\b/iu.test(t)||/(?:酒精|啤酒|酒类|饮酒)/u.test(t);
+  // Whether the resort SELLS or SERVES alcohol is a different, unverified
+  // service from the approved permission to bring alcohol.
+  if(alcohol && /\b(?:sell|selling|sold|serve|serving|provide|suppl(?:y|ied)|buy|purchase|order|for\s+sale|available\s+to\s+buy|magbenta|nagbebenta|binebenta|tinda|nagtitinda)\b/i.test(t))return null;
+  if(alcohol && /\b(?:do\s+you\s+have|is\s+there|meron\s+(?:ba\s+)?(?:kayong|kayo)|may\s+(?:ba\s+)?(?:kayong|kayo))\s+(?:any\s+)?(?:alcohol|beer|wine|liquor|alak)\b/i.test(t))return null;
+  const smoking=/\b(?:smok(?:e|ing|ers?)|cigarettes?|tobacco|vapes?|vaping|e[\s-]?cigarettes?|yosi|sigarilyo|manigarilyo|mag[\s-]?yosi|hithit|fumar|vapear)\b/iu.test(t)||/(?:吸烟|抽烟|电子烟)/u.test(t);
+  const audio=/\b(?:videoke|karaoke|mag[\s-]?videoke|mag[\s-]?karaoke|speakers?|bluetooth\s+speakers?|sound\s+system|sound\s+box|soundbox|music\s+system|microphone|mikropono|altavoces?|parlantes?)\b/iu.test(t)||/(?:卡拉OK|音响|扬声器)/u.test(t);
+  if(!alcohol&&!smoking&&!audio)return null;
+  const providingContext = /\b(?:do\s+you\s+(?:have|provide|offer)|(?:is\s+there|are\s+there)\s+(?:(?:a|any|some)\s+)?(?:videoke|karaoke|speakers?|sound\s+system)|included|inclusions?|comes?\s+with|has\s+(?:a\s+)?(?:videoke|karaoke|speaker)|may\s+(?:(?:ba|po|sariling)\s+)*(?:videoke|karaoke|speaker)|meron\s+(?:(?:ba|po|sariling)\s+)*(?:videoke|karaoke|speaker)|kasama\s+(?:(?:ba|po|ang)\s+)*(?:videoke|karaoke|speaker)|equipped|provided|built[\s-]?in|rental|rent(?:ing)?)\b/i.test(t);
+  const askingToBring = /\b(?:bring|bringing|brought|dalhin|magdala|mag[\s-]?dala|pwede|puwede|allowed|permit|bawal|can\s+we\s+use|can\s+i\s+use|can\s+we\s+bring)\b/i.test(t);
+  const providedEquipmentInquiry=audio && providingContext && !askingToBring;
+  if(providedEquipmentInquiry) return null;
+  // If only asking about room-supplied equipment, leave the question to the
+  // current accommodation DB route or Function Area amenity logic.
+  if(providedEquipmentInquiry&&!alcohol&&!smoking)return null;
+
+  // Permissions are resort-wide; a specific room/balcony smoking location
+  // has not been confirmed and must not be promised implicitly.
+  const smokingPlace=smoking &&
+    /\b(?:inside\s+(?:a|the|our|my)\s+room|in\s+(?:a|the|our|my)\s+room|sa\s+(?:loob\s+ng\s+)?(?:room|kwarto|kuwarto|cottage)|indoors?|balcony|poolside|designated\s+(?:area|zone))\b/i.test(t);
+  const audioAllowed=audio&&!providedEquipmentInquiry;
+  // Context in mixed "is smoking allowed AND does the room provide karaoke?"
+  // is not simple permission; let grounded model answer every part.
+  if(providedEquipmentInquiry)return null;
+  return {alcohol,smoking,audio:audioAllowed,smokingPlace};
+}
+
+function verifiedLeisurePoliciesReply(match,language="taglish") {
+  if(!match)return null;
+  const locale=["english","tagalog","taglish","bisaya","spanish","mandarin"].includes(language)?language:"english";
+  const phrases={
+    english:{
+      alcohol:"Yes, guests may bring alcoholic drinks.",
+      smoking:"Smoking and vaping are allowed.",
+      audio:"You may bring and use your own videoke/karaoke equipment or speakers.",
+      hours:"The resort has no specific time restrictions for these activities.",
+      location:"Whether smoking/vaping is permitted inside a specific room or area hasn't been confirmed; please check with Front Desk."
+    },
+    tagalog:{
+      alcohol:"Opo, maaari pong magdala ng mga inuming may alkohol.",
+      smoking:"Pinapayagan po ang paninigarilyo at paggamit ng vape.",
+      audio:"Maaari po kayong magdala at gumamit ng sarili ninyong videoke o speakers.",
+      hours:"Wala pong itinakdang oras ng pagbabawal ang resort para sa mga gawaing ito.",
+      location:"Hindi pa po kumpirmado kung puwedeng manigarilyo o mag-vape sa mismong kuwarto o partikular na lugar; pakitanong po sa Front Desk."
+    },
+    taglish:{
+      alcohol:"Yes po, puwede magdala ng alcoholic drinks.",
+      smoking:"Allowed po ang smoking at vaping.",
+      audio:"Puwede rin po magdala at gumamit ng sariling videoke at speakers.",
+      hours:"Wala pong specific time restrictions ang resort para sa mga ito.",
+      location:"Hindi pa po confirmed kung puwede mismo sa loob ng room o specific area; pa-check sa Front Desk."
+    },
+    bisaya:{
+      alcohol:"Oo, pwede magdala og alcoholic drinks.",
+      smoking:"Gitugotan ang smoking ug vaping.",
+      audio:"Pwede magdala ug mogamit sa inyong kaugalingong videoke o speakers.",
+      hours:"Walay espesipikong time restrictions sa resort niini nga mga kalihokan.",
+      location:"Wala pa makumpirma kung pwede sa sulod mismo sa kwarto o partikular nga lugar; pangutana sa Front Desk."
+    },
+    spanish:{
+      alcohol:"Sí, se pueden traer bebidas alcohólicas.",
+      smoking:"Se permite fumar y vapear.",
+      audio:"Puede traer y usar su propio karaoke o altavoces.",
+      hours:"El resort no establece restricciones horarias específicas para estas actividades.",
+      location:"No está confirmado si se puede fumar dentro de una habitación o una zona específica; consulte con recepción."
+    },
+    mandarin:{
+      alcohol:"允许携带酒精饮料。",
+      smoking:"允许吸烟和使用电子烟。",
+      audio:"允许自带并使用卡拉OK设备或音响。",
+      hours:"度假村对这些活动没有特定时间限制。",
+      location:"是否可以在具体客房或区域内吸烟尚未确认，请咨询前台。"
+    }
+  };
+  const p=phrases[locale];
+  const parts=[];
+  if(match.alcohol)parts.push(p.alcohol);
+  if(match.smoking)parts.push(p.smoking);
+  if(match.audio)parts.push(p.audio);
+  if(!parts.length)return null;
+  parts.push(p.hours);
+  if(match.smokingPlace)parts.push(p.location);
+  return parts.join(" ");
+}
+
+// AI-60: No-pets policy was explicitly confirmed by the resort on 2026-11-22.
+// The rule applies property-wide, including stays in any room or cottage.
+// Respond deterministically (0 Gemini credits) so "pwede magdala ng aso?"
+// cannot accidentally fall into the previously unverified pet-policy path.
+function matchVerifiedPetPolicy(message) {
+  const t = normalizeQuestion(message);
+  if (!t || t.length > 400) return null;
+  const pet = /\b(?:pets?|pet[\s-]?friendly|dogs?|cats?|pupp(?:y|ies)|kittens?|animals?|aso|pusa|hayop|alagang\s+hayop|iro|iring|mascotas?|perros?|gatos?)\b/iu.test(t) ||
+    /(?:宠物|猫|狗|動物|ペット|犬|고양이|반려동물)/u.test(t);
+  if (!pet) return null;
+  // Requests about multiple unrelated booking policies need the grounded
+  // model to address all the parts; it will still receive the verified fact.
+  if (/\b(?:downpayment|deposit|paypal|refund|cancellation|check[\s-]?in|check[\s-]?out|room\s+rate|total\s+price|magkano\s+(?:ang\s+)?(?:room|kwarto)|presyo\s+ng\s+kwarto)\b/iu.test(t)) return null;
+  return {
+    parking: /\b(?:parking|park|paradahan|mag[\s-]?park)\b/i.test(t),
+    wifi: /\b(?:wi[\s-]?fi|internet|wireless)\b/i.test(t),
+    food: /\b(?:corkage|outside\s+food|bring\s+food|magdala\s+ng\s+pagkain|dalang\s+pagkain)\b/i.test(t),
+  };
+}
+function verifiedPetPolicyReply(match, language = "taglish") {
+  if (!match) return null;
+  const answers = {
+    english: "Sorry, animals and pets are not allowed at Arvic Seaside Resort, including dogs and cats.",
+    tagalog: "Pasensya na po, bawal magdala ng mga hayop sa Arvic Seaside Resort, kasama ang aso at pusa.",
+    taglish: "Sorry po, hindi pet-friendly ang Arvic Seaside Resort. Bawal po magdala ng pets o kahit anong hayop, including dogs and cats.",
+    bisaya: "Pasayloa, bawal magdala og mga hayop sa Arvic Seaside Resort, apil ang iro ug iring.",
+    spanish: "Lo sentimos, no se permiten mascotas ni otros animales en Arvic Seaside Resort, incluidos perros y gatos.",
+    mandarin: "抱歉，Arvic Seaside Resort 禁止携带宠物及其他动物，包括狗和猫。",
+  };
+  const extras = {
+    english: {
+      parking: "Parking for vehicles is free.",
+      wifi: "Free Wi-Fi is available in rooms only, not cottages or common areas.",
+      food: "You may bring your own food and drinks with no corkage fee.",
+    },
+    tagalog: {
+      parking: "Libre po ang paradahan ng mga sasakyan.",
+      wifi: "Sa mga kuwarto lamang po may libreng Wi-Fi, hindi sa cottages o common areas.",
+      food: "Maaari pong magdala ng sariling pagkain at inumin, at walang corkage fee.",
+    },
+    taglish: {
+      parking: "Free naman po ang parking ng vehicles.",
+      wifi: "Free Wi-Fi po ay nasa rooms lang, hindi sa cottages o common areas.",
+      food: "Puwede magdala ng sariling food at drinks at walang corkage fee.",
+    },
+    bisaya: {
+      parking: "Libre ang parking sa mga sakyanan.",
+      wifi: "Libre ang Wi-Fi sa mga kwarto ra, dili sa cottages ug common areas.",
+      food: "Pwede magdala og kaugalingong pagkaon ug ilimnon. Walay corkage fee.",
+    },
+    spanish: {
+      parking: "El estacionamiento de vehículos es gratuito.",
+      wifi: "El Wi-Fi gratuito solo está disponible en las habitaciones, no en cabañas o zonas comunes.",
+      food: "Puede traer su propia comida y bebidas sin recargo por descorche.",
+    },
+    mandarin: {
+      parking: "车辆停车免费。",
+      wifi: "免费 Wi-Fi 仅限客房使用，小屋和公共区域不提供。",
+      food: "允许自带食物和饮料，不收取外带费。",
+    },
+  };
+  const locale=answers[language] ? language : "english";
+  return [answers[locale],...["parking","wifi","food"].filter(k=>match[k]).map(k=>extras[locale][k])].join(" ");
+}
+
 function matchUnverifiedResortPolicy(message, context = {}) {
   const t = normalizeQuestion(message);
   if (!t || t.length > 350) return null;
   const wifi = /\b(?:wi-?fi|wireless\s+internet|internet\s+connection)\b/i.test(t);
-  const pets = /\b(?:pets?|pet[ -]?friendly|dogs?|cats?|alagang\s+hayop)\b/i.test(t);
   const food = /\b(?:corkage|outside\s+food|bring\s+(?:(?:my|our|your|own)\s+)?food|own\s+food|dalang\s+(?:pagkain|food)|magdala\s+ng\s+(?:pagkain|food))\b/i.test(t);
-  if (![wifi,pets,food].some(Boolean)) return null;
+  if (![wifi,food].some(Boolean)) return null;
   if (/\b(?:family\s+room|double\s+room|single\s+room|rooms?|kwarto|kuwarto|accommodations?|nipa\s+hut|cottage|pavilion|pool\s+shade|booking\s+code|transaction|payment\s+status)\b/i.test(t)) return null;
   // A customer asking "May Wi-Fi dito?" while a room is focused needs a
   // fresh per-room lookup / grounded Gemini answer, not a property-wide FAQ.
@@ -188,16 +503,37 @@ function matchUnverifiedResortPolicy(message, context = {}) {
   const park = /\b(?:parking|park|paradahan|mag[ -]?park)\b/i.test(t);
   // Generic refund/booking/pricing requests have their own verified handlers.
   if (/\b(?:refund|cancellation|cancel|downpayment|booking\s+status|room\s+price|room\s+rate)\b/i.test(t)) return null;
-  return { kind: wifi ? "wifi" : pets ? "pets" : "food", mentionsParking: park };
+  return { kind: wifi ? "wifi" : "food", mentionsParking: park };
 }
 
 function getUnverifiedResortPolicyReply(match, language) {
   if (!match) return null;
+  // AI-65: This formerly unverified fallback must not contradict the
+  // client-confirmed zero-corkage policy when other matchers miss a paraphrase.
+  if (match.kind === "food") {
+    const parking = match.mentionsParking
+      ? verifiedGuestAmenitiesReply({parking:true},language) + " " : "";
+    return parking + verifiedGuestAmenitiesReply({food:true,corkage:true},language);
+  }
+  if (!["english", "tagalog", "taglish"].includes(language)) {
+    // Mixed known/unknown questions can preserve the independently verified
+    // Free parking and known guest policies may accompany another unknown fee.
+    const freeParking = {
+      bisaya: "Libre ang parking para sa tanang sakyanan. ",
+      spanish: "El estacionamiento es gratuito para cualquier vehículo. ",
+      mandarin: "各种车辆均可免费停车。",
+      japanese: "あらゆる車両の駐車は無料です。",
+      korean: "모든 차량의 주차는 무료입니다. ",
+      french: "Le stationnement est gratuit pour tout véhicule. ",
+      german: "Das Parken ist für alle Fahrzeugtypen kostenlos. ",
+      arabic: "موقف السيارات مجاني لجميع أنواع المركبات. ",
+    }[language] || "";
+    return (match.mentionsParking ? freeParking : "") + unknownRecordReply(language);
+  }
   const locale = ["english","tagalog","taglish"].includes(language) ? language : "english";
   const subject = {
     wifi: { english: "Wi-Fi availability", tagalog: "Wi-Fi", taglish: "Wi-Fi" },
-    pets: { english: "the pet policy", tagalog: "pet policy", taglish: "pet policy" },
-    food: { english: "the outside food/corkage policy", tagalog: "outside food/corkage policy", taglish: "outside food/corkage policy" },
+    food: { english: "outside food/corkage policy", tagalog: "outside food/corkage policy", taglish: "outside food/corkage policy" },
   }[match.kind]?.[locale];
   const parking = match.mentionsParking;
   if (locale === "taglish") return (parking ? "Free po ang parking para sa kahit anong vehicle. " : "") +
@@ -210,14 +546,141 @@ function getUnverifiedResortPolicyReply(match, language) {
     subject + " hasn't been confirmed by the resort. Please contact Front Desk at 0956-912-5625.";
 }
 
+// AI-66: Resort-confirmed on-site facilities AND operating hours.
+// Their inventory, menus, prices and other services are NOT verified.
+function verifiedResortFacilityMentions(message) {
+  const q = normalizeQuestion(message);
+  const store = /\b(?:convenience[\s-]?store|mini[\s-]?mart|mini[\s-]?store|sari[\s-]?sari(?:\s+store)?|tindahan|store|shop)\b/i.test(q);
+  const restobar = /\b(?:resto[\s-]?bar|restaurant[\s-]?bar|restaurant|bar)\b/i.test(q);
+  return {store, restobar};
+}
+
+// Detect questions about the verified operating schedules. This helper is
+// intentionally independent of resort-wide 24-hour opening hours.
+function facilityHoursRequested(message) {
+  const q = normalizeQuestion(message);
+  return /\b(?:what\s+time|when\s+does|until\s+what\s+time|how\s+late|anong\s+oras|hanggang\s+anong\s+oras|oras\s+ng|hours?|opening|closing|opens?|closes?|closed|opened|schedule|timings?|24[/-]7|24\s*hours?|everyday|every\s+day|daily|bukas|sarado|nagsasara|nagbubukas|all\s+night|right\s+now)\b/i.test(q);
+}
+
+// AI-67: The client confirms general FOOD AND DRINKS at the restobar,
+// not a specific dish, alcoholic beverage, price or published menu.
+function facilityFoodAndDrinksRequested(message) {
+  const q = normalizeQuestion(message);
+  const mentioned = verifiedResortFacilityMentions(q);
+  if (!mentioned.restobar) return false;
+  const foodOrDrinks = /\b(?:food|foods|meals?|dining|pagkain|kainan|drinks?|beverages?|refreshments?|inumin|pwedeng\s+kumain|puwedeng\s+kumain|makakain)\b/i.test(q);
+  if (!foodOrDrinks) return false;
+  // A question about BRINGING your own food is a separate policy.
+  if (/\b(?:bring|bringing|own\s+food|outside\s+food|magdala|dalang|baon|corkage)\b/i.test(q)) return false;
+  return true;
+}
+
+function matchVerifiedResortFacilities(message) {
+  const q = normalizeQuestion(message);
+  if (!q || q.length > 400) return null;
+  const mentions = verifiedResortFacilityMentions(q);
+  if (!mentions.store && !mentions.restobar) return null;
+  // Prices, menus, stock, specific items, alcohol sales and unrelated
+  // policies remain outside the verified fast path. Only broad restobar
+  // food/drinks service may bypass the former food/service exclusion.
+  if (/\b(?:room|cottage|booking|reservation|refund|cancel|payment|prices?|costs?|fees?|magkano|how\s+much|rates?|menus?|sell|sold|selling|stock|inventory|items?|products?|available\s+for\s+sale|beer|alcohol|wine|liquor|cocktails?|wifi|wi-fi|pool|parking|pets?|videoke|speakers?|entrance|corkage|deliver|delivery|kitchen|breakfast|lunch|dinner)\b/i.test(q)) return null;
+  if (/\b(?:such\s+as|for\s+example|like\s+(?:pizza|burger|chicken|rice)|what\s+(?:food|drinks?|dishes|beverages?)|which\s+(?:food|drinks?|dishes|beverages?)|what\s+kinds?\s+of|anong\s+(?:klase\s+ng\s+)?(?:pagkain|inumin)|specific\s+(?:food|drinks?|items?))\b/i.test(q)) return null;
+  const foodOrDrinks = /\b(?:food|foods|meals?|dining|pagkain|kainan|drinks?|beverages?|refreshments?|inumin|serve|serves|serving|service|buy|order|kumain|makakain)\b/i.test(q);
+  const offerings = facilityFoodAndDrinksRequested(q);
+  if (foodOrDrinks && !offerings) return null;
+  return {...mentions, hours: facilityHoursRequested(q), offerings};
+}
+
+function verifiedResortFacilitiesReply(mentions, language = "taglish") {
+  if (!mentions || (!mentions.store && !mentions.restobar)) return null;
+  const hoursPhrases = {
+    english: {
+      store: "The convenience store inside the resort is open 24/7, every day.",
+      restobar: "The restobar is open daily from 6:00 PM to 6:00 AM the next day (it closes at 6:00 AM).",
+    },
+    taglish: {
+      store: "Open 24/7 po ang convenience store sa loob ng resort.",
+      restobar: "Everyday po open ang restobar from 6:00 PM to 6:00 AM the next day. 6:00 AM po ang closing.",
+    },
+    tagalog: {
+      store: "Bukas po nang 24 oras araw-araw ang convenience store sa loob ng resort.",
+      restobar: "Bukas po ang restobar araw-araw mula 6:00 PM hanggang 6:00 AM ng susunod na araw.",
+    },
+    bisaya: {
+      store: "Abli ang convenience store sa resort 24/7 kada adlaw.",
+      restobar: "Abli ang restobar kada adlaw gikan 6:00 PM hangtod 6:00 AM sa sunod adlaw.",
+    },
+    spanish: {
+      store: "La tienda de conveniencia del resort abre las 24 horas, todos los días.",
+      restobar: "El restobar abre todos los días de 6:00 PM a 6:00 AM del día siguiente.",
+    },
+    mandarin: {
+      store: "度假村内便利店每天 24 小时营业，全年无休。",
+      restobar: "度假村内餐吧每天傍晚 6:00 开门，次日早上 6:00 关门。",
+    },
+  };
+  const offeringPhrases = {
+    english: "Yes, the restobar serves food and drinks.",
+    taglish: "Yes po, may food at drinks sa restobar.",
+    tagalog: "Opo, may pagkain at inumin sa restobar.",
+    bisaya: "Oo, naay pagkaon ug ilimnon sa restobar.",
+    spanish: "Sí, el restobar ofrece comidas y bebidas.",
+    mandarin: "餐吧提供食物和饮料。",
+  };
+  if (mentions.hours) {
+    const p = hoursPhrases[language] || hoursPhrases.english;
+    return [mentions.store && p.store, mentions.restobar && p.restobar,
+      mentions.offerings && offeringPhrases[language] || (mentions.offerings && offeringPhrases.english)]
+      .filter(Boolean).join(" ");
+  }
+  if (mentions.offerings) {
+    const p = hoursPhrases[language] || hoursPhrases.english;
+    return [mentions.store && p.store, offeringPhrases[language] || offeringPhrases.english]
+      .filter(Boolean).join(" ");
+  }
+  const phrases = {
+    english: {
+      store: "Yes, there's a convenience store inside the resort.",
+      restobar: "Yes, the resort also has an on-site restobar.",
+    },
+    taglish: {
+      store: "Yes po, may convenience store sa loob ng resort.",
+      restobar: "May restobar din po sa loob ng resort.",
+    },
+    tagalog: {
+      store: "Opo, may tindahang convenience store sa loob ng resort.",
+      restobar: "May restobar din po sa loob ng resort.",
+    },
+    bisaya: {
+      store: "Oo, adunay convenience store sulod sa resort.",
+      restobar: "Adunay restobar usab sulod sa resort.",
+    },
+    spanish: {
+      store: "Sí, hay una tienda de conveniencia dentro del resort.",
+      restobar: "También hay un restobar dentro del resort.",
+    },
+    mandarin: {
+      store: "度假村内有便利店。",
+      restobar: "度假村内也有餐吧。",
+    },
+  };
+  const p = phrases[language] || phrases.english;
+  return [mentions.store && p.store, mentions.restobar && p.restobar].filter(Boolean).join(" ");
+}
+
 function resortInquiryPromptLines() {
   return [
     "CLIENT-VERIFIED / OFFICIALLY PUBLISHED RESORT-WIDE FACTS:",
     ...Object.entries(RESORT_INQUIRY_FACTS).map(([kind, fact]) => "- " + kind + ": " + fact),
     "Use these facts naturally for paraphrased questions; do NOT require a customer to use any specific keywords.",
     "Resort-wide parking being free does NOT mean entrance, room, or pool admission is free.",
-    "For unverified pet rules, Wi-Fi, outside food/corkage, parking security/space guarantees,",
-    "pool fees or safety, early check-in, and other missing resort policies: never invent a yes/no,",
+    "The confirmed resort-wide NO-ANIMALS/NO-PETS policy applies to all accommodations. Do not invent exceptions.",
+    "Own food/drinks ARE permitted with NO corkage fee; Wi-Fi is FREE ONLY in Rooms; pool ALWAYS OPEN with no specific swimwear restrictions.",
+    "Different schedules: the resort AND convenience store are open 24/7; the RESTOBAR is open DAILY 6:00 PM to 6:00 AM NEXT DAY and is NOT 24/7. Never confuse these hours.",
+    "The RESTOBAR serves FOOD AND DRINKS, confirmed by the resort; specific menu items, brands, prices and alcohol sales are NOT confirmed. Answer general food/drinks availability yes without guessing particulars.",
+    "Alcoholic drinks, smoking/vaping and guests' OWN videoke/speakers ARE ALLOWED with NO resort time restrictions. This does not guarantee that a booked room includes equipment.",
+    "NO corkage fees for guests bringing their own food and drinks; Wi-Fi passwords/speeds and parking security/space guarantees remain unverified.",
+    "Pool entrance fees or other safety rules, early check-in, provided audio equipment, designated smoking areas and other missing policies: never invent a yes/no,",
     "rate or promise. State that it is not yet confirmed and refer to Front Desk.",
     "If a guest asks multiple unrelated questions, answer verified parts briefly and qualify unknown parts.",
   ].join("\n");
@@ -226,5 +689,11 @@ function resortInquiryPromptLines() {
 module.exports = {
   RESORT_INQUIRY_FACTS, matchResortInquiry, isOpeningHoursInquiry,
   guessInquiryLanguage, getResortInquiryReply, resortInquiryPromptLines,
+  matchVerifiedPetPolicy, verifiedPetPolicyReply,
+  matchVerifiedGuestAmenities, verifiedGuestAmenitiesReply,
+  matchVerifiedLeisurePolicies, verifiedLeisurePoliciesReply,
   matchUnverifiedResortPolicy, getUnverifiedResortPolicyReply,
+  verifiedResortFacilityMentions, matchVerifiedResortFacilities,
+  verifiedResortFacilitiesReply, facilityHoursRequested,
+  facilityFoodAndDrinksRequested,
 };
