@@ -59,6 +59,7 @@ const NON_RESORT_TASK = /\b(?:(?:write|create|generate|build)\s+(?:\w+\s+){0,4}(
 // actual accommodation term makes the question eligible for fresh verification.
 const HISTORICAL_PERSON = /\b(?:andres\s+bonifacio|jose\s+(?:protacio\s+)?rizal|si\s+(?:jose\s+)?rizal|si\s+(?:andres\s+)?bonifacio)\b/iu;
 const CURRENT_ACCOMMODATION_REFERENCE = /\b(?:room|cottage|accommodation|resort|hotel|booking|reserv(?:e|ation)|kwarto|kuwarto|kubo)\b/iu;
+const UNRELATED_PAYMENT_OBJECT = /\b(?:electric(?:ity)?|water\s+bill|utility\s+bill|internet\s+bill|phone\s+bill|credit\s+card|loan|mortgage|tuition|school\s+fees?|rent(?:al)?\s+payment|bank\s+debt|insurance\s+premium|car\s+payment|installment\s+plan|crypto|tax(?:es)?|groceries?|pizza|shopping\s+order|online\s+subscription)\b/i;
 
 // Short follow-up syntax only. No arbitrary pronouns or every message with
 // "po" are allowed to inherit old rooms: "si Jose Rizal" stays off-topic.
@@ -95,14 +96,17 @@ function isResortPaymentFollowUp(message, context = {}, recentTurns = []) {
       !asksFullVsPartialPayment(text)) return false;
   // Explicitly unrelated bills, loans and commerce cannot be converted into
   // resort payment inquiries even if the guest discussed a room previously.
-  if (/\b(?:electric(?:ity)?|water\s+bill|utility\s+bill|internet\s+bill|phone\s+bill|credit\s+card|loan|mortgage|tuition|school\s+fees?|rent(?:al)?\s+payment|bank\s+debt|insurance\s+premium|car\s+payment|installment\s+plan|crypto|tax(?:es)?)\b/i.test(text)) return false;
+  if (UNRELATED_PAYMENT_OBJECT.test(text)) return false;
   const selectedRoom = Number(context?.room_id) > 0 ||
     Boolean(String(context?.room_name || "").trim());
   const previousResortQuestion = (Array.isArray(recentTurns) ? recentTurns : [])
     .filter(turn => turn?.role === "user" && typeof turn.text === "string")
     .slice(-3).some(turn => hasResortTopic(turn.text));
-  // Even without prior room context, explicit "secure the room" is in scope.
-  return selectedRoom || previousResortQuestion ||
+  // On the official resort chatbot, a short generic deposit arrangement
+  // question ("Can I pay half first?") is an in-scope policy question even
+  // before the visitor has selected a particular accommodation.
+  const standalone = /^(?:can|may|could)\s+i\s+pay\s+(?:just\s+|only\s+)?(?:half|part)(?:\s+first)?[?.!]?$/i.test(text);
+  return selectedRoom || previousResortQuestion || standalone ||
     /\b(?:room|cottage|accommodation|reservation|booking|check[\s-]?in|arriv(?:e|ing|al)|resort)\b/i.test(text);
 }
 
@@ -110,6 +114,8 @@ function isResortQuestion(message, context = {}, recentTurns = []) {
   const text = normalize(message);
   if (!text) return false;
   if (NON_RESORT_TASK.test(text)) return false;
+  if (asksFullVsPartialPayment(text) && UNRELATED_PAYMENT_OBJECT.test(text))
+    return false;
   if (HISTORICAL_PERSON.test(text) && !CURRENT_ACCOMMODATION_REFERENCE.test(text))
     return false;
   if (GREETING.test(text)) return true;
