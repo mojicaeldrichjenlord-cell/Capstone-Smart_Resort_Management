@@ -643,6 +643,7 @@ function resortInquiryPromptLines() {
     "Resort-wide parking being free does NOT mean entrance, room, or pool admission is free.",
     "The confirmed resort-wide NO-ANIMALS/NO-PETS policy applies to all accommodations. Do not invent exceptions.",
     "Own food/drinks ARE permitted with NO corkage fee; Wi-Fi is FREE ONLY in Rooms; pool ALWAYS OPEN with no specific swimwear restrictions.",
+    "Different schedules: the resort AND convenience store are open 24/7; the RESTOBAR is open DAILY 6:00 PM to 6:00 AM NEXT DAY and is NOT 24/7. Never confuse these hours.",
     "Alcoholic drinks, smoking/vaping and guests' OWN videoke/speakers ARE ALLOWED with NO resort time restrictions. This does not guarantee that a booked room includes equipment.",
     "NO corkage fees for guests bringing their own food and drinks; Wi-Fi passwords/speeds and parking security/space guarantees remain unverified.",
     "Pool entrance fees or other safety rules, early check-in, provided audio equipment, designated smoking areas and other missing policies: never invent a yes/no,",
