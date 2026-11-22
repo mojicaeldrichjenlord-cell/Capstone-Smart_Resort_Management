@@ -24,6 +24,9 @@ const RESORT_TOPICS = [
   /\b(?:rooms?|kuwarto|kwarto|cottage|cottages|kubo|nipa|huts?|villas?|pavilions?|function\s+areas?|shades?|poolside|pool[\s-]?side|accommodations?|units?|beds?|queen\s+size|day\s*tour|overnight|night\s+(?:slot|tour|stay)|stay\s+(?:there|at|for|overnight)|check[\s-]?in|check[\s-]?out|reservations?|reserved|reserve|booking|booked|book\s+(?:a|the|this|that|my|your|online|now|for)|mag[\s-]?book|mag[\s-]?reserve|magpa[\s-]?reserve|magkano\s+(?:ang|yung|po\s+ang)\s+(?:room|kwarto|cottage|kubo))\b/i,
   /\b(?:guest(?:s)?|pax|capacity|vacanc(?:y|ies)|available|availability|rate(?:s)?\s+(?:of|for)\s+(?:a|the|rooms?|cottage)|entrance\s+fee|entrance\s+payment|down[\s-]?payment|deposit|paypal|cash\s+payment|payment|pay\s+(?:online|for|on|onsite)|refund|cancel(?:lation)?|discount|senior\s+citizen|pwd|additional\s+charges?|damages?|reschedule|slot(?:s)?)\b/i,
   /\b(?:bayad|babayaran|paunang\s+bayad|libre(?:ng)?\s+(?:parking|entrance|room|kubo)|pasok|pamasahe|sakay|schedule|iskedyul|presyo|mga\s+accommodation)\b/i,
+  // Unknown resort services still merit an evidence-based "not confirmed"
+  // answer, rather than being misclassified as a general off-topic task.
+  /\b(?:promos?|promo\s+codes?|vouchers?|coupons?|special\s+offers?|discount\s+codes?|promosyon|shuttle|airport\s+transfer|pick[\s-]?up\s+service|hatid\s+service|lifeguards?|security\s+guards?|wheelchair\s+accessibility|kayaks?|boat\s+rentals?|jet\s+skis?)\b/i,
   /\b(?:login|log[\s-]?in|register|registration|sign[\s-]?up|my\s+bookings|account|password|receipt|reference\s+(?:code|number)|booking\s+status)\b/i,
   /\b(?:can\s+i|how\s+(?:do\s+i|can\s+i|can\s+you\s+help\s+me)|may\s+i|could\s+i|where\s+can\s+i|paano\s+(?:po\s+)?(?:ako|kami))\s+(?:\w+\s+){0,4}book\b/i,
   /\b(?:may|meron|do\s+you\s+(?:have|serve)|is\s+there)\s+(?:\w+\s+){0,3}(?:food|foods|meals|kainan)\b/i,
