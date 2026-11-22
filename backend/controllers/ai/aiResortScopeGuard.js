@@ -1,6 +1,7 @@
 "use strict";
 // AI-39: Both resort scope and the verified FAQ use the same operations intent.
 const { isOpeningHoursInquiry } = require("./resortInquiryKnowledge");
+const { asksFullVsPartialPayment } = require("./aiFocusedPaymentReply");
 /**
  * UI-36 — Only Arvic Seaside Resort guest-service inquiries reach Gemini.
  * All off-topic refusals are deterministic and cost ZERO API/DB calls.
@@ -83,6 +84,28 @@ function isRecognizedResortFollowUp(message, context = {}, recentTurns = []) {
   return focused || previous.some(t => hasResortTopic(t.text));
 }
 
+// AI-58: The guest can refer to the 50% deposit without ever saying
+// "resort", "room", "payment" or "PayPal": "Can I pay half first, then
+// settle the rest when we arrive?". Only inherit the topic from a focused
+// accommodation or recent resort USER question. Do not let stale history
+// override explicit unrelated financial topics or instructions.
+function isResortPaymentFollowUp(message, context = {}, recentTurns = []) {
+  const text = normalize(message);
+  if (text.length < 5 || text.length > 230 ||
+      !asksFullVsPartialPayment(text)) return false;
+  // Explicitly unrelated bills, loans and commerce cannot be converted into
+  // resort payment inquiries even if the guest discussed a room previously.
+  if (/\b(?:electric(?:ity)?|water\s+bill|utility\s+bill|internet\s+bill|phone\s+bill|credit\s+card|loan|mortgage|tuition|school\s+fees?|rent(?:al)?\s+payment|bank\s+debt|insurance\s+premium|car\s+payment|installment\s+plan|crypto|tax(?:es)?)\b/i.test(text)) return false;
+  const selectedRoom = Number(context?.room_id) > 0 ||
+    Boolean(String(context?.room_name || "").trim());
+  const previousResortQuestion = (Array.isArray(recentTurns) ? recentTurns : [])
+    .filter(turn => turn?.role === "user" && typeof turn.text === "string")
+    .slice(-3).some(turn => hasResortTopic(turn.text));
+  // Even without prior room context, explicit "secure the room" is in scope.
+  return selectedRoom || previousResortQuestion ||
+    /\b(?:room|cottage|accommodation|reservation|booking|check[\s-]?in|arriv(?:e|ing|al)|resort)\b/i.test(text);
+}
+
 function isResortQuestion(message, context = {}, recentTurns = []) {
   const text = normalize(message);
   if (!text) return false;
@@ -94,6 +117,7 @@ function isResortQuestion(message, context = {}, recentTurns = []) {
   // even if the visitor did not explicitly say "resort" or "hours".
   if (isOpeningHoursInquiry(text)) return true;
   if (hasResortTopic(text)) return true;
+  if (isResortPaymentFollowUp(text, context, recentTurns)) return true;
   return isRecognizedResortFollowUp(text, context, recentTurns);
 }
 
@@ -115,5 +139,5 @@ function resortOnlyReply(language = "taglish") {
 
 module.exports = {
   hasResortTopic, isResortQuestion, isRecognizedResortFollowUp,
-  resortOnlyReply,
+  isResortPaymentFollowUp, resortOnlyReply,
 };
