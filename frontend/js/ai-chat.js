@@ -42,6 +42,13 @@ document.addEventListener("DOMContentLoaded", () => {
   setupAiChat();
 });
 
+function aiReplyForSurface(reply) {
+  const text = String(reply || "");
+  if (!AI_IS_PUBLIC_LANDING) return text;
+  return text.replace(/\bView Details\b/gi, "Login for Details")
+    .replace(/\bBook This\b/gi, "Login to Book");
+}
+
 function setupAiChat() {
   const toggleBtn = document.getElementById("aiChatToggle");
   const closeBtn = document.getElementById("aiChatClose");
@@ -190,7 +197,10 @@ async function sendAiMessage(options = {}) {
       // Save silently. Repeating context summaries on every reply feels robotic.
     }
 
-    const aiReply = data.reply || "No reply generated.";
+    // UI-49: Public visitors see "Login for Details" on recommendation cards,
+    // while signed-in customers see "View Details". Match the visible label
+    // without changing backend recommendations or authentication behavior.
+    const aiReply = aiReplyForSurface(data.reply || "No reply generated.");
     appendAiMessage("assistant", aiReply);
     // AI-48: Backend requests a known safe booking or human handoff. Never
     // derive link destinations from model text or user-supplied URLs.
