@@ -1317,8 +1317,9 @@ function getOfflineFallbackReply(message, storedContext = {}, pageContext = {}) 
 }
 
 // Keep this tiny offline mirror aligned with backend/resortInquiryKnowledge.js.
-// Source of truth for free parking: client confirmation, November 19, 2026.
-// For unknown parking security, slot/capacity, pool fees and pets, don't invent.
+// Source of truth for parking: client-confirmed November 19, 2026;
+// no-animals policy: client-confirmed November 22, 2026.
+// Unknown parking security, slot/capacity, pool fees and food remain unverified.
 function getOfflineVerifiedResortReply(message, language, context) {
   const t = String(message || "").normalize("NFKC").toLowerCase().trim();
   if (!t || t.length > 600) return null;
@@ -1338,9 +1339,34 @@ function getOfflineVerifiedResortReply(message, language, context) {
     ({ english, tagalog, taglish })[lang];
   const withReply = answer => ({ modeNotice: notice, reply: answer, context });
 
+  // AI-60: Approved no-pets policy also applies when the backend is offline.
+  // The question may involve a named room because this restriction is
+  // property-wide. Never infer pet-fee exceptions or pet boarding options.
+  const pet = /\b(?:pets?|pet[\s-]?friendly|dogs?|cats?|pupp(?:y|ies)|kittens?|animals?|aso|pusa|hayop|alagang\s+hayop|iro|iring|mascotas?|perros?|gatos?)\b/iu.test(t) ||
+    /(?:宠物|猫|狗)/u.test(t);
+  const wifi = /\b(?:wi-?fi|wireless|internet)\b/i.test(t);
+  const food = /\b(?:corkage|outside\s+food|bring\s+food|magdala\s+ng\s+pagkain|dalang\s+pagkain)\b/i.test(t);
+  if (pet && !/\b(?:downpayment|deposit|paypal|refund|booking\s+total|room\s+rate|magkano\s+(?:ang\s+)?(?:room|kwarto))\b/i.test(t)) {
+    const policy = reply(
+      "Sorry, animals and pets are not allowed at Arvic Seaside Resort, including dogs and cats.",
+      "Pasensya na po, bawal magdala ng mga hayop sa Arvic Seaside Resort, kasama ang aso at pusa.",
+      "Sorry po, hindi pet-friendly ang Arvic Seaside Resort. Bawal magdala ng pets o kahit anong hayop, including dogs and cats."
+    );
+    const parkingNote = park ? reply(
+      " Parking for vehicles is free.", " Libre ang parking ng sasakyan.",
+      " Free po ang parking ng vehicles."
+    ) : "";
+    const unknownNote = wifi || food ? reply(
+      " The Wi-Fi/outside-food policy is not verified; please confirm with Front Desk.",
+      " Hindi pa kumpirmado ang Wi-Fi o dalang pagkain; pakitanong sa Front Desk.",
+      " Hindi pa confirmed ang Wi-Fi o outside-food policy; pa-check sa Front Desk."
+    ) : "";
+    return withReply(policy + parkingNote + unknownNote);
+  }
+
   // Unsupported general policies are handled conservatively even offline.
-  // A statement that parking is free does not prove that pets or Wi-Fi are allowed.
-  const unknownPolicy = /\b(?:pets?|dogs?|cats?|wi-?fi|internet|corkage|outside\s+food|bring\s+food)\b/i.test(t);
+  // Parking being free does not imply that Wi-Fi or corkage is also free.
+  const unknownPolicy = /\b(?:wi-?fi|internet|corkage|outside\s+food|bring\s+food)\b/i.test(t);
   if (unknownPolicy) return withReply(reply(
     (park ? "Parking is free for all vehicles. " : "") +
       "That other resort policy hasn't been verified. Please ask Front Desk at 0956-912-5625.",
