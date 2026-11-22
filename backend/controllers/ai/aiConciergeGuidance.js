@@ -17,9 +17,9 @@ function matchConciergeGuide(message) {
   if (/\b(?:booking\s+(?:status|code|reference)|payment\s+(?:status|reference)|already\s+paid|confirmed\s+booking|refund|cancel|remaining\s+balance|my\s+booking|my\s+reservation)\b/i.test(t))
     return null;
   const askingProcess =
-    /\b(?:how\s+(?:do|can|to)\s+(?:i|we)?\s*(?:book|reserve|pay)|how\s+(?:does|do)\s+(?:booking|paypal\s+checkout|online\s+payment)\s+work|how\s+to\s+(?:book|reserve|pay)|booking\s+(?:process|steps|instructions)|paypal\s+(?:checkout|steps|payment\s+process)|paano\s+(?:po\s+)?(?:mag[ -]?book|mag[ -]?reserve|magbayad|mag[ -]?bayad)|paano\s+(?:ang|po\s+ang)\s+(?:booking|pag[ -]?book|paypal\s+payment)|unsaon\s+(?:pag[ -]?book|pag[ -]?reserve|pagbayad)|c[oó]mo\s+(?:reservar|pagar)|如何(?:预订|付款)|怎么(?:预订|付款))\b/iu.test(t);
+    /\b(?:how\s+(?:do|can|to)\s+(?:i|we)?\s*(?:book|reserve|pay)|how\s+(?:does|do)\s+(?:booking|paypal\s+checkout|online\s+payment)\s+work|how\s+to\s+(?:book|reserve|pay)|booking\s+(?:process|steps|instructions)|paypal\s+(?:checkout|steps|payment\s+process)|paano\s+(?:po\s+)?(?:mag[ -]?book|mag[ -]?reserve|magbayad|mag[ -]?bayad)|paano\s+(?:ang|po\s+ang)\s+(?:booking|pag[ -]?book|paypal\s+payment)|unsaon\s+(?:pag[ -]?book|pag[ -]?reserve|pagbayad)|c[oó]mo\s+(?:reservar|pagar)|如何(?:预订|付款)|怎么(?:预订|付款))/iu.test(t);
   const readyToBook =
-    /\b(?:ready\s+to\s+book|i\s+(?:want|would\s+like)\s+to\s+(?:book|reserve)|let\s+me\s+book|start\s+(?:a|my|the)\s+booking|mag[ -]?book\s+na\s+(?:ako|kami|po|tayo)|gusto\s+(?:ko|namin)\s+(?:na\s+)?mag[ -]?book|mag[ -]?reserve\s+na\s+(?:ako|kami)|gusto\s+ko\s+na\s+magbayad|quiero\s+reservar|我要预订)\b/iu.test(t);
+    /\b(?:ready\s+to\s+book|i\s+(?:want|would\s+like)\s+to\s+(?:book|reserve)|let\s+me\s+book|start\s+(?:a|my|the)\s+booking|mag[ -]?book\s+na\s+(?:ako|kami|po|tayo)|gusto\s+(?:ko|namin)\s+(?:(?:na|nang)\s+)?mag[ -]?book|mag[ -]?reserve\s+na\s+(?:ako|kami)|gusto\s+ko\s+na\s+magbayad|quiero\s+reservar|我要预订)/iu.test(t);
   return askingProcess || readyToBook ? "booking" : null;
 }
 
