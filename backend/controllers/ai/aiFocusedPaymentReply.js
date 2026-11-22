@@ -117,6 +117,14 @@ function peso(value) {
   });
 }
 
+// AI-57: A guest asking whether full payment is required needs a concise,
+// direct answer—not the complete reservation FAQ repeated verbatim.
+// The monetary values still come from the fresh, verified DB record below.
+function asksFullVsPartialPayment(message) {
+  const text = String(message || "").normalize("NFKC");
+  return /\b(?:full\s+(?:amount|payment|price)|pay\s+in\s+full|entire\s+(?:amount|payment)|pay\s+(?:it\s+)?all|pay\s+everything|pay\s+(?:just\s+|only\s+)?(?:part|half)|part\s+of\s+it|partial\s+payment|pay\s+(?:a\s+)?portion|half\s+first|balance\s+later|pay\s+everything\s+now|pay\s+upfront\s+in\s+full|kalahati\s+muna|buong\s+bayad|bayad\s+ng\s+buo|bayaran\s+(?:ang\s+)?lahat|pwede\s+bang\s+kalahati)\b/iu.test(text);
+}
+
 function paymentReply(message, context, room, language = "taglish") {
   const stay = getPaymentStayKind(message, context);
   // AI-54: The deposit on a single standard slot is determinable without
@@ -137,6 +145,38 @@ function paymentReply(message, context, room, language = "taglish") {
   const verified = !!room && listed && amount !== null;
   const half = verified ? peso(amount * 0.5) : null;
   const rate = verified ? peso(amount) : null;
+
+  // Answer the decision first. No rate is assumed when the room, slot or
+  // special duration is unverified; those cases follow the safe existing flow.
+  if (verified && asksFullVsPartialPayment(message)) {
+    const line = {
+      english: "No, you don't need to pay the full amount upfront. For " + name +
+        ", the estimated deposit is " + half + " (50% of the listed " + rate +
+        " one-slot rate). Pay through PayPal on the booking page; the remaining " +
+        half + " and separate entrance fees are paid at the resort. The booking is confirmed after successful PayPal capture. Check the final amount and available slot before paying.",
+      taglish: "Hindi po kailangang full payment agad. For " + name +
+        ", estimated " + half + " muna (50% ng listed " + rate +
+        " standard rate) via PayPal sa booking page. Yung remaining " +
+        half + " at separate entrance fees ay sa resort na babayaran. Confirmed lang ang booking kapag successful ang PayPal capture; check muna ang final total at available slot.",
+      tagalog: "Hindi po kailangang bayaran agad ang buong halaga. Para sa " + name +
+        ", tinatayang " + half + " muna ang paunang bayad (50% ng nakatalang " + rate +
+        " para sa isang slot) gamit ang PayPal sa booking page. Ang natitirang " +
+        half + " at hiwalay na entrance fees ay babayaran sa resort. Makukumpirma ang booking matapos ang matagumpay na PayPal payment capture.",
+      bisaya: "Dili kinahanglan bayran dayon ang tibuok kantidad. Sa " + name +
+        ", ang estimated downpayment kay " + half + " (50% sa listed " + rate +
+        " nga rate) pinaagi sa PayPal sa booking page. Ang nahibiling " +
+        half + " ug entrance fees bayran sa resort. Makumpirma ang booking human sa successful PayPal capture.",
+      spanish: "No es necesario pagar todo por adelantado. Para " + name +
+        ", el anticipo estimado es " + half + " (50 % de la tarifa indicada de " +
+        rate + ") por PayPal en la página de reservas. Los " + half +
+        " restantes y la entrada se pagan en el resort. La reserva se confirma tras el cobro exitoso de PayPal.",
+      mandarin: "不用提前支付全部金额。" + name + " 的预计订金为 " +
+        half + "（挂牌标准时段价格 " + rate +
+        " 的50%），请在预订页面通过 PayPal 支付。剩余住宿费 " + half +
+        " 和单独的入场费在度假村支付。PayPal 成功扣款后预订才会确认。",
+    }[language] || null;
+    if (line) return line;
+  }
 
   if (language === "bisaya") {
     const intro = !room ? "Unsang accommodation ang inyong plano i-book?" :
@@ -214,5 +254,5 @@ function paymentReply(message, context, room, language = "taglish") {
 
 module.exports = {
   isRoomPaymentInquiry, resolvePaymentRoom, getPaymentStayKind,
-  paymentReply, validRate,
+  paymentReply, validRate, asksFullVsPartialPayment,
 };
