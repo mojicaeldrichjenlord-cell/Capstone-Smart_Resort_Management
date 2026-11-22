@@ -20,7 +20,7 @@ function answer(q,lang="taglish") {
 }
 
 test("Own food and drinks allowed, with separate unknown corkage amount",()=>{
-  assert.match(answer("Pwede ba magdala ng sariling pagkain at inumin?","tagalog"),/maaaring po kayong magdala ng sariling pagkain at inumin/i);
+  assert.match(answer("Pwede ba magdala ng sariling pagkain at inumin?","tagalog"),/maaari po kayong magdala ng sariling pagkain at inumin/i);
   assert.match(answer("Can we bring our own food and drinks?","english"),/you may bring your own food and drinks/);
   const corkage=answer("Is there a corkage fee for outside food?","english");
   assert.match(corkage,/may bring/);
@@ -36,7 +36,7 @@ test("Free Wi-Fi is in Rooms only; Single Room Cottage is a Room",()=>{
 });
 test("Wi-Fi password/speed aren't invented",()=>{
   const response=answer("What's the Wi-Fi password and speed?","english");
-  assert.match(response,/Wi-Fi.*rooms only/i);
+  assert.match(response,/Wi-Fi.*room accommodations only/i);
   assert.match(response,/password, speed and signal strength aren't confirmed/i);
 });
 test("Pool is always open and has no particular swimwear restrictions",()=>{
