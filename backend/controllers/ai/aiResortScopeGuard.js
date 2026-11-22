@@ -18,6 +18,9 @@ const RESORT_TOPICS = [
   // Resort identity, access, operations, contact and guest services.
   /\b(?:arvic|seaside|resort|hotel|front[\s-]?desk|reception|contact|hotline|makontak|manager|resort\s+staff)\b/i,
   /\b(?:parking|paradahan|mag[ -]?park|park(?:ing)?\s+(?:car|motor|van|bus))\b/i,
+  // AI-65: Verified facilities, without letting generic shopping questions through.
+  /\b(?:convenience[\s-]?store|mini[\s-]?mart|mini[\s-]?store|sari[\s-]?sari(?:\s+store)?|tindahan|resto[\s-]?bar|restaurant[\s-]?bar|restaurant)\b/i,
+  /\b(?:may|meron|is\s+there|do\s+you\s+have)\s+(?:\w+\s+){0,4}(?:store|shop)\b/i,
   // Speaker queries count as resort activity policy only when permission or
   // resort-context language appears; unrelated consumer speaker questions
   // must not pass the guest-service scope gate.
