@@ -1288,10 +1288,12 @@ exports.chatWithGemini = async (req, res) => {
         // Two cards should not leave the stale single-room focus active.
         delete context.room_id;
         delete context.room_name;
-        const cardRows = comparison.complete
-          ? comparison.rows.filter(room =>
-              String(room.status || "").trim().toLowerCase() === "available")
-          : [];
+        // Compare both listings in the reply, but never show only one
+        // "available" preview if the other unit is inactive/under maintenance.
+        const cardRows = comparison.complete &&
+          comparison.rows.every(room =>
+            String(room.status || "").trim().toLowerCase() === "available")
+          ? comparison.rows : [];
         return res.status(200).json({
           success: true,
           mode: "verified_accommodation_comparison",
