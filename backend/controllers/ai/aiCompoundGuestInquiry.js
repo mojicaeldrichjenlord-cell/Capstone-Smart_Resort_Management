@@ -11,7 +11,8 @@ const {
   verifiedGuestAmenitiesReply, verifiedLeisurePoliciesReply,
 } = require("./resortInquiryKnowledge");
 const { explicitGuestCount } = require("./aiRecommendationIntake");
-const { normalizedCategory } = require("./aiAccommodationCategoryPolicy");
+const { isPlainCottageCategory, isFunctionAreaCategory } =
+  require("./aiAccommodationCategoryPolicy");
 
 // This handler is intentionally narrow: mixed policies with unsupported
 // requests (rates, booking dates, specific equipment inclusions) continue
@@ -107,7 +108,8 @@ function compoundGuestReply(topics,message,context={},language="taglish",room=nu
     },locale));
   if(topics.wifi)parts.push(verifiedGuestAmenitiesReply({
     wifi:true,wifiDetail:topics.wifiDetails,
-    rooms:true,cottage:Boolean(room && normalizedCategory(room)==="cottage"),
+    rooms:true,cottage:Boolean(room &&
+      (isPlainCottageCategory(room) || isFunctionAreaCategory(room))),
   },locale));
   if(topics.pool||topics.parking||topics.pets)parts.push(
     verifiedGuestAmenitiesReply({
