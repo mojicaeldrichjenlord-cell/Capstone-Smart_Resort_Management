@@ -163,11 +163,11 @@ function paymentReply(message, context, room, language = "taglish") {
   if (nonStandard && room && listed) {
     const answers = {
       english: "Not necessarily. For a multi-night stay at " + name +
-        ", the downpayment is 50% of the final accommodation total for the whole stay—not the one-night estimate. Please check the booking page for the exact total and available dates. Pay the deposit via PayPal; settle the balance and separate entrance fees at the resort.",
+        ", the downpayment is 50% of the final accommodation total for the whole stay—not the one-night estimate. Please check the booking page for the exact duration and total, plus available dates. Pay the deposit via PayPal; settle the balance and separate entrance fees at the resort.",
       tagalog: "Hindi po natin puwedeng ipagpalagay na pareho ang paunang bayad para sa isang gabi. Para sa maraming gabing pananatili sa " + name +
         ", ang paunang bayad ay 50% ng kabuuang pinal na presyo ng matutuluyan para sa buong pananatili. Sa booking page po muna makikita ang eksaktong halaga at availability. Sa PayPal babayaran ang paunang bayad; sa resort naman ang natitira at hiwalay na entrance fees.",
       taglish: "Hindi po automatic na same pa rin ang one-night downpayment. Para sa multi-night stay sa " + name +
-        ", 50% ng final accommodation total para sa buong stay ang downpayment. Check po muna sa booking page ang exact total at availability. Via PayPal ang downpayment; remaining balance at separate entrance fees ay onsite.",
+        ", 50% ng final accommodation total para sa buong stay ang downpayment. Check po muna sa booking page ang exact duration at total, pati availability. Via PayPal ang downpayment; remaining balance at separate entrance fees ay onsite.",
       bisaya: "Dili automatic nga pareho gihapon ang downpayment sa usa ka gabii. Para sa daghang gabii sa " + name +
         ", 50% sa final accommodation total sa tibuok stay ang downpayment. I-check sa booking page ang exact total ug available dates. Bayri ang downpayment sa PayPal; ang nahibilin ug entrance fees sa resort.",
       spanish: "No necesariamente. Para varias noches en " + name +
