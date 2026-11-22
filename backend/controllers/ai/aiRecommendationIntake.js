@@ -61,6 +61,7 @@ function guestCountQuestion(language = "taglish") {
   switch(language) {
     case "english": return "Sure! How many guests will be staying?";
     case "tagalog": return "Sige po! Ilan po kayong bisita?";
+    case "bisaya": return "Sige! Pila mo kabuok nga guests?";
     case "spanish": return "¡Claro! ¿Cuántas personas se alojarán?";
     case "mandarin": return "好的！请问一共有几位客人入住？";
     default: return "Sure po! Ilan po kayong guests?";
@@ -78,7 +79,7 @@ function pendingRecommendation(recentTurns = [], context = {}) {
     (t.role === "user" || t.role === "assistant") && typeof t.text === "string");
   const latest = recent.at(-1);
   const askedGuests = latest?.role === "assistant" && (
-    /(?:ilan\s+(?:po\s+)?kayong\s+(?:guests?|bisita)|how many guests|cuántas personas|几位客人)/i.test(latest.text));
+    /(?:ilan\s+(?:po\s+)?kayong\s+(?:guests?|bisita)|how many guests|pila\s+mo\s+kabuok|cuántas personas|几位客人)/i.test(latest.text));
   if (!askedGuests) return null;
   const previous = recent.slice(0, -1).reverse().find(t => t.role === "user");
   if (!previous || !isPersonalizedRecommendation(previous.text)) return null;
