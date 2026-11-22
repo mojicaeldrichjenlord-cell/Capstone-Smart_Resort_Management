@@ -87,7 +87,7 @@ test("Known policy is available to grounded AI in its prompt",()=>{
   assert.match(RESORT_INQUIRY_FACTS.roomWifi,/FREE Wi-Fi.*ONLY in room/);
   assert.match(RESORT_INQUIRY_FACTS.pool,/ALWAYS OPEN/);
   assert.match(prompt,/Corkage fees.*remain unverified/);
-  assert.match(prompt,/alcohol, smoking, videoke rules/);
+  assert.match(prompt,/smoking\/vaping.*OWN videoke\/speakers ARE ALLOWED/);
 });
 test("Multilingual direct answers preserve verified limitations",()=>{
   const q="Is there free Wi-Fi at the resort?";
