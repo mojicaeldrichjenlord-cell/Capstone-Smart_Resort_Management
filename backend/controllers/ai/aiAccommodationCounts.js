@@ -3,7 +3,7 @@
 // Count questions are different from "show/recommend rooms" preview requests.
 // Run against a fresh aggregate SQL result on every request; no Gemini credits.
 
-const COUNT_WORDS = /\b(?:ilan|ilang|how\s+many|number\s+of|total\s+(?:number\s+of|count\s+of)?|count\s+of|gaano\s+karami(?:ng)?|bilang\s+ng)\b/i;
+const COUNT_WORDS = /\b(?:ilan|ilang|pila\s+ka|pila\s+ang|how\s+many|number\s+of|total\s+(?:number\s+of|count\s+of)?|count\s+of|gaano\s+karami(?:ng)?|bilang\s+ng)\b/i;
 const ROOM_WORDS = /\b(?:rooms?|kwarto|kuwarto)\b/i;
 const COTTAGE_WORDS = /\b(?:cottages?|kubo|kottages?|nipa\s+huts?|pool\s+shades?|shades?)\b/i;
 const FUNCTION_WORDS = /\b(?:function\s+(?:areas?|halls?)|pavill?ions?)\b/i;
@@ -74,6 +74,7 @@ function countReply(summary, intent, language = "taglish") {
   const scopes = intent?.scopes || [];
   const english = language === "english";
   const pureTagalog = language === "tagalog";
+  const bisaya = language === "bisaya";
   const names = {
     room: intent?.subtype ? intent.subtype + " room" : "room",
     cottage: "cottage",
@@ -94,12 +95,15 @@ function countReply(summary, intent, language = "taglish") {
   });
   const nounList = items.length > 1 ? items.slice(0, -1).join(", ") +
     (english ? " and " : " at ") + items[items.length - 1] : items[0];
-  const suffix = english
+  const suffix = bisaya
+    ? "Kadaghanon lang kini sa listing, dili pa kumpirmadong bakante sa imong petsa ug oras."
+    : english
     ? "This is the current listing count, not confirmed availability for a date or time."
     : pureTagalog
       ? "Bilang ito ng mga nakalista, hindi pa kumpirmadong bakante sa napiling petsa at oras."
       : "Listing count lang po ito; hindi pa confirmed ang availability sa specific date at time.";
   if (summary.total === 0) {
+    if (bisaya) return "Wala pay nakalistang accommodation nga mohaom sa gipangita. Palihog kumpirmaha sa Front Desk.";
     return english
       ? "No matching accommodations are currently recorded in the resort system. Please confirm with Front Desk."
       : pureTagalog
@@ -107,6 +111,7 @@ function countReply(summary, intent, language = "taglish") {
         : "Wala pong naka-list na matching accommodation sa system ngayon. Paki-confirm po sa Front Desk.";
   }
   if (intent?.availableOnly) {
+    if (bisaya) return "Sa kasamtangang listing, " + nounList + " ang gi-mark nga available. " + suffix;
     return english
       ? "Currently " + nounList + " are marked available in the listing. " + suffix
       : pureTagalog
@@ -116,6 +121,7 @@ function countReply(summary, intent, language = "taglish") {
   const statusNote = summary.listed < summary.total
     ? (english ? " (" + summary.listed + " marked available)"
       : " (" + summary.listed + " marked available)") : "";
+  if (bisaya) return "Naay " + nounList + " nga nakalista sa resort" + statusNote + ". " + suffix;
   return english
     ? "The resort currently has " + nounList + " listed" + statusNote + ". " + suffix
     : pureTagalog
