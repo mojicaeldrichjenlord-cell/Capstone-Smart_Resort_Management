@@ -18,6 +18,10 @@ const RESORT_TOPICS = [
   // Resort identity, access, operations, contact and guest services.
   /\b(?:arvic|seaside|resort|hotel|front[\s-]?desk|reception|contact|hotline|makontak|manager|resort\s+staff)\b/i,
   /\b(?:parking|paradahan|mag[ -]?park|park(?:ing)?\s+(?:car|motor|van|bus))\b/i,
+  // Speaker queries count as resort activity policy only when permission or
+  // resort-context language appears; unrelated consumer speaker questions
+  // must not pass the guest-service scope gate.
+  /\b(?:bring|bringing|allowed|permit|bawal|pwede|puwede|magdala|dalhin|own|our|my|resort|room|cottage|use)\b.{0,48}\b(?:speakers?|sound\s+system|soundbox)\b|\b(?:speakers?|sound\s+system|soundbox)\b.{0,48}\b(?:allowed|permit|bawal|pwede|puwede|use|bring|resort|room|cottage|own)\b/i,
   /\b(?:address|location|directions?|how\s+(?:do\s+i|to)\s+get\s+there|operating\s+hours?|opening\s+hours?|open\s+(?:today|tomorrow|24|everyday)|hours?\s+(?:open|of operation)|nasaan|saan\s+(?:kayo|po\s+kayo)|bukas\s+ba\s+kayo)\b/i,
   /\b(?:pool|swim(?:ming)?|lifeguard|amenit(?:y|ies)|facilit(?:y|ies)|wifi|wi-fi|internet|pets?|pet[\s-]?friendly|dogs?|cats?|animals?|aso|pusa|hayop|iro|iring|mascotas?|perros?|gatos?|alcohol(?:ic)?|beer|liquor|alak|smoking|smoke|vaping|vape|yosi|sigarilyo|videoke|karaoke|corkage|outside\s+food|pagkain|towels?|bathroom|restroom|shower|(?:private\s+)?cr|aircon|air[- ]?conditioning|refrigerator|kitchen|cabinet)\b/i,
   /\b(?:walk[\s-]?ins?|walk[\s-]?in\s+(?:guest|reservation|booking)|same[\s-]?day\s+booking)\b/i,
