@@ -539,6 +539,57 @@ function getUnverifiedResortPolicyReply(match, language) {
     subject + " hasn't been confirmed by the resort. Please contact Front Desk at 0956-912-5625.";
 }
 
+// AI-65: Resort-confirmed on-site facilities. Their existence is verified,
+// but their inventory, opening hours, menus, prices and services are NOT.
+function verifiedResortFacilityMentions(message) {
+  const q = normalizeQuestion(message);
+  const store = /\b(?:convenience[\s-]?store|mini[\s-]?mart|mini[\s-]?store|sari[\s-]?sari(?:\s+store)?|tindahan|store|shop)\b/i.test(q);
+  const restobar = /\b(?:resto[\s-]?bar|restaurant[\s-]?bar|restaurant|bar)\b/i.test(q);
+  return {store, restobar};
+}
+
+function matchVerifiedResortFacilities(message) {
+  const q = normalizeQuestion(message);
+  if (!q || q.length > 400) return null;
+  const mentions = verifiedResortFacilityMentions(q);
+  if (!mentions.store && !mentions.restobar) return null;
+  // Mixed questions and unknown services go to the existing grounded flow.
+  if (/\b(?:room|cottage|booking|reservation|refund|cancel|payment|price|rates?|menu|sell|sold|stock|inventory|items?|products?|available\s+for\s+sale|hours?|opening|closing|open\s+now|closed|food|drinks?|beer|alcohol|wifi|wi-fi|pool|parking|pets?|videoke|speakers?|entrance|corkage|deliver|delivery|kitchen|breakfast|lunch|dinner|service|serve|serves)\b/i.test(q)) return null;
+  return mentions;
+}
+
+function verifiedResortFacilitiesReply(mentions, language = "taglish") {
+  if (!mentions || (!mentions.store && !mentions.restobar)) return null;
+  const phrases = {
+    english: {
+      store: "Yes, there's a convenience store inside the resort.",
+      restobar: "Yes, the resort also has an on-site restobar.",
+    },
+    taglish: {
+      store: "Yes po, may convenience store sa loob ng resort.",
+      restobar: "May restobar din po sa loob ng resort.",
+    },
+    tagalog: {
+      store: "Opo, may tindahang convenience store sa loob ng resort.",
+      restobar: "May restobar din po sa loob ng resort.",
+    },
+    bisaya: {
+      store: "Oo, adunay convenience store sulod sa resort.",
+      restobar: "Adunay restobar usab sulod sa resort.",
+    },
+    spanish: {
+      store: "Sí, hay una tienda de conveniencia dentro del resort.",
+      restobar: "También hay un restobar dentro del resort.",
+    },
+    mandarin: {
+      store: "度假村内有便利店。",
+      restobar: "度假村内也有餐吧。",
+    },
+  };
+  const p = phrases[language] || phrases.english;
+  return [mentions.store && p.store, mentions.restobar && p.restobar].filter(Boolean).join(" ");
+}
+
 function resortInquiryPromptLines() {
   return [
     "CLIENT-VERIFIED / OFFICIALLY PUBLISHED RESORT-WIDE FACTS:",
@@ -562,4 +613,6 @@ module.exports = {
   matchVerifiedGuestAmenities, verifiedGuestAmenitiesReply,
   matchVerifiedLeisurePolicies, verifiedLeisurePoliciesReply,
   matchUnverifiedResortPolicy, getUnverifiedResortPolicyReply,
+  verifiedResortFacilityMentions, matchVerifiedResortFacilities,
+  verifiedResortFacilitiesReply,
 };
