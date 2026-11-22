@@ -10,7 +10,7 @@
 const {
   verifiedGuestAmenitiesReply, verifiedLeisurePoliciesReply,
   verifiedResortFacilityMentions, verifiedResortFacilitiesReply,
-  facilityHoursRequested,
+  facilityHoursRequested, facilityFoodAndDrinksRequested,
 } = require("./resortInquiryKnowledge");
 const { explicitGuestCount } = require("./aiRecommendationIntake");
 const { isPlainCottageCategory, isFunctionAreaCategory } =
@@ -44,10 +44,11 @@ function compoundTopics(message) {
       /\b(?:sell|sold|serve|serves|menus?|prices?|rates?|products?|items?|inventory|stock|breakfast|lunch|dinner)\b/i.test(q)) return null;
   const facilityHours = facilityHoursRequested(q) &&
     (facilities.store || facilities.restobar);
+  const facilityOfferings = facilityFoodAndDrinksRequested(q);
   // Don't treat an asked-for resort service as permission to bring it.
   if ((audioWord && !audio) || (alcohol && RETAIL_ALCOHOL.test(q))) return null;
   const count=[food,wifi,pool,parking,pets,alcohol,smoking,audio,facilities.store,facilities.restobar].filter(Boolean).length;
-  return count>=2 ? {food,corkage,wifi,wifiDetails,pool,parking,pets,alcohol,smoking,audio,store:facilities.store,restobar:facilities.restobar,facilityHours} : null;
+  return count>=2 ? {food,corkage,wifi,wifiDetails,pool,parking,pets,alcohol,smoking,audio,store:facilities.store,restobar:facilities.restobar,facilityHours,facilityOfferings} : null;
 }
 const WORDS={
   english:{
@@ -163,7 +164,7 @@ function compoundGuestReply(topics,message,context={},language="taglish",room=nu
   },locale));
   if(topics.store||topics.restobar)parts.push(
     verifiedResortFacilitiesReply({store:topics.store,restobar:topics.restobar,
-      hours:Boolean(topics.facilityHours)},locale));
+      hours:Boolean(topics.facilityHours),offerings:Boolean(topics.facilityOfferings)},locale));
   if(topics.pool||topics.parking||topics.pets)parts.push(
     verifiedGuestAmenitiesReply({
       pool:topics.pool,parking:topics.parking,pets:topics.pets,
