@@ -107,6 +107,10 @@ test("Single-topic inquiries and questions needing other facts preserve old hand
     "What is the downpayment for 10 guests, with food and Wi-Fi?",
     "May pool shade ba for 10 guests?",
     "Do you sell beer and have parking?",
+    "Can we reserve a room on 2026-12-18 and bring food and videoke?",
+    "Is a room available tomorrow with Wi-Fi and food?",
+    "Can we check in tonight and bring food and speakers?",
+    "Is there an available slot for 10 guests with food and Wi-Fi?",
   ])assert.equal(compoundTopics(q),null,q);
 });
 test("Compound-policy handler executes BEFORE preview and attaches only verified cards",()=>{
