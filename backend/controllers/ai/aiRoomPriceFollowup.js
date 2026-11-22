@@ -87,7 +87,9 @@ function shortlistRoomFollowup(rows,intent,context={}) {
     String(r.status || "").trim().toLowerCase()==="available" &&
     sameType(r,scope) && Number.isFinite(Number(r.capacity)) &&
     Number(r.capacity)>=n && Number(r.capacity)>0 &&
-    (price(r.day_price)!==null || price(r.overnight_price)!==null));
+    (intent.stay==="day" ? price(r.day_price)!==null :
+      intent.stay==="night" ? price(r.overnight_price)!==null :
+      (price(r.day_price)!==null || price(r.overnight_price)!==null)));
   const baseline=valid.find(r=>Number(r.id)===Number(context?.room_id) &&
     (!context?.room_name || String(r.room_name||r.name).toLowerCase()===
       String(context.room_name).toLowerCase())) || null;
