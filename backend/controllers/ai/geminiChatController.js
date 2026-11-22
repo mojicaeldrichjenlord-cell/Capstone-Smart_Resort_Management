@@ -1156,7 +1156,7 @@ exports.chatWithGemini = async (req, res) => {
       if (guests && (
           Number(scopeContext.room_id) > 0 ||
           String(scopeContext.room_name || "").trim() ||
-          /\\b(?:family|double|single)\\s+room\\b/i.test(message)
+          /\b(?:family|double|single)\s+room\b/i.test(message)
         )) {
         const catalog = await getAccommodationCatalog();
         // Never use an unrelated older assistant preview as a room choice.
