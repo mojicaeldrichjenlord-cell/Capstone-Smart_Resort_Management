@@ -7,6 +7,7 @@ const {
   matchResortInquiry, guessInquiryLanguage, getResortInquiryReply,
   resortInquiryPromptLines, matchVerifiedPetPolicy, verifiedPetPolicyReply,
   matchVerifiedGuestAmenities, verifiedGuestAmenitiesReply,
+  matchVerifiedLeisurePolicies, verifiedLeisurePoliciesReply,
   matchUnverifiedResortPolicy, getUnverifiedResortPolicyReply,
 } = require("./resortInquiryKnowledge");
 const { validateAiStayWindow, calendarDayDifference, addCalendarDays } = require("./resortStayWindow");
@@ -1183,9 +1184,33 @@ exports.chatWithGemini = async (req, res) => {
       });
     }
 
+    // AI-62: Client-approved activity permissions; no Gemini or DB needed
+    // for direct questions about drinks, smoking/vaping or OWN audio equipment.
+    // Only match permissions, not questions about equipment INCLUDED in rooms.
+    const leisurePolicy = matchVerifiedLeisurePolicies(message);
+    if (leisurePolicy) {
+      const language = detectLanguageFromMessage(message) ||
+        guessInquiryLanguage(message) ||
+        normalizeLanguageStyle(req.body.language_style) ||
+        normalizeLanguageStyle(scopeContext.language_style) || "taglish";
+      return res.status(200).json({
+        success: true, mode: "verified_leisure_policies",
+        inquiry_topic: [
+          leisurePolicy.alcohol && "alcoholic_drinks",
+          leisurePolicy.smoking && "smoking_vaping",
+          leisurePolicy.audio && "own_videoke_speakers"
+        ].filter(Boolean).join(","),
+        reply: verifiedLeisurePoliciesReply(leisurePolicy, language),
+        extracted_context: mergeContext(scopeContext, { language_style: language }),
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null,
+        recommendation_cards: [],
+      });
+    }
+
     // AI-61: Approved general guest policies: own food/drinks allowed,
     // complimentary Wi-Fi only in rooms, and pool always open with no
-    // swimwear restrictions. Fees, alcohol rules and safety remain unknown.
+    // swimwear restrictions. Corkage amounts and pool safety remain unknown.
     // Check BEFORE old unverified and per-room routes, zero Gemini credits.
     const verifiedGuestPolicy = matchVerifiedGuestAmenities(message);
     if (verifiedGuestPolicy) {
