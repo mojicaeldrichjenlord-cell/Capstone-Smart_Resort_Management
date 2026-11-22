@@ -41,6 +41,9 @@ const {
 const {
   isCatalogRateOverviewQuestion, catalogRateOverview,
 } = require("./aiCatalogRateGuide");
+const {
+  isComparisonQuestion, selectComparisonRooms, comparisonReply,
+} = require("./aiAccommodationComparison");
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -400,7 +403,7 @@ async function getAccommodationCatalog() {
     SELECT
       a.id, a.name AS room_name, a.image, a.description, a.amenities, a.status,
       a.max_capacity AS capacity, a.day_price, a.overnight_price,
-      a.extended_price, c.name AS category_name
+      a.extended_price, a.free_entrance_pax, c.name AS category_name
     FROM accommodations a
     JOIN accommodation_categories c ON c.id = a.category_id
     ORDER BY a.id DESC
@@ -1269,6 +1272,36 @@ exports.chatWithGemini = async (req, res) => {
         alternative_dates: [], booking_preview: null,
         recommendation_cards: [],
       });
+    }
+
+    // AI-50: Compare TWO specifically named DB accommodations before the
+    // single-room preview/overview shortcuts. "Family Room B at A" is a pair,
+    // not a request to preview Family Room B only.
+    if (isComparisonQuestion(message)) {
+      const comparisonCatalog = await getAccommodationCatalog();
+      const comparison = selectComparisonRooms(comparisonCatalog, message);
+      if (comparison) {
+        const language = detectLanguageFromMessage(message) ||
+          normalizeLanguageStyle(req.body.language_style) ||
+          normalizeLanguageStyle(scopeContext.language_style) || "taglish";
+        const context = { ...scopeContext, language_style: language };
+        // Two cards should not leave the stale single-room focus active.
+        delete context.room_id;
+        delete context.room_name;
+        const cardRows = comparison.complete
+          ? comparison.rows.filter(room =>
+              String(room.status || "").trim().toLowerCase() === "available")
+          : [];
+        return res.status(200).json({
+          success: true,
+          mode: "verified_accommodation_comparison",
+          reply: comparisonReply(comparison, language),
+          extracted_context: context,
+          matched_rooms: [], catalog_recommendations: [],
+          alternative_dates: [], booking_preview: null,
+          recommendation_cards: verifiedAccommodationCards(cardRows, false),
+        });
+      }
     }
 
     // AI-37: Personalized recommendations need the party size first.
