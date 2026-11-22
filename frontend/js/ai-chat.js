@@ -1354,7 +1354,7 @@ function getOfflineVerifiedResortReply(message, language, context) {
   const guestSmoke = /\b(?:smok(?:e|ing)|cigarettes?|tobacco|vap(?:e|ing)|e[\s-]?cigarettes?|yosi|sigarilyo|manigarilyo|mag[\s-]?yosi)\b/i.test(t);
   const guestAudio = /\b(?:videoke|karaoke|mag[\s-]?videoke|mag[\s-]?karaoke|speakers?|bluetooth\s+speakers?|sound\s+system|soundbox|music\s+system|microphone|mikropono)\b/i.test(t);
   const audioProvided = guestAudio &&
-    /\b(?:do\s+you\s+(?:have|provide|offer)|is\s+there|are\s+there|included|inclusions?|comes?\s+with|may\s+(?:(?:ba|po|sariling)\s+)*(?:videoke|karaoke|speaker)|meron\s+(?:(?:ba|po|sariling)\s+)*(?:videoke|karaoke|speaker)|kasama\s+(?:(?:ba|po|ang)\s+)*(?:videoke|karaoke|speaker)|provided|built[\s-]?in|rental|rent(?:ing)?)\b/i.test(t) &&
+    /\b(?:do\s+you\s+(?:have|provide|offer)|(?:is\s+there|are\s+there)\s+(?:(?:a|any|some)\s+)?(?:videoke|karaoke|speakers?|sound\s+system)|included|inclusions?|comes?\s+with|may\s+(?:(?:ba|po|sariling)\s+)*(?:videoke|karaoke|speaker)|meron\s+(?:(?:ba|po|sariling)\s+)*(?:videoke|karaoke|speaker)|kasama\s+(?:(?:ba|po|ang)\s+)*(?:videoke|karaoke|speaker)|provided|built[\s-]?in|rental|rent(?:ing)?)\b/i.test(t) &&
     !/\b(?:bring|bringing|own|our|my|dalhin|magdala|pwede|puwede|allowed|bawal)\b/i.test(t);
   const alcoholRetail = guestAlcohol && /\b(?:sell|selling|sold|serve|serving|provide|buy|purchase|order|for\s+sale|magbenta|nagbebenta|tinda)\b/i.test(t);
   const otherFinancial = /\b(?:downpayment|deposit|paypal|refund|booking\s+total|room\s+rate|room\s+price|magkano\s+(?:ang\s+)?(?:room|kwarto))\b/i.test(t);
@@ -1380,6 +1380,11 @@ function getOfflineVerifiedResortReply(message, language, context) {
       "The resort has no specific time restrictions for these activities.",
       "Wala pong itinakdang oras ng pagbabawal ang resort para sa mga gawaing ito.",
       "Wala pong specific time restrictions ang resort para sa mga ito."
+    ));
+    if (guestSmoke && /\b(?:inside\s+(?:a|the|our|my)\s+room|in\s+(?:a|the|our|my)\s+room|sa\s+(?:loob\s+ng\s+)?(?:room|kwarto|kuwarto|cottage)|indoors?|balcony|poolside|designated\s+(?:area|zone))\b/i.test(t)) answer.push(reply(
+      "Whether smoking/vaping is allowed inside a specific room or area isn't confirmed; please ask Front Desk.",
+      "Hindi pa kumpirmado kung puwede sa loob ng partikular na kuwarto o lugar; pakitanong sa Front Desk.",
+      "Hindi pa confirmed kung puwede mismo sa loob ng room o specific area; pa-check sa Front Desk."
     ));
     if (pet) answer.push(reply(
       "Pets and other animals are not allowed.",
