@@ -1,4 +1,5 @@
 "use strict";
+const { unknownRecordReply } = require("./aiGroundedResponseRules");
 /*
  * Verified resort-wide inquiry knowledge. NOT accommodation inventory:
  * per-room amenities, prices, slots and capacity still come from fresh MySQL.
@@ -145,8 +146,31 @@ function matchResortInquiry(message) {
   return { topic, qualified: false };
 }
 
+
+// AI-47: Only client-verified facts are rendered here. A Bisaya fast-path
+// must not silently fall back to English when no Gemini call is made.
+const BISAYA_SHORT_ANSWERS = Object.freeze({
+  parking: "Oo, libre ang parking sa Arvic Seaside Resort para sa tanang klase sa sakyanan—motor, awto, van ug bus. Wala'y parking fee.",
+  parkingEntrance: "Libre ang parking para sa tanang sakyanan. Lahi ang entrance fee; ang Front Desk maoy mokumpirma sa bayranan didto sa resort.",
+  location: "Ang Arvic Seaside Resort naa sa 17 Mahogany Street, Brgy. Bagong Karsada, Naic, Cavite.",
+  openingHours: "Abli ang resort 24 oras kada adlaw. Apan fixed gihapon ang check-in ug check-out slots sa accommodation.",
+  contact: "Mahimo ninyong tawagan ang resort sa 0956-912-5625 o 0967-817-0662.",
+  pool: "Oo, naay swimming pool ang resort. Sa Front Desk lang palihog kumpirmaha ang pool fees ug mga rules.",
+});
+
 function getResortInquiryReply(match, language) {
   if (!match || !SHORT_ANSWERS[match.topic]) return null;
+  if (language === "bisaya") {
+    const base = BISAYA_SHORT_ANSWERS[match.topic];
+    if (!match.qualified) return base;
+    if (match.topic === "openingHours") {
+      return base + " Para sa holiday o emergency changes, kumpirmaha sa Front Desk: 0956-912-5625.";
+    }
+    if (match.topic === "parking") {
+      return "Libre ang parking sa tanang sakyanan, pero wala pa makumpirma ang espesipikong parking detail nga inyong gipangutana. Palihog kontaka ang Front Desk: 0956-912-5625.";
+    }
+    return "Naay swimming pool ang resort, pero wala pa makumpirma ang espesipikong bayad o rules. Palihog kontaka ang Front Desk: 0956-912-5625.";
+  }
   const locale = Object.hasOwn(SHORT_ANSWERS[match.topic], language) ? language : "english";
   if (match.qualified) {
     if (match.topic === "openingHours") {
@@ -193,6 +217,21 @@ function matchUnverifiedResortPolicy(message, context = {}) {
 
 function getUnverifiedResortPolicyReply(match, language) {
   if (!match) return null;
+  if (!["english", "tagalog", "taglish"].includes(language)) {
+    // Mixed known/unknown questions can preserve the independently verified
+    // free-parking fact, but never imply Wi-Fi, pets or corkage is approved.
+    const freeParking = {
+      bisaya: "Libre ang parking para sa tanang sakyanan. ",
+      spanish: "El estacionamiento es gratuito para cualquier vehículo. ",
+      mandarin: "各种车辆均可免费停车。",
+      japanese: "あらゆる車両の駐車は無料です。",
+      korean: "모든 차량의 주차는 무료입니다. ",
+      french: "Le stationnement est gratuit pour tout véhicule. ",
+      german: "Das Parken ist für alle Fahrzeugtypen kostenlos. ",
+      arabic: "موقف السيارات مجاني لجميع أنواع المركبات. ",
+    }[language] || "";
+    return (match.mentionsParking ? freeParking : "") + unknownRecordReply(language);
+  }
   const locale = ["english","tagalog","taglish"].includes(language) ? language : "english";
   const subject = {
     wifi: { english: "Wi-Fi availability", tagalog: "Wi-Fi", taglish: "Wi-Fi" },
