@@ -120,7 +120,8 @@ function categoryMatches(room, category) {
   if (category === "cottage") return /cottage|shade|hut/.test(kind) ||
     /cottage|nipa hut|shade/.test(name);
   if (category === "single") return /single room/.test(name);
-  if (category === "room") return /\broom\b/.test(kind) && !/function/.test(kind);
+  // Both "Room" and "Rooms" are valid Admin-managed category labels.
+  if (category === "room") return /\brooms?\b/.test(kind) && !/function/.test(kind);
   return false;
 }
 
