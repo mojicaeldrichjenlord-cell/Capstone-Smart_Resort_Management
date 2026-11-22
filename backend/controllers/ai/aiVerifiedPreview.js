@@ -203,6 +203,16 @@ function selectVerifiedPreviews(catalog, message, recentTurns = [], context = {}
 function verifiedPreviewReply(selection, language) {
   // Keep the separate pure-Tagalog wording while using everyday Taglish in
   // voice and text chat. Room selection and card facts remain unchanged.
+  if (language === "bisaya") {
+    if (!selection?.targetKnown) return "Unsang kwarto o cottage ang gusto ninyong tan-awon?";
+    if (!selection.rows?.length) return "Walay nakalistang accommodation nga mohaom sa inyong gipangita. Suwayi og laing klase o guest count.";
+    if (selection.alternative) return "Walay cottage nga igo sa inyong grupo sumala sa listed capacity. Mao ni ang mas dagkong Function Areas; i-check gihapon ang date ug slot sa booking page.";
+    if (selection.rows.length === 1) {
+      const name = String(selection.rows[0].room_name || selection.rows[0].name || "accommodation");
+      return "Mao ni ang preview sa " + name + ". I-klik ang View Details para sa photos ug impormasyon.";
+    }
+    return "Mao ni ang mga accommodation nga mohaom sa inyong gipangita. Tan-awa ang photos ug details sa cards.";
+  }
   const taglish = language === "taglish";
   if (taglish) {
     if (!selection?.targetKnown) return "Sure po! Anong room or cottage ang gusto niyong makita?";
