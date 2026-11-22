@@ -11,15 +11,19 @@ const { unknownRecordReply } = require("./aiGroundedResponseRules");
  * 2026-11-22: outside food and drinks are allowed (corkage fee unconfirmed),
  * free Wi-Fi is available in ROOMS ONLY, the swimming pool is always open
  * with NO swimming-attire restrictions. Do not infer pool/parking admission
- * charges, other safety rules, Wi-Fi passwords/speeds, corkage amounts or
- * alcohol, smoking, and videoke restrictions. Those remain unverified.
+ * charges, other safety rules, Wi-Fi passwords/speeds or corkage amounts.
+ * Additional client confirmation 2026-11-22: alcoholic drinks, smoking/vaping
+ * and guests' OWN videoke/speakers are allowed without resort time restrictions.
+ * This is NOT a promise of provided equipment, free fees, a specific smoking
+ * location, or permission to disregard applicable safety/local requirements.
  *
  * Add an approved fact here only after confirming it with the resort.
  */
 const RESORT_INQUIRY_FACTS = Object.freeze({
   parking: "The resort has FREE on-site parking for ANY type of vehicle, including motorcycles, cars, vans and buses. There is no parking fee. Do NOT claim unlimited spaces, a reserved/private parking bay, covered or guarded parking, or parking capacity.",
   pets: "CLIENT-VERIFIED 2026-11-22: Animals and pets are NOT ALLOWED inside Arvic Seaside Beach Resort and Hotel. This includes dogs, cats and other animals. Never claim the property is pet-friendly or that guests may bring a pet for a fee. Do not invent exceptions or a pet boarding service.",
-  outsideFood: "CLIENT-VERIFIED 2026-11-22: Guests MAY bring their own food and drinks into the resort. Whether any corkage fee applies, and its amount, has NOT been confirmed. Do not say corkage is free or charge a guessed amount. Alcohol-specific rules are not confirmed.",
+  outsideFood: "CLIENT-VERIFIED 2026-11-22: Guests MAY bring their own food and drinks into the resort, including alcoholic drinks. Whether a corkage fee applies and its amount has NOT been confirmed; never say corkage is free or invent an amount.", 
+  leisurePolicies: "CLIENT-VERIFIED 2026-11-22: Guests MAY bring alcoholic drinks; smoking and vaping are permitted; bringing and using their OWN videoke/karaoke equipment and speakers is permitted. The resort sets NO TIME RESTRICTIONS for these activities. This permission is separate from whether a room provides built-in karaoke/speakers. Do NOT invent extra equipment, waived corkage, smoking areas, noise limits, age restrictions or local-law exemptions.",
   roomWifi: "CLIENT-VERIFIED 2026-11-22: FREE Wi-Fi is available ONLY in room accommodations. It is not included in cottages, function areas or common areas. Never invent a network password, speed, or guaranteed coverage beyond the rooms.",
   location: "The resort is at 17 Mahogany Street, Brgy. Bagong Karsada, Naic, Cavite, Philippines. Do not invent directions or transport routes.",
   openingHours: "The resort is open 24 hours a day, Monday to Sunday. This does NOT mean guests may choose custom check-in/out hours; accommodation booking follows fixed Day/Night slots.",
@@ -322,6 +326,85 @@ function verifiedGuestAmenitiesReply(m,language="taglish") {
   return answer.join(" ");
 }
 
+// AI-62: Client-verified guest permissions for alcoholic drinks, tobacco/vapes
+// and their OWN videoke / speakers, with no resort activity time restrictions.
+// Distinguish "Can I BRING a speaker?" from "Does Family Room B HAVE karaoke?"
+// (the latter must remain DB-backed). Avoid charging Gemini for simple rules.
+function matchVerifiedLeisurePolicies(message) {
+  const t=normalizeQuestion(message);
+  if (!t || t.length>550) return null;
+  // Separate policies/room inventory must not be silently ignored.
+  if (/\b(?:refund|downpayment|deposit|paypal|cancell?ation|booking\s+status|price\s+of\s+(?:the\s+)?room|magkano\s+(?:ang\s+)?(?:room|kwarto)|room\s+rates?|wifi|wi-fi|internet|pool|swimming|pets?|dogs?|cats?|aso|pusa|corkage|parking|outside\s+food|outside\s+drinks?|pagkain)\b/i.test(t)) return null;
+
+  const alcohol=/\b(?:alcohol(?:ic)?|alcoholic\s+drinks?|beer|beers|liquor|wine|spirits|alak|inuming\s+may\s+alkohol|cerveza|bebidas\s+alcoh[oó]licas)\b/iu.test(t)||/(?:酒精|啤酒|酒类|饮酒)/u.test(t);
+  const smoking=/\b(?:smok(?:e|ing|ers?)|cigarettes?|tobacco|vapes?|vaping|e[\s-]?cigarettes?|yosi|sigarilyo|manigarilyo|mag[\s-]?yosi|hithit|fumar|vapear)\b/iu.test(t)||/(?:吸烟|抽烟|电子烟)/u.test(t);
+  const audio=/\b(?:videoke|karaoke|speakers?|bluetooth\s+speakers?|sound\s+system|sound\s+box|soundbox|music\s+system|microphone|mikropono|altavoces?|parlantes?)\b/iu.test(t)||/(?:卡拉OK|音响|扬声器)/u.test(t);
+  if(!alcohol&&!smoking&&!audio)return null;
+  const providedEquipmentInquiry=audio &&
+    /\b(?:do\s+you\s+(?:have|provide|offer)|is\s+there|are\s+there|included|inclusions?|comes?\s+with|has\s+(?:a\s+)?(?:videoke|karaoke|speaker)|may\s+(?:ba\s+)?(?:videoke|karaoke|speaker)|meron\s+(?:ba\s+)?(?:videoke|karaoke|speaker)|kasama\s+(?:ba\s+)?(?:ang\s+)?(?:videoke|karaoke|speaker)|equipped|provided|built[\s-]?in|rental|rent(?:ing)?)\b/i.test(t) &&
+    !/\b(?:bring|bringing|own|our|my|dalhin|magdala|mag[\s-]?dala|pwede|puwede|allowed|permit|bawal)\b/i.test(t);
+  // If only asking about room-supplied equipment, leave the question to the
+  // current accommodation DB route or Function Area amenity logic.
+  if(providedEquipmentInquiry&&!alcohol&&!smoking)return null;
+
+  const audioAllowed=audio&&!providedEquipmentInquiry;
+  // Context in mixed "is smoking allowed AND does the room provide karaoke?"
+  // is not simple permission; let grounded model answer every part.
+  if(providedEquipmentInquiry)return null;
+  return {alcohol,smoking,audio:audioAllowed};
+}
+
+function verifiedLeisurePoliciesReply(match,language="taglish") {
+  if(!match)return null;
+  const locale=["english","tagalog","taglish","bisaya","spanish","mandarin"].includes(language)?language:"english";
+  const phrases={
+    english:{
+      alcohol:"Yes, guests may bring alcoholic drinks.",
+      smoking:"Smoking and vaping are allowed.",
+      audio:"You may bring and use your own videoke/karaoke equipment or speakers.",
+      hours:"The resort has no specific time restrictions for these activities."
+    },
+    tagalog:{
+      alcohol:"Opo, maaari pong magdala ng mga inuming may alkohol.",
+      smoking:"Pinapayagan po ang paninigarilyo at paggamit ng vape.",
+      audio:"Maaari po kayong magdala at gumamit ng sarili ninyong videoke o speakers.",
+      hours:"Wala pong itinakdang oras ng pagbabawal ang resort para sa mga gawaing ito."
+    },
+    taglish:{
+      alcohol:"Yes po, puwede magdala ng alcoholic drinks.",
+      smoking:"Allowed po ang smoking at vaping.",
+      audio:"Puwede rin po magdala at gumamit ng sariling videoke at speakers.",
+      hours:"Wala pong specific time restrictions ang resort para sa mga ito."
+    },
+    bisaya:{
+      alcohol:"Oo, pwede magdala og alcoholic drinks.",
+      smoking:"Gitugotan ang smoking ug vaping.",
+      audio:"Pwede magdala ug mogamit sa inyong kaugalingong videoke o speakers.",
+      hours:"Walay espesipikong time restrictions sa resort niini nga mga kalihokan."
+    },
+    spanish:{
+      alcohol:"Sí, se pueden traer bebidas alcohólicas.",
+      smoking:"Se permite fumar y vapear.",
+      audio:"Puede traer y usar su propio karaoke o altavoces.",
+      hours:"El resort no establece restricciones horarias específicas para estas actividades."
+    },
+    mandarin:{
+      alcohol:"允许携带酒精饮料。",
+      smoking:"允许吸烟和使用电子烟。",
+      audio:"允许自带并使用卡拉OK设备或音响。",
+      hours:"度假村对这些活动没有特定时间限制。"
+    }
+  };
+  const p=phrases[locale];
+  const parts=[];
+  if(match.alcohol)parts.push(p.alcohol);
+  if(match.smoking)parts.push(p.smoking);
+  if(match.audio)parts.push(p.audio);
+  if(!parts.length)return null;
+  parts.push(p.hours);
+  return parts.join(" ");
+}
+
 // AI-60: No-pets policy was explicitly confirmed by the resort on 2026-11-22.
 // The rule applies property-wide, including stays in any room or cottage.
 // Respond deterministically (0 Gemini credits) so "pwede magdala ng aso?"
@@ -446,8 +529,9 @@ function resortInquiryPromptLines() {
     "Resort-wide parking being free does NOT mean entrance, room, or pool admission is free.",
     "The confirmed resort-wide NO-ANIMALS/NO-PETS policy applies to all accommodations. Do not invent exceptions.",
     "Own food/drinks ARE permitted; Wi-Fi is FREE ONLY in Rooms; pool ALWAYS OPEN with no specific swimwear restrictions.",
+    "Alcoholic drinks, smoking/vaping and guests' OWN videoke/speakers ARE ALLOWED with NO resort time restrictions. This does not guarantee that a booked room includes equipment.",
     "Corkage fees, Wi-Fi passwords/speeds, parking security/space guarantees remain unverified.",
-    "Pool entrance fees or other safety rules, early check-in, alcohol, smoking, videoke rules and other missing policies: never invent a yes/no,",
+    "Pool entrance fees or other safety rules, early check-in, provided audio equipment, designated smoking areas and other missing policies: never invent a yes/no,",
     "rate or promise. State that it is not yet confirmed and refer to Front Desk.",
     "If a guest asks multiple unrelated questions, answer verified parts briefly and qualify unknown parts.",
   ].join("\n");
@@ -458,5 +542,6 @@ module.exports = {
   guessInquiryLanguage, getResortInquiryReply, resortInquiryPromptLines,
   matchVerifiedPetPolicy, verifiedPetPolicyReply,
   matchVerifiedGuestAmenities, verifiedGuestAmenitiesReply,
+  matchVerifiedLeisurePolicies, verifiedLeisurePoliciesReply,
   matchUnverifiedResortPolicy, getUnverifiedResortPolicyReply,
 };
