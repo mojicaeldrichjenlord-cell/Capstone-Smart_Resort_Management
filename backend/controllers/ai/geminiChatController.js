@@ -43,6 +43,7 @@ const {
 } = require("./aiCatalogRateGuide");
 const {
   isComparisonQuestion, selectComparisonRooms, comparisonReply,
+  isPairRecommendationQuestion, pairForRecommendation, pairRecommendation,
 } = require("./aiAccommodationComparison");
 
 const ai = new GoogleGenAI({
@@ -1274,6 +1275,47 @@ exports.chatWithGemini = async (req, res) => {
       });
     }
 
+
+    // AI-51: A recommendation between TWO named rooms must consider BOTH
+    // fresh records before filtering capacity. Previously the generic preview
+    // chose Family Room A first, rejected its 7-pax capacity for 10 guests,
+    // and incorrectly said there was no match despite Family Room B fitting.
+    if (isPairRecommendationQuestion(message)) {
+      const pairCatalog = await getAccommodationCatalog();
+      const pair = pairForRecommendation(pairCatalog, message, scopeContext);
+      if (pair) {
+        const guests = explicitGuestCount(message) ||
+          savedGuestCount({ guests: req.body.guests }) ||
+          savedGuestCount(scopeContext);
+        const language = detectLanguageFromMessage(message) ||
+          normalizeLanguageStyle(req.body.language_style) ||
+          normalizeLanguageStyle(scopeContext.language_style) || "taglish";
+        const recommendation = pairRecommendation(pair, guests, language);
+        const context = {
+          ...scopeContext, language_style: language,
+          ...(guests ? { guests } : {}),
+          intent: "ask_recommendation", recommendation_category: "room",
+          ...(pair.complete ? { compared_room_ids: pair.rows.map(r => Number(r.id)) } : {}),
+        };
+        // Never carry old room focus over when no recommendation is grounded.
+        delete context.room_id;
+        delete context.room_name;
+        if (recommendation.chosen) {
+          context.room_id = recommendation.chosen.id;
+          context.room_name = recommendation.chosen.room_name;
+        }
+        return res.status(200).json({
+          success: true, mode: "verified_pair_recommendation",
+          reply: recommendation.reply,
+          extracted_context: context,
+          matched_rooms: [], catalog_recommendations: [],
+          alternative_dates: [], booking_preview: null,
+          recommendation_cards: recommendation.chosen
+            ? verifiedAccommodationCards([recommendation.chosen], false) : [],
+        });
+      }
+    }
+
     // AI-50: Compare TWO specifically named DB accommodations before the
     // single-room preview/overview shortcuts. "Family Room B at A" is a pair,
     // not a request to preview Family Room B only.
@@ -1285,6 +1327,14 @@ exports.chatWithGemini = async (req, res) => {
           normalizeLanguageStyle(req.body.language_style) ||
           normalizeLanguageStyle(scopeContext.language_style) || "taglish";
         const context = { ...scopeContext, language_style: language };
+        // Store only the pair's DB IDs; never trust saved context for facts.
+        // Follow-up "alin sa dalawang ito para sa 10 guests?" will read fresh
+        // capacity, status and rates again before choosing.
+        if (comparison.complete) {
+          context.compared_room_ids = comparison.rows.map(room => Number(room.id));
+        } else {
+          delete context.compared_room_ids;
+        }
         // Two cards should not leave the stale single-room focus active.
         delete context.room_id;
         delete context.room_name;
