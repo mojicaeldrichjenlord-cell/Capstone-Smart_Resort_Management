@@ -275,8 +275,13 @@ function detectLanguageFromMessage(message) {
     if (new RegExp("\\b" + word + "\\b", "i").test(text)) tagalogScore++;
   });
 
+  // The official name "Family Room B" must not count as an English
+  // sentence when the guest speaks otherwise pure Tagalog. Keep the
+  // original message for intent and DB matching; only clean the score.
+  const languageScoreText = text.replace(
+    /\b(?:family|single|double)\s+room\s+[a-z0-9]+\b/giu, " ");
   englishWords.forEach((word) => {
-    if (new RegExp("\\b" + word + "\\b", "i").test(text)) englishScore++;
+    if (new RegExp("\\b" + word + "\\b", "i").test(languageScoreText)) englishScore++;
   });
 
   if (tagalogScore >= 2 && englishScore >= 2) return "taglish";
