@@ -206,7 +206,7 @@ function detectLanguageFromMessage(message) {
   if (bisaya.length >= 2 ||
       (/\b(?:tagpila|kanus-a|maayong\s+(?:buntag|udto|hapon|gabii))\b/iu.test(text)) ||
       (/\b(?:naa|pila|unsa|asa)\b/iu.test(text) &&
-       /\b(?:moy|inyo|ninyo|kamo|diha|pud|gyud|ba|ang)\b/iu.test(text))) return "bisaya";
+       /\b(?:moy|inyo|inyong|ninyo|kamo|diha|pud|gyud|ba|ang|ka)\b/iu.test(text))) return "bisaya";
   // Clear English questions (including "May I...") must not inherit
   // the previous guest's Taglish preference.
   if (/^(?:may\s+i\b|do\s+you\b|does\s+the\b|is\s+there\b|are\s+there\b|how\s+(?:much|many)\b|what\s+(?:is|are)\b)/i.test(text) &&
@@ -229,6 +229,9 @@ function detectLanguageFromMessage(message) {
 
   // Detect common Spanish resort questions without relying on prior
   // conversation settings. Single "para" is ambiguous with Tagalog.
+  if (/[¿¡]/u.test(text) &&
+      /\b(?:tienen|tiene|quiero|busco|cu[aá]nto|cuesta|habitaciones?|reserva|precio|piscina|alojamiento)\b/iu.test(text))
+    return "spanish";
   const spanishTokens = text.match(/\b(?:hola|habitaciones?|cu[aá]nto|cuesta|precios?|reservar|reservaci[oó]n|disponibles?|personas|noches|gracias|necesito|tenemos|quiero|busco|tienen|buenas|alojamiento)\b/giu) || [];
   if (spanishTokens.length >= 2 ||
       (/\b(?:hola|gracias|habitaciones?|cu[aá]nto|reservaci[oó]n)\b/iu.test(text)
@@ -1316,7 +1319,7 @@ exports.chatWithGemini = async (req, res) => {
       const saved = req.body.context && typeof req.body.context === "object" &&
         !Array.isArray(req.body.context) ? req.body.context : {};
       const language = 
-        guessInquiryLanguage(message) || detectLanguageFromMessage(message) ||
+        detectLanguageFromMessage(message) || guessInquiryLanguage(message) ||
         normalizeLanguageStyle(req.body.language_style) ||
         normalizeLanguageStyle(saved.language_style) || "taglish";
       const sql = "SELECT c.name AS category_name, " +
