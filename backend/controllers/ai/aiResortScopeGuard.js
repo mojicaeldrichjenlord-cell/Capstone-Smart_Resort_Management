@@ -39,9 +39,12 @@ const RESORT_TOPICS = [
   /(?:객실|호텔|리조트|예약|숙박|요금|주차|수영장)/u,
   /(?:غرفة|حجز|فندق|منتجع|مسبح|موقف سيارات|أسعار)/u,
   /\b(?:chambre|chambres|réserver|réservation|hôtel|piscine|tarifs?|zimmer|buchung|übernachtung|preise?|schwimmbad)\b/iu,
+  // Cebuano / Bisaya guest-service terms. Avoid allowing arbitrary questions:
+  // these are clearly resort-related nouns or booking phrases only.
+  /\b(?:kwarto|kuwarto|puy-?anan|reserbasyon|pag-?book|mag-?book|parking|bayad\s+sa\s+resort|aduna\s+(?:ba\s+)?(?:moy\s+)?(?:room|kwarto|cottages?)|pila\s+(?:ang\s+)?(?:presyo|bayad)\s+sa\s+(?:room|kwarto|cottage))\b/iu,
 ];
 
-const GREETING = /^(?:hi|hello|hey|hola|kumusta|kamusta|good\s+(?:morning|afternoon|evening)|magandang\s+(?:umaga|hapon|gabi)|你好|嗨|こんにちは|안녕하세요|bonjour|guten\s+tag|مرحبا|ni\s*hao(?:\s*ma)?|nihao|xie\s*xie|salamat|thank\s+you|thanks|gracias|谢谢|ok(?:ay)?|sige|opo|yes\s+po|no\s+po|bye|goodbye)[!?.\s😊👋]*$/iu;
+const GREETING = /^(?:maayong\s+(?:buntag|udto|hapon|gabii)|salamat\s+kaayo|hi|hello|hey|hola|kumusta|kamusta|good\s+(?:morning|afternoon|evening)|magandang\s+(?:umaga|hapon|gabi)|你好|嗨|こんにちは|안녕하세요|bonjour|guten\s+tag|مرحبا|ni\s*hao(?:\s*ma)?|nihao|xie\s*xie|salamat|thank\s+you|thanks|gracias|谢谢|ok(?:ay)?|sige|opo|yes\s+po|no\s+po|bye|goodbye)[!?.\s😊👋]*$/iu;
 
 // Unambiguous non-resort tasks should never be executed just because the
 // user happened to mention the word "booking" or "resort" somewhere else.
@@ -101,6 +104,7 @@ function resortOnlyReply(language = "taglish") {
     case "french": return "Je peux vous renseigner sur les chambres, réservations et services d'Arvic Seaside Resort. Que souhaitez-vous savoir ?";
     case "german": return "Ich helfe gern bei Fragen zu Zimmern, Buchungen und Einrichtungen im Arvic Seaside Resort. Was möchten Sie wissen?";
     case "arabic": return "يمكنني مساعدتك في الاستفسارات عن غرف ومنشآت وحجوزات منتجع Arvic Seaside Resort. ما الذي تود معرفته؟";
+    case "bisaya": return "Makatabang ko sa inyong mga pangutana bahin sa kwarto, booking, amenities ug policies sa Arvic Seaside Resort. Unsa ang gusto ninyong mahibal-an?";
     case "english": return "I can help with Arvic Seaside Resort rooms, bookings, amenities and policies. What would you like to know about the resort?";
     default: return "Resort inquiries lang po ang masasagot ko—rooms, bookings, amenities at policies ng Arvic Seaside. Ano po ang gusto niyong malaman?";
   }
