@@ -24,8 +24,8 @@ const { isVerifiedPreviewRequest, selectVerifiedPreviews, verifiedPreviewReply,
   requestedCategory } = require("./aiVerifiedPreview");
 const { isRoomPaymentInquiry, resolvePaymentRoom, paymentReply } =
   require("./aiFocusedPaymentReply");
-const { compoundTopics, compoundRoom, compoundGuestReply } =
-  require("./aiCompoundGuestInquiry");
+const { compoundTopics, compoundRoom, compoundGuestReply,
+  asksForAccommodationRecommendation } = require("./aiCompoundGuestInquiry");
 const {
   matchAccommodationCountQuestion, countSummary, countReply,
 } = require("./aiAccommodationCounts");
@@ -1157,27 +1157,60 @@ exports.chatWithGemini = async (req, res) => {
     ].includes(compoundLanguage)) {
       const language = compoundLanguage;
       const guests = explicitGuestCount(message);
+      // AI-64: A mixed question can also ask "Anong room ang mare-recommend
+      // mo?" and "10 po kami". The AI-63 optional preview required a prior
+      // room selection, so it skipped new recommendation requests entirely.
+      const compoundRecommendation = asksForAccommodationRecommendation(message);
+      const recommendationCategory = requestedCategory(message) || "room";
       let focusedRoom = null;
       if (guests && (
+          compoundRecommendation ||
           Number(scopeContext.room_id) > 0 ||
           String(scopeContext.room_name || "").trim() ||
           /\b(?:family|double|single)\s+room\b/i.test(message)
         )) {
         const catalog = await getAccommodationCatalog();
-        // Never use an unrelated older assistant preview as a room choice.
-        focusedRoom = compoundRoom(catalog, message, scopeContext);
+        // Respect a room the guest EXPLICITLY named this turn, but never
+        // accidentally reuse an unrelated old room for a NEW recommendation.
+        const explicitlyNamed = compoundRoom(catalog, message, {});
+        if (compoundRecommendation && !explicitlyNamed) {
+          const query = recommendationLookupMessage(
+            recommendationCategory, guests,
+          );
+          // Night-stay recommendations need a listed overnight rate; neither
+          // that nor Admin's listing status guarantees a bookable date/slot.
+          const suitableCatalog = /\b(?:overnight|night|gabi)\b/i.test(message)
+            ? catalog.filter(room => Number(room.overnight_price) > 0)
+            : catalog;
+          const selection = selectVerifiedPreviews(
+            suitableCatalog, query, [], { guests },
+          );
+          focusedRoom = selection.rows[0] || null;
+        } else {
+          focusedRoom = explicitlyNamed ||
+            compoundRoom(catalog, message, scopeContext);
+        }
       }
       const combined = compoundGuestReply(
         compoundPolicy, message, scopeContext, language, focusedRoom,
+        compoundRecommendation,
       );
       const nextContext = mergeContext(scopeContext, {
         language_style: language,
         ...(combined.guests ? { guests: combined.guests } : {}),
+        ...(compoundRecommendation ? {
+          intent: "ask_recommendation",
+          recommendation_category: recommendationCategory,
+        } : {}),
         ...(combined.previewRoom ? {
           room_id: combined.previewRoom.id,
           room_name: combined.previewRoom.room_name,
         } : {}),
       });
+      if (compoundRecommendation && !combined.previewRoom) {
+        delete nextContext.room_id;
+        delete nextContext.room_name;
+      }
       return res.status(200).json({
         success: true, mode: "verified_compound_guest_inquiry",
         inquiry_topic: Object.keys(compoundPolicy)
