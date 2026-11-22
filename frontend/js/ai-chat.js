@@ -1319,7 +1319,8 @@ function getOfflineFallbackReply(message, storedContext = {}, pageContext = {}) 
 // Keep this tiny offline mirror aligned with backend/resortInquiryKnowledge.js.
 // Source of truth for parking: client-confirmed November 19, 2026;
 // no-animals policy: client-confirmed November 22, 2026.
-// Unknown parking security, slot/capacity, pool fees and food remain unverified.
+// Outside food/drinks allowed (corkage fee unknown), free Wi-Fi in Rooms only,
+ // pool always open with no swimwear restrictions. Pool fees still unverified.
 function getOfflineVerifiedResortReply(message, language, context) {
   const t = String(message || "").normalize("NFKC").toLowerCase().trim();
   if (!t || t.length > 600) return null;
@@ -1327,7 +1328,7 @@ function getOfflineVerifiedResortReply(message, language, context) {
   const address = /\b(?:address|located|location|nasaan\s+(?:ang\s+)?resort|saan\s+(?:kayo|ang\s+resort))\b/i.test(t);
   const hours = /\b(?:open\s+(?:24\s*(?:\/\s*7|hours?)|everyday)|operating\s+hours?|opening\s+hours?|bukas\s+ba\s+kayo)\b/i.test(t);
   const contact = /\b(?:contact\s+(?:number|details?)|phone\s+number|hotline|numero\s+ng\s+resort)\b/i.test(t);
-  const pool = /\b(?:swimming\s+pool|may\s+(?:ba\s+)?pool|have\s+(?:a\s+)?pool)\b/i.test(t);
+  const pool = /\b(?:swimming\s+pool|pool(?![\s-]?(?:shade|side|pavilion|pavillion))|may\s+(?:ba\s+)?pool|have\s+(?:a\s+)?pool|swim(?:ming)?\s+(?:at|hours?|anytime|attire|clothes|wear|dress)|swimwear|palanguyan|panglangoy)\b/i.test(t);
   const entry = /\b(?:entrance\s+(?:fee|charge|payment)|free\s+entrance|libre(?:ng)?(?:\s+rin)?(?:\s+ba)?\s+(?:ang\s+)?entrance)\b/i.test(t);
   const lang = ["english", "tagalog", "taglish"].includes(language) ? language : "english";
   const notice = lang === "english"
@@ -1345,7 +1346,7 @@ function getOfflineVerifiedResortReply(message, language, context) {
   const pet = /\b(?:pets?|pet[\s-]?friendly|dogs?|cats?|pupp(?:y|ies)|kittens?|animals?|aso|pusa|hayop|alagang\s+hayop|iro|iring|mascotas?|perros?|gatos?)\b/iu.test(t) ||
     /(?:宠物|猫|狗)/u.test(t);
   const wifi = /\b(?:wi-?fi|wireless|internet)\b/i.test(t);
-  const food = /\b(?:corkage|outside\s+food|bring\s+food|magdala\s+ng\s+pagkain|dalang\s+pagkain)\b/i.test(t);
+  const food = /\b(?:corkage|outside[\s-]?food|outside[\s-]?drinks?|own\s+(?:food|drinks?|beverages?)|bring(?:ing)?\s+(?:(?:my|our|your|their|some|own)\s+)?(?:food|drinks?|snacks?|beverages?)|baon|magbaon|dalang\s+(?:pagkain|inumin|food)|magdala\s+(?:ng\s+)?(?:pagkain|inumin|food)|(?:pwede|puwede)\s+.*\b(?:pagkain|inumin)\b|food\s+policy|food\s+allowed)\b/i.test(t);
   if (pet && !/\b(?:downpayment|deposit|paypal|refund|booking\s+total|room\s+rate|magkano\s+(?:ang\s+)?(?:room|kwarto))\b/i.test(t)) {
     const policy = reply(
       "Sorry, animals and pets are not allowed at Arvic Seaside Resort, including dogs and cats.",
@@ -1356,20 +1357,82 @@ function getOfflineVerifiedResortReply(message, language, context) {
       " Parking for vehicles is free.", " Libre ang parking ng sasakyan.",
       " Free po ang parking ng vehicles."
     ) : "";
-    const unknownNote = wifi || food ? reply(
-      " The Wi-Fi/outside-food policy is not verified; please confirm with Front Desk.",
-      " Hindi pa kumpirmado ang Wi-Fi o dalang pagkain; pakitanong sa Front Desk.",
-      " Hindi pa confirmed ang Wi-Fi o outside-food policy; pa-check sa Front Desk."
+    const wifiNote = wifi ? reply(
+      " Free Wi-Fi is available in room accommodations only, not in cottages or common areas.",
+      " Sa mga kuwarto lamang po may libreng Wi-Fi, hindi sa cottages o common areas.",
+      " Sa rooms lang po may free Wi-Fi, hindi sa cottages o common areas."
     ) : "";
-    return withReply(policy + parkingNote + unknownNote);
+    const foodNote = food ? reply(
+      " Guests may bring their own food and drinks. Corkage fees have not been confirmed.",
+      " Maaari pong magdala ng pagkain at inumin. Hindi pa kumpirmado ang corkage fee.",
+      " Puwede magdala ng sariling food at drinks; hindi pa confirmed ang corkage fee."
+    ) : "";
+    return withReply(policy + parkingNote + wifiNote + foodNote);
+  }
+
+  // AI-61: Offline facts mirror the verified backend; don't guess corkage,
+  // Wi-Fi credentials, pool entrance price or unrelated safety rules.
+  const alcoholRule = /\b(?:alcohol|beer|liquor|wine|alak|smoking|vaping|yosi|sigarilyo|videoke|karaoke)\b/i.test(t);
+  const otherBooking= /\b(?:downpayment|deposit|paypal|refund|booking\s+status|room\s+rate|magkano\s+(?:ang\s+)?(?:room|kwarto))\b/i.test(t);
+  if ((wifi || food || pool) && !alcoholRule && !otherBooking) {
+    const cottage = /\b(?:cottages?|kubo|nipa\s+hut|pavilions?|function\s+areas?|lobby|common\s+areas?|poolside)\b/i.test(t) &&
+      !/\bsingle\s+room\s+cottage\b/i.test(t);
+    const asksCorkage = food && /\b(?:corkage|charge|fee|free|libre|bayad|magkano|how\s+much)\b/i.test(t);
+    const asksPoolFee = pool && /\b(?:entrance|admission|fees?|ticket|free|libre|magkano|how\s+much|bayad)\b/i.test(t);
+    const asksPoolRule = pool && /\b(?:life[\s-]?guards?|children|bata|safety|supervis|age|depth|rules?|restrictions?)\b/i.test(t);
+    const answer=[];
+    if (wifi) answer.push(cottage ? reply(
+      "Free Wi-Fi is available in rooms only, not in cottages or common areas.",
+      "Sa mga kuwarto lamang po may libreng Wi-Fi, hindi sa cottages o common areas.",
+      "Free Wi-Fi po sa rooms lang, hindi sa cottages o common areas."
+    ) : reply(
+      "Free Wi-Fi is available in room accommodations only.",
+      "Sa mga kuwarto lamang po may libreng Wi-Fi.",
+      "Free Wi-Fi po ay nasa rooms lang."
+    ));
+    if (wifi && /\b(?:password|speed|mbps|signal|fast|reliable)\b/i.test(t)) answer.push(reply(
+      "The Wi-Fi password and speeds aren't confirmed; please ask Front Desk.",
+      "Hindi pa kumpirmado ang password at bilis ng Wi-Fi; pakitanong sa Front Desk.",
+      "Hindi pa confirmed ang Wi-Fi password at speed; pa-check sa Front Desk."
+    ));
+    if (food) answer.push(reply(
+      "Yes, you may bring your own food and drinks.",
+      "Opo, maaari pong magdala ng sariling pagkain at inumin.",
+      "Yes po, puwede magdala ng sariling food at drinks."
+    ));
+    if (asksCorkage) answer.push(reply(
+      "Whether any corkage fee applies hasn't been confirmed; please ask Front Desk.",
+      "Hindi pa kumpirmado kung may corkage fee; pakitanong sa Front Desk.",
+      "Hindi pa confirmed kung may corkage fee; pa-check sa Front Desk."
+    ));
+    if (pool) answer.push(reply(
+      "The swimming pool is always open, including at night, with no specific swimwear restrictions.",
+      "Laging bukas ang pool, kahit gabi, at walang partikular na pagbabawal sa kasuotang panlangoy.",
+      "Always open po ang swimming pool, kahit gabi, at walang specific swimwear restrictions."
+    ));
+    if (asksPoolFee) answer.push(reply(
+      "Pool entrance fees haven't been confirmed; please ask Front Desk.",
+      "Hindi pa kumpirmado ang pool entrance fee; pakitanong sa Front Desk.",
+      "Hindi pa confirmed ang pool entrance fee; pa-check sa Front Desk."
+    ));
+    if (asksPoolRule) answer.push(reply(
+      "Other pool safety and supervision rules haven't been confirmed; please ask Front Desk.",
+      "Hindi pa kumpirmado ang ibang pool safety rules; pakitanong sa Front Desk.",
+      "Hindi pa confirmed ang ibang pool safety rules; pa-check sa Front Desk."
+    ));
+    if (park) answer.push(reply(
+      "Vehicle parking is free.", "Libre po ang paradahan ng mga sasakyan.",
+      "Free po ang parking ng vehicles."
+    ));
+    return withReply(answer.join(" "));
   }
 
   // Unsupported general policies are handled conservatively even offline.
   // Parking being free does not imply that Wi-Fi or corkage is also free.
-  const unknownPolicy = /\b(?:wi-?fi|internet|corkage|outside\s+food|bring\s+food)\b/i.test(t);
+  const unknownPolicy = /\b(?:alcohol|beer|liquor|wine|alak|smoking|vaping|yosi|sigarilyo|videoke|karaoke)\b/i.test(t);
   if (unknownPolicy) return withReply(reply(
     (park ? "Parking is free for all vehicles. " : "") +
-      "That other resort policy hasn't been verified. Please ask Front Desk at 0956-912-5625.",
+      "That resort policy has not yet been confirmed. Please ask Front Desk at 0956-912-5625.",
     (park ? "Libre po ang parking. " : "") +
       "Hindi pa confirmed ang iba pang policy na iyon. Pakitanong po sa Front Desk: 0956-912-5625.",
     (park ? "Free po ang parking. " : "") +
