@@ -38,6 +38,9 @@ const {
   matchConciergeGuide, isMixedEntranceAndCorkage, conciergeGuideReply,
   CONTACT_EMAIL,
 } = require("./aiConciergeGuidance");
+const {
+  isCatalogRateOverviewQuestion, catalogRateOverview,
+} = require("./aiCatalogRateGuide");
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -1148,6 +1151,23 @@ exports.chatWithGemini = async (req, res) => {
         }),
         matched_rooms: [], catalog_recommendations: [],
         alternative_dates: [], booking_preview: null, recommendation_cards: [],
+      });
+    }
+
+    // AI-48: Explicit broad "room and cottage rates" is answered directly
+    // from the FRESH Admin-managed catalog, not a model's guessed rate.
+    // Never claim that listing status means a date/slot is bookable.
+    if (isCatalogRateOverviewQuestion(message)) {
+      const catalog = await getAccommodationCatalog();
+      const language = conciergeLanguage;
+      const overview = catalogRateOverview(catalog, message, language);
+      return res.status(200).json({
+        success: true, mode: "verified_catalog_rates",
+        reply: overview.reply,
+        extracted_context: mergeContext(scopeContext, { language_style: language }),
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null,
+        recommendation_cards: verifiedAccommodationCards(overview.rows, false),
       });
     }
 
