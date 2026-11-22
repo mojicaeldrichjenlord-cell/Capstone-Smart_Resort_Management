@@ -16,7 +16,7 @@ function isGeneralInventoryRateQuestion(text) {
   // An explicitly selected room or actual payment/deposit question still
   // belongs to the focused read-only payment handler.
   if (/\b(?:family|single|double)\s+room\s+(?:[a-z]|\d+)\b|\bnipa\s+hut\s*\d+\b/i.test(text) ||
-      /\b(?:down[\s-]?payment|deposits?|balance|payments?|pay(?:ing)?|paypal|babayaran|bayaran|magbayad|ibabayad)\b/i.test(text)) {
+      /\b(?:down[\s-]?payment|deposits?|balance|payments?|pay(?:ing)?|paypal|babayaran|bayaran|magbayad|magbabayad|ibabayad)\b/i.test(text)) {
     return false;
   }
 
@@ -28,7 +28,7 @@ function isGeneralInventoryRateQuestion(text) {
 function isRoomPaymentInquiry(message) {
   const text = String(message || "");
   if (!text.trim()) return false;
-  const isPayment = /\b(?:payments?|pay(?:ing)?|paypal|down[\s-]?payment|deposits?|balance|total|amount|cost|prices?|rates?|presyo|magkano|babayaran|bayaran|magbayad|ibabayad|bayad)\b/i.test(text);
+  const isPayment = /\b(?:payments?|pay(?:ing)?|paypal|down[\s-]?payment|deposits?|balance|total|amount|cost|prices?|rates?|presyo|magkano|babayaran|bayaran|magbayad|magbabayad|ibabayad|bayad)\b/i.test(text);
   if (!isPayment) return false;
   if (isGeneralInventoryRateQuestion(text)) return false;
   // Resort-wide parking questions (including "magkano parking fee") are
@@ -182,7 +182,7 @@ function paymentReply(message, context, room, language = "taglish") {
       nonStandard ? "Para sa extended o multi-day stay ng " + name +
         ", sa booking page pa natin mache-check ang exact duration at total." :
         "For " + name + " po, Day Tour or Night ba ang plan niyo? Magkaiba kasi ang listed rates.";
-    return intro + " Sa online booking/payment page po magbabayad via PayPal. Automatic ang confirmation kapag successful ang payment capture—walang screenshot upload na kailangan. Yung remaining accommodation balance, separate entrance fees at applicable charges ay sa resort babayaran. Estimated standard rate lang ito; final amount at slot availability sa booking page pa mache-check.";
+    return intro + " Sa online booking/payment page po magbabayad via PayPal. Automatic ang confirmation kapag successful ang payment capture—walang screenshot upload na kailangan. Yung remaining accommodation balance, separate entrance fees at applicable charges ay sa resort babayaran. " + (verified ? "Estimate ito for one standard slot; " : "") + "Final amount at slot availability sa booking page pa mache-check.";
   }
 
   if (language === "tagalog") {
