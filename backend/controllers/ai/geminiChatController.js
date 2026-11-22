@@ -5,8 +5,8 @@ const { generateGemini, geminiPublicError, geminiErrorStatus } = require("./gemi
 const { matchGeneralPolicyQuestion, inferPolicyLanguage, getPolicyReply, policyPromptLines } = require("./resortPolicyKnowledge");
 const {
   matchResortInquiry, guessInquiryLanguage, getResortInquiryReply,
-  resortInquiryPromptLines, matchUnverifiedResortPolicy,
-  getUnverifiedResortPolicyReply,
+  resortInquiryPromptLines, matchVerifiedPetPolicy, verifiedPetPolicyReply,
+  matchUnverifiedResortPolicy, getUnverifiedResortPolicyReply,
 } = require("./resortInquiryKnowledge");
 const { validateAiStayWindow, calendarDayDifference, addCalendarDays } = require("./resortStayWindow");
 const { normalizeRecentTurns, wantsAccommodationCards, verifiedAccommodationCards, tidyAssistantReply } =
@@ -1182,6 +1182,25 @@ exports.chatWithGemini = async (req, res) => {
       });
     }
 
+    // AI-60: Resort-confirmed NO ANIMALS policy. This is property-wide
+    // even if a named room/cottage is mentioned; answer without paid Gemini
+    // calls, database access or invented pet exceptions.
+    const petPolicy = matchVerifiedPetPolicy(message);
+    if (petPolicy) {
+      const language = detectLanguageFromMessage(message) ||
+        guessInquiryLanguage(message) ||
+        normalizeLanguageStyle(req.body.language_style) ||
+        normalizeLanguageStyle(scopeContext.language_style) || "taglish";
+      return res.status(200).json({
+        success: true, mode: "verified_pet_policy",
+        inquiry_topic: "pets",
+        reply: verifiedPetPolicyReply(petPolicy, language),
+        extracted_context: mergeContext(scopeContext, { language_style: language }),
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null, recommendation_cards: [],
+      });
+    }
+
     // AI-47: Standalone requests for services with no approved source get
     // a clear answer instead of prompting Gemini to invent a policy.
     // The verified resort-policy and accommodation fast paths remain separate.
@@ -1254,8 +1273,8 @@ exports.chatWithGemini = async (req, res) => {
       });
     }
 
-    // Unapproved general resort policies: reply honestly without Gemini,
-    // never turn an unverified Wi-Fi, pet or corkage question into a claim.
+    // Unapproved general resort policies: reply honestly without Gemini.
+    // Pet restrictions are client-verified above; Wi-Fi and corkage remain unverified.
     // Named-room questions continue to fresh accommodation data instead.
     const savedInquiryContext = req.body.context &&
       typeof req.body.context === "object" && !Array.isArray(req.body.context)
