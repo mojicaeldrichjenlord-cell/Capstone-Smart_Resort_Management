@@ -6,14 +6,16 @@ const { unknownRecordReply } = require("./aiGroundedResponseRules");
  *
  * Facts are approved by the client (parking, 2026-11-19) or are already
  * published on both Customer Home and the public Landing page (contact,
- * hours, location, swimming pool). Do not infer pool/parking charges beyond
- * the approved fact, reserved parking slots, safety/security, pets, corkage,
+ * hours, location, swimming pool). Client confirmation on 2026-11-22:
+ * animals/pets are NOT allowed in the resort. Do not infer pool/parking
+ * charges beyond the approved fact, reserved spaces/security, corkage,
  * Wi-Fi, child rates, or parking capacity.
  *
  * Add an approved fact here only after confirming it with the resort.
  */
 const RESORT_INQUIRY_FACTS = Object.freeze({
   parking: "The resort has FREE on-site parking for ANY type of vehicle, including motorcycles, cars, vans and buses. There is no parking fee. Do NOT claim unlimited spaces, a reserved/private parking bay, covered or guarded parking, or parking capacity.",
+  pets: "CLIENT-VERIFIED 2026-11-22: Animals and pets are NOT ALLOWED inside Arvic Seaside Beach Resort and Hotel. This includes dogs, cats and other animals. Never claim the property is pet-friendly or that guests may bring a pet for a fee. Do not invent exceptions or a pet boarding service.",
   location: "The resort is at 17 Mahogany Street, Brgy. Bagong Karsada, Naic, Cavite, Philippines. Do not invent directions or transport routes.",
   openingHours: "The resort is open 24 hours a day, Monday to Sunday. This does NOT mean guests may choose custom check-in/out hours; accommodation booking follows fixed Day/Night slots.",
   contact: "Published resort contact numbers: 0956-912-5625 and 0967-817-0662. For uncertain policies, refer the guest to the Front Desk.",
@@ -196,13 +198,78 @@ function getResortInquiryReply(match, language) {
  * Room-specific amenities are deliberately excluded so DB-backed responses
  * remain authoritative for the selected accommodation.
  */
+
+// AI-60: No-pets policy was explicitly confirmed by the resort on 2026-11-22.
+// The rule applies property-wide, including stays in any room or cottage.
+// Respond deterministically (0 Gemini credits) so "pwede magdala ng aso?"
+// cannot accidentally fall into the previously unverified pet-policy path.
+function matchVerifiedPetPolicy(message) {
+  const t = normalizeQuestion(message);
+  if (!t || t.length > 400) return null;
+  const pet = /\b(?:pets?|pet[\s-]?friendly|dogs?|cats?|pupp(?:y|ies)|kittens?|animals?|aso|pusa|hayop|alagang\s+hayop|iro|iring|mascotas?|perros?|gatos?)\b/iu.test(t) ||
+    /(?:宠物|猫|狗|動物|ペット|犬|고양이|반려동물)/u.test(t);
+  if (!pet) return null;
+  // Requests about multiple unrelated booking policies need the grounded
+  // model to address all the parts; it will still receive the verified fact.
+  if (/\b(?:downpayment|deposit|paypal|refund|cancellation|check[\s-]?in|check[\s-]?out|room\s+rate|total\s+price|magkano\s+(?:ang\s+)?(?:room|kwarto)|presyo\s+ng\s+kwarto)\b/iu.test(t)) return null;
+  return {
+    parking: /\b(?:parking|park|paradahan|mag[\s-]?park)\b/i.test(t),
+    wifi: /\b(?:wi[\s-]?fi|internet|wireless)\b/i.test(t),
+    food: /\b(?:corkage|outside\s+food|bring\s+food|magdala\s+ng\s+pagkain|dalang\s+pagkain)\b/i.test(t),
+  };
+}
+function verifiedPetPolicyReply(match, language = "taglish") {
+  if (!match) return null;
+  const answers = {
+    english: "Sorry, animals and pets are not allowed at Arvic Seaside Resort, including dogs and cats.",
+    tagalog: "Pasensya na po, bawal magdala ng mga hayop sa Arvic Seaside Resort, kasama ang aso at pusa.",
+    taglish: "Sorry po, hindi pet-friendly ang Arvic Seaside Resort. Bawal po magdala ng pets o kahit anong hayop, including dogs and cats.",
+    bisaya: "Pasayloa, bawal magdala og mga hayop sa Arvic Seaside Resort, apil ang iro ug iring.",
+    spanish: "Lo sentimos, no se permiten mascotas ni otros animales en Arvic Seaside Resort, incluidos perros y gatos.",
+    mandarin: "抱歉，Arvic Seaside Resort 禁止携带宠物及其他动物，包括狗和猫。",
+  };
+  const extras = {
+    english: {
+      parking: "Parking for vehicles is free.",
+      wifi: "Wi-Fi availability has not been verified; please ask Front Desk.",
+      food: "The outside-food/corkage policy has not been verified; please ask Front Desk.",
+    },
+    tagalog: {
+      parking: "Libre po ang paradahan ng mga sasakyan.",
+      wifi: "Hindi pa po kumpirmado ang Wi-Fi; pakitanong sa Front Desk.",
+      food: "Hindi pa po kumpirmado ang patakaran sa dalang pagkain at corkage; pakitanong sa Front Desk.",
+    },
+    taglish: {
+      parking: "Free naman po ang parking ng vehicles.",
+      wifi: "Hindi pa po confirmed ang Wi-Fi policy; pa-check sa Front Desk.",
+      food: "Hindi pa po confirmed ang outside food/corkage policy; pa-check sa Front Desk.",
+    },
+    bisaya: {
+      parking: "Libre ang parking sa mga sakyanan.",
+      wifi: "Wala pa makumpirma ang Wi-Fi; palihog pangutana sa Front Desk.",
+      food: "Wala pa makumpirma ang outside food/corkage; palihog pangutana sa Front Desk.",
+    },
+    spanish: {
+      parking: "El estacionamiento de vehículos es gratuito.",
+      wifi: "La disponibilidad de Wi-Fi no está confirmada; consulte con recepción.",
+      food: "La política de alimentos externos no está confirmada; consulte con recepción.",
+    },
+    mandarin: {
+      parking: "车辆停车免费。",
+      wifi: "Wi-Fi 使用情况尚未核实，请咨询前台。",
+      food: "自带食物及开瓶费政策尚未核实，请咨询前台。",
+    },
+  };
+  const locale=answers[language] ? language : "english";
+  return [answers[locale],...["parking","wifi","food"].filter(k=>match[k]).map(k=>extras[locale][k])].join(" ");
+}
+
 function matchUnverifiedResortPolicy(message, context = {}) {
   const t = normalizeQuestion(message);
   if (!t || t.length > 350) return null;
   const wifi = /\b(?:wi-?fi|wireless\s+internet|internet\s+connection)\b/i.test(t);
-  const pets = /\b(?:pets?|pet[ -]?friendly|dogs?|cats?|alagang\s+hayop)\b/i.test(t);
   const food = /\b(?:corkage|outside\s+food|bring\s+(?:(?:my|our|your|own)\s+)?food|own\s+food|dalang\s+(?:pagkain|food)|magdala\s+ng\s+(?:pagkain|food))\b/i.test(t);
-  if (![wifi,pets,food].some(Boolean)) return null;
+  if (![wifi,food].some(Boolean)) return null;
   if (/\b(?:family\s+room|double\s+room|single\s+room|rooms?|kwarto|kuwarto|accommodations?|nipa\s+hut|cottage|pavilion|pool\s+shade|booking\s+code|transaction|payment\s+status)\b/i.test(t)) return null;
   // A customer asking "May Wi-Fi dito?" while a room is focused needs a
   // fresh per-room lookup / grounded Gemini answer, not a property-wide FAQ.
@@ -212,7 +279,7 @@ function matchUnverifiedResortPolicy(message, context = {}) {
   const park = /\b(?:parking|park|paradahan|mag[ -]?park)\b/i.test(t);
   // Generic refund/booking/pricing requests have their own verified handlers.
   if (/\b(?:refund|cancellation|cancel|downpayment|booking\s+status|room\s+price|room\s+rate)\b/i.test(t)) return null;
-  return { kind: wifi ? "wifi" : pets ? "pets" : "food", mentionsParking: park };
+  return { kind: wifi ? "wifi" : "food", mentionsParking: park };
 }
 
 function getUnverifiedResortPolicyReply(match, language) {
@@ -235,7 +302,6 @@ function getUnverifiedResortPolicyReply(match, language) {
   const locale = ["english","tagalog","taglish"].includes(language) ? language : "english";
   const subject = {
     wifi: { english: "Wi-Fi availability", tagalog: "Wi-Fi", taglish: "Wi-Fi" },
-    pets: { english: "the pet policy", tagalog: "pet policy", taglish: "pet policy" },
     food: { english: "the outside food/corkage policy", tagalog: "outside food/corkage policy", taglish: "outside food/corkage policy" },
   }[match.kind]?.[locale];
   const parking = match.mentionsParking;
@@ -255,7 +321,8 @@ function resortInquiryPromptLines() {
     ...Object.entries(RESORT_INQUIRY_FACTS).map(([kind, fact]) => "- " + kind + ": " + fact),
     "Use these facts naturally for paraphrased questions; do NOT require a customer to use any specific keywords.",
     "Resort-wide parking being free does NOT mean entrance, room, or pool admission is free.",
-    "For unverified pet rules, Wi-Fi, outside food/corkage, parking security/space guarantees,",
+    "The confirmed resort-wide NO-ANIMALS/NO-PETS policy applies to all accommodations. Do not invent exceptions.",
+    "For unverified Wi-Fi, outside food/corkage, parking security/space guarantees,",
     "pool fees or safety, early check-in, and other missing resort policies: never invent a yes/no,",
     "rate or promise. State that it is not yet confirmed and refer to Front Desk.",
     "If a guest asks multiple unrelated questions, answer verified parts briefly and qualify unknown parts.",
@@ -265,5 +332,6 @@ function resortInquiryPromptLines() {
 module.exports = {
   RESORT_INQUIRY_FACTS, matchResortInquiry, isOpeningHoursInquiry,
   guessInquiryLanguage, getResortInquiryReply, resortInquiryPromptLines,
+  matchVerifiedPetPolicy, verifiedPetPolicyReply,
   matchUnverifiedResortPolicy, getUnverifiedResortPolicyReply,
 };
