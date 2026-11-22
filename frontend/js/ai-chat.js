@@ -614,6 +614,36 @@ function appendAiMessage(role, text, save = true) {
   }
 }
 
+// UI-46: The public landing concierge should stay uncluttered for English and
+// Taglish. Translation controls are relevant only when the AI actually replies
+// in Spanish or Mandarin, not merely when a guest mentions those languages.
+// No external language-detection request or Gemini credits are consumed.
+function isSpanishOrMandarinAiReply(replyText) {
+  const text = String(replyText || "")
+    .replace(/https?:\/\/\S+/gi, " ")
+    .replace(/`[^`]*`/g, " ")
+    .trim();
+
+  if (!text) return false;
+
+  // Mandarin: Chinese script in the reply, including Chinese punctuation.
+  const hanCount = (text.match(/[\u3400-\u9fff]/gu) || []).length;
+  if (hanCount >= 2) return true;
+
+  // Spanish: require either a full short greeting or multiple signals.
+  // One isolated word such as "hola" inside an English reply should not
+  // suddenly add Translate buttons.
+  if (/^(?:[¡¿]?\s*(?:hola|gracias|buenos\s+d[ií]as|buenas\s+tardes|buenas\s+noches|bienvenid[oa]s?)[\s.!¡¿?]*)$/iu.test(text)) {
+    return true;
+  }
+
+  const strongSignals = text.match(/\b(?:hola|gracias|bienvenid[oa]s?|habitaciones?|reservaci[oó]n(?:es)?|reservar|tenemos|ofrecemos|puedes?|pueden|cu[aá]nto|piscina|precios?|disponibles?|estacionamiento|necesitas?|quier[oe]|tienen|estamos|buen[oa]s|noches|d[ií]as|ustedes?|aqu[ií]|visitar|disfrutar|alojamiento|personas|puedo|usted)\b/giu) || [];
+  const grammarSignals = text.match(/\b(?:el|la|los|las|una?|de|del|en|con|para|que|por|nuestro|nuestra|sus|est[aá]|est[aá]n|son)\b/giu) || [];
+  return (/[¿¡]/u.test(text) && strongSignals.length >= 1) ||
+    strongSignals.length >= 2 ||
+    (strongSignals.length >= 1 && grammarSignals.length >= 2);
+}
+
 function appendReplyActions(wrapper, originalText) {
   const actions = document.createElement("div");
   actions.className = "ai-reply-actions"; // Shared compact controls across Customer pages.
@@ -703,8 +733,12 @@ function appendReplyActions(wrapper, originalText) {
     option.button.addEventListener("click", () => changeTranslation(option));
   }
   actions.appendChild(speakBtn);
-  actions.appendChild(translateEnglishBtn);
-  actions.appendChild(translateTagalogBtn);
+  // UI-46: Public landing only. Other signed-in Customer views retain their
+  // existing controls; Read Aloud remains available for every AI response.
+  if (!AI_IS_PUBLIC_LANDING || isSpanishOrMandarinAiReply(originalText)) {
+    actions.appendChild(translateEnglishBtn);
+    actions.appendChild(translateTagalogBtn);
+  }
   wrapper.appendChild(actions);
 }
 
