@@ -174,7 +174,8 @@ async function sendAiMessage(options = {}) {
       // an old selected room, clear the stale context instead of resurrecting
       // an unrelated Nipa Hut (mergeContext uses nullish fallbacks).
       if (((data.mode === "verified_accommodation_preview" ||
-             data.mode === "verified_cheapest_accommodation") &&
+             data.mode === "verified_cheapest_accommodation" ||
+             data.mode === "verified_pair_recommendation") &&
             !Object.prototype.hasOwnProperty.call(data.extracted_context, "room_id")) ||
           data.mode === "accommodation_selection_needed" ||
           data.mode === "recommendation_needs_guest_count" ||
