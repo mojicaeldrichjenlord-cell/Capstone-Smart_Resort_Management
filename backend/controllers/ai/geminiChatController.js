@@ -11,7 +11,9 @@ const {
 const { validateAiStayWindow, calendarDayDifference, addCalendarDays } = require("./resortStayWindow");
 const { normalizeRecentTurns, wantsAccommodationCards, verifiedAccommodationCards, tidyAssistantReply } =
   require("./aiConversationStyle");
-const { requestedAmenity, amenityReply } = require("./aiAccommodationAmenities");
+const {
+  requestedAmenities, amenityReply, multiAmenityReply,
+} = require("./aiAccommodationAmenities");
 const { generalCategoryAmenitiesReply } = require("./aiAccommodationCategoryPolicy");
 const { isNaturalRoomDetailsQuestion, naturalRoomDetailsReply } = require("./aiNaturalRoomDetails");
 const { isFreeEntranceQuestion, explicitEntranceRoomName, verifiedFreeEntranceReply } = require("./aiAccommodationEntrance");
@@ -1772,7 +1774,8 @@ exports.chatWithGemini = async (req, res) => {
     // Amenity questions about the selected room use the FRESH Admin-managed
     // description and inclusions, not a guess from previous conversation.
     // This read-only path needs zero Gemini credits and never checks/creates bookings.
-    const amenityKind = requestedAmenity(message);
+    const amenityKinds = requestedAmenities(message);
+    const amenityKind = amenityKinds.length === 1 ? amenityKinds[0] : null;
     // When a guest names a different room, that EXPLICIT room wins over
     // any selected card from a previous turn. Never pick one of two names.
     const explicitlyNamedAmenityRoom = explicitEntranceRoomName(message);
@@ -1792,7 +1795,7 @@ exports.chatWithGemini = async (req, res) => {
       (rawFocusedRoomId === null || rawFocusedRoomId === undefined ||
         rawFocusedRoomId === "") &&
       focusedRoomName.length > 0 && focusedRoomName.length <= 110;
-    if (amenityKind && !unresolvedNamedAmenityRoom &&
+    if (amenityKinds.length && !unresolvedNamedAmenityRoom &&
         (explicitlyNamedAmenityRoom || hasFocusedId || canResolveByName)) {
       const byId = !explicitlyNamedAmenityRoom && hasFocusedId;
       const lookup = explicitlyNamedAmenityRoom ||
@@ -1838,7 +1841,9 @@ exports.chatWithGemini = async (req, res) => {
           return res.status(200).json({
             success: true,
             mode: "verified_accommodation_amenity",
-            reply: amenityReply(record, amenityKind, message, language),
+            reply: amenityKinds.length > 1
+              ? multiAmenityReply(record, amenityKinds, language)
+              : amenityReply(record, amenityKind, message, language),
             extracted_context: mergeContext(savedContext, {
               room_id: record.id, room_name: record.room_name,
               language_style: language,
@@ -1856,7 +1861,7 @@ exports.chatWithGemini = async (req, res) => {
     // accommodation. A short clarification is safer and uses zero credits.
     // The normal one-card preview path above now saves the selected room ID,
     // so "may CR ba sya?" goes through the fresh read-only amenity lookup.
-    if (amenityKind) {
+    if (amenityKinds.length) {
       const saved = req.body.context && typeof req.body.context === "object" &&
         !Array.isArray(req.body.context) ? req.body.context : {};
       // The client also clears its local focus for this response mode.
