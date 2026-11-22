@@ -66,10 +66,20 @@ function matchRoomPriceFollowup(message,recentTurns=[],context={}) {
   }
   const shortGroup=guests>0 && q.length<=90 && (
     /\b(?:pang|para\s+sa|good\s+for|for)\s+\d{1,3}\s*(?:na\s*)?(?:tao|guests?|pax|people|persons?)\b/i.test(q) ||
-    /\b\d{1,3}\s*(?:na\s*)?(?:tao|guests?|pax|people|persons?)\b/i.test(q)
+    /\b\d{1,3}\s*(?:na\s*)?(?:tao|guests?|pax|people|persons?)\b/i.test(q) ||
+    // AI-69: natural follow-ups like "para sa 2 meron din ba?" and
+    // "for 2, do you have one too?" inherit the active room category.
+    /\b(?:para\s+sa|for)\s+\d{1,3}\s+(?:(?:po|na)\s+)?(?:meron|may|available|do\s+you\s+have)\b/i.test(q)
   ) && !/\b(?:may\s+cr|amenities|aircon|kitchen|how\s+much|magkano|presyo)\b/i.test(q);
   if (shortGroup && (type || (hasPriorRoom && scope))) {
     return {kind:"group",scope:scope || "room",category,guests,stay:stayPreference(q,recentTurns,context)};
+  }
+  // A one-word "room" or "cottage" after an accommodation discussion is
+  // a category selection, not permission to forget the saved guest count.
+  const categoryChoice=/^(?:rooms?|kwarto|kuwarto|cottages?|kubo)(?:\s+po)?[.!?]?$/.test(q);
+  if(categoryChoice && type && guests>0 && hasPriorRoom) {
+    return {kind:"group",scope:supportedGroup(type),category:type,guests,
+      stay:stayPreference(q,recentTurns,context)};
   }
   return null;
 }
@@ -104,9 +114,16 @@ function shortlistRoomFollowup(rows,intent,context={}) {
     });
   };
   const candidates=valid.filter(r=>Number(r.id)!==Number(baseline?.id));
+  // Repeating "room" for the SAME group should not bounce away from the
+  // suitable room already shown. A changed group size should find a new
+  // appropriately sized room when there is one.
+  const previousGuests=savedGuestCount(context);
+  const changedGroup=intent.kind==="group" && previousGuests>0 && n!==previousGuests;
   const matching=intent.kind==="cheaper" && baseline
     ? candidates.filter(cheaperThanBase)
-    : candidates.length ? candidates : valid;
+    : intent.kind==="group" && !changedGroup
+      ? valid
+      : candidates.length ? candidates : valid;
   const score=r=>{
     const p=intent.stay==="any"
       ? Math.min(price(r.day_price)??Infinity,price(r.overnight_price)??Infinity)
