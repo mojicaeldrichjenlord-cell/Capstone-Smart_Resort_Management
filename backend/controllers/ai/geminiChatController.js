@@ -9,6 +9,7 @@ const {
   matchVerifiedGuestAmenities, verifiedGuestAmenitiesReply,
   matchVerifiedLeisurePolicies, verifiedLeisurePoliciesReply,
   matchUnverifiedResortPolicy, getUnverifiedResortPolicyReply,
+  matchVerifiedResortFacilities, verifiedResortFacilitiesReply,
 } = require("./resortInquiryKnowledge");
 const { validateAiStayWindow, calendarDayDifference, addCalendarDays } = require("./resortStayWindow");
 const { normalizeRecentTurns, wantsAccommodationCards, verifiedAccommodationCards, tidyAssistantReply } =
@@ -1221,6 +1222,24 @@ exports.chatWithGemini = async (req, res) => {
         alternative_dates: [], booking_preview: null,
         recommendation_cards: combined.previewRoom
           ? verifiedAccommodationCards([combined.previewRoom], false) : [],
+      });
+    }
+
+    // AI-65: Client-confirmed convenience store and restobar inside the resort.
+    // Deterministic existence-only answers: no invented inventory/menu/pricing.
+    const verifiedFacilities = matchVerifiedResortFacilities(message);
+    if (verifiedFacilities) {
+      const language = detectLanguageFromMessage(message) ||
+        normalizeLanguageStyle(req.body.language_style) ||
+        normalizeLanguageStyle(scopeContext.language_style) || "taglish";
+      return res.status(200).json({
+        success: true, mode: "verified_resort_facilities",
+        reply: verifiedResortFacilitiesReply(verifiedFacilities, language),
+        inquiry_topic: [verifiedFacilities.store && "convenience_store",
+          verifiedFacilities.restobar && "restobar"].filter(Boolean).join(","),
+        extracted_context: mergeContext(scopeContext, { language_style: language }),
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null, recommendation_cards: [],
       });
     }
 
