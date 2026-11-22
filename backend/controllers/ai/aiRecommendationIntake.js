@@ -37,15 +37,15 @@ function explicitGuestCount(message) {
   const q = normal(message);
   let count = guestCountFromText(q);
   if (!count) {
-    const match = q.match(/^\s*(\d{1,3})\s*(?:kami|po|pax|guests?|persons?|people|tao|adults?|persons?\s+po)?\s*[.!?]?\s*$/i) ||
+    const match = q.match(/^\s*(\d{1,3})\s*(?:kami|mi|po|pax|guests?|persons?|people|tao|adults?|persons?\s+po)?\s*[.!?]?\s*$/i) ||
       q.match(/\b(?:for|para\s+sa|good\s+for)\s+(\d{1,3})\s*(?:guests?|pax|people|persons?|tao|kami)?\b/i) ||
-      q.match(/\b(\d{1,3})\s*(?:kami|guests?|pax|people|persons?|tao)\b/i);
+      q.match(/\b(\d{1,3})\s*(?:kami|mi|guests?|pax|people|persons?|tao)\b/i);
     if (match) count = Number(match[1]);
   }
   if (!count) {
     const filipino = { isa:1, isang:1, dalawa:2, tatlo:3, apat:4, lima:5,
       anim:6, pito:7, walo:8, siyam:9, sampu:10 };
-    const match = q.match(/^\s*(isa|isang|dalawa|tatlo|apat|lima|anim|pito|walo|siyam|sampu)\s*(?:kami|po|tao|guests?|pax)?\s*[.!?]?\s*$/i);
+    const match = q.match(/^\s*(isa|isang|dalawa|tatlo|apat|lima|anim|pito|walo|siyam|sampu)\s*(?:kami|mi|po|tao|guests?|pax)?\s*[.!?]?\s*$/i);
     if (match) count = filipino[match[1]];
   }
   count = Number(count);
@@ -109,7 +109,7 @@ function correctedGuestCount(message) {
   };
   // Limit correction syntax to guest counts, not questions involving
   // unrelated people or facts. "5 na lang kami" and "actually 7" work.
-  const match = q.match(/^(?:(?:sorry|ay|oops|actually|wait|correction|make it|we are|we're)\s+){0,2}(\d{1,3}|isa|isang|dalawa|tatlo|apat|lima|anim|pito|walo|siyam|sampu)(?:\s+(?:na\s+lang|na\s+pala|na\s+kami|lang|pala|kami|po|guests?|pax|people|persons?|tao|instead|actually|sorry|oops|ay|ah)){0,4}\s*[.!?]?$/i);
+  const match = q.match(/^(?:(?:sorry|ay|oops|actually|wait|correction|make it|we are|we're)\s+){0,2}(\d{1,3}|isa|isang|dalawa|tatlo|apat|lima|anim|pito|walo|siyam|sampu)(?:\s+(?:na\s+lang|na\s+pala|na\s+kami|na\s+lang\s+mi|lang|pala|kami|mi|po|guests?|pax|people|persons?|tao|instead|actually|sorry|oops|ay|ah)){0,4}\s*[.!?]?$/i);
   if (!match) return 0;
   const guests = /^\d+$/.test(match[1]) ? Number(match[1]) : countWords[match[1]];
   return Number.isSafeInteger(guests) && guests >= 1 && guests <= 200 ? guests : 0;
@@ -126,7 +126,7 @@ function guestCountCorrection(message, recentTurns = [], context = {}) {
   // Only the immediate follow-up to our verified accommodation previews.
   // A prior room_id alone is NOT proof of an active recommendation.
   if (latest?.role !== "assistant" ||
-      !/(?:preview (?:ng|of|for)|matching accommodations?|matching previews?|listed accommodation|matching room|matching units?|matching options?|matching (?:cottage|function area)|listed capacity)/i.test(latest.text))
+      !/(?:preview (?:ng|of|for|sa)|mao\s+ni\s+ang\s+preview|matching accommodations?|matching previews?|listed accommodation|matching room|matching units?|matching options?|matching (?:cottage|function area)|listed capacity)/i.test(latest.text))
     return null;
   const previousUser = recent.slice(0, -1).reverse().find(t => t.role === "user");
   if (!previousUser ||
