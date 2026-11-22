@@ -14,24 +14,39 @@ const FEATURES = Object.freeze({
   karaoke: /\b(?:karaoke|videoke)\b/i,
   table: /\b(?:tables?|dining\s+tables?)\b/i,
   monoblock: /\b(?:monoblocks?|plastic\s+chairs?|monoblock\s+chairs?)\b/i,
+  kitchen: /\b(?:kitchen|kusina|cooking\s+area|cooking\s+space)\b/i,
+  living_room: /\b(?:living\s+room|sala|lounge\s+area)\b/i,
+  cabinet: /\b(?:cabinets?|wardrobes?|closets?|aparador)\b/i,
 });
 const PRIVATE_CR = /\b(?:private|own|exclusive|sarili(?:ng)?|en[\s-]?suite|attached)\s+(?:cr|comfort\s*room|bathroom|bath\s*room|restroom|toilet|t\s*&\s*b)\b|\b(?:cr|comfort\s*room|bathroom|restroom|toilet)\s*(?:[-:(]\s*)?(?:private|own|exclusive|sarili(?:ng)?)\b/i;
 const SHARED_CR = /\b(?:shared|common|communal|public)\s+(?:cr|comfort\s*room|bathroom|restroom|toilet)\b|\b(?:cr|bathroom|restroom|toilet)\s+(?:is\s+)?(?:shared|common|communal)\b/i;
 
-// Broader, multi-amenity, fee or complex questions stay in normal Gemini flow.
-function requestedAmenity(message) {
+// A guest may ask about multiple specific inclusions in one sentence.
+// The multi-amenity path checks EACH feature against the fresh selected DB
+// room, instead of letting a single-feature fast path ignore the rest.
+function requestedAmenities(message) {
   const text = String(message || "").normalize("NFKC").toLowerCase();
-  if (text.length > 300 || !/(?:\?|^\s*may\b|\b(?:meron|have|has|with|included|kasama|available|ba|bang)\b)/i.test(text)) return null;
-  if (/\b(?:free|libre|extra|additional|charge|fee|bayad|magkano|how much)\b/i.test(text)) return null;
+  if (text.length > 300 || !/(?:\?|^\s*may\b|\b(?:meron|have|has|with|included|kasama|available|ba|bang)\b)/i.test(text)) return [];
+  if (/\b(?:free|libre|extra|additional|charge|fee|bayad|magkano|how much)\b/i.test(text)) return [];
   const kinds = [];
   if (FEATURES.cr.test(text)) {
-    kinds.push(/\b(?:sarili(?:ng)?|private|own|exclusive|en[\s-]?suite)\b/i.test(text) ? "private_cr" : "cr");
+    // Privacy must explicitly modify CR; "private kitchen at CR" does not
+    // prove that the CR is private.
+    kinds.push(PRIVATE_CR.test(text) ? "private_cr" : "cr");
   }
   if (FEATURES.aircon.test(text)) kinds.push("aircon");
   if (FEATURES.ref.test(text)) kinds.push("ref");
   if (FEATURES.karaoke.test(text)) kinds.push("karaoke");
   if (FEATURES.table.test(text)) kinds.push("table");
   if (FEATURES.monoblock.test(text)) kinds.push("monoblock");
+  if (FEATURES.kitchen.test(text)) kinds.push("kitchen");
+  if (FEATURES.living_room.test(text)) kinds.push("living_room");
+  if (FEATURES.cabinet.test(text)) kinds.push("cabinet");
+  return kinds.slice(0, 7);
+}
+// Preserve the single-feature API for existing flows/tests.
+function requestedAmenity(message) {
+  const kinds = requestedAmenities(message);
   return kinds.length === 1 ? kinds[0] : null;
 }
 
@@ -91,7 +106,8 @@ function amenityReply(room, kind, message, language = "english") {
     const feature = {
       private_cr: "pribadong CR", cr: "CR", aircon: "aircon",
       ref: "refrigerator", karaoke: "karaoke", table: "lamesa",
-      monoblock: "monoblock chairs",
+      monoblock: "monoblock chairs", kitchen: "kusina",
+      living_room: "sala", cabinet: "cabinet",
     }[kind] || "kini nga amenity";
     if (status === "none_included")
       return "Walay apil nga amenities sa " + name + " sumala sa listing.";
@@ -118,6 +134,9 @@ function amenityReply(room, kind, message, language = "english") {
     karaoke: "karaoke",
     table: filipino ? "tables" : "tables",
     monoblock: "monoblock chairs",
+    kitchen: filipino ? "kitchen" : "a kitchen",
+    living_room: filipino ? "living room" : "a living room",
+    cabinet: filipino ? "cabinet" : "cabinets",
   }[kind];
   if (status === "none_included") {
     return filipino
@@ -161,4 +180,64 @@ function amenityReply(room, kind, message, language = "english") {
       : "Hindi po naka-indicate sa description o amenities ng " + name + " kung may " + item + ". Puwede po itong i-confirm sa Front Desk.")
     : "The description and amenities don't confirm whether " + name + " has " + item + ". Please check with Front Desk.";
 }
-module.exports = { requestedAmenity, amenityEvidence, amenityReply };
+
+// AI-52: Every requested amenity must be addressed. This uses the SAME
+// evidence checks as single-feature questions, and never interprets silence
+// in a room description as evidence of absence.
+function multiAmenityReply(room, kinds, language = "taglish") {
+  const name = String(room?.room_name || room?.name || "accommodation")
+    .replace(/<[^>]*>/g, " ").trim().slice(0, 110);
+  const all = [...new Set(Array.isArray(kinds) ? kinds : [])].filter(k =>
+    k === "private_cr" || Object.hasOwn(FEATURES, k));
+  const filipino = ["tagalog", "taglish"].includes(language);
+  const labels = {
+    private_cr: {fil:"sariling CR", en:"private bathroom", bis:"pribadong CR"},
+    cr: {fil:"CR", en:"bathroom", bis:"CR"},
+    aircon: {fil:"aircon", en:"air conditioning", bis:"aircon"},
+    ref: {fil:"ref", en:"refrigerator", bis:"refrigerator"},
+    karaoke: {fil:"karaoke", en:"karaoke", bis:"karaoke"},
+    table: {fil:"table", en:"table", bis:"lamesa"},
+    monoblock: {fil:"monoblock chairs", en:"monoblock chairs", bis:"monoblock chairs"},
+    kitchen: {fil:"kitchen", en:"kitchen", bis:"kusina"},
+    living_room: {fil:"living room", en:"living room", bis:"sala"},
+    cabinet: {fil:"cabinets", en:"cabinets", bis:"cabinet"}
+  };
+  const known = [], denied = [], unclear = [];
+  for (const kind of all) {
+    const label = labels[kind]?.[language === "bisaya" ? "bis" :
+      filipino ? "fil" : "en"] || kind;
+    const status = amenityEvidence(room, kind);
+    if (status === "yes") known.push(label);
+    else if (status === "no" || status === "none_included") denied.push(label);
+    else unclear.push(label);
+  }
+  if (!all.length) return "";
+  const join = items => items.length === 1 ? items[0] :
+    items.length === 2 ? items.join(filipino ? " at " :
+      language === "bisaya" ? " ug " : " and ") :
+      items.slice(0, -1).join(", ") +
+      (filipino ? ", at " : language === "bisaya" ? ", ug " : ", and ") +
+      items.at(-1);
+  const messages = [];
+  if (language === "bisaya") {
+    if (known.length) messages.push("Oo, naay " + join(known) + " ang " + name + ".");
+    if (denied.length) messages.push("Sumala sa listing, wala'y " + join(denied) + " ang " + name + ".");
+    if (unclear.length) messages.push("Wala pa makumpirma sa records kung naa bay " +
+      join(unclear) + ". Palihog pangutana sa Front Desk.");
+  } else if (filipino) {
+    if (known.length) messages.push("Yes po, may " + join(known) + " ang " + name + ".");
+    if (denied.length) messages.push("Ayon po sa listing, walang " + join(denied) + " ang " + name + ".");
+    if (unclear.length) messages.push("Hindi pa po confirmed sa room records kung may " +
+      join(unclear) + ". Paki-check na lang po sa Front Desk.");
+  } else {
+    if (known.length) messages.push("Yes, " + name + " includes " + join(known) + ".");
+    if (denied.length) messages.push("Its listing says it does not include " + join(denied) + ".");
+    if (unclear.length) messages.push("The records don't confirm " + join(unclear) +
+      ". Please check with Front Desk.");
+  }
+  return messages.join(" ");
+}
+module.exports = {
+  requestedAmenity, requestedAmenities, amenityEvidence,
+  amenityReply, multiAmenityReply,
+};
