@@ -177,7 +177,8 @@ async function sendAiMessage(options = {}) {
              data.mode === "verified_cheapest_accommodation") &&
             !Object.prototype.hasOwnProperty.call(data.extracted_context, "room_id")) ||
           data.mode === "accommodation_selection_needed" ||
-          data.mode === "recommendation_needs_guest_count") {
+          data.mode === "recommendation_needs_guest_count" ||
+          data.mode === "verified_accommodation_comparison") {
         // AI-37: A new recommendation is pending guest count; don't
         // preserve an older selected accommodation by merging nullish keys.
         delete merged.room_id;
