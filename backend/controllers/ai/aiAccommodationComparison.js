@@ -141,6 +141,11 @@ function comparisonReply(selection,language="taglish") {
   line(t.labels[1],number(a.day_price),number(b.day_price),money);
   line(t.labels[2],number(a.overnight_price),number(b.overnight_price),money);
   line(t.labels[3],number(a.extended_price),number(b.extended_price),money);
+  // "Available" in a listing is NOT a promise about any particular slot.
+  const as=String(a.status||"").trim().toLowerCase(),
+    bs=String(b.status||"").trim().toLowerCase();
+  if(as && bs && (as!==bs || as!=="available"))
+    line("Listing status",as,bs);
   const af=number(a.free_entrance_pax,true),bf=number(b.free_entrance_pax,true);
   if((af!=null && af>0)||(bf!=null && bf>0))line(t.labels[4],af,bf,n=>n+t.pax);
   const ap=listedAmenityParts(a).map(x=>fact(x,90)).filter(Boolean);
