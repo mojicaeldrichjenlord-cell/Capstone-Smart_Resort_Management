@@ -779,9 +779,11 @@ function appendReplyActions(wrapper, originalText) {
     option.button.addEventListener("click", () => changeTranslation(option));
   }
   actions.appendChild(speakBtn);
-  // UI-46: Public landing only. Other signed-in Customer views retain their
-  // existing controls; Read Aloud remains available for every AI response.
-  if (!AI_IS_PUBLIC_LANDING || isSpanishOrMandarinAiReply(originalText)) {
+  // UI-57: On ALL Customer surfaces, show translation only if the AI
+  // actually replied in Spanish or Mandarin. Read Aloud is always available.
+  // History restoration also calls appendReplyActions, so previously saved
+  // English/Taglish replies no longer show irrelevant Translate controls.
+  if (isSpanishOrMandarinAiReply(originalText)) {
     actions.appendChild(translateEnglishBtn);
     actions.appendChild(translateTagalogBtn);
   }
