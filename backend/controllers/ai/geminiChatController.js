@@ -24,6 +24,8 @@ const { isVerifiedPreviewRequest, selectVerifiedPreviews, verifiedPreviewReply,
   requestedCategory } = require("./aiVerifiedPreview");
 const { isRoomPaymentInquiry, resolvePaymentRoom, paymentReply } =
   require("./aiFocusedPaymentReply");
+const { compoundTopics, compoundRoom, compoundGuestReply } =
+  require("./aiCompoundGuestInquiry");
 const {
   matchAccommodationCountQuestion, countSummary, countReply,
 } = require("./aiAccommodationCounts");
@@ -1136,6 +1138,51 @@ exports.chatWithGemini = async (req, res) => {
         extracted_context: mergeContext(scopeContext, { language_style: language }),
         matched_rooms: [], catalog_recommendations: [],
         alternative_dates: [], booking_preview: null, recommendation_cards: [],
+      });
+    }
+
+    // AI-63: Answer ALL questions in mixed confirmed-policy inquiries.
+    // Previously "10 guests ... food, own videoke, Wi-Fi?" only returned a
+    // room preview, dropping every policy sub-question. Cross-reference the
+    // existing approved policy helpers first; only attach an OPTIONAL card
+    // for an active room verified against the fresh admin-managed catalog.
+    const compoundPolicy = compoundTopics(message);
+    if (compoundPolicy) {
+      const language = detectLanguageFromMessage(message) ||
+        normalizeLanguageStyle(req.body.language_style) ||
+        normalizeLanguageStyle(scopeContext.language_style) || "taglish";
+      const guests = explicitGuestCount(message);
+      let focusedRoom = null;
+      if (guests && (
+          Number(scopeContext.room_id) > 0 ||
+          String(scopeContext.room_name || "").trim() ||
+          /\\b(?:family|double|single)\\s+room\\b/i.test(message)
+        )) {
+        const catalog = await getAccommodationCatalog();
+        // Never use an unrelated older assistant preview as a room choice.
+        focusedRoom = compoundRoom(catalog, message, scopeContext);
+      }
+      const combined = compoundGuestReply(
+        compoundPolicy, message, scopeContext, language, focusedRoom,
+      );
+      const nextContext = mergeContext(scopeContext, {
+        language_style: language,
+        ...(combined.guests ? { guests: combined.guests } : {}),
+        ...(combined.previewRoom ? {
+          room_id: combined.previewRoom.id,
+          room_name: combined.previewRoom.room_name,
+        } : {}),
+      });
+      return res.status(200).json({
+        success: true, mode: "verified_compound_guest_inquiry",
+        inquiry_topic: Object.keys(compoundPolicy)
+          .filter(k => compoundPolicy[k]).join(","),
+        reply: combined.reply,
+        extracted_context: nextContext,
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null,
+        recommendation_cards: combined.previewRoom
+          ? verifiedAccommodationCards([combined.previewRoom], false) : [],
       });
     }
 
