@@ -237,24 +237,24 @@ async function sendAiMessage(options = {}) {
     const mergedFallbackContext = mergeContext(storedContext, fallback.context || {});
     saveAiContext(mergedFallbackContext);
 
-    // Show the temporary offline banner once, not on every single reply.
+    // AI-49: A network error does not erase verified offline resort knowledge.
+    // Previous code ALWAYS replaced fallback.reply with a generic voice error,
+    // even for typed parking questions. Keep the factual fallback and show one
+    // separate connection notice. Never pretend rates or slots are verified.
+    const localHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+    const isTransportError = error instanceof TypeError &&
+      /fetch|network|load failed/i.test(String(error.message || ""));
+    const notice = localHost && isTransportError
+      ? "Hindi ma-connect ang localhost backend (127.0.0.1:5000). I-start o i-restart muna ang backend server. Offline verified resort info lang ang available."
+      : fallback.modeNotice;
     if (!getStoredChatHistory().some((entry) => entry.type === "system" &&
-        entry.text === fallback.modeNotice)) {
-      appendAiSystemNote(fallback.modeNotice);
+        entry.text === notice)) {
+      appendAiSystemNote(notice);
     }
-
-    // Persist offline booking hints silently rather than adding scripted status prose.
-
-    // In Live Voice mode, preserve the selected spoken language even when
-    // Gemini is offline. Never make unverified availability promises.
-    const voiceFallbacks = {
-      english: "Sorry, the AI service is temporarily unavailable. Please try again or continue using the booking page.",
-      taglish: "Pasensya na po, temporarily unavailable ang AI service. Puwede po kayong mag-try ulit o magpatuloy sa booking page.",
-      spanish: "Lo siento, el servicio de inteligencia artificial no está disponible temporalmente. Puede intentarlo de nuevo o continuar en la página de reservas.",
-      mandarin: "抱歉，人工智能服务暂时无法使用。您可以稍后再试，或前往预订页面继续操作。",
-    };
-    const voiceLanguage = detectOfflineLanguage(message, storedContext);
-    const safeReply = voiceFallbacks[voiceLanguage] || fallback.reply;
+    // This is useful resort information only when the local verified answer is
+    // known. Other inquiries remain cautious and never fabricate availability.
+    const safeReply = fallback.reply ||
+      "Sorry, the AI service is temporarily unavailable. Please try again.";
     appendAiMessage("assistant", safeReply);
     return safeReply;
   } finally {
