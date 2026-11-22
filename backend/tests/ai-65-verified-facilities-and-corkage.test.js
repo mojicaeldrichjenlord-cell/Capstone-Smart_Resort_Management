@@ -92,7 +92,11 @@ test("Store menu and hours unknown: do not claim prices or operating hours",()=>
     "What time does the restobar close?",
     "What is on the restobar menu?",
     "Does your restobar sell beer?",
-    "How much are the items at the convenience store?"]) {
+    "How much are the items at the convenience store?",
+    "What time does the convenience store open?",
+    "Is the restobar open right now?",
+    "Anong oras nagsasara ang restobar?",
+    "What are the operating hours of the restobar?"]) {
     assert.equal(matchVerifiedResortFacilities(q),null,q);
   }
 });
