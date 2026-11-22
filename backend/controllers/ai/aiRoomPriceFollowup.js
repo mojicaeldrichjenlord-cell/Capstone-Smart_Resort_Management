@@ -158,8 +158,8 @@ function roomPriceFollowupReply(selection,language="taglish"){
   const items=selection.rows.map(r=>describeRate(r,slot,language)).join("; ");
   if(selection.kind==="cheaper" && !selection.baseline) {
     return (english
-      ? "I can show lower-priced "+typePlural+" for "+num+" guests, though I couldn't verify the previous room's rate to compare: "
-      : "Ito po ang listed "+typePlural+" para sa "+num+" guests. Hindi ko ma-verify ang rate ng naunang room para masabing mas mura: ")+items+"."+note;
+      ? "Here are listed "+typePlural+" for "+num+" guests. I couldn't verify the previous room's rate, so I can't confirm which is cheaper: "
+      : "Ito po ang listed "+typePlural+" para sa "+num+" guests. Hindi ko ma-verify ang naunang room rate para masabing alin ang mas mura: ")+items+"."+note;
   }
   if(selection.kind==="cheaper") {
     return (english
