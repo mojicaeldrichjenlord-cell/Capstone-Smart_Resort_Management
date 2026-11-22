@@ -226,7 +226,7 @@ function matchVerifiedGuestAmenities(message) {
   const corkage=/\b(?:corkage|charge|fee|free|libre|libreng|bayad|magkano|how\s+much|waived)\b/i.test(t)&&food;
   const poolFee=pool && (
     /\b(?:pool|swimming|piscina)\b.{0,55}\b(?:entrance|admission|fees?|ticket|price|cost|libre|free|magkano|how\s+much|bayad)\b/i.test(t) ||
-    /\b(?:entrance|admission|fees?|ticket|price|cost|libre|free|magkano|how\s+much|bayad)\b.{0,55}\b(?:pool|swimming|piscina)\b/i.test(t) && !/\bfree\s+parking\b/i.test(t)
+    /\b(?:entrance|admission|fees?|ticket|price|cost|magkano|how\s+much|bayad)\b.{0,55}\b(?:pool|swimming|piscina)\b/i.test(t)
   );
   const poolRule=/\b(?:life[\s-]?guards?|child(?:ren)?|bata|safety|supervis|age|depth|deep|float|inflat|rules?|restrictions?)\b/i.test(t)&&pool;
   return {wifi,food,pool,parking,pets,cottage,rooms,wifiDetail,corkage,poolFee,poolRule};
