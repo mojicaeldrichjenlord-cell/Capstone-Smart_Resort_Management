@@ -34,6 +34,10 @@ const {
   unknownRecordReply, clarifyAmbiguousResortQuestion,
   matchUnverifiedServiceQuestion, guardUnsupportedPesoClaims,
 } = require("./aiGroundedResponseRules");
+const {
+  matchConciergeGuide, isMixedEntranceAndCorkage, conciergeGuideReply,
+  CONTACT_EMAIL,
+} = require("./aiConciergeGuidance");
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -1119,6 +1123,34 @@ exports.chatWithGemini = async (req, res) => {
       });
     }
 
+    // AI-48: Common public concierge journeys use only VERIFIED payment,
+    // login and contact facts. Show safe first-party booking links in the UI;
+    // never claim the chatbot itself creates or confirms a reservation.
+    // Other foreign languages continue through the grounded Gemini path.
+    const conciergeLanguage = detectLanguageFromMessage(message) ||
+      normalizeLanguageStyle(req.body.language_style) ||
+      normalizeLanguageStyle(scopeContext.language_style) || "taglish";
+    const supportedConciergeLanguages = new Set([
+      "english", "tagalog", "taglish", "bisaya", "spanish", "mandarin"
+    ]);
+    const conciergeIntent = matchConciergeGuide(message);
+    const combinedPolicy = isMixedEntranceAndCorkage(message);
+    if (supportedConciergeLanguages.has(conciergeLanguage) &&
+        (conciergeIntent || combinedPolicy)) {
+      const kind = conciergeIntent || "entrance_corkage";
+      return res.status(200).json({
+        success: true, mode: "concierge_" + kind,
+        reply: conciergeGuideReply(kind, conciergeLanguage),
+        handoff: kind === "booking" ? "booking" :
+          kind === "special_event" ? "human" : null,
+        extracted_context: mergeContext(scopeContext, {
+          language_style: conciergeLanguage,
+        }),
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null, recommendation_cards: [],
+      });
+    }
+
     // AI-47: Standalone requests for services with no approved source get
     // a clear answer instead of prompting Gemini to invent a policy.
     // The verified resort-policy and accommodation fast paths remain separate.
@@ -2144,6 +2176,20 @@ celebrity, recipe, sports, or other general-knowledge questions.
 If an unrelated request reaches you, politely redirect to resort inquiries
 WITHOUT giving the unrelated answer, even if older context says "resort".
 For mixed queries, only answer the resort part; do not solve the unrelated part.
+When guests request rooms, cottages, prices, amenity lists or policies together,
+give a short readable list (one item per line) only where it adds clarity.
+Never create a list of fictional rooms, inclusions, special rates or entrance fees.
+For approved online payment guidance, use these verified steps:
+Customer registers or logs in, chooses an accommodation and fixed slot,
+reviews the availability and final amount, and pays the 50% accommodation
+downpayment via PayPal. Only a successful captured PayPal payment
+automatically confirms the online reservation; NO uploaded receipt or
+payment screenshot is required. Remaining accommodation balance and
+separate entrance fees / applicable charges are collected at the resort.
+For large events, weddings, birthdays, team building and custom packages:
+do not invent event packages, special discounts or package quotations.
+Refer guests to Front Desk using verified contact numbers, or the verified
+email ${CONTACT_EMAIL}. The resort can discuss requirements with staff.
 
 SOURCE-OF-TRUTH (STRICT — more important than sounding confident):
 - Treat ONLY the current, system-supplied facts in VERIFIED RESORT OPERATIONS /
@@ -2242,7 +2288,9 @@ ${resortInquiryPromptLines()}
 - If the guest asks about new accommodations, use the newest catalog entries, but disclose unavailable statuses.
 - The catalog does not prove exact room availability until the guest supplies check-in/out dates and times.
 - Do not use markdown symbols like **, *, #, or messy formatting.
-- Use clean short paragraphs or simple numbered points only when needed.
+- Use clean short paragraphs, or simple 1-4 numbered steps / short hyphen
+  lines for multi-item room rates, verified policies and amenities only.
+  Do not write Markdown headings or decorative symbols.
 - Keep replies easy to read in a chat window.
 - Keep replies practical and short, unless the user explicitly asks for a detailed explanation.
 - Ask no more than ONE short, relevant follow-up question per turn.
