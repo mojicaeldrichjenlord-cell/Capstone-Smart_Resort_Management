@@ -584,6 +584,7 @@ function matchVerifiedResortFacilities(message) {
   // policies remain outside the verified fast path. Only broad restobar
   // food/drinks service may bypass the former food/service exclusion.
   if (/\b(?:room|cottage|booking|reservation|refund|cancel|payment|prices?|costs?|fees?|magkano|how\s+much|rates?|menus?|sell|sold|selling|stock|inventory|items?|products?|available\s+for\s+sale|beer|alcohol|wine|liquor|cocktails?|wifi|wi-fi|pool|parking|pets?|videoke|speakers?|entrance|corkage|deliver|delivery|kitchen|breakfast|lunch|dinner)\b/i.test(q)) return null;
+  if (/\b(?:such\s+as|for\s+example|like\s+(?:pizza|burger|chicken|rice)|what\s+(?:food|drinks?|dishes|beverages?)|which\s+(?:food|drinks?|dishes|beverages?)|what\s+kinds?\s+of|anong\s+(?:klase\s+ng\s+)?(?:pagkain|inumin)|specific\s+(?:food|drinks?|items?))\b/i.test(q)) return null;
   const foodOrDrinks = /\b(?:food|foods|meals?|dining|pagkain|kainan|drinks?|beverages?|refreshments?|inumin|serve|serves|serving|service|buy|order|kumain|makakain)\b/i.test(q);
   const offerings = facilityFoodAndDrinksRequested(q);
   if (foodOrDrinks && !offerings) return null;
@@ -619,12 +620,12 @@ function verifiedResortFacilitiesReply(mentions, language = "taglish") {
     },
   };
   const offeringPhrases = {
-    english: "Yes, the restobar serves food and drinks. Specific menu items and prices are not confirmed.",
-    taglish: "Yes po, may food at drinks sa restobar. Hindi pa confirmed ang specific menu at prices.",
-    tagalog: "Opo, may pagkain at inumin sa restobar. Wala pang kumpirmadong partikular na menu o presyo.",
-    bisaya: "Oo, naay pagkaon ug ilimnon sa restobar. Wala pay kumpirmadong espesipikong menu ug presyo.",
-    spanish: "Sí, el restobar ofrece comidas y bebidas. No hay confirmación del menú ni de los precios específicos.",
-    mandarin: "餐吧提供食物和饮料，但具体菜单和价格尚未核实。",
+    english: "Yes, the restobar serves food and drinks.",
+    taglish: "Yes po, may food at drinks sa restobar.",
+    tagalog: "Opo, may pagkain at inumin sa restobar.",
+    bisaya: "Oo, naay pagkaon ug ilimnon sa restobar.",
+    spanish: "Sí, el restobar ofrece comidas y bebidas.",
+    mandarin: "餐吧提供食物和饮料。",
   };
   if (mentions.hours) {
     const p = hoursPhrases[language] || hoursPhrases.english;
