@@ -128,6 +128,21 @@ function paymentReply(message, context, room, language = "taglish") {
     String(room.status).toLowerCase().trim() === "available");
   // Casual, spoken-friendly Taglish. Keep all calculations exactly the
   // same as the other language paths and never imply a confirmed booking.
+  if (language === "bisaya") {
+    let intro;
+    if (room && !isListed) {
+      intro = "Ang " + name + " wala karon gi-mark nga available sa listing, busa dili ko makahatag ug payable estimate.";
+    } else if (room && stay && amount !== null) {
+      intro = "Sa " + name + ", ang listed " + (stay === "overnight" ? "overnight" : "day tour") +
+        " rate kay " + peso(amount) + " alang sa usa ka standard slot. Ang estimated 50% downpayment kay " + peso(amount * 0.5) +
+        " pinaagi sa PayPal; ang nahibilin kay " + peso(amount * 0.5) + ".";
+    } else if (room) {
+      intro = "Day Tour ba o Night ang gusto ninyo sa " + name + "? Aron sakto ang rate nga ma-check.";
+    } else {
+      intro = "Unsang accommodation ang inyong plano i-book? Aron ma-check ang listed rate.";
+    }
+    return intro + " Lahi ang entrance fees ug ubang applicable charges. Ang booking page mag-confirm sa final amount ug slot availability.";
+  }
   if (language === "taglish") {
     let lead;
     if (room && !isListed) {
