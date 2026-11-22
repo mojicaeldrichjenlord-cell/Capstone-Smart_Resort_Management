@@ -87,19 +87,70 @@ test("Convenience store and restobar are confirmed on resort premises",()=>{
   assert.match(verifiedResortFacilitiesReply(both,"taglish"),/convenience store/);
   assert.match(verifiedResortFacilitiesReply(both,"taglish"),/restobar/);
 });
-test("Store menu and hours unknown: do not claim prices or operating hours",()=>{
-  for(const q of ["Is the convenience store open now?",
-    "What time does the restobar close?",
+test("Menus, stock, sales, and prices still cannot be assumed",()=>{
+  for(const q of [
     "What is on the restobar menu?",
     "Does your restobar sell beer?",
     "How much are the items at the convenience store?",
-    "What time does the convenience store open?",
-    "Is the restobar open right now?",
-    "Anong oras nagsasara ang restobar?",
-    "What are the operating hours of the restobar?"]) {
+    "Does the convenience store sell medicine?"
+  ]) {
     assert.equal(matchVerifiedResortFacilities(q),null,q);
   }
 });
+test("AI-66: verified restobar closing and opening hours are read directly",()=>{
+  assert.match(RESORT_INQUIRY_FACTS.restobar,/6:00 PM to 6:00 AM THE NEXT DAY/);
+  for (const q of [
+    "What time does the restobar close?",
+    "When does your restobar open?",
+    "Is the restobar open right now?",
+    "Anong oras nagsasara ang restobar?",
+    "What are the operating hours of the restobar?",
+    "Bukas ba ang restobar araw-araw?"
+  ]) {
+    const matched=matchVerifiedResortFacilities(q);
+    assert.equal(matched?.restobar,true,q);
+    assert.equal(matched?.hours,true,q);
+    const reply=verifiedResortFacilitiesReply(matched,"english");
+    assert.match(reply,/daily/);
+    assert.match(reply,/6:00 PM/);
+    assert.match(reply,/6:00 AM/);
+    assert.match(reply,/next day/);
+  }
+  assert.match(verifiedResortFacilitiesReply(
+    matchVerifiedResortFacilities("Anong oras nagsasara ang restobar?"),"taglish"
+  ),/6:00 AM po ang closing/);
+  assert.match(verifiedResortFacilitiesReply(
+    matchVerifiedResortFacilities("Anong oras bukas ang restobar?"),"tagalog"
+  ),/6:00 PM hanggang 6:00 AM/);
+});
+test("AI-66: convenience store is verified open 24/7",()=>{
+  assert.match(RESORT_INQUIRY_FACTS.convenienceStore,/24\/7/);
+  for(const q of ["What time does the convenience store open?",
+    "Is the convenience store open now?",
+    "Is your mini-mart 24/7?",
+    "Anong oras bukas ang convenience store?"]) {
+    const matched=matchVerifiedResortFacilities(q);
+    assert.equal(matched?.store,true,q);
+    assert.equal(matched?.hours,true,q);
+    assert.match(verifiedResortFacilitiesReply(matched,"english"),/open 24\/7/);
+  }
+  assert.match(verifiedResortFacilitiesReply(
+    matchVerifiedResortFacilities("Bukas ba 24/7 ang convenience store?"),"taglish"
+  ),/Open 24\/7 po/);
+});
+test("AI-66: combined policies and facility schedules retain all facts",()=>{
+  const q="Can we bring our own food and what time does the restobar close?";
+  const topics=compoundTopics(q);
+  assert.equal(topics?.food,true);
+  assert.equal(topics?.restobar,true);
+  assert.equal(topics?.facilityHours,true);
+  const reply=compoundGuestReply(topics,q,{},"english");
+  assert.match(reply.reply,/no corkage fee/i);
+  assert.match(reply.reply,/6:00 PM/);
+  assert.match(reply.reply,/6:00 AM/);
+  assert.doesNotMatch(reply.reply,/not specified|unconfirmed/i);
+});
+
 test("Facility requests can be answered in English without Taglish leakage",()=>{
   const q="Do you have a convenience store and a restobar at the resort?";
   const topics=compoundTopics(q);
