@@ -151,6 +151,56 @@ test("AI-66: combined policies and facility schedules retain all facts",()=>{
   assert.doesNotMatch(reply.reply,/not specified|unconfirmed/i);
 });
 
+test("AI-67: restobar offers general food and drinks without invented items",()=>{
+  assert.match(RESORT_INQUIRY_FACTS.restobar,/SERVES FOOD AND DRINKS/);
+  for(const q of [
+    "Does the restobar serve food and drinks?",
+    "Do you have food at the restobar?",
+    "May food at drinks ba sa restobar?",
+    "May pagkain at inumin ba sa restobar?"
+  ]) {
+    const match = matchVerifiedResortFacilities(q);
+    assert.equal(match?.restobar,true,q);
+    assert.equal(match?.offerings,true,q);
+    const english=verifiedResortFacilitiesReply(match,"english");
+    assert.match(english,/restobar serves food and drinks/);
+    assert.doesNotMatch(english,/pizza|beer|rice|chicken|₱/i);
+    const taglish=verifiedResortFacilitiesReply(match,"taglish");
+    assert.match(taglish,/may food at drinks sa restobar/i);
+  }
+});
+test("AI-67: restobar hours and general food/drinks can be stated together",()=>{
+  const match=matchVerifiedResortFacilities(
+    "What time does the restobar open, and does it serve food and drinks?");
+  assert.equal(match?.hours,true);
+  assert.equal(match?.offerings,true);
+  assert.match(verifiedResortFacilitiesReply(match,"english"),/6:00 PM/);
+  assert.match(verifiedResortFacilitiesReply(match,"english"),/serves food and drinks/);
+});
+test("AI-67: general restobar offerings do not claim specific menu, prices or alcohol sales",()=>{
+  for(const q of [
+    "What's on your restobar menu?",
+    "What are the prices of food at the restobar?",
+    "Does the restobar serve beer?",
+    "Can I bring my own food into the restobar?",
+    "Does the convenience store sell food?",
+    "Is pizza on your restobar menu?"
+  ]) {
+    assert.equal(matchVerifiedResortFacilities(q),null,q);
+  }
+});
+test("AI-67: multi-facility message includes food/drinks and schedules",()=>{
+  const q="Does the restobar serve food and drinks, and is the convenience store open 24/7?";
+  const topics=compoundTopics(q);
+  assert.equal(topics?.store,true);
+  assert.equal(topics?.restobar,true);
+  assert.equal(topics?.facilityOfferings,true);
+  assert.equal(topics?.facilityHours,true);
+  const reply=compoundGuestReply(topics,q,{},"english");
+  assert.match(reply.reply,/restobar serves food and drinks/);
+  assert.match(reply.reply,/convenience store.*open 24\/7/);
+});
+
 test("Facility requests can be answered in English without Taglish leakage",()=>{
   const q="Do you have a convenience store and a restobar at the resort?";
   const topics=compoundTopics(q);
