@@ -10,7 +10,7 @@ const UNKNOWN_REPLIES = Object.freeze({
   english: "Sorry, that information isn't confirmed in our current resort records. Would you like the Front Desk contact details?",
   tagalog: "Pasensya na po, wala pang kumpirmadong detalye tungkol diyan sa kasalukuyang records ng resort. Gusto po ba ninyo ang contact details ng Front Desk?",
   taglish: "Pasensya na po, hindi pa confirmed sa current resort records yung information na 'yan. Gusto niyo po ba ng Front Desk contact details?",
-  bisaya: "Pasayloa ko, wala pa na nakumpirma sa kasamtangang records sa resort. Gusto ka sa contact details sa Front Desk?",
+  bisaya: "Pasayloa ko, wala pa na nakumpirma sa kasamtangang records sa resort. Gusto nimo nga ihatag nako ang contact details sa Front Desk?",
   spanish: "Lo siento, esa información no está confirmada en los registros actuales del resort. ¿Quieres los datos de contacto de recepción?",
   mandarin: "抱歉，度假村目前的记录中没有已核实的相关信息。您需要前台的联系方式吗？",
   japanese: "申し訳ありません。その情報は現在のリゾートの記録では確認できません。フロントの連絡先をご案内しましょうか？",
