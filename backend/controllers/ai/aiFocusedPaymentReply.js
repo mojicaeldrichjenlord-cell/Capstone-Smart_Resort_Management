@@ -88,12 +88,24 @@ function resolvePaymentRoom(catalog, message, context = {}, recentTurns = []) {
   return null;
 }
 
+// Detect extended and multi-night language before considering one-night rates.
+// "one night" and "20 day tour" remain standard slot requests.
+function isExtendedOrMultiDayStay(message) {
+  const text = String(message || "").normalize("NFKC").toLowerCase();
+  const extended = /\b(?:extended|extend(?:ed)?\s+stay|22\s*hours?|23\s*hours?|multi[\s-]?days?|multi[\s-]?nights?|several\s+(?:days?|nights?)|multiple\s+(?:days?|nights?)|maraming\s+(?:gabi|araw)|ilang\s+(?:gabi|araw)|magkasunod\s+na\s+(?:gabi|araw)|mahigit\s+(?:isang|isa)\s+(?:gabi|araw))\b/iu;
+  if (extended.test(text)) return true;
+  const number = "(?:[2-9]|\\d{2,}|two|three|four|five|six|seven|eight|nine|ten|dalawang?|tatlong?|tatlo|apat|limang?|anim(?:\\s+na)?|pitong?|walong?|siyam(?:\\s+na)?|sampung?|duha|tulo|upat|dos|tres|cuatro|cinco)";
+  const unit = "(?:nights?|days?(?!\\s*tour\\b)|gabi|gabii|araw|noches?|d[ií]as?)";
+  if (new RegExp("\\b" + number + "\\b\\s*(?:(?:na|ka|nang|mga)\\s+)?\\b" + unit + "\\b", "iu").test(text)) return true;
+  // Chinese: 两晚, 二晚, 三天. 一晚 remains a one-night request.
+  return /[两二三四五六七八九十]\s*(?:个\s*)?(?:晚(?:上)?|夜|天)/u.test(text);
+}
+
 function getPaymentStayKind(message, context = {}) {
   const text = norm(message);
   // "Small Nipa Hut 20 day tour" is a named room plus a Day Tour slot,
   // NOT a 20-day reservation. Still refuse multi-night price estimates.
-  if (/\b(?:22 hours?|23 hours?|extended|multi day|multi night|several nights?)\b/.test(text) ||
-      /\b(?:[2-9]|[1-9][0-9]+)\s*(?:nights?|days?(?!\s*tour\b)|gabi|araw)\b/.test(text)) return null;
+  if (isExtendedOrMultiDayStay(message)) return null;
   const overnight = /\b(?:overnight|night|gabi)\b/.test(text);
   const daytime = /\b(?:day tour|daytime|morning|umaga)\b/.test(text);
   if (overnight && daytime) return null;
@@ -130,8 +142,7 @@ function paymentReply(message, context, room, language = "taglish") {
   // AI-54: The deposit on a single standard slot is determinable without
   // a Day/Night choice ONLY when BOTH live DB-listed rates are identical.
   // Extended/multi-day requests require their own verified stay breakdown.
-  const nonStandard = /\b(?:extended|22\s*hours?|23\s*hours?|multi[\s-]?days?|multi[\s-]?nights?|several\s+nights?)\b/i.test(message) ||
-    /\b(?:[2-9]|[1-9][0-9]+)\s*(?:nights?|days?(?!\s*tour\b)|gabi|araw)\b/i.test(message);
+  const nonStandard = isExtendedOrMultiDayStay(message);
   const day = validRate(room?.day_price);
   const night = validRate(room?.overnight_price);
   const equalStandardRates = !stay && !nonStandard && day !== null &&
@@ -145,6 +156,27 @@ function paymentReply(message, context, room, language = "taglish") {
   const verified = !!room && listed && amount !== null;
   const half = verified ? peso(amount * 0.5) : null;
   const rate = verified ? peso(amount) : null;
+
+  // Multi-night bookings require 50% of the FINAL total for the whole stay.
+  // Without a live checkout calculation, never reuse or multiply a one-slot
+  // amount to invent the payable deposit.
+  if (nonStandard && room && listed) {
+    const answers = {
+      english: "Not necessarily. For a multi-night stay at " + name +
+        ", the downpayment is 50% of the final accommodation total for the whole stay—not the one-night estimate. Please check the booking page for the exact total and available dates. Pay the deposit via PayPal; settle the balance and separate entrance fees at the resort.",
+      tagalog: "Hindi po natin puwedeng ipagpalagay na pareho ang paunang bayad para sa isang gabi. Para sa maraming gabing pananatili sa " + name +
+        ", ang paunang bayad ay 50% ng kabuuang pinal na presyo ng matutuluyan para sa buong pananatili. Sa booking page po muna makikita ang eksaktong halaga at availability. Sa PayPal babayaran ang paunang bayad; sa resort naman ang natitira at hiwalay na entrance fees.",
+      taglish: "Hindi po automatic na same pa rin ang one-night downpayment. Para sa multi-night stay sa " + name +
+        ", 50% ng final accommodation total para sa buong stay ang downpayment. Check po muna sa booking page ang exact total at availability. Via PayPal ang downpayment; remaining balance at separate entrance fees ay onsite.",
+      bisaya: "Dili automatic nga pareho gihapon ang downpayment sa usa ka gabii. Para sa daghang gabii sa " + name +
+        ", 50% sa final accommodation total sa tibuok stay ang downpayment. I-check sa booking page ang exact total ug available dates. Bayri ang downpayment sa PayPal; ang nahibilin ug entrance fees sa resort.",
+      spanish: "No necesariamente. Para varias noches en " + name +
+        ", el anticipo es el 50 % del importe final del alojamiento para toda la estancia, no del precio de una sola noche. Confirma el total y las fechas disponibles en la página de reservas. El anticipo se paga con PayPal; el saldo y las entradas, en el resort.",
+      mandarin: "不一定。" + name +
+        " 的多晚住宿订金是整个入住期间最终住宿总价的50%，不是单晚的订金。请先在预订页面查看准确总价及可订日期。订金通过PayPal支付，剩余住宿费用及单独入场费在度假村支付。",
+    };
+    return answers[language] || answers.english;
+  }
 
   // Answer the decision first. No rate is assumed when the room, slot or
   // special duration is unverified; those cases follow the safe existing flow.
@@ -255,4 +287,5 @@ function paymentReply(message, context, room, language = "taglish") {
 module.exports = {
   isRoomPaymentInquiry, resolvePaymentRoom, getPaymentStayKind,
   paymentReply, validRate, asksFullVsPartialPayment,
+  isExtendedOrMultiDayStay,
 };
