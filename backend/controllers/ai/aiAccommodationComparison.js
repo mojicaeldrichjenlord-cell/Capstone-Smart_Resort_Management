@@ -20,8 +20,8 @@ function isComparisonQuestion(message) {
   return /\b(?:pinag[\s-]*kaiba|pagkakaiba|pagkaiba|kaibahan|difference|differences|compare|comparison|vs\.?|versus|kaysa|alin(?:g)?\s+(?:ang\s+)?mas|diferencia|comparar|comparaci[oó]n|kalainan)\b/iu.test(text) ||
     /(?:区别|不同|比较)/u.test(text);
 }
-function selectComparisonRooms(catalog,message) {
-  if (!isComparisonQuestion(message)) return null;
+function selectComparisonRooms(catalog,message, allowRecommendationPair=false) {
+  if (!isComparisonQuestion(message) && !allowRecommendationPair) return null;
   const q = " " + norm(message) + " ";
   const rooms = (Array.isArray(catalog)?catalog:[]).filter(row =>
     Number.isSafeInteger(Number(row?.id)) && Number(row.id)>0 &&
@@ -169,4 +169,114 @@ function comparisonReply(selection,language="taglish") {
   parts.push(t.footer);
   return parts.join("\n");
 }
-module.exports={isComparisonQuestion,selectComparisonRooms,comparisonReply};
+
+// AI-51: A guest's follow-up "Kung 10 guests kami, alin sa Family Room A at B
+// ang recommended?" is a choice between two named DB rooms, not a lookup for
+// the *first* exact name. Never route this through single-room preview filtering.
+function isPairRecommendationQuestion(message) {
+  const text=String(message||"").normalize("NFKC").toLowerCase();
+  if(!text || text.length>450)return false;
+  const choice=/\b(?:recommend(?:ed|ation|ations)?|recommended|marerecommend|marecommend|masusuggest|masuggest|suggest|suggestion|mas\s+(?:okay|ok|maganda|bagay|sulit|better)|which\s+(?:one|room)|which\s+is\s+better|best\s+(?:for|room)|alin\s+(?:sa|ang)|piliin|choose\s+between|better\s+for|suitable\s+for|ideal\s+for|unsa(?:y| ang)\s+mas|cu[aá]l\s+(?:es\s+)?mejor)\b/iu.test(text) ||
+    /(?:哪个更好|推荐哪|哪间更适合)/u.test(text);
+  const pairHint=/\b(?:at|and|or|o|vs\.?|versus|between|dalawa|dalawang|both|two|these|those|sila|nila)\b/iu.test(text) ||
+    /(?:两个|两间|哪间)/u.test(text);
+  return choice && pairHint;
+}
+function pairForRecommendation(catalog,message,context={}) {
+  if(!isPairRecommendationQuestion(message))return null;
+  // Explicit current names override *any* previously compared pair.
+  const explicit=selectComparisonRooms(catalog,message,true);
+  if(explicit?.names?.length) return explicit;
+  const refersToPair=/\b(?:dalawa|dalawang|silang\s+dalawa|sa\s+dalawa|those\s+two|these\s+two|both\s+rooms|between\s+them|both\s+of\s+them)\b/iu.test(String(message||"")) ||
+    /(?:这两间|两个房间)/u.test(String(message||""));
+  if(!refersToPair)return null;
+  const ids=context?.compared_room_ids;
+  if(!Array.isArray(ids)||ids.length!==2 ||
+      !ids.every(x=>Number.isSafeInteger(Number(x)) && Number(x)>0) ||
+      Number(ids[0])===Number(ids[1])) return null;
+  // The persisted context only identifies candidates. The fresh DB rows are
+  // the single source of truth for each name, rate, status and capacity.
+  const found=ids.map(id=>(Array.isArray(catalog)?catalog:[]).find(row=>Number(row.id)===Number(id))||null);
+  return {
+    names:found.map((row,i)=>norm(row?.room_name||row?.name||String(ids[i]))),
+    rows:found.filter(Boolean),
+    missing:found.map((row,i)=>row?null:String(ids[i])).filter(Boolean),
+    complete:found.every(Boolean),
+    tooMany:false,
+  };
+}
+function pairRecommendation(selection,guests,language="taglish") {
+  const locale=["taglish","tagalog","bisaya","spanish","mandarin"].includes(language)?language:"english";
+  const t={
+    english:{
+      ask:"How many guests are in your group?",
+      missing:"I can't verify both accommodations in the current resort records. Which two rooms would you like me to compare?",
+      none:"Neither of these two listed accommodations currently meets your group's size and active listing requirements. Would you like me to look for other options?",
+      result:(name,capacity,other,otherCapacity)=>"For "+guests+" guests, I'd recommend "+name+". It has a listed capacity of "+capacity+" guests; "+other+" has a listed capacity of "+otherCapacity+".",
+      both:(name,capacity,other)=>"Both rooms have enough listed capacity for "+guests+" guests. I'd lean toward "+name+" ("+capacity+" guests capacity) based on its closer fit, rather than assuming extra amenities.",
+      foot:"This is based on listing capacity, not confirmed availability for your dates. Please check the booking page."
+    },
+    taglish:{
+      ask:"Ilan po kayong guests?",
+      missing:"Hindi ko po ma-verify ang parehong room sa current resort records. Aling dalawang room po ang gusto niyong pagpilian?",
+      none:"Wala po sa dalawang listing ang parehong pasok sa guest count at current listing status. Gusto niyo bang maghanap tayo ng ibang accommodation?",
+      result:(name,capacity,other,otherCapacity)=>"Para sa "+guests+" guests, mas recommended ko po ang "+name+". Up to "+capacity+" guests ang listed capacity nito, habang "+other+" ay up to "+otherCapacity+" guests lang.",
+      both:(name,capacity,other)=>"Parehong kasya sa listed capacity ang "+guests+" guests. Mas irerecommend ko po ang "+name+" (up to "+capacity+" guests) dahil mas swak ang capacity, pero puwede nating i-compare ang rates at amenities.",
+      foot:"Listed capacity lang ang basis nito; sa booking page pa iche-check ang availability sa date at slot niyo."
+    },
+    tagalog:{
+      ask:"Ilan po kayong bisita?",
+      missing:"Hindi pa po makumpirma ang parehong kuwarto sa kasalukuyang talaan. Aling dalawa po ang pagpipilian ninyo?",
+      none:"Wala po sa dalawang kuwarto ang parehong tumutugma sa bilang ng bisita at kasalukuyang listing. Gusto po ba ninyong humanap ng iba?",
+      result:(name,capacity,other,otherCapacity)=>"Para po sa "+guests+" bisita, mas irerekomenda ko ang "+name+". Hanggang "+capacity+" ang nakatalang kapasidad nito, samantalang hanggang "+otherCapacity+" lamang sa "+other+".",
+      both:(name,capacity,other)=>"Pareho pong sapat ang kapasidad para sa "+guests+" bisita. Mas irerekomenda ko ang "+name+" (kapasidad na "+capacity+") dahil mas angkop sa bilang ninyo.",
+      foot:"Batay lang ito sa kapasidad na nakatala; sa booking page pa makukumpirma ang petsa at oras."
+    },
+    bisaya:{
+      ask:"Pila mo kabuok nga guests?",
+      missing:"Dili pa makumpirma ang duha ka kwarto sa records. Unsang duha ka kwarto ang inyong gipilian?",
+      none:"Walay usa sa duha ka listings ang mohaom sa guest count ug current status. Gusto mo og laing kapilian?",
+      result:(name,capacity,other,otherCapacity)=>"Para sa "+guests+" guests, mas akong irekomenda ang "+name+". Hangtod "+capacity+" guests ang kapasidad niini, samtang "+other+" kay "+otherCapacity+" ra.",
+      both:(name,capacity,other)=>"Kaya sa duha ang "+guests+" guests base sa listing. Mas maayo ang "+name+" kay mas duol ang "+capacity+" nga kapasidad sa inyong grupo.",
+      foot:"Ang petsa ug slot availability i-check pa sa booking page."
+    },
+    spanish:{
+      ask:"¿Cuántas personas son?",
+      missing:"No puedo verificar los dos alojamientos en los registros. ¿Qué dos habitaciones deseas comparar?",
+      none:"Ninguno de estos dos alojamientos cumple con la capacidad y el estado actual de la lista. ¿Buscamos otras opciones?",
+      result:(name,capacity,other,otherCapacity)=>"Para "+guests+" personas, te recomiendo "+name+". Su capacidad registrada es "+capacity+" y la de "+other+" es "+otherCapacity+".",
+      both:(name,capacity,other)=>"Ambos tienen capacidad suficiente. Recomendaría "+name+" (capacidad de "+capacity+") por ajustarse mejor al grupo.",
+      foot:"Esto no confirma disponibilidad para fechas u horarios; compruébalo en la página de reservas."
+    },
+    mandarin:{
+      ask:"请问有几位客人？",
+      missing:"目前无法核实这两间住宿。您要比较哪两间？",
+      none:"这两间住宿目前均不符合人数和房源状态要求。需要查找其他选择吗？",
+      result:(name,capacity,other,otherCapacity)=>guests+"位客人更推荐"+name+"：登记容量为"+capacity+"人，而"+other+"为"+otherCapacity+"人。",
+      both:(name,capacity,other)=>"两间都能容纳"+guests+"位客人。按容纳人数来看更推荐"+name+"（"+capacity+"人）。",
+      foot:"这只是登记容量，不代表所选日期和时段一定可订，请在预订页面确认。"
+    },
+  }[locale];
+  if(!Number.isSafeInteger(guests)||guests<1)return {reply:t.ask,chosen:null};
+  if(!selection||!selection.complete||selection.tooMany)return {reply:t.missing,chosen:null};
+  const rows=selection.rows, active=rows.filter(r=>
+    String(r.status||"").trim().toLowerCase()==="available");
+  const eligible=active.filter(r=>Number.isFinite(Number(r.capacity)) && Number(r.capacity)>=guests);
+  if(!eligible.length)return {reply:t.none+" "+t.foot,chosen:null};
+  // Choose the smallest *sufficient* listed capacity. Deterministic tie
+  // breaker avoids inventing personal preferences or a date-specific price.
+  eligible.sort((a,b)=>Number(a.capacity)-Number(b.capacity)||Number(a.id)-Number(b.id));
+  const chosen=eligible[0], other=rows.find(r=>Number(r.id)!==Number(chosen.id));
+  const name=fact(chosen.room_name||chosen.name,80);
+  const otherName=fact(other?.room_name||other?.name,80);
+  const otherCapacity=Number(other?.capacity);
+  const bothFit=eligible.length===2;
+  const lead=bothFit?t.both(name,Number(chosen.capacity),otherName):
+    t.result(name,Number(chosen.capacity),otherName,Number.isFinite(otherCapacity)?otherCapacity:"not listed");
+  return {reply:lead+"\n"+t.foot,chosen};
+}
+
+module.exports={
+  isComparisonQuestion,selectComparisonRooms,comparisonReply,
+  isPairRecommendationQuestion,pairForRecommendation,pairRecommendation,
+};
