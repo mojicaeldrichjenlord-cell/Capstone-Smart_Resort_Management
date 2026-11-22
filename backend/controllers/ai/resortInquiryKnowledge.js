@@ -337,12 +337,17 @@ function matchVerifiedLeisurePolicies(message) {
   if (/\b(?:refund|downpayment|deposit|paypal|cancell?ation|booking\s+status|price\s+of\s+(?:the\s+)?room|magkano\s+(?:ang\s+)?(?:room|kwarto)|room\s+rates?|wifi|wi-fi|internet|pool|swimming|pets?|dogs?|cats?|aso|pusa|corkage|parking|outside\s+food|outside\s+drinks?|pagkain)\b/i.test(t)) return null;
 
   const alcohol=/\b(?:alcohol(?:ic)?|alcoholic\s+drinks?|beer|beers|liquor|wine|spirits|alak|inuming\s+may\s+alkohol|cerveza|bebidas\s+alcoh[oó]licas)\b/iu.test(t)||/(?:酒精|啤酒|酒类|饮酒)/u.test(t);
+  // Whether the resort SELLS or SERVES alcohol is a different, unverified
+  // service from the approved permission to bring alcohol.
+  if(alcohol && /\b(?:sell|selling|sold|serve|serving|provide|suppl(?:y|ied)|buy|purchase|order|for\s+sale|available\s+to\s+buy|magbenta|nagbebenta|binebenta|tinda|nagtitinda)\b/i.test(t))return null;
+  if(alcohol && /\b(?:do\s+you\s+have|is\s+there|meron\s+(?:ba\s+)?(?:kayong|kayo)|may\s+(?:ba\s+)?(?:kayong|kayo))\s+(?:any\s+)?(?:alcohol|beer|wine|liquor|alak)\b/i.test(t))return null;
   const smoking=/\b(?:smok(?:e|ing|ers?)|cigarettes?|tobacco|vapes?|vaping|e[\s-]?cigarettes?|yosi|sigarilyo|manigarilyo|mag[\s-]?yosi|hithit|fumar|vapear)\b/iu.test(t)||/(?:吸烟|抽烟|电子烟)/u.test(t);
-  const audio=/\b(?:videoke|karaoke|speakers?|bluetooth\s+speakers?|sound\s+system|sound\s+box|soundbox|music\s+system|microphone|mikropono|altavoces?|parlantes?)\b/iu.test(t)||/(?:卡拉OK|音响|扬声器)/u.test(t);
+  const audio=/\b(?:videoke|karaoke|mag[\s-]?videoke|mag[\s-]?karaoke|speakers?|bluetooth\s+speakers?|sound\s+system|sound\s+box|soundbox|music\s+system|microphone|mikropono|altavoces?|parlantes?)\b/iu.test(t)||/(?:卡拉OK|音响|扬声器)/u.test(t);
   if(!alcohol&&!smoking&&!audio)return null;
-  const providedEquipmentInquiry=audio &&
-    /\b(?:do\s+you\s+(?:have|provide|offer)|is\s+there|are\s+there|included|inclusions?|comes?\s+with|has\s+(?:a\s+)?(?:videoke|karaoke|speaker)|may\s+(?:ba\s+)?(?:videoke|karaoke|speaker)|meron\s+(?:ba\s+)?(?:videoke|karaoke|speaker)|kasama\s+(?:ba\s+)?(?:ang\s+)?(?:videoke|karaoke|speaker)|equipped|provided|built[\s-]?in|rental|rent(?:ing)?)\b/i.test(t) &&
-    !/\b(?:bring|bringing|own|our|my|dalhin|magdala|mag[\s-]?dala|pwede|puwede|allowed|permit|bawal)\b/i.test(t);
+  const providingContext = /\b(?:do\s+you\s+(?:have|provide|offer)|is\s+there|are\s+there|included|inclusions?|comes?\s+with|has\s+(?:a\s+)?(?:videoke|karaoke|speaker)|may\s+(?:(?:ba|po|sariling)\s+)*(?:videoke|karaoke|speaker)|meron\s+(?:(?:ba|po|sariling)\s+)*(?:videoke|karaoke|speaker)|kasama\s+(?:(?:ba|po|ang)\s+)*(?:videoke|karaoke|speaker)|equipped|provided|built[\s-]?in|rental|rent(?:ing)?)\b/i.test(t);
+  const askingToBring = /\b(?:bring|bringing|brought|dalhin|magdala|mag[\s-]?dala|pwede|puwede|allowed|permit|bawal|can\s+we\s+use|can\s+i\s+use|can\s+we\s+bring)\b/i.test(t);
+  const providedEquipmentInquiry=audio && providingContext && !askingToBring;
+  if(providedEquipmentInquiry) return null;
   // If only asking about room-supplied equipment, leave the question to the
   // current accommodation DB route or Function Area amenity logic.
   if(providedEquipmentInquiry&&!alcohol&&!smoking)return null;
