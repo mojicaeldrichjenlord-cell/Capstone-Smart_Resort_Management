@@ -123,6 +123,72 @@ test("AI-68: English cheaper wording and group updates are recognized",()=>{
   assert.equal(updated?.scope,"room");
   assert.equal(updated?.guests,7);
 });
+test("AI-69: 'para sa 2 meron din ba?' inherits room category and shows fresh 2-pax room",()=>{
+  const after7={room_id:1,room_name:"Family Room A",guests:7,
+    recommendation_category:"room",intent:"ask_recommendation"};
+  const turns=[...initialTurns,
+    {role:"user",text:"para sa 7 na tao"},
+    {role:"assistant",text:"Para sa 7 guests, ito po ang Family Room A."}];
+  const intent=matchRoomPriceFollowup("para sa 2 meron din ba?",turns,after7);
+  assert.equal(intent?.kind,"group");
+  assert.equal(intent?.guests,2);
+  assert.equal(intent?.scope,"room");
+  const selection=shortlistRoomFollowup(catalog,intent,after7);
+  assert.equal(selection.rows.length,1);
+  assert.equal(selection.rows[0].id,6);
+  assert.equal(selection.rows[0].capacity,4);
+  assert.equal(verifiedAccommodationCards(selection.rows,false).length,1);
+  assert.doesNotMatch(roomPriceFollowupReply(selection,"taglish"),/room o cottage/i);
+});
+test("AI-69: one-word 'room' retains 2 guests and gives the same best-fit preview",()=>{
+  const after2={room_id:6,room_name:"Small Room",guests:2,
+    recommendation_category:"room",intent:"ask_recommendation"};
+  const turns=[
+    {role:"user",text:"para sa 2 meron din ba?"},
+    {role:"assistant",text:"May smaller rooms for 2 guests. Room or cottage?"},
+  ];
+  const intent=matchRoomPriceFollowup("room",turns,after2);
+  assert.equal(intent?.kind,"group");
+  assert.equal(intent?.guests,2);
+  assert.equal(intent?.scope,"room");
+  const selection=shortlistRoomFollowup(catalog,intent,after2);
+  assert.equal(selection.rows[0]?.id,6);
+  assert.equal(selection.rows.length,1);
+});
+test("AI-69: category choice 'cottage' is explicit and stays in cottages",()=>{
+  const after2={room_id:6,room_name:"Small Room",guests:2,
+    recommendation_category:"room",intent:"ask_recommendation"};
+  const intent=matchRoomPriceFollowup("cottage",[],after2);
+  assert.equal(intent?.kind,"group");
+  assert.equal(intent?.scope,"cottage");
+  const selection=shortlistRoomFollowup(catalog,intent,after2);
+  assert.equal(selection.rows[0]?.id,4);
+  assert.ok(selection.rows.every(x=>x.category_name==="Cottages"));
+});
+test("AI-69: repeats don't switch to more expensive room when best fit already shown",()=>{
+  const ctx={room_id:6,room_name:"Small Room",guests:2,
+    recommendation_category:"room",intent:"ask_recommendation"};
+  const intent=matchRoomPriceFollowup("room",[],ctx);
+  const selected=shortlistRoomFollowup(catalog,intent,ctx);
+  assert.equal(selected.rows[0]?.id,6);
+});
+test("AI-69: casual changed group followup supports English too",()=>{
+  const q="for 2 do you have one too?";
+  const intent=matchRoomPriceFollowup(q,initialTurns,originalContext);
+  assert.equal(intent?.kind,"group");
+  assert.equal(intent?.guests,2);
+  assert.equal(intent?.scope,"room");
+});
+test("AI-69: room choices and 2-guest replies without a valid context stay conservative",()=>{
+  assert.equal(matchRoomPriceFollowup("room",[],{}),null);
+  assert.equal(matchRoomPriceFollowup("para sa 2 meron din ba?",[],{}),null);
+  const context={...originalContext,guests:7};
+  for (const q of ["para sa 2 meron ding parking?", "may mas mura bang tuition?",
+    "para sa 2 magkano ang entrance?"]) {
+    assert.equal(matchRoomPriceFollowup(q,initialTurns,context),null,q);
+  }
+});
+
 test("AI-68: new controller path is BEFORE compound/legacy preview and uses fresh DB",()=>{
   const source=fs.readFileSync(path.join(__dirname,
     "../controllers/ai/geminiChatController.js"),"utf8");
