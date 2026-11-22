@@ -74,6 +74,48 @@ const WORDS={
   },
 };
 
+// AI-64: In mixed amenity/policy messages, do NOT use the single-intent
+// recommendation guard: it deliberately rejects Wi-Fi and other detail words.
+// A customer can ask for a room AND for Wi-Fi in the same message.
+function asksForAccommodationRecommendation(message) {
+  const q = String(message || "").normalize("NFKC").toLowerCase();
+  const target = /\b(?:rooms?|kwarto|kuwarto|cottages?|accommodations?|pavilions?|function\s+areas?)\b/i.test(q);
+  const request = /\b(?:recommend(?:ations?|ed)?|suggest(?:ions?|ed)?|marerecommend|marecommend|mare-recommend|ma-recommend|mairerecommend|irerecommend|masuggest|massuggest|masusuggest|ma-suggest)\b/i.test(q);
+  return q.length <= 850 && target && request;
+}
+
+const COMPOUND_RECOMMENDATION = {
+  english: {
+    noMatch: n => "I couldn't find a listed room with enough capacity for " + n +
+      " guests. We can check another accommodation type.",
+    askGuests: "How many guests will be staying?",
+  },
+  taglish: {
+    noMatch: n => "Wala po akong makitang listed room na kasya sa " + n +
+      " guests. Puwede nating tingnan ang ibang accommodation type.",
+    askGuests: "Ilan po kayong guests?",
+  },
+  tagalog: {
+    noMatch: n => "Wala po akong makitang nakalistang kuwarto para sa " + n +
+      " bisita. Maaari tayong tumingin ng ibang uri ng accommodation.",
+    askGuests: "Ilan po kayong bisita?",
+  },
+  bisaya: {
+    noMatch: n => "Wala koy nakitang nalistang kwarto nga igo sa " + n +
+      " ka bisita. Mangita ta og lain nga klase sa accommodation.",
+    askGuests: "Pila mo kabuok?",
+  },
+  spanish: {
+    noMatch: n => "No encontré una habitación registrada con capacidad para " +
+      n + " huéspedes. Podemos revisar otro tipo de alojamiento.",
+    askGuests: "¿Cuántos huéspedes serán?",
+  },
+  mandarin: {
+    noMatch: n => "暂未找到标示容量满足 " + n + " 人的客房，可查看其他住宿类型。",
+    askGuests: "请问有几位客人？",
+  },
+};
+
 // A room picked by the customer (or explicitly named this turn) is eligible
 // only after a fresh catalog lookup. Never assert a live available date.
 function compoundRoom(catalog,message,context={}) {
@@ -93,7 +135,7 @@ function compoundRoom(catalog,message,context={}) {
     norm(r.room_name||r.name)===name)||null;
 }
 
-function compoundGuestReply(topics,message,context={},language="taglish",room=null) {
+function compoundGuestReply(topics,message,context={},language="taglish",room=null,recommendationRequested=false) {
   if(!topics)return null;
   const locale=WORDS[language]?language:"english";
   const parts=[];
@@ -117,6 +159,7 @@ function compoundGuestReply(topics,message,context={},language="taglish",room=nu
     },locale));
   const guests=explicitGuestCount(message);
   let validRoom=null;
+  let explainsInsufficientCapacity=false;
   if(guests&&room){
     const cap=Number(room.capacity);
     const listed=String(room.status||"").trim().toLowerCase()==="available";
@@ -126,13 +169,19 @@ function compoundGuestReply(topics,message,context={},language="taglish",room=nu
         validRoom=room;
         parts.push(WORDS[locale].candidate(name,guests,cap));
       }else{
+        explainsInsufficientCapacity=true;
         parts.push(WORDS[locale].insufficient(name,guests,cap));
       }
     }
-  }else if(guests) {
+  }
+  if(recommendationRequested && !guests){
+    parts.push(COMPOUND_RECOMMENDATION[locale].askGuests);
+  }else if(recommendationRequested && !validRoom && !explainsInsufficientCapacity){
+    parts.push(COMPOUND_RECOMMENDATION[locale].noMatch(guests));
+  }else if(!recommendationRequested && guests && !room){
     parts.push(WORDS[locale].options(guests));
   }
   return {reply:parts.filter(Boolean).join(" "),guests,previewRoom:validRoom};
 }
 
-module.exports={compoundTopics,compoundRoom,compoundGuestReply};
+module.exports={compoundTopics,compoundRoom,compoundGuestReply,asksForAccommodationRecommendation};
