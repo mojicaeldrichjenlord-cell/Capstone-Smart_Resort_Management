@@ -42,6 +42,18 @@ function explicitGuestCount(message) {
       q.match(/\b(\d{1,3})\s*(?:kami|mi|guests?|pax|people|persons?|tao)\b/i);
     if (match) count = Number(match[1]);
   }
+  // AI-64: Natural compound requests use "10 po kami" or "sampu po kami"
+  // before other questions. Read that as a party size, not a date or price.
+  if (!count) {
+    const polite = q.match(/\b(\d{1,3})\s+(?:po\s+)?(?:kami|kaming|tayo|guests?|pax|people|persons?|tao|bisita)\b/i);
+    if (polite) count = Number(polite[1]);
+  }
+  if (!count) {
+    const countWords = { isa:1, isang:1, dalawa:2, tatlo:3, apat:4,
+      lima:5, anim:6, pito:7, walo:8, siyam:9, sampu:10 };
+    const wordCount = q.match(/\b(isa|isang|dalawa|tatlo|apat|lima|anim|pito|walo|siyam|sampu)\s+(?:po\s+)?(?:kami|kaming|tayo|bisita|tao|guests?|pax)\b/i);
+    if (wordCount) count = countWords[wordCount[1]];
+  }
   if (!count) {
     const filipino = { isa:1, isang:1, dalawa:2, tatlo:3, apat:4, lima:5,
       anim:6, pito:7, walo:8, siyam:9, sampu:10 };
