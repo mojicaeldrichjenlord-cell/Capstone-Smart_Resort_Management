@@ -31,7 +31,8 @@ const { isPersonalizedRecommendation, explicitGuestCount, savedGuestCount,
   guestCountCorrection, recommendationLookupMessage
 } = require("./aiRecommendationIntake");
 const {
-  unknownRecordReply, matchUnverifiedServiceQuestion, guardUnsupportedPesoClaims,
+  unknownRecordReply, clarifyAmbiguousResortQuestion,
+  matchUnverifiedServiceQuestion, guardUnsupportedPesoClaims,
 } = require("./aiGroundedResponseRules");
 
 const ai = new GoogleGenAI({
@@ -1077,6 +1078,21 @@ exports.chatWithGemini = async (req, res) => {
     const scopeContext = req.body.context && typeof req.body.context === "object" &&
       !Array.isArray(req.body.context) ? req.body.context : {};
     const recentScopeTurns = normalizeRecentTurns(req.body.recent_turns);
+    // A bare "magkano?" or "what do you recommend?" refers to this resort
+    // chatbot but lacks the single essential detail. Ask one question first.
+    const clarificationLanguage = detectLanguageFromMessage(message) ||
+      normalizeLanguageStyle(scopeContext.language_style) || "taglish";
+    const clarification = clarifyAmbiguousResortQuestion(message, clarificationLanguage);
+    if (clarification) {
+      return res.status(200).json({
+        success: true, mode: "clarification_needed", reply: clarification,
+        extracted_context: mergeContext(scopeContext, {
+          language_style: clarificationLanguage,
+        }),
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null, recommendation_cards: [],
+      });
+    }
     // Short numeric responses ("4", "apat kami") are resort-relevant ONLY
     // after this assistant explicitly requested guest count.
     const guestCorrection = guestCountCorrection(
