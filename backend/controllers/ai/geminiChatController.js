@@ -32,6 +32,8 @@ const {
 } = require("./aiAccommodationCounts");
 const { matchCheapestInquiry, pickCheapestRows, cheapestReply } =
   require("./aiAffordableFollowup");
+const { matchRoomPriceFollowup, shortlistRoomFollowup, roomPriceFollowupReply } =
+  require("./aiRoomPriceFollowup");
 const { isResortQuestion, resortOnlyReply } = require("./aiResortScopeGuard");
 const { isPersonalizedRecommendation, explicitGuestCount, savedGuestCount,
   guestCountQuestion, guestCountFollowUp: pendingGuestRecommendationAnswer,
@@ -1124,9 +1126,15 @@ exports.chatWithGemini = async (req, res) => {
     const guestCorrection = guestCountCorrection(
       message, recentScopeTurns, scopeContext,
     );
+    // AI-68: This limited resolver needs an active room discussion for
+    // pronouns like "may mas mura ba diyan?" or "para sa 7 na tao".
+    // It cannot turn unrelated shopping or fee questions into resort chat.
+    const roomPriceFollowup = matchRoomPriceFollowup(
+      message, recentScopeTurns, scopeContext,
+    );
     if (!isResortQuestion(message, scopeContext, recentScopeTurns) &&
         !pendingGuestRecommendationAnswer(message, recentScopeTurns, scopeContext) &&
-        !guestCorrection) {
+        !guestCorrection && !roomPriceFollowup) {
       const language = 
         detectLanguageFromMessage(message) ||
         normalizeLanguageStyle(req.body.language_style) ||
@@ -1139,6 +1147,58 @@ exports.chatWithGemini = async (req, res) => {
         extracted_context: mergeContext(scopeContext, { language_style: language }),
         matched_rooms: [], catalog_recommendations: [],
         alternative_dates: [], booking_preview: null, recommendation_cards: [],
+      });
+    }
+
+    // AI-68: A changed group size or "mas mura ba diyan?" means SEARCH
+    // AGAIN, not keep the previous Family Room B card or switch to cottages.
+    // Fresh read-only DB rows; rate comparisons stay within the room/cottage
+    // category and the SAME stay slot. Never claim confirmed availability.
+    if (roomPriceFollowup) {
+      const language = detectLanguageFromMessage(message) ||
+        normalizeLanguageStyle(req.body.language_style) ||
+        normalizeLanguageStyle(scopeContext.language_style) || "taglish";
+      const confirmedGroup = Number(roomPriceFollowup.guests) > 0;
+      let selection = { rows:[], baseline:null, scope:roomPriceFollowup.scope,
+        stay:roomPriceFollowup.stay, guests:roomPriceFollowup.guests,
+        kind:roomPriceFollowup.kind };
+      if (confirmedGroup) {
+        const [currentRooms] = await db.promise().query(
+          "SELECT a.id, a.name AS room_name, a.image, a.description, " +
+          "a.amenities, a.status, a.max_capacity AS capacity, " +
+          "a.day_price, a.overnight_price, a.extended_price, " +
+          "c.name AS category_name FROM accommodations a " +
+          "JOIN accommodation_categories c ON c.id = a.category_id " +
+          "WHERE LOWER(TRIM(COALESCE(a.status, ''))) = 'available' " +
+          "AND a.max_capacity >= ? ORDER BY a.id ASC",
+          [roomPriceFollowup.guests],
+        );
+        selection = shortlistRoomFollowup(currentRooms, roomPriceFollowup, scopeContext);
+      }
+      const nextContext = {
+        ...scopeContext,
+        guests: roomPriceFollowup.guests || scopeContext.guests || null,
+        intent: "ask_recommendation",
+        recommendation_category: roomPriceFollowup.scope,
+        language_style: language,
+      };
+      // Clear stale focus; on one new candidate, establish that precise room.
+      delete nextContext.room_id;
+      delete nextContext.room_name;
+      if (selection.rows.length === 1) {
+        nextContext.room_id = Number(selection.rows[0].id);
+        nextContext.room_name = selection.rows[0].room_name;
+      }
+      return res.status(200).json({
+        success: true, mode: "verified_room_price_followup",
+        reply: confirmedGroup
+          ? roomPriceFollowupReply(selection, language)
+          : (language === "english" ? "How many guests are staying?"
+            : "Ilan po kayong guests?"),
+        extracted_context: nextContext,
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null,
+        recommendation_cards: verifiedAccommodationCards(selection.rows, false),
       });
     }
 
