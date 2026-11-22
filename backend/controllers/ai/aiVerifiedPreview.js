@@ -38,7 +38,11 @@ function requestedCategory(value) {
 function guestCountFromText(value) {
   const text = String(value || "");
   const match = text.match(/\b(\d{1,3})\s*(?:na\s*)?(?:tao|pax|guests?|persons?|people|kami)\b/i) ||
-    text.match(/\b(?:para\s+sa|good\s+for|for)\s+(\d{1,3})\b/i);
+    text.match(/\b(?:para\s+sa|good\s+for|for)\s+(\d{1,3})\b/i) ||
+    // AI-65: English group-size phrasing in compound resort questions.
+    text.match(/\b(?:group|party)\s+of\s+(\d{1,3})\b/i) ||
+    text.match(/\b(?:we(?:'re| are)|there are)\s+(\d{1,3})\s+(?:of\s+us|guests?|people)\b/i) ||
+    text.match(/\b(\d{1,3})\s+of\s+us\b/i);
   if (match) {
     const count = Number(match[1]);
     return Number.isSafeInteger(count) && count > 0 && count <= 200 ? count : 0;
