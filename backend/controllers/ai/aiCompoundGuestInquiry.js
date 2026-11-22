@@ -10,6 +10,7 @@
 const {
   verifiedGuestAmenitiesReply, verifiedLeisurePoliciesReply,
   verifiedResortFacilityMentions, verifiedResortFacilitiesReply,
+  facilityHoursRequested,
 } = require("./resortInquiryKnowledge");
 const { explicitGuestCount } = require("./aiRecommendationIntake");
 const { isPlainCottageCategory, isFunctionAreaCategory } =
@@ -38,13 +39,15 @@ function compoundTopics(message) {
   const audioWord = /\b(?:videoke|karaoke|mag[\s-]?videoke|mag[\s-]?karaoke|speakers?|bluetooth\s+speaker|sound\s+system)\b/i.test(q);
   const audio = audioWord && bring && !PROVIDES_EQUIPMENT.test(q);
   const facilities = verifiedResortFacilityMentions(q);
-  // Existence is confirmed, but store inventory/menu/hours/prices are not.
+  // Hours are now verified. Menus, goods, prices and sales remain unknown.
   if ((facilities.store || facilities.restobar) &&
-      /\b(?:sell|sold|serve|serves|menu|prices?|rates?|hours?|open\s+now|closing|opening|products?|items?|inventory|stock|breakfast|lunch|dinner)\b/i.test(q)) return null;
+      /\b(?:sell|sold|serve|serves|menus?|prices?|rates?|products?|items?|inventory|stock|breakfast|lunch|dinner)\b/i.test(q)) return null;
+  const facilityHours = facilityHoursRequested(q) &&
+    (facilities.store || facilities.restobar);
   // Don't treat an asked-for resort service as permission to bring it.
   if ((audioWord && !audio) || (alcohol && RETAIL_ALCOHOL.test(q))) return null;
   const count=[food,wifi,pool,parking,pets,alcohol,smoking,audio,facilities.store,facilities.restobar].filter(Boolean).length;
-  return count>=2 ? {food,corkage,wifi,wifiDetails,pool,parking,pets,alcohol,smoking,audio,store:facilities.store,restobar:facilities.restobar} : null;
+  return count>=2 ? {food,corkage,wifi,wifiDetails,pool,parking,pets,alcohol,smoking,audio,store:facilities.store,restobar:facilities.restobar,facilityHours} : null;
 }
 const WORDS={
   english:{
@@ -159,7 +162,8 @@ function compoundGuestReply(topics,message,context={},language="taglish",room=nu
       (isPlainCottageCategory(room) || isFunctionAreaCategory(room))),
   },locale));
   if(topics.store||topics.restobar)parts.push(
-    verifiedResortFacilitiesReply({store:topics.store,restobar:topics.restobar},locale));
+    verifiedResortFacilitiesReply({store:topics.store,restobar:topics.restobar,
+      hours:Boolean(topics.facilityHours)},locale));
   if(topics.pool||topics.parking||topics.pets)parts.push(
     verifiedGuestAmenitiesReply({
       pool:topics.pool,parking:topics.parking,pets:topics.pets,
