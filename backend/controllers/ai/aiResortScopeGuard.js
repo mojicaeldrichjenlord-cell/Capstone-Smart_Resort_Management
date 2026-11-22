@@ -19,7 +19,7 @@ const RESORT_TOPICS = [
   /\b(?:arvic|seaside|resort|hotel|front[\s-]?desk|reception|contact|hotline|makontak|manager|resort\s+staff)\b/i,
   /\b(?:parking|paradahan|mag[ -]?park|park(?:ing)?\s+(?:car|motor|van|bus))\b/i,
   /\b(?:address|location|directions?|how\s+(?:do\s+i|to)\s+get\s+there|operating\s+hours?|opening\s+hours?|open\s+(?:today|tomorrow|24|everyday)|hours?\s+(?:open|of operation)|nasaan|saan\s+(?:kayo|po\s+kayo)|bukas\s+ba\s+kayo)\b/i,
-  /\b(?:pool|swimming|lifeguard|amenit(?:y|ies)|facilit(?:y|ies)|wifi|wi-fi|internet|pets?|dogs?|cats?|corkage|outside\s+food|pagkain|towels?|bathroom|restroom|shower|(?:private\s+)?cr|aircon|air[- ]?conditioning|refrigerator|kitchen|cabinet)\b/i,
+  /\b(?:pool|swimming|lifeguard|amenit(?:y|ies)|facilit(?:y|ies)|wifi|wi-fi|internet|pets?|pet[\s-]?friendly|dogs?|cats?|animals?|aso|pusa|hayop|iro|iring|mascotas?|perros?|gatos?|corkage|outside\s+food|pagkain|towels?|bathroom|restroom|shower|(?:private\s+)?cr|aircon|air[- ]?conditioning|refrigerator|kitchen|cabinet)\b/i,
   /\b(?:walk[\s-]?ins?|walk[\s-]?in\s+(?:guest|reservation|booking)|same[\s-]?day\s+booking)\b/i,
   // Booking and accommodation: avoid 'book' alone (a history book is unrelated).
   /\b(?:rooms?|kuwarto|kwarto|cottage|cottages|kubo|nipa|huts?|villas?|pavilions?|function\s+areas?|shades?|poolside|pool[\s-]?side|accommodations?|units?|beds?|queen\s+size|day\s*tour|overnight|night\s+(?:slot|tour|stay)|stay\s+(?:there|at|for|overnight)|check[\s-]?in|check[\s-]?out|reservations?|reserved|reserve|booking|booked|book\s+(?:a|the|this|that|my|your|online|now|for)|mag[\s-]?book|mag[\s-]?reserve|magpa[\s-]?reserve|magkano\s+(?:ang|yung|po\s+ang)\s+(?:room|kwarto|cottage|kubo))\b/i,
@@ -34,7 +34,7 @@ const RESORT_TOPICS = [
   /\b(?:family\s+trip|family\s+outing|company\s+outing|team[ -]?building|day\s+trip|bakasyon|magbakasyon|wedding|kasal|birthday|debut|corporate\s+event|custom(?:ized)?\s+(?:event|package|discount)|special\s+(?:event|package|request)|event\s+package|event\s+quotation|party\s+package|catering\s+package)\b/i,
   // The existing chat has multilingual customer conversations.
   /\b(?:habitación|habitaciones|alojamiento|reservar|reserva|reservación|pago|tarifa|piscina|estacionamiento|cabaña|cancelar\s+mi\s+reserva)\b/i,
-  /(?:预订|预约|房间|客房|空房|度假村|酒店|入住|退房|退款|取消预订|停车|游泳池|住宿|房费|费用|价格|支付|付款|押金)/u,
+  /(?:预订|预约|房间|客房|空房|度假村|酒店|入住|退房|退款|取消预订|停车|游泳池|住宿|房费|费用|价格|支付|付款|押金|宠物|猫|狗)/u,
   // Pinyin booking requests without a Chinese keyboard, not generic chit-chat.
   /\b(?:fangjian|yuding|jiudian|dujiacun|tingche|youyongchi|shoufei|jiage)\b/i,
   // Additional common, clearly resort-related guest questions in their
