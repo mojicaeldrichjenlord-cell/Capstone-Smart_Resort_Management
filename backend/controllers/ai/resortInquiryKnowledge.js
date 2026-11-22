@@ -561,7 +561,7 @@ function matchVerifiedResortFacilities(message) {
   const mentions = verifiedResortFacilityMentions(q);
   if (!mentions.store && !mentions.restobar) return null;
   // Mixed questions and unknown services go to the existing grounded flow.
-  if (/\b(?:room|cottage|booking|reservation|refund|cancel|payment|price|rates?|menu|sell|sold|stock|inventory|items?|products?|available\s+for\s+sale|hours?|opening|closing|open\s+now|closed|food|drinks?|beer|alcohol|wifi|wi-fi|pool|parking|pets?|videoke|speakers?|entrance|corkage|deliver|delivery|kitchen|breakfast|lunch|dinner|service|serve|serves)\b/i.test(q)) return null;
+  if (/\b(?:room|cottage|booking|reservation|refund|cancel|payment|price|rates?|menu|sell|sold|stock|inventory|items?|products?|available\s+for\s+sale|hours?|opening|closing|opens?|closes?|closed|opened|what\s+time|anong\s+oras|schedule|timings?|operating\s+hours?|bukas\s+ba|sarado\s+ba|food|drinks?|beer|alcohol|wifi|wi-fi|pool|parking|pets?|videoke|speakers?|entrance|corkage|deliver|delivery|kitchen|breakfast|lunch|dinner|service|serve|serves)\b/i.test(q)) return null;
   return mentions;
 }
 
