@@ -24,8 +24,8 @@ const RESORT_INQUIRY_FACTS = Object.freeze({
   pets: "CLIENT-VERIFIED 2026-11-22: Animals and pets are NOT ALLOWED inside Arvic Seaside Beach Resort and Hotel. This includes dogs, cats and other animals. Never claim the property is pet-friendly or that guests may bring a pet for a fee. Do not invent exceptions or a pet boarding service.",
   outsideFood: "CLIENT-VERIFIED 2026-11-23: Guests MAY bring their own food and drinks into the resort, including alcoholic drinks, with NO CORKAGE FEE. Do not confuse corkage with separately charged entrance fees, accommodations or other verified charges.",
   leisurePolicies: "CLIENT-VERIFIED 2026-11-22: Guests MAY bring alcoholic drinks; smoking and vaping are permitted; bringing and using their OWN videoke/karaoke equipment and speakers is permitted. The resort sets NO TIME RESTRICTIONS for these activities. This permission is separate from whether a room provides built-in karaoke/speakers. Do NOT invent extra equipment, unverified fees, smoking areas, noise limits, age restrictions or local-law exemptions.",
-  convenienceStore: "CLIENT-VERIFIED 2026-11-23: A convenience store exists INSIDE Arvic Seaside Resort. Do not invent merchandise, inventory, hours, prices or services.",
-  restobar: "CLIENT-VERIFIED 2026-11-23: A restobar exists INSIDE Arvic Seaside Resort. Do not invent its menu, operating hours, prices, alcohol sales or special service features.",
+  convenienceStore: "CLIENT-VERIFIED 2026-11-23: A convenience store exists INSIDE Arvic Seaside Resort and is OPEN 24 HOURS A DAY, 7 DAYS A WEEK (24/7). Do not invent merchandise, inventory, prices or other services.",
+  restobar: "CLIENT-VERIFIED 2026-11-23: A restobar exists INSIDE Arvic Seaside Resort and is OPEN DAILY 6:00 PM to 6:00 AM THE NEXT DAY, closing at 6:00 AM. The restobar is NOT 24/7. Do not invent its menu, prices, alcohol sales or other special service features.",
   roomWifi: "CLIENT-VERIFIED 2026-11-22: FREE Wi-Fi is available ONLY in room accommodations. It is not included in cottages, function areas or common areas. Never invent a network password, speed, or guaranteed coverage beyond the rooms.",
   location: "The resort is at 17 Mahogany Street, Brgy. Bagong Karsada, Naic, Cavite, Philippines. Do not invent directions or transport routes.",
   openingHours: "The resort is open 24 hours a day, Monday to Sunday. This does NOT mean guests may choose custom check-in/out hours; accommodation booking follows fixed Day/Night slots.",
@@ -546,8 +546,8 @@ function getUnverifiedResortPolicyReply(match, language) {
     subject + " hasn't been confirmed by the resort. Please contact Front Desk at 0956-912-5625.";
 }
 
-// AI-65: Resort-confirmed on-site facilities. Their existence is verified,
-// but their inventory, opening hours, menus, prices and services are NOT.
+// AI-66: Resort-confirmed on-site facilities AND operating hours.
+// Their inventory, menus, prices and other services are NOT verified.
 function verifiedResortFacilityMentions(message) {
   const q = normalizeQuestion(message);
   const store = /\b(?:convenience[\s-]?store|mini[\s-]?mart|mini[\s-]?store|sari[\s-]?sari(?:\s+store)?|tindahan|store|shop)\b/i.test(q);
@@ -555,18 +555,56 @@ function verifiedResortFacilityMentions(message) {
   return {store, restobar};
 }
 
+// Detect questions about the verified operating schedules. This helper is
+// intentionally independent of resort-wide 24-hour opening hours.
+function facilityHoursRequested(message) {
+  const q = normalizeQuestion(message);
+  return /\b(?:what\s+time|when\s+does|until\s+what\s+time|how\s+late|anong\s+oras|hanggang\s+anong\s+oras|oras\s+ng|hours?|opening|closing|opens?|closes?|closed|opened|schedule|timings?|24[/-]7|24\s*hours?|everyday|every\s+day|daily|bukas|sarado|nagsasara|nagbubukas|all\s+night|right\s+now)\b/i.test(q);
+}
+
 function matchVerifiedResortFacilities(message) {
   const q = normalizeQuestion(message);
   if (!q || q.length > 400) return null;
   const mentions = verifiedResortFacilityMentions(q);
   if (!mentions.store && !mentions.restobar) return null;
-  // Mixed questions and unknown services go to the existing grounded flow.
-  if (/\b(?:room|cottage|booking|reservation|refund|cancel|payment|prices?|costs?|fees?|magkano|how\s+much|rates?|menus?|sell|sold|stock|inventory|items?|products?|available\s+for\s+sale|hours?|opening|closing|opens?|closes?|closed|opened|what\s+time|anong\s+oras|schedule|timings?|operating\s+hours?|bukas|sarado|nagsasara|nagbubukas|food|drinks?|beer|alcohol|wifi|wi-fi|pool|parking|pets?|videoke|speakers?|entrance|corkage|deliver|delivery|kitchen|breakfast|lunch|dinner|service|serve|serves)\b/i.test(q)) return null;
-  return mentions;
+  // Mixed policy, room and other-service questions go through the existing
+  // grounded routing instead. A time/schedule inquiry is NOW verified.
+  if (/\b(?:room|cottage|booking|reservation|refund|cancel|payment|prices?|costs?|fees?|magkano|how\s+much|rates?|menus?|sell|sold|stock|inventory|items?|products?|available\s+for\s+sale|food|drinks?|beer|alcohol|wifi|wi-fi|pool|parking|pets?|videoke|speakers?|entrance|corkage|deliver|delivery|kitchen|breakfast|lunch|dinner|service|serve|serves)\b/i.test(q)) return null;
+  return {...mentions, hours: facilityHoursRequested(q)};
 }
 
 function verifiedResortFacilitiesReply(mentions, language = "taglish") {
   if (!mentions || (!mentions.store && !mentions.restobar)) return null;
+  const hoursPhrases = {
+    english: {
+      store: "The convenience store inside the resort is open 24/7, every day.",
+      restobar: "The restobar is open daily from 6:00 PM to 6:00 AM the next day (it closes at 6:00 AM).",
+    },
+    taglish: {
+      store: "Open 24/7 po ang convenience store sa loob ng resort.",
+      restobar: "Everyday po open ang restobar from 6:00 PM to 6:00 AM the next day. 6:00 AM po ang closing.",
+    },
+    tagalog: {
+      store: "Bukas po nang 24 oras araw-araw ang convenience store sa loob ng resort.",
+      restobar: "Bukas po ang restobar araw-araw mula 6:00 PM hanggang 6:00 AM ng susunod na araw.",
+    },
+    bisaya: {
+      store: "Abli ang convenience store sa resort 24/7 kada adlaw.",
+      restobar: "Abli ang restobar kada adlaw gikan 6:00 PM hangtod 6:00 AM sa sunod adlaw.",
+    },
+    spanish: {
+      store: "La tienda de conveniencia del resort abre las 24 horas, todos los días.",
+      restobar: "El restobar abre todos los días de 6:00 PM a 6:00 AM del día siguiente.",
+    },
+    mandarin: {
+      store: "度假村内便利店每天 24 小时营业，全年无休。",
+      restobar: "度假村内餐吧每天傍晚 6:00 开门，次日早上 6:00 关门。",
+    },
+  };
+  if (mentions.hours) {
+    const p = hoursPhrases[language] || hoursPhrases.english;
+    return [mentions.store && p.store, mentions.restobar && p.restobar].filter(Boolean).join(" ");
+  }
   const phrases = {
     english: {
       store: "Yes, there's a convenience store inside the resort.",
@@ -621,5 +659,5 @@ module.exports = {
   matchVerifiedLeisurePolicies, verifiedLeisurePoliciesReply,
   matchUnverifiedResortPolicy, getUnverifiedResortPolicyReply,
   verifiedResortFacilityMentions, matchVerifiedResortFacilities,
-  verifiedResortFacilitiesReply,
+  verifiedResortFacilitiesReply, facilityHoursRequested,
 };
