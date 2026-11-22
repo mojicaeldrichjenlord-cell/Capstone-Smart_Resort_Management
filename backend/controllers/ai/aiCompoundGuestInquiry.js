@@ -17,7 +17,7 @@ const { isPlainCottageCategory, isFunctionAreaCategory } =
 // This handler is intentionally narrow: mixed policies with unsupported
 // requests (rates, booking dates, specific equipment inclusions) continue
 // through the usual data-aware/grounded controller flow instead.
-const UNHANDLED_FACTS = /\b(?:magkano|how\s+much|prices?|rates?|₱|php|downpayment|deposit|paypal|refund|cancel(?:lation)?|check[\s-]?in\s+time|date\s+availability|available\s+on|book\s+(?:us|this)|kitchen|private\s+cr|bathroom|toilet|aircon|refrigerator|fridge|discount|entrance\s+fee|lifeguard|pool\s+depth)\b/i;
+const UNHANDLED_FACTS = /\b(?:magkano|how\s+much|prices?|rates?|₱|php|downpayment|deposit|paypal|refund|cancel(?:lation)?|check[\s-]?in|check[\s-]?out|date\s+availability|available\s+on|availability|vacan(?:t|cy)|slot|tomorrow|bukas|next\s+week|book\s+(?:us|this)|mag[\s-]?book|mag[\s-]?reserve|reservation|reserve|kitchen|private\s+cr|bathroom|toilet|aircon|refrigerator|fridge|discount|entrance\s+fee|lifeguard|pool\s+depth)\b|\b\d{4}-\d{1,2}-\d{1,2}\b/i;
 const PROVIDES_EQUIPMENT = /\b(?:does?\s+(?:the\s+)?(?:room|cottage)\s+(?:have|include)|do\s+you\s+(?:provide|have)|are\s+there\s+(?:any\s+)?speakers?|may\s+(?:ba\s+)?(?:videoke|karaoke|speaker)\s+(?:sa|ang|included)|kasama\s+(?:ba\s+)?(?:videoke|karaoke|speaker)|is\s+(?:videoke|karaoke|speaker)\s+included)\b/i;
 const RETAIL_ALCOHOL = /\b(?:sell|selling|sold|serve|serving|buy|purchase|for\s+sale|magbenta|nagbebenta|tinda|do\s+you\s+have\s+(?:beer|alcohol|wine))\b/i;
 
