@@ -385,13 +385,46 @@ async function verifyRegistrationOtp() {
     localStorage.removeItem("pendingVerificationEmail");
     localStorage.removeItem("registeredEmail");
 
-    if (data.user) {
-      localStorage.setItem("user", JSON.stringify(data.user));
+    // AUTH-70: A profile object is NOT an authenticated session. The
+    // signed Customer token must be issued by the backend AFTER a valid
+    // registration OTP, just as it is on normal email/password login.
+    // Fail closed instead of opening protected pages with only a user ID.
+    const customerToken = data.customerToken;
+    const verifiedCustomer = data.user &&
+      String(data.user.role || "").trim().toLowerCase() === "customer" &&
+      String(data.user.account_status || "active").toLowerCase() === "active" &&
+      Number(data.user.is_verified) === 1;
+    const validCustomerToken = typeof customerToken === "string" &&
+      /^cus1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(customerToken);
+
+    // Remove any previous account session, including an earlier token
+    // from another role, before establishing the newly verified identity.
+    localStorage.removeItem("user");
+    sessionStorage.removeItem("customerToken");
+    sessionStorage.removeItem("frontDeskToken");
+    sessionStorage.removeItem("adminToken");
+    sessionStorage.removeItem("managerToken");
+    sessionStorage.removeItem("housekeepingToken");
+
+    if (!verifiedCustomer || !validCustomerToken) {
+      // Already-verified addresses must use password login. If an older
+      // backend returns a profile without a token, use the same safe path.
+      localStorage.setItem("registeredEmail", email);
+      showMessage(
+        "Email verification completed. Please log in securely to continue.",
+        "success",
+      );
+      setTimeout(() => {
+        window.location.href = "../authHTML/login.html";
+      }, 1000);
+      return;
     }
 
+    sessionStorage.setItem("customerToken", customerToken);
+    localStorage.setItem("user", JSON.stringify(data.user));
+
     showMessage(
-      data.message ||
-        "Email verified successfully. Redirecting to dashboard...",
+      "Email verified successfully. Redirecting to dashboard...",
       "success",
     );
 
