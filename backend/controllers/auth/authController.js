@@ -414,20 +414,14 @@ exports.verifyRegistrationOtp = async (req, res) => {
       });
     }
 
+    // AUTH-70: An already-verified account cannot be signed in using an
+    // unvalidated/replayed OTP. Never return identity data or a session token
+    // here: require the normal password-based login route instead.
     if (Number(user.is_verified) === 1) {
       return res.status(200).json({
         success: true,
-        message: "Account is already verified. Redirecting to dashboard...",
-        user: {
-          id: user.id,
-          fullname: user.fullname,
-          email: user.email,
-          role: user.role,
-          phone: user.phone || "",
-          address: user.address || "",
-          account_status: user.account_status || "active",
-          is_verified: 1,
-        },
+        already_verified: true,
+        message: "Account is already verified. Please log in to continue.",
       });
     }
 
@@ -456,6 +450,26 @@ exports.verifyRegistrationOtp = async (req, res) => {
       });
     }
 
+    // AUTH-70: Registration auto-login must provide the SAME signed customer
+    // session used by normal login. Sign only AFTER OTP verification, and
+    // issue only to active Customer accounts. Never trust a client-supplied ID.
+    if (String(user.role || "").trim().toLowerCase() !== "customer") {
+      return res.status(403).json({
+        success: false,
+        message: "Customer account required for registration verification.",
+      });
+    }
+    let customerToken;
+    try {
+      customerToken = issueCustomerToken(user.id);
+    } catch (tokenError) {
+      console.error("Registration customer token configuration error:", tokenError.message);
+      return res.status(503).json({
+        success: false,
+        message: "Secure Customer sign-in is temporarily unavailable. Please try again.",
+      });
+    }
+
     await db.promise().query(
       `
       UPDATE users
@@ -470,6 +484,7 @@ exports.verifyRegistrationOtp = async (req, res) => {
     return res.status(200).json({
       success: true,
       message: "Email verified successfully. Redirecting to dashboard...",
+      customerToken,
       user: {
         id: user.id,
         fullname: user.fullname,
