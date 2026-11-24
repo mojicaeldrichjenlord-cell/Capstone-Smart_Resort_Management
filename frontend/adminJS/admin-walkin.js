@@ -205,11 +205,11 @@ function setupReservationTypeField() {
   wrapper.innerHTML = `
     <label for="manualReservationType">Reservation Type</label>
     <select id="manualReservationType" required>
-      <option value="walkin">Walk-in Guest</option>
-      <option value="facebook">Facebook / Messenger Reservation</option>
+      <option value="walkin">Walk-in / On-the-Day Guest</option>
+      <option value="facebook">Facebook Messenger / Other Reservation</option>
     </select>
     <small class="field-help">
-      Walk-in is for guests already onsite. Facebook/Messenger is for guests who message the resort instead of using the website.
+      Walk-in / On-the-Day is for guests already onsite. Facebook Messenger / Other Reservation is for bookings arranged through Messenger or another approved channel.
     </small>
   `;
 
@@ -230,7 +230,7 @@ function getManualReservationType() {
 }
 
 function formatManualReservationType(type) {
-  return type === "facebook" ? "Facebook / Messenger Reservation" : "Walk-in Guest";
+  return type === "facebook" ? "Facebook Messenger / Other Reservation" : "Walk-in / On-the-Day Guest";
 }
 
 function setupManualReservationDateRules() {
