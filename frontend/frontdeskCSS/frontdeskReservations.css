@@ -71,7 +71,7 @@
   margin-bottom: 20px;
 
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
 }
 
@@ -479,4 +479,24 @@
     width: 100%;
     box-sizing: border-box;
   }
+}
+/* UI-78: reservation-only summary; payment summaries remain on Payments. */
+.frontdesk-summary-grid .reservation-summary-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.frontdesk-summary-grid .reservation-summary-icon {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  color: #64748b;
+}
+.frontdesk-summary-grid .summary-card small {
+  font-size: .8rem;
+  line-height: 1.4;
+  color: #64748b;
+}
+html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone .frontdesk-summary-grid :is(.reservation-summary-icon, small) {
+  color: var(--fd-muted, #cbd5e1);
 }

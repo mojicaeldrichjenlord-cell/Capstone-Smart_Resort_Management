@@ -161,18 +161,8 @@ function updateSummaryCards() {
     (booking) => getReservationStatus(booking) === "pending",
   ).length;
 
-  const partiallyPaid = allFrontDeskReservations.filter(
-    (booking) => getPaymentStatus(booking) === "partially_paid",
-  ).length;
-
-  const paid = allFrontDeskReservations.filter(
-    (booking) => getPaymentStatus(booking) === "paid",
-  ).length;
-
   setText("activeCount", active);
   setText("pendingCount", pending);
-  setText("partiallyPaidCount", partiallyPaid);
-  setText("paidCount", paid);
 }
 
 function setText(id, value) {

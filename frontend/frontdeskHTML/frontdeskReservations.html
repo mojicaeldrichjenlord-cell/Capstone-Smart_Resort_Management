@@ -10,7 +10,7 @@
 
     <link rel="stylesheet" href="../sharedCSS/global.css" />
     <link rel="stylesheet" href="../css/style.css" />
-    <link rel="stylesheet" href="../frontdeskCSS/frontdeskReservations.css" />
+    <link rel="stylesheet" href="../frontdeskCSS/frontdeskReservations.css?v=20261124-ui78" />
       <!-- Consistent, centered confirmation for accidental logout clicks. -->
     <link rel="stylesheet" href="../adminCSS/admin-mobile-nav.css" />
     <link rel="stylesheet" href="../sharedCSS/logout-confirm.css" />
@@ -61,25 +61,23 @@
         </button>
       </section>
 
-      <section class="frontdesk-summary-grid">
+      <section class="frontdesk-summary-grid" aria-label="Reservation overview">
         <article class="summary-card">
-          <span>Active / Current</span>
+          <div class="reservation-summary-heading">
+            <svg class="reservation-summary-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18m-12 5 3 3 5-5"/></svg>
+            <span>Active / Current</span>
+          </div>
           <strong id="activeCount">0</strong>
+          <small>Active reservation records</small>
         </article>
 
         <article class="summary-card">
-          <span>Pending</span>
+          <div class="reservation-summary-heading">
+            <svg class="reservation-summary-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            <span>Pending</span>
+          </div>
           <strong id="pendingCount">0</strong>
-        </article>
-
-        <article class="summary-card">
-          <span>Partially Paid</span>
-          <strong id="partiallyPaidCount">0</strong>
-        </article>
-
-        <article class="summary-card">
-          <span>Paid</span>
-          <strong id="paidCount">0</strong>
+          <small>Awaiting confirmation</small>
         </article>
       </section>
 
@@ -168,7 +166,7 @@
 
     <script src="../sharedJS/toast.js"></script>
     <script src="../sharedJS/api-config.js"></script>
-    <script src="../frontdeskJS/frontdeskReservations.js"></script>
+    <script src="../frontdeskJS/frontdeskReservations.js?v=20261124-ui78"></script>
     <script src="../frontdeskJS/frontdeskReservationReceiptActions.js"></script>
       <script src="../adminJS/admin-mobile-nav.js"></script>
     <script src="../sharedJS/logout-confirm.js"></script>
