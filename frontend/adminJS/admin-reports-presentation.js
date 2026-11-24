@@ -154,9 +154,50 @@
   // Refresh print only from the last rendered snapshot; a filter request
   // still pending in the background must not pretend it has new data.
   let lastSnapshot = null;
+  // UI-81: each grouped panel retains its two independent Chart.js datasets.
+  const metricGroups = [
+    ["reportAccommodationMetric", ["popularRoomsChart", "guestsPerRoomChart"]],
+    ["reportActivityMetric", ["peakReservationDaysChart", "guestVolumeTrendChart"]],
+  ];
+
+  function syncMetricGroup(selectId, ids) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+    const selected = ids.includes(select.value) ? select.value : ids[0];
+    for (const id of ids) {
+      const view = document.getElementById(id + "View");
+      if (view) view.hidden = id !== selected;
+    }
+    const chart = lastSnapshot?.chartInstances?.[selected];
+    if (typeof chart?.resize === "function") {
+      requestAnimationFrame(() => {
+        // A rapid selector change must not resize a newly hidden chart.
+        if (select.value === selected && lastSnapshot?.chartInstances?.[selected] === chart) chart.resize();
+      });
+    }
+  }
+
+  function syncSourceBar() {
+    const online = Math.max(0, safeNumber(document.getElementById("onlineBookingsCount")?.textContent));
+    const manual = Math.max(0, safeNumber(document.getElementById("manualBookingsCount")?.textContent));
+    const total = online + manual;
+    const onlineBar = document.getElementById("reportOnlineBar");
+    const manualBar = document.getElementById("reportManualBar");
+    if (onlineBar && manualBar) {
+      onlineBar.style.width = total ? (online / total * 100) + "%" : "0%";
+      manualBar.style.width = total ? (manual / total * 100) + "%" : "0%";
+    }
+  }
+
+  for (const [selectId, ids] of metricGroups) {
+    document.getElementById(selectId)?.addEventListener("change", () => syncMetricGroup(selectId, ids));
+  }
+
   function updateWithSnapshot(bookings, chartInstances) {
     lastSnapshot = { bookings, chartInstances };
     update(bookings, chartInstances);
+    syncSourceBar();
+    for (const [selectId, ids] of metricGroups) syncMetricGroup(selectId, ids);
   }
   function preparePrint() {
     if (lastSnapshot) update(lastSnapshot.bookings, lastSnapshot.chartInstances);

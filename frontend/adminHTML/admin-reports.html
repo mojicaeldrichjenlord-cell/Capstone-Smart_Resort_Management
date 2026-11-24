@@ -32,7 +32,7 @@
     <!-- Consistent, centered confirmation for accidental logout clicks. -->
     <link rel="stylesheet" href="../sharedCSS/logout-confirm.css" />
     <!-- Reports-20: compact screen charts and separate printer-friendly layout. -->
-    <link rel="stylesheet" href="../adminCSS/admin-reports-minimal.css?v=20261121-ui34" />
+    <link rel="stylesheet" href="../adminCSS/admin-reports-minimal.css?v=20261124-ui81" />
     <link rel="stylesheet" href="../adminCSS/admin-manager-tone.css?v=20261119-ui21" />
 </head>
 
@@ -124,54 +124,37 @@
       <!-- ======================================================
          SUMMARY CARDS
       ======================================================= -->
-      <section class="stats-grid">
+      <section class="stats-grid" aria-label="Report summary">
         <div class="stat-card">
-          <h3>Reservations</h3>
+          <h3>Total Reservations</h3>
           <p id="totalBookingsCount">0</p>
         </div>
-
         <div class="stat-card">
-          <h3>Estimate Total Guests</h3>
+          <h3>Estimated Guests</h3>
           <p id="totalGuestsCount">0</p>
         </div>
-
-        <div class="stat-card">
-          <h3>Online Bookings</h3>
-          <p id="onlineBookingsCount">0</p>
-        </div>
-
-        <div class="stat-card">
-          <h3>Walk-in / Manual</h3>
-          <p id="manualBookingsCount">0</p>
-        </div>
-
-        <div class="stat-card">
-          <h3>Approved</h3>
-          <p id="approvedBookingsCount">0</p>
-        </div>
-
-        <div class="stat-card">
-          <h3>Completed</h3>
-          <p id="completedBookingsCount">0</p>
-        </div>
-
         <div class="stat-card">
           <h3>Booking Collections Estimate</h3>
           <p id="totalRevenueAmount">₱0.00</p>
         </div>
-      </section>
-
-      <!-- Show paid additional charges and possible overlapping extra-bed entries. -->
-      <section class="report-charge-grid" aria-label="Paid charge reconciliation">
-        <div class="report-charge-card">
-          <h3>Paid Additional Charges</h3>
-          <p id="paidBookingChargesAmount">Loading…</p>
-          <small>Charges paid within this date range, including extra beds.</small>
+        <div class="stat-card report-breakdown-card">
+          <h3>Reservation Sources</h3>
+          <div class="report-breakdown-row"><span>Online</span><strong id="onlineBookingsCount">0</strong></div>
+          <div class="report-breakdown-row"><span>Walk-in / Manual</span><strong id="manualBookingsCount">0</strong></div>
+          <div class="report-source-track" aria-hidden="true">
+            <span id="reportOnlineBar"></span><span id="reportManualBar"></span>
+          </div>
         </div>
-        <div class="report-charge-card">
-          <h3>Extra Bed Already Counted</h3>
-          <p id="paidBedOverlapAmount">Loading…</p>
-          <small>Deducted from the combined estimate to avoid double-counting.</small>
+        <div class="stat-card report-breakdown-card">
+          <h3>Reservation Status</h3>
+          <div class="report-breakdown-row"><span>Approved</span><strong id="approvedBookingsCount">0</strong></div>
+          <div class="report-breakdown-row"><span>Completed</span><strong id="completedBookingsCount">0</strong></div>
+        </div>
+        <div class="stat-card report-breakdown-card" aria-label="Paid charge reconciliation">
+          <h3>Additional Charges</h3>
+          <div class="report-breakdown-row"><span>Paid additional charges</span><strong id="paidBookingChargesAmount">Loading…</strong></div>
+          <div class="report-breakdown-row"><span>Extra bed already counted</span><strong id="paidBedOverlapAmount">Loading…</strong></div>
+          <small class="report-breakdown-note">Paid charges in the selected period include extra beds; overlap is shown separately to avoid double-counting.</small>
         </div>
       </section>
 
@@ -220,7 +203,16 @@
           </div>
         </div>
 
-        <div class="chart-box">
+        <section class="report-chart-group" aria-labelledby="reportAccommodationMetricTitle">
+          <div class="report-chart-group-heading">
+            <h2 id="reportAccommodationMetricTitle">Accommodation Performance</h2>
+            <label for="reportAccommodationMetric">View metric</label>
+            <select id="reportAccommodationMetric" class="report-chart-selector">
+              <option value="popularRoomsChart">Reservations</option>
+              <option value="guestsPerRoomChart">Estimated Guests</option>
+            </select>
+          </div>
+        <div class="chart-box report-chart-view" id="popularRoomsChartView">
           <div class="chart-header">
             <h2>Most Booked Accommodations</h2>
             <p>Top accommodations based on reservation count.</p>
@@ -230,6 +222,17 @@
             <canvas id="popularRoomsChart"></canvas>
           </div>
         </div>
+        <div class="chart-box report-chart-view" id="guestsPerRoomChartView" hidden>
+          <div class="chart-header">
+            <h2>Estimated Guests per Accommodation</h2>
+            <p>Estimated guest count grouped by accommodation.</p>
+          </div>
+
+          <div class="chart-canvas-wrap">
+            <canvas id="guestsPerRoomChart"></canvas>
+          </div>
+        </div>
+        </section>
 
         <div class="chart-box">
           <div class="chart-header">
@@ -245,16 +248,7 @@
           </div>
         </div>
 
-        <div class="chart-box">
-          <div class="chart-header">
-            <h2>Estimated Guests per Accommodation</h2>
-            <p>Estimated guest count grouped by accommodation.</p>
-          </div>
 
-          <div class="chart-canvas-wrap">
-            <canvas id="guestsPerRoomChart"></canvas>
-          </div>
-        </div>
 
         <div class="chart-box">
           <div class="chart-header">
@@ -267,7 +261,16 @@
           </div>
         </div>
 
-        <div class="chart-box">
+        <section class="report-chart-group" aria-labelledby="reportActivityMetricTitle">
+          <div class="report-chart-group-heading">
+            <h2 id="reportActivityMetricTitle">Reservation &amp; Guest Activity</h2>
+            <label for="reportActivityMetric">View metric</label>
+            <select id="reportActivityMetric" class="report-chart-selector">
+              <option value="peakReservationDaysChart">Peak Days</option>
+              <option value="guestVolumeTrendChart">Guest Trend</option>
+            </select>
+          </div>
+        <div class="chart-box report-chart-view" id="peakReservationDaysChartView">
           <div class="chart-header">
             <h2>Peak Reservation Days</h2>
             <p>
@@ -280,8 +283,7 @@
             <canvas id="peakReservationDaysChart"></canvas>
           </div>
         </div>
-
-        <div class="chart-box">
+        <div class="chart-box report-chart-view" id="guestVolumeTrendChartView" hidden>
           <div class="chart-header">
             <h2>Estimated Guest Volume Trend</h2>
             <p>
@@ -293,6 +295,9 @@
             <canvas id="guestVolumeTrendChart"></canvas>
           </div>
         </div>
+        </section>
+
+
 
         <div class="chart-box">
           <div class="chart-header">
@@ -322,7 +327,7 @@
     <script src="../sharedJS/api-config.js"></script>
     <script src="../js/active-nav.js"></script>
     <script src="../adminJS/admin-reports.js?v=20261121-ui34"></script>
-    <script src="../adminJS/admin-reports-presentation.js?v=20261117-reports20"></script>
+    <script src="../adminJS/admin-reports-presentation.js?v=20261124-ui81"></script>
     <script src="../adminJS/admin-mobile-nav.js"></script>
     <script src="../sharedJS/logout-confirm.js"></script>
   </body>

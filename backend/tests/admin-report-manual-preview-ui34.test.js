@@ -21,10 +21,9 @@ const manualCss = read("frontend/adminCSS/admin-walkin.css");
 const paymentJs = read("frontend/adminJS/admin-walkin-payment.js");
 const previewCss = read("frontend/sharedCSS/reservation-preview.css");
 
-test("UI-34 reports show exactly two paid-charge cards, not the three removed cards", () => {
-  const section = reportsHtml.match(/<section class="report-charge-grid"[\s\S]*?<\/section>/)?.[0] || "";
-  assert.ok(section, "Paid charge card section missing");
-  assert.equal((section.match(/class="report-charge-card"/g) || []).length, 2);
+test("UI-81 reports retain both paid-charge figures in one card, not the three removed cards", () => {
+  const section = reportsHtml.match(/<div class="stat-card report-breakdown-card" aria-label="Paid charge reconciliation">[\s\S]*?<small class="report-breakdown-note">[\s\S]*?<\/small>\s*<\/div>/)?.[0] || "";
+  assert.ok(section, "Paid charge reconciliation missing");
   assert.match(section, /id="paidBookingChargesAmount"/);
   assert.match(section, /id="paidBedOverlapAmount"/);
   for (const field of [
@@ -35,7 +34,7 @@ test("UI-34 reports show exactly two paid-charge cards, not the three removed ca
     assert.ok(!reportsJs.includes('setText("' + field + '"'), "Obsolete JS update: " + field);
   }
   assert.match(reportsHtml, /admin-reports\.js\?v=20261121-ui34/);
-  assert.match(reportsHtml, /admin-reports-minimal\.css\?v=20261121-ui34/);
+  assert.match(reportsHtml, /admin-reports-minimal\.css\?v=20261124-ui81/);
 });
 
 test("UI-34 reports retain paid charges, accurate caveat and balanced print layout", () => {
@@ -48,9 +47,9 @@ test("UI-34 reports retain paid charges, accurate caveat and balanced print layo
   assert.match(reportsHtml, /not audited net revenue/);
   assert.match(reportsHtml, /Refunds, payment corrections, and differences between/);
   assert.match(reportsHtml, /not included in these displayed totals/);
-  assert.match(reportsCss, /report-charge-grid\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,1fr\)\)/s);
+  assert.match(reportsCss, /report-breakdown-row\s*\{/);
   const print = reportsCss.slice(reportsCss.indexOf("@media print"));
-  assert.match(print, /report-charge-grid\s*\{[^}]*grid-template-columns:\s*repeat\(2,minmax\(0,1fr\)\) !important/s);
+  assert.match(print, /stats-grid\s*\{[^}]*grid-template-columns:\s*repeat\(3,minmax\(0,1fr\)\) !important/s);
 });
 
 function manualPreviewHarness() {
