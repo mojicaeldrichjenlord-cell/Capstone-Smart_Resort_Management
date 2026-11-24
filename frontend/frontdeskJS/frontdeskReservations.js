@@ -236,13 +236,13 @@ function applyFilters() {
 
   if (status && status !== "active" && status !== "all") {
     filtered = filtered.filter(
-      (booking) => getReservationStatus(booking) === status,
+      (booking) => matchesReservationStatusFilter(booking, status),
     );
   }
 
   if (paymentStatus) {
     filtered = filtered.filter(
-      (booking) => getPaymentStatus(booking) === paymentStatus,
+      (booking) => matchesPaymentStatusFilter(booking, paymentStatus),
     );
   }
 
@@ -392,6 +392,23 @@ function setRecordsContent(html) {
 // ============================================================
 // SECTION 8: Data helpers
 // ============================================================
+
+// UI-80: grouped filter options only; stored status values and badges stay exact.
+function matchesReservationStatusFilter(booking, filter) {
+  const actual = getReservationStatus(booking);
+  if (filter === "unsuccessful") {
+    return ["cancelled", "rejected", "no_show"].includes(actual);
+  }
+  return actual === filter;
+}
+
+function matchesPaymentStatusFilter(booking, filter) {
+  const actual = getPaymentStatus(booking);
+  if (filter === "awaiting_payment") {
+    return ["pending", "unpaid"].includes(actual);
+  }
+  return actual === filter;
+}
 
 function getReservationStatus(booking) {
   return String(

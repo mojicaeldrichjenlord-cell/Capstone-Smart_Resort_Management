@@ -86,8 +86,8 @@
           <div>
             <h2>Search and Filter</h2>
             <p>
-              Active/current reservations are shown by default. Use the filters
-              to review completed, cancelled, rejected, No-Show, or older records.
+              Active/current reservations are shown by default. Related statuses
+              are grouped in the filters; each record still shows its exact status.
             </p>
           </div>
         </div>
@@ -111,9 +111,7 @@
               <option value="pending">Pending</option>
               <option value="approved">Confirmed</option>
               <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
-              <option value="rejected">Rejected</option>
-              <option value="no_show">No-Show</option>
+              <option value="unsuccessful">Cancelled / Rejected / No-Show</option>
               <option value="all">All Records</option>
             </select>
           </div>
@@ -123,8 +121,7 @@
 
             <select id="paymentStatusFilter">
               <option value="">All</option>
-              <option value="pending">Pending</option>
-              <option value="unpaid">Unpaid</option>
+              <option value="awaiting_payment">Pending / Unpaid</option>
               <option value="partially_paid">Partially Paid</option>
               <option value="paid">Paid</option>
               <option value="rejected">Rejected</option>
@@ -166,7 +163,7 @@
 
     <script src="../sharedJS/toast.js"></script>
     <script src="../sharedJS/api-config.js"></script>
-    <script src="../frontdeskJS/frontdeskReservations.js?v=20261124-ui78"></script>
+    <script src="../frontdeskJS/frontdeskReservations.js?v=20261124-ui80"></script>
     <script src="../frontdeskJS/frontdeskReservationReceiptActions.js"></script>
       <script src="../adminJS/admin-mobile-nav.js"></script>
     <script src="../sharedJS/logout-confirm.js"></script>

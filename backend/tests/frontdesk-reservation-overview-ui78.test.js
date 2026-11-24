@@ -21,7 +21,7 @@ test("UI-78 keeps two reservation summary cards without payment counters",()=>{
     assert.doesNotMatch(js,new RegExp('setText\\("'+id+'"'));
   }
   assert.match(html,/frontdeskReservations\.css\?v=20261124-ui78/);
-  assert.match(html,/frontdeskReservations\.js\?v=20261124-ui78/);
+  assert.match(html,/frontdeskReservations\.js\?v=20261124-ui80/);
 });
 
 test("UI-78 active and pending counters retain their original independent definitions",()=>{
