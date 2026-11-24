@@ -65,9 +65,11 @@ test("Screen-only, scoped stylesheet never changes printed reports or booking lo
 test("Theme does not remove Admin operational and financial controls", () => {
   const admin = read("frontend/adminHTML/admin.html");
   const reports = read("frontend/adminHTML/admin-reports.html");
-  assert.match(admin, /Online Reservation Today/);
-  assert.match(admin, /Manual Reservation Today/);
-  assert.match(admin, /Today Revenue/);
+  assert.match(admin, /Reservations Today/);
+  assert.match(admin, /id="onlineToday"/);
+  assert.match(admin, /id="walkinToday"/);
+  assert.match(admin, /Today's Collections \(Estimate\)/);
+  assert.match(admin, /id="todayRevenue"/);
   assert.match(admin, /id="totalBookings"/);
   assert.match(reports, /Booking Collections Estimate/i);
 });

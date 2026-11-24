@@ -436,6 +436,16 @@ function updateSummaryCards(bookings) {
     walkinToday,
   );
 
+  // UI-77: display the same daily source counts in a single card.
+  const reservationsToday = onlineToday + walkinToday;
+  setText("reservationsToday", reservationsToday);
+  const onlineBar = document.getElementById("onlineTodayBar");
+  const manualBar = document.getElementById("manualTodayBar");
+  if (onlineBar && manualBar) {
+    onlineBar.style.width = reservationsToday ? `${onlineToday / reservationsToday * 100}%` : "0%";
+    manualBar.style.width = reservationsToday ? `${walkinToday / reservationsToday * 100}%` : "0%";
+  }
+
   setText(
     "guestsInside",
     guestsInside,

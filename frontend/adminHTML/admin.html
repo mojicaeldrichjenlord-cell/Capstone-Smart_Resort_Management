@@ -15,6 +15,7 @@
     <!-- Consistent, centered confirmation for accidental logout clicks. -->
     <link rel="stylesheet" href="../sharedCSS/logout-confirm.css" />
     <link rel="stylesheet" href="../adminCSS/admin-manager-tone.css?v=20261119-ui21" />
+    <link rel="stylesheet" href="../adminCSS/admin-overview-ui77.css?v=20261124-ui77" />
 </head>
 
   <body class="has-fixed-navbar admin-manager-tone">
@@ -59,53 +60,52 @@
         </div>
       </section>
 
-      <section class="admin-overview-grid">
+      <section class="admin-overview-grid" aria-label="Reservation overview">
         <div class="overview-card">
-          <div class="overview-label">Total Reservations</div>
+          <div class="overview-card-heading"><svg class="overview-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg><div class="overview-label">Total Reservations</div></div>
           <div class="overview-value" id="totalBookings">0</div>
           <div class="overview-note">All reservation records</div>
         </div>
 
         <div class="overview-card">
-          <div class="overview-label">Partially Paid</div>
-          <div class="overview-value" id="partiallyPaidCount">0</div>
-          <div class="overview-note">Reservations with remaining accommodation balance</div>
-        </div>
-
-        <div class="overview-card">
-          <div class="overview-label">Approved</div>
+          <div class="overview-card-heading"><svg class="overview-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/><path d="m8 15 3 3 5-5"/></svg><div class="overview-label">Approved</div></div>
           <div class="overview-value" id="approvedCount">0</div>
           <div class="overview-note">Confirmed reservations</div>
         </div>
 
         <div class="overview-card">
-          <div class="overview-label">Paid</div>
-          <div class="overview-value" id="paidCount">0</div>
-          <div class="overview-note">Fully paid accommodation records</div>
-        </div>
-
-        <div class="overview-card">
-          <div class="overview-label">Online Reservation Today</div>
-          <div class="overview-value" id="onlineToday">0</div>
-          <div class="overview-note">Customer online reservations created today</div>
-        </div>
-
-        <div class="overview-card">
-          <div class="overview-label">Manual Reservation Today</div>
-          <div class="overview-value" id="walkinToday">0</div>
-          <div class="overview-note">Front Desk manual reservations created today</div>
-        </div>
-
-        <div class="overview-card">
-          <div class="overview-label">Guests Inside</div>
+          <div class="overview-card-heading"><svg class="overview-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M22 21v-2a4 4 0 0 0-3-3.9"/><circle cx="9" cy="7" r="4"/><path d="M16 3.2a4 4 0 0 1 0 7.6"/></svg><div class="overview-label">Guests Inside</div></div>
           <div class="overview-value" id="guestsInside">0</div>
           <div class="overview-note" id="guestsInsideNote">Currently checked-in guests within checkout schedule</div>
         </div>
 
+        <div class="overview-card overview-breakdown-card">
+          <div class="overview-card-heading"><svg class="overview-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/><path d="M12 13v3l2 1"/></svg><div class="overview-label">Reservations Today</div></div>
+          <div class="overview-value" id="reservationsToday">0</div>
+          <div class="overview-breakdown">
+            <div class="overview-breakdown-row"><span>Online</span><strong id="onlineToday">0</strong></div>
+            <div class="overview-breakdown-row"><span>Manual</span><strong id="walkinToday">0</strong></div>
+          </div>
+          <div class="overview-source-track" aria-hidden="true">
+            <span id="onlineTodayBar" class="overview-source-online"></span>
+            <span id="manualTodayBar" class="overview-source-manual"></span>
+          </div>
+          <div class="overview-note">Reservations created today (Philippine time)</div>
+        </div>
+
+        <div class="overview-card overview-breakdown-card">
+          <div class="overview-card-heading"><svg class="overview-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M16 15h2"/></svg><div class="overview-label">Payment Overview</div></div>
+          <div class="overview-breakdown overview-payment-breakdown">
+            <div class="overview-breakdown-row"><span>Partially Paid</span><strong class="overview-value" id="partiallyPaidCount">0</strong></div>
+            <div class="overview-breakdown-row"><span>Fully Paid</span><strong class="overview-value" id="paidCount">0</strong></div>
+          </div>
+          <div class="overview-note">Accommodation payment status</div>
+        </div>
+
         <div class="overview-card">
-          <div class="overview-label">Today Revenue</div>
-          <div class="overview-value" id="todayRevenue">₱0</div>
-          <div class="overview-note">Collected amounts recorded today</div>
+          <div class="overview-card-heading"><svg class="overview-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="2" y="5" width="20" height="14" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 12h.01M18 12h.01"/></svg><div class="overview-label">Today's Collections (Estimate)</div></div>
+          <div class="overview-value overview-money" id="todayRevenue">₱0</div>
+          <div class="overview-note">Reservation payment estimate; may include earlier payments. Not actual daily revenue.</div>
         </div>
       </section>
 
@@ -235,7 +235,7 @@
     <script src="../sharedJS/toast.js"></script>
     <script src="../sharedJS/api-config.js"></script>
     <script src="../js/active-nav.js"></script>
-    <script src="../adminJS/admin.js"></script>
+    <script src="../adminJS/admin.js?v=20261124-ui77"></script>
     <script src="../adminJS/admin-mobile-nav.js"></script>
     <script src="../sharedJS/logout-confirm.js"></script>
   </body>
