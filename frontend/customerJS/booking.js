@@ -278,6 +278,11 @@ function setupBookingForm(user) {
       return;
     }
 
+    if (!window.GuestNameValidation.hasValidNameParts(first_name, middle_name, last_name)) {
+      showMessage(window.GuestNameValidation.NAME_ERROR, "error");
+      return;
+    }
+
     if (!isValidPhilippineMobileNumber(contact_no)) {
       showMessage(
         "Contact number must be exactly 11 digits and start with 09.",

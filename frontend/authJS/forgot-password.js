@@ -200,8 +200,8 @@ async function resetPassword(e) {
     return;
   }
 
-  if (newPassword.length < 8) {
-    showMessage("Password must be at least 8 characters long.", "error");
+  if (newPassword.length < 8 || newPassword.length > 16) {
+    showMessage("Password must be 8–16 characters long.", "error");
     return;
   }
 

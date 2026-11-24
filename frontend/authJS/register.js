@@ -4,7 +4,7 @@
 // - Submit registration form
 // - First name and last name are required
 // - Middle name is optional
-// - Password requires minimum 8 characters and 1 special character
+// - Password requires 8–16 characters and the existing Good/Strong strength rule
 // - Send OTP to user's email
 // - Verify OTP before account can login
 // - Auto-login user after successful OTP verification
@@ -109,7 +109,7 @@ function getPasswordRequirements(password) {
   const value = String(password || "");
 
   return {
-    length: value.length >= 8,
+    length: value.length >= 8 && value.length <= 16,
     uppercase: /[A-Z]/.test(value),
     lowercase: /[a-z]/.test(value),
     number: /\d/.test(value),
@@ -260,6 +260,11 @@ async function submitRegistration(e) {
     !confirmPassword
   ) {
     showMessage("Please fill in all required fields.", "error");
+    return;
+  }
+
+  if (!window.GuestNameValidation.hasValidNameParts(firstName, middleName, lastName)) {
+    showMessage(window.GuestNameValidation.NAME_ERROR, "error");
     return;
   }
 
@@ -619,6 +624,9 @@ function validatePassword(password) {
   // STRONG = all 5 password checks
   // Both are accepted for registration.
   // ==========================================================
+  if (!requirements.length) {
+    return { valid: false, message: "Password must be 8–16 characters long." };
+  }
   if (score < 4) {
     return {
       valid: false,

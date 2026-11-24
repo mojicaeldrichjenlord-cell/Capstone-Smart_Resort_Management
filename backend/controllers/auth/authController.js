@@ -11,6 +11,7 @@
 // ============================================================
 
 const db = require("../../config/db");
+const { getRegistrationName, isValidNewPasswordLength, NAME_ERROR } = require("../../utils/guestInputValidation");
 const bcrypt = require("bcrypt");
 const axios = require("axios");
 const { issueFrontDeskToken } = require("../../middleware/frontDeskAuth");
@@ -35,7 +36,7 @@ function normalizeEmail(email) {
 // SECTION 1.1: Strong registration password validator
 // Purpose:
 // - Matches the Premium Password UI on the register page
-// - Requires 8+ chars, uppercase, lowercase, number, special char
+// - Requires 8–16 chars and the existing Good/Strong strength rule
 // - Applied to NEW REGISTRATIONS only for this phase
 // ============================================================
 
@@ -43,7 +44,7 @@ function validateStrongRegistrationPassword(password) {
   const value = String(password || "");
 
   const requirements = {
-    length: value.length >= 8,
+    length: isValidNewPasswordLength(password),
     uppercase: /[A-Z]/.test(value),
     lowercase: /[a-z]/.test(value),
     number: /\d/.test(value),
@@ -58,6 +59,9 @@ function validateStrongRegistrationPassword(password) {
   // STRONG = all 5 password checks
   // Both are accepted for registration.
   // ==========================================================
+  if (!requirements.length) {
+    return { valid: false, message: "Password must be 8–16 characters long." };
+  }
   if (score < 4) {
     return {
       valid: false,
@@ -205,15 +209,20 @@ async function sendOtpEmail({ email, otp, purpose }) {
 // Stores password hashes and starts the email OTP verification workflow.
 exports.register = async (req, res) => {
   try {
-    const { fullname, email, password, phone, address } = req.body;
+    const { email, password, phone, address } = req.body;
+    const fullname = getRegistrationName(req.body);
 
     const cleanEmail = normalizeEmail(email);
 
-    if (!fullname || !cleanEmail || !password || !phone || !address) {
+    if (!cleanEmail || !password || !phone || !address) {
       return res.status(400).json({
         success: false,
         message: "Please fill in all required fields.",
       });
+    }
+
+    if (!fullname) {
+      return res.status(400).json({ success: false, message: NAME_ERROR });
     }
 
     const passwordValidation =
@@ -862,10 +871,10 @@ exports.resetPasswordWithOtp = async (req, res) => {
       });
     }
 
-    if (newPassword.length < 8) {
+    if (!isValidNewPasswordLength(newPassword)) {
       return res.status(400).json({
         success: false,
-        message: "New password must be at least 8 characters long.",
+        message: "New password must be 8–16 characters long.",
       });
     }
 
@@ -1083,10 +1092,10 @@ exports.changePassword = async (req, res) => {
       });
     }
 
-    if (newPassword.length < 8) {
+    if (!isValidNewPasswordLength(newPassword)) {
       return res.status(400).json({
         success: false,
-        message: "New password must be at least 8 characters long.",
+        message: "New password must be 8–16 characters long.",
       });
     }
 

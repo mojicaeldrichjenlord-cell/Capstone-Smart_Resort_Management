@@ -149,7 +149,7 @@
             <label for="newPassword">New Password</label>
 
             <div class="password-group">
-              <input type="password" id="newPassword" required />
+              <input type="password" id="newPassword" minlength="8" maxlength="16" placeholder="8–16 characters" required />
 
               <button
                 type="button"
@@ -165,7 +165,7 @@
             <label for="confirmNewPassword">Confirm New Password</label>
 
             <div class="password-group">
-              <input type="password" id="confirmNewPassword" required />
+              <input type="password" id="confirmNewPassword" minlength="8" maxlength="16" required />
 
               <button
                 type="button"
@@ -191,7 +191,7 @@
     <script src="../sharedJS/api-config.js"></script>
     <script src="../js/password-toggle.js"></script>
     <script src="../js/active-nav.js"></script>
-    <script src="../adminJS/admin-profile.js"></script>
+    <script src="../adminJS/admin-profile.js?v=20261124-auth71"></script>
     <script src="../adminJS/admin-mobile-nav.js"></script>
     <script src="../sharedJS/logout-confirm.js"></script>
   </body>

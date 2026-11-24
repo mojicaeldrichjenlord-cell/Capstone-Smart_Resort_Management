@@ -93,17 +93,17 @@
             <div class="walkin-grid">
               <div class="walkin-group">
                 <label for="firstName">First Name</label>
-                <input type="text" id="firstName" required />
+                <input type="text" id="firstName" placeholder="Example: Juan" required />
               </div>
 
               <div class="walkin-group">
                 <label for="middleName">Middle Name (Optional)</label>
-                <input type="text" id="middleName" />
+                <input type="text" id="middleName" placeholder="Example: Santos" />
               </div>
 
               <div class="walkin-group">
                 <label for="lastName">Last Name</label>
-                <input type="text" id="lastName" required />
+                <input type="text" id="lastName" placeholder="Example: Dela Cruz" required />
               </div>
 
               <div class="walkin-group">
@@ -239,10 +239,11 @@
     ======================================================= -->
     <script src="../sharedJS/toast.js"></script>
     <script src="../sharedJS/api-config.js"></script>
+    <script src="../sharedJS/guest-name-validation.js?v=20261124-auth71"></script>
     <script src="../sharedJS/manualReservationRoleNav.js"></script>
     <!-- Block expired fixed slots before payment; backend validates again. -->
     <script src="../sharedJS/manual-schedule-guard.js"></script>
-    <script src="../adminJS/admin-walkin.js?v=20261121-ui34"></script>
+    <script src="../adminJS/admin-walkin.js?v=20261124-auth71"></script>
     <script src="../adminJS/admin-mobile-nav.js"></script>
     <script src="../sharedJS/logout-confirm.js"></script>
   </body>

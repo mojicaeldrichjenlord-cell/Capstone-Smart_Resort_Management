@@ -144,8 +144,8 @@ function setupPasswordForm(userId) {
       return;
     }
 
-    if (newPassword.length < 8) {
-      showMessage("New password must be at least 8 characters.", "error");
+    if (newPassword.length < 8 || newPassword.length > 16) {
+      showMessage("New password must be 8–16 characters long.", "error");
       return;
     }
 
