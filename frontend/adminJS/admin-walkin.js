@@ -1640,13 +1640,11 @@ function updateSummary() {
     ? "Full Accommodation Payment (Due Now)" : "Required Down Payment (50%)";
   document.getElementById("requiredDownpayment").textContent = `₱${formatMoney(requiredPayment)}`;
 
-  document.getElementById("highlightAccommodationTotal").textContent = `₱${formatMoney(accommodationTotal)}`;
-  document.getElementById("highlightDownpaymentRow").hidden = isWalkIn;
-  document.getElementById("highlightDownpayment").textContent = `₱${formatMoney(requiredDownpayment)}`;
-  document.getElementById("highlightRemainingLabel").textContent = isWalkIn
-    ? "Accommodation Balance After Full Payment" : "Remaining Accommodation Balance";
+  // Walk-ins already pay the full accommodation total; avoid repeating it or a zero balance.
+  document.getElementById("previewAccommodationRow").hidden = isWalkIn;
+  document.getElementById("previewBalanceRow").hidden = isWalkIn;
+  document.getElementById("previewOtherNote").hidden = isWalkIn;
   document.getElementById("highlightRemainingBalance").textContent = `₱${formatMoney(remainingBalance)}`;
-  document.getElementById("highlightEntranceFee").textContent = `₱${formatMoney(estimatedEntranceFee)}`;
 }
 
 function formatMoney(value) {

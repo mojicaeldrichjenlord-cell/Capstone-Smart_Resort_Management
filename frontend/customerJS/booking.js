@@ -1662,10 +1662,7 @@ function updateSummary() {
   document.getElementById("accommodationTotal").textContent = `₱${formatMoney(accommodationTotal)}`;
   document.getElementById("requiredDownpayment").textContent = `₱${formatMoney(requiredDownpayment)}`;
 
-  document.getElementById("highlightAccommodationTotal").textContent = `₱${formatMoney(accommodationTotal)}`;
-  document.getElementById("highlightDownpayment").textContent = `₱${formatMoney(requiredDownpayment)}`;
   document.getElementById("highlightRemainingBalance").textContent = `₱${formatMoney(remainingBalance)}`;
-  document.getElementById("highlightEntranceFee").textContent = `₱${formatMoney(estimatedEntranceFee)}`;
 }
 
 // ============================================================

@@ -19,6 +19,7 @@ const manualHtml = read("frontend/adminHTML/admin-walkin.html");
 const manualJs = read("frontend/adminJS/admin-walkin.js");
 const manualCss = read("frontend/adminCSS/admin-walkin.css");
 const paymentJs = read("frontend/adminJS/admin-walkin-payment.js");
+const previewCss = read("frontend/sharedCSS/reservation-preview.css");
 
 test("UI-34 reports show exactly two paid-charge cards, not the three removed cards", () => {
   const section = reportsHtml.match(/<section class="report-charge-grid"[\s\S]*?<\/section>/)?.[0] || "";
@@ -77,11 +78,12 @@ test("UI-34 walk-in preview shows full accommodation payment and NO 50% card", (
   h.update();
   assert.equal(h.element("requiredPaymentLabel").textContent, "Full Accommodation Payment (Due Now)");
   assert.equal(h.element("requiredDownpayment").textContent, "₱3,000.00");
-  assert.equal(h.element("highlightDownpaymentRow").hidden, true);
+  assert.equal(h.element("previewAccommodationRow").hidden, true);
+  assert.equal(h.element("previewBalanceRow").hidden, true);
+  assert.equal(h.element("previewOtherNote").hidden, true);
   assert.equal(h.element("highlightRemainingBalance").textContent, "₱0.00");
-  assert.match(h.element("highlightRemainingLabel").textContent, /After Full Payment/);
-  assert.equal(h.element("highlightEntranceFee").textContent, "₱750.00");
-  assert.equal(h.element("highlightAccommodationTotal").textContent, "₱3,000.00");
+  assert.equal(h.element("estimatedEntranceFee").textContent, "₱750.00");
+  assert.equal(h.element("accommodationTotal").textContent, "₱3,000.00");
 });
 
 test("UI-34 Facebook manual reservation still previews a 50% minimum payment", () => {
@@ -90,22 +92,25 @@ test("UI-34 Facebook manual reservation still previews a 50% minimum payment", (
   h.update();
   assert.equal(h.element("requiredPaymentLabel").textContent, "Required Down Payment (50%)");
   assert.equal(h.element("requiredDownpayment").textContent, "₱1,500.00");
-  assert.equal(h.element("highlightDownpaymentRow").hidden, false);
-  assert.equal(h.element("highlightDownpayment").textContent, "₱1,500.00");
+  assert.equal(h.element("previewAccommodationRow").hidden, false);
+  assert.equal(h.element("previewBalanceRow").hidden, false);
+  assert.equal(h.element("previewOtherNote").hidden, false);
   assert.equal(h.element("highlightRemainingBalance").textContent, "₱1,500.00");
   h.element("manualReservationType").value = "walkin";
   h.update();
-  assert.equal(h.element("highlightDownpaymentRow").hidden, true,
-    "Switching back to walk-in must remove the deposit preview again");
+  assert.equal(h.element("previewAccommodationRow").hidden, true);
+  assert.equal(h.element("previewBalanceRow").hidden, true);
+  assert.equal(h.element("previewOtherNote").hidden, true);
+  assert.equal(h.element("requiredDownpayment").textContent, "₱3,000.00");
 });
 
 test("UI-34 preview code is presentation-only; secure payment flow still enforces full walk-in", () => {
   assert.match(manualHtml, /id="requiredPaymentLabel"/);
-  assert.match(manualHtml, /id="highlightDownpaymentRow" hidden/);
-  assert.match(manualHtml, /id="highlightRemainingLabel"/);
-  assert.match(manualHtml, /admin-walkin\.js\?v=20261121-ui34/);
+  assert.match(manualHtml, /id="previewAccommodationRow" hidden/);
+  assert.match(manualHtml, /id="previewBalanceRow" hidden/);
+  assert.match(manualHtml, /admin-walkin\.js\?v=20261124-ui76/);
   assert.match(manualHtml, /admin-walkin\.css\?v=20261121-ui35/);
-  assert.match(manualCss, /#highlightDownpaymentRow\[hidden\]\s*\{\s*display:\s*none !important;/);
+  assert.match(previewCss, /\.reservation-preview-row\[hidden\][^{]*\{\s*display: none !important;/);
   assert.match(manualJs, /const isWalkIn = getManualReservationType\(\) === "walkin"/);
   assert.match(manualJs, /const requiredPayment = isWalkIn \? accommodationTotal : requiredDownpayment/);
   // Payment UI and submission logic must still force full payment for walk-ins.
