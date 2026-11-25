@@ -176,7 +176,11 @@ if (loginForm) {
         window.location.href = destination;
       }, 600);
     } catch (error) {
-      if (error.code === "ACTIVE_ACCOUNT_CONFLICT" && window.ArvicAccountSession.showConflict()) return;
+      if (error.code === "ACTIVE_ACCOUNT_CONFLICT") {
+        if (await window.ArvicAccountSession.restoreAndRoute()) return;
+        window.location.reload();
+        return;
+      }
       console.error("login error:", error);
 
       showMessage(

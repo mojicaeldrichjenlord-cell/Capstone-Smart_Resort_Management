@@ -26,7 +26,7 @@ const API_BASE =
   const PREFIX = {customer:"cus1",admin:"adm1",frontdesk:"fd1",manager:"mgr1",housekeeping:"hk1"};
   const ROUTES = {customer:"../customerHTML/index.html",admin:"../adminHTML/admin.html",frontdesk:"../frontdeskHTML/frontdeskDashboard.html",manager:"../managerHTML/managerDashboard.html",housekeeping:"../housekeepingHTML/housekeepingDashboard.html"};
   const LEGACY_AI = ["smartresort_ai_context_v1","smartresort_ai_chat_history_v1","smartresort_ai_window_state_v1"];
-  const CONFLICT = "Another account is currently signed in on this browser. Log out of that account first, or use an incognito window or another browser.";
+  const CONFLICT = "Please sign in again to restore your current account.";
   const roleOf = value => { const r=String(value||"").trim().toLowerCase(); return r==="staff"?"frontdesk":r; };
   function identity(user) {
     const id=Number(user?.id),role=roleOf(user?.role);
@@ -91,7 +91,9 @@ const API_BASE =
       if(!existing||existing.identity!==info.identity||!tabInfo(user)) clearTab();
       else Object.values(KEYS).filter(k=>k!==KEYS[roleOf(user.role)]).forEach(k=>sessionStorage.removeItem(k));
       sessionStorage.setItem(KEYS[roleOf(user.role)],token);
-      localStorage.setItem(META,JSON.stringify({identity:info.identity,expires:Math.max(info.expires,existing?.expires||0)}));
+      const previous=parse(localStorage.getItem(META));
+      const epoch=previous?.identity===info.identity && existing && previous.epoch ? previous.epoch : nonce();
+      localStorage.setItem(META,JSON.stringify({identity:info.identity,expires:Math.max(info.expires,existing?.expires||0),epoch}));
       localStorage.setItem("user",JSON.stringify({...user,role:roleOf(user.role)}));
       LEGACY_AI.forEach(k=>localStorage.removeItem(k));
     };
@@ -99,40 +101,40 @@ const API_BASE =
     // Synchronous recheck for older browsers without Web Locks.
     return write();
   }
-  function showConflict() {
-    const current=active();
-    if(!current) return false;
-    if(typeof HTMLDialogElement==="undefined"||!document.body) return false;
-    const dialog=document.createElement("dialog");
-    dialog.setAttribute("aria-label","Active Account Detected");
-    dialog.style.cssText="width:min(440px,calc(100% - 32px));box-sizing:border-box;border:1px solid #476174;border-radius:18px;padding:24px;background:#223548;color:#edf5fa;box-shadow:0 20px 80px #0f172a66;font:inherit;";
-    const title=document.createElement("h2"); title.textContent="Active Account Detected";title.style.margin="0 0 12px";
-    const desc=document.createElement("p");desc.textContent=CONFLICT;desc.style.lineHeight="1.55";
-    const button=document.createElement("button");button.type="button";button.textContent="Return to Current Account";button.style.cssText="width:100%;padding:12px;border:0;border-radius:10px;background:#0f766e;color:white;font:inherit;font-weight:700;cursor:pointer;";
-    button.addEventListener("click",()=>{
-      dialog.close();
-      if(tabInfo(current.user)) location.href=ROUTES[roleOf(current.user.role)];
-      else if(/\/login\.html$/i.test(location.pathname)){
-        const email=document.getElementById("email");
-        if(email&&current.user.email)email.value=current.user.email;
-        document.getElementById("password")?.focus();
-      }else location.href="../authHTML/login.html";
-    });
-    dialog.addEventListener("close",()=>dialog.remove(),{once:true});
-    const logout=document.createElement("button");logout.type="button";logout.textContent="Log Out Current Account";
-    logout.style.cssText="width:100%;margin-top:8px;padding:10px;border:1px solid #7892a5;border-radius:10px;background:transparent;color:#edf5fa;font:inherit;cursor:pointer;";
-    logout.addEventListener("click",()=>{
-      if(!window.confirm("Log out the current account from all tabs of this browser profile?"))return;
-      signOut();dialog.close();location.href="../authHTML/login.html";
-    });
-    dialog.append(title,desc,button,logout);document.body.append(dialog);
-    if(typeof dialog.showModal!=="function"){dialog.remove();return false;}
-    dialog.showModal();return true;
+  // AUTH-100: hand off a still-valid signed token only between live same-origin
+  // tabs. Never persist the bearer in localStorage or use account metadata as auth.
+  function nonce() {
+    const bytes=new Uint8Array(16);
+    window.crypto.getRandomValues(bytes);
+    return Array.from(bytes,n=>n.toString(16).padStart(2,"0")).join("");
   }
-  const protectedPage=/\/(?:adminHTML|frontdeskHTML|managerHTML|housekeepingHTML)\//i.test(location.pathname) ||
-    /\/customerHTML\/(?:index|rooms|accommodation-details|booking|booking-payment|my-bookings|profile|resort-map)\.html$/i.test(location.pathname);
+  const path=location.pathname;
+  const protectedPage=/\/(?:adminHTML|frontdeskHTML|managerHTML|housekeepingHTML)\//i.test(path) ||
+    /\/customerHTML\/(?:index|rooms|accommodation-details|booking|booking-payment|my-bookings|profile|resort-map)\.html$/i.test(path);
+  const authPage=/\/authHTML\/(?:login|register)\.html$/i.test(path);
+  const loginPage=/\/authHTML\/login\.html$/i.test(path);
+  const landingPage=path==="/"||/\/landing\.html$/i.test(path);
   const currentUser=profile();
   const initial=tabInfo(currentUser);
+  function roleAllowed(user) {
+    const role=roleOf(user?.role);
+    if(/\/adminHTML\/admin-walkin(?:-payment)?\.html$/i.test(path))return role==="frontdesk"||role==="admin";
+    if(/\/adminHTML\//i.test(path))return role==="admin";
+    if(/\/frontdeskHTML\//i.test(path))return role==="frontdesk";
+    if(/\/managerHTML\//i.test(path))return role==="manager";
+    if(/\/housekeepingHTML\//i.test(path))return role==="housekeeping";
+    return role==="customer";
+  }
+  const dashboard=user=>ROUTES[roleOf(user?.role)]||"../authHTML/login.html";
+  let channel=null;
+  try { if(typeof window.BroadcastChannel==="function")channel=new window.BroadcastChannel("arvic-account-session-v2"); } catch (_) {}
+  function metadata(){return parse(localStorage.getItem(META));}
+  // Existing sessions from AUTH-98 get a generation without changing their account.
+  if(initial){
+    const existing=active(),old=metadata();
+    if(existing)localStorage.setItem(META,JSON.stringify({identity:existing.identity,expires:existing.expires,epoch:old?.identity===existing.identity&&old.epoch?old.epoch:nonce()}));
+  }
+  let currentEpoch=initial?metadata()?.epoch:null;
   let leaving=false;
   function leave() {
     if(leaving)return;leaving=true;
@@ -142,21 +144,118 @@ const API_BASE =
       location.replace("../authHTML/login.html");
     }
   }
-  if(protectedPage&&!initial){
-    // A fresh tab must authenticate the same account; do not let an old page handler
-    // clear the profile-wide identity merely because this tab has no token.
-    document.addEventListener("DOMContentLoaded",e=>e.stopImmediatePropagation(),true);
-    leave();
-  } else if(initial){
+  function suspendPage() {
+    document.documentElement.style.visibility="hidden";
+    document.addEventListener("DOMContentLoaded",event=>event.stopImmediatePropagation(),true);
+  }
+  // Only a tab with the current, unexpired token may answer. The request carries
+  // a random nonce and the current account generation; replies after logout are rejected.
+  const pending=new Map();
+  if(channel)channel.addEventListener("message",event=>{
+    const msg=event.data;
+    if(!msg||typeof msg!=="object")return;
+    const user=profile(),meta=metadata(),info=tabInfo(user);
+    if(msg.type==="request"&&info&&meta?.identity===info.identity&&meta.epoch&&
+       msg.identity===info.identity&&msg.epoch===meta.epoch&&
+       typeof msg.nonce==="string"&&/^[a-f0-9]{32}$/.test(msg.nonce)){
+      channel.postMessage({type:"reply",nonce:msg.nonce,identity:info.identity,epoch:meta.epoch,token:sessionStorage.getItem(KEYS[roleOf(user.role)])});
+    }else if(msg.type==="reply"){
+      const request=pending.get(msg.nonce);
+      if(request&&msg.identity===request.identity&&msg.epoch===request.epoch&&
+         meta?.identity===request.identity&&meta.epoch===request.epoch&&identity(user)===request.identity&&tokenInfo(msg.token,user)){
+        request.finish(msg.token);
+      }
+    }
+  });
+  async function requestToken(existing) {
+    if(!channel)return null;
+    // A current sender may be upgrading its metadata from the preceding release.
+    for(let attempt=0;attempt<3;attempt++){
+      const meta=metadata();
+      if(identity(profile())!==existing.identity)return null;
+      if(meta?.identity===existing.identity&&meta.epoch){
+        const id=nonce();
+        const token=await new Promise(resolve=>{
+          const finish=value=>{clearTimeout(timer);pending.delete(id);resolve(value);};
+          const timer=setTimeout(()=>finish(null),700);
+          pending.set(id,{identity:existing.identity,epoch:meta.epoch,finish});
+          channel.postMessage({type:"request",nonce:id,identity:existing.identity,epoch:meta.epoch});
+        });
+        if(token){
+          const latest=metadata();
+          if(latest?.identity!==existing.identity||latest.epoch!==meta.epoch||identity(profile())!==existing.identity)return null;
+          const user=profile(),info=tokenInfo(token,user);
+          if(!info)return null;
+          clearTab();
+          sessionStorage.setItem(KEYS[roleOf(user.role)],token);
+          currentEpoch=latest.epoch;
+          return token;
+        }
+      }else await new Promise(resolve=>setTimeout(resolve,250));
+    }
+    return null;
+  }
+  let restoring=null;
+  function restoreAndRoute() {
+    if(restoring)return restoring;
+    restoring=(async()=>{
+      const existing=active();
+      if(!existing)return false;
+      if(tabInfo(existing.user)){
+        location.replace(dashboard(existing.user));
+        return true;
+      }
+      if(await requestToken(existing)){
+        // A protected URL for this role can reopen itself with the new tab token.
+        if(protectedPage&&roleAllowed(existing.user))location.reload();
+        else location.replace(dashboard(existing.user));
+        return true;
+      }
+      return false;
+    })();
+    return restoring;
+  }
+  function restrictLogin() {
+    // No live tab could respond (all tabs closed, suspended, or older browser).
+    // Reauthenticate the same account; do not silently trust a cached identity.
     const existing=active();
-    if(existing)localStorage.setItem(META,JSON.stringify({identity:existing.identity,expires:existing.expires}));
+    const email=document.getElementById("email");
+    if(loginPage&&existing&&email&&existing.user.email){
+      email.value=existing.user.email;
+      email.readOnly=true;
+      const note=document.createElement("p");
+      note.textContent="Sign in again to restore your current account.";
+      note.style.cssText="font-size:.85rem;margin:8px 0;color:inherit;";
+      email.parentElement?.appendChild(note);
+      // Remove alternative-account registration link while this identity is active.
+      document.querySelectorAll('a[href*="register.html"]').forEach(a=>a.hidden=true);
+    }
+  }
+  const gate=active();
+  if(protectedPage&&!initial){
+    suspendPage();
+    restoreAndRoute().then(ok=>{if(!ok)leave();});
+  }else if(protectedPage&&initial&&!roleAllowed(currentUser)){
+    suspendPage();
+    location.replace(dashboard(currentUser));
+  }else if((authPage||landingPage)&&gate){
+    // No login form or warning flashes when a valid existing session is available.
+    document.documentElement.style.visibility="hidden";
+    restoreAndRoute().then(ok=>{
+      if(ok)return;
+      if(!loginPage){location.replace("../authHTML/login.html");return;}
+      restrictLogin();
+      document.documentElement.style.visibility="";
+    });
   }
   window.addEventListener("storage",event=>{
-    if(event.key!=="user"&&event.key!==null)return;
-    if(initial&&identity(profile())!==initial.identity)leave();
+    if(event.key==="user"||event.key===null){
+      if(initial&&(event.key===null||identity(parse(event.newValue))!==initial.identity))leave();
+    }
+    if(event.key===META&&initial&&currentEpoch&&parse(event.newValue)?.epoch!==currentEpoch)leave();
   });
   window.addEventListener("pageshow",event=>{
-    if(event.persisted&&protectedPage&&(!tabInfo()||identity(profile())!==initial?.identity))leave();
+    if(event.persisted&&protectedPage&&(!tabInfo()||identity(profile())!==initial?.identity||metadata()?.epoch!==currentEpoch))leave();
   });
-  window.ArvicAccountSession=Object.freeze({active,identity,assertCompatible,establish,signOut,endTab:clearTab,showConflict,tabInfo,CONFLICT});
+  window.ArvicAccountSession=Object.freeze({active,identity,assertCompatible,establish,signOut,endTab:clearTab,restoreAndRoute,tabInfo,CONFLICT});
 })();
