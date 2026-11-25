@@ -1,6 +1,6 @@
 # AI Mock Regression — testing branch
 
-Source commit: 3c12d7801003c706ad3bf029d3e846e6a8c48c67
+Source commit: 9f32fc1d07f5b0e689e1e0d6ed4f9cdd778d5bf1
 Exit code: 1
 
 No live Gemini, PayPal or production MySQL credentials.
@@ -10,61 +10,61 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: UI-81 reports retain both paid-charge figures in one card, not the three removed cards
     ok 1 - UI-81 reports retain both paid-charge figures in one card, not the three removed cards
       ---
-      duration_ms: 2.340591
+      duration_ms: 1.906015
       type: 'test'
       ...
     # Subtest: UI-34 reports retain paid charges, accurate caveat and balanced print layout
     ok 2 - UI-34 reports retain paid charges, accurate caveat and balanced print layout
       ---
-      duration_ms: 0.367584
+      duration_ms: 0.393415
       type: 'test'
       ...
     # Subtest: UI-34 walk-in preview shows full accommodation payment and NO 50% card
     ok 3 - UI-34 walk-in preview shows full accommodation payment and NO 50% card
       ---
-      duration_ms: 30.052501
+      duration_ms: 284.469129
       type: 'test'
       ...
     # Subtest: UI-34 Facebook manual reservation still previews a 50% minimum payment
     ok 4 - UI-34 Facebook manual reservation still previews a 50% minimum payment
       ---
-      duration_ms: 1.153176
+      duration_ms: 1.450908
       type: 'test'
       ...
     # Subtest: UI-34 preview code is presentation-only; secure payment flow still enforces full walk-in
     ok 5 - UI-34 preview code is presentation-only; secure payment flow still enforces full walk-in
       ---
-      duration_ms: 0.417547
+      duration_ms: 0.384462
       type: 'test'
       ...
     # Subtest: AI-44 customer voice has no manual language selector or persisted language setting
     ok 6 - AI-44 customer voice has no manual language selector or persisted language setting
       ---
-      duration_ms: 2.532415
+      duration_ms: 2.452858
       type: 'test'
       ...
     # Subtest: AI-44 voice and text requests detect each utterance independently
     ok 7 - AI-44 voice and text requests detect each utterance independently
       ---
-      duration_ms: 0.284982
+      duration_ms: 0.293036
       type: 'test'
       ...
     # Subtest: AI-44 signed Gemini audio accepts mixed spoken languages without translating
     ok 8 - AI-44 signed Gemini audio accepts mixed spoken languages without translating
       ---
-      duration_ms: 0.100939
+      duration_ms: 0.109733
       type: 'test'
       ...
     # Subtest: AI-44 safe Romanized Mandarin greeting and multilingual resort guard
     ok 9 - AI-44 safe Romanized Mandarin greeting and multilingual resort guard
       ---
-      duration_ms: 0.160057
+      duration_ms: 0.1951
       type: 'test'
       ...
     # Subtest: AI-44 all authenticated Customer pages load fresh voice implementation
     not ok 10 - AI-44 all authenticated Customer pages load fresh voice implementation
       ---
-      duration_ms: 1.243199
+      duration_ms: 1.768
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-auto-multilingual-ui44.test.js:51:1'
       failureType: 'testCodeFailure'
@@ -465,55 +465,55 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: AI-36 history trivia is politely refused with zero Gemini credits or SQL reads
     ok 11 - AI-36 history trivia is politely refused with zero Gemini credits or SQL reads
       ---
-      duration_ms: 97.807509
+      duration_ms: 147.56978
       type: 'test'
       ...
     # Subtest: AI-36 second non-resort turn is still blocked even after prior refusal
     ok 12 - AI-36 second non-resort turn is still blocked even after prior refusal
       ---
-      duration_ms: 18.307716
+      duration_ms: 8.819727
       type: 'test'
       ...
     # Subtest: AI-36 mixed history and parking request cannot get a generic AI answer
     ok 13 - AI-36 mixed history and parking request cannot get a generic AI answer
       ---
-      duration_ms: 9.185585
+      duration_ms: 4.474285
       type: 'test'
       ...
     # Subtest: Retired AI create-booking route refuses unauthenticated direct writes
     ok 14 - Retired AI create-booking route refuses unauthenticated direct writes
       ---
-      duration_ms: 10.266002
+      duration_ms: 2.700176
       type: 'test'
       ...
     # Subtest: Retired AI create-booking cannot write with a spoofed user_id
     ok 15 - Retired AI create-booking cannot write with a spoofed user_id
       ---
-      duration_ms: 5.661042
+      duration_ms: 3.010587
       type: 'test'
       ...
     # Subtest: AI chat with missing message is rejected without DB access
     ok 16 - AI chat with missing message is rejected without DB access
       ---
-      duration_ms: 4.350144
+      duration_ms: 2.850549
       type: 'test'
       ...
     # Subtest: AI-LIVE-05 count 45 cottages then cheapest follows cottage scope and exact prices
     ok 17 - AI-LIVE-05 count 45 cottages then cheapest follows cottage scope and exact prices
       ---
-      duration_ms: 69.509619
+      duration_ms: 64.464756
       type: 'test'
       ...
     # Subtest: AI-LIVE-05 named cheapest replies reread Admin pricing, no cached ₱800
     ok 18 - AI-LIVE-05 named cheapest replies reread Admin pricing, no cached ₱800
       ---
-      duration_ms: 12.329835
+      duration_ms: 18.211656
       type: 'test'
       ...
     # Subtest: AI-LIVE-05 overnight cheapest ignores cheaper Day Tour and zero prices
     not ok 19 - AI-LIVE-05 overnight cheapest ignores cheaper Day Tour and zero prices
       ---
-      duration_ms: 6.794579
+      duration_ms: 9.596673
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:363:1'
       failureType: 'testCodeFailure'
@@ -539,25 +539,25 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: AI-LIVE-05 same-priced listings never select an arbitrary old room
     ok 20 - AI-LIVE-05 same-priced listings never select an arbitrary old room
       ---
-      duration_ms: 4.195765
+      duration_ms: 5.516955
       type: 'test'
       ...
     # Subtest: AI-LIVE-05 selected cheapest room remains focused for a CR follow-up
     ok 21 - AI-LIVE-05 selected cheapest room remains focused for a CR follow-up
       ---
-      duration_ms: 14.051872
+      duration_ms: 16.586228
       type: 'test'
       ...
     # Subtest: AI-LIVE-05 unknown scope asks rooms or cottages without spending credits
     ok 22 - AI-LIVE-05 unknown scope asks rooms or cottages without spending credits
       ---
-      duration_ms: 4.190898
+      duration_ms: 7.270443
       type: 'test'
       ...
     # Subtest: AI-LIVE-04 Ilang rooms meron kayo returns a count, not room cards
     not ok 23 - AI-LIVE-04 Ilang rooms meron kayo returns a count, not room cards
       ---
-      duration_ms: 2.862484
+      duration_ms: 3.641796
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:451:1'
       failureType: 'testCodeFailure'
@@ -580,56 +580,56 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: Inventory counting always re-reads Admin state and never caps at 150
     ok 24 - Inventory counting always re-reads Admin state and never caps at 150
       ---
-      duration_ms: 5.039302
+      duration_ms: 5.803141
       type: 'test'
       ...
     # Subtest: Count questions distinguish room, cottage, function and available listing statuses
     ok 25 - Count questions distinguish room, cottage, function and available listing statuses
       ---
-      duration_ms: 11.556857
+      duration_ms: 11.805358
       type: 'test'
       ...
     # Subtest: AI-37 generic recommendation asks for guests first, no random cards or credits
     ok 26 - AI-37 generic recommendation asks for guests first, no random cards or credits
       ---
-      duration_ms: 2.568189
+      duration_ms: 4.204934
       type: 'test'
       ...
     # Subtest: AI-37 natural 4 kami follow-up filters fresh rooms by capacity and gives cards
     ok 27 - AI-37 natural 4 kami follow-up filters fresh rooms by capacity and gives cards
       ---
-      duration_ms: 6.050833
+      duration_ms: 6.326319
       type: 'test'
       ...
     # Subtest: AI-37 bare 4, apat kami and 4 po follow the guest prompt without extra Gemini
     ok 28 - AI-37 bare 4, apat kami and 4 po follow the guest prompt without extra Gemini
       ---
-      duration_ms: 10.003174
+      duration_ms: 6.421871
       type: 'test'
       ...
     # Subtest: AI-37 previously supplied guests are reused; explicit group size takes precedence
     ok 29 - AI-37 previously supplied guests are reused; explicit group size takes precedence
       ---
-      duration_ms: 6.654221
+      duration_ms: 6.46113
       type: 'test'
       ...
     # Subtest: AI-38 after 10 guests, 7 pala refreshes matching rooms instead of refusing the topic
     ok 30 - AI-38 after 10 guests, 7 pala refreshes matching rooms instead of refusing the topic
       ---
-      duration_ms: 11.631452
+      duration_ms: 10.156706
       type: 'test'
       ...
     # Subtest: AI-38 corrected guest count sees newly updated Admin prices and inventory
     ok 31 - AI-38 corrected guest count sees newly updated Admin prices and inventory
       ---
-      duration_ms: 6.265426
+      duration_ms: 6.236245
       type: 'test'
       ...
     # Gemini request failed (HTTP 500).
     # Subtest: AI-38 original family-room scope persists after revising 10 guests to 7
     not ok 32 - AI-38 original family-room scope persists after revising 10 guests to 7
       ---
-      duration_ms: 7.073321
+      duration_ms: 8.337339
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:711:1'
       failureType: 'testCodeFailure'
@@ -652,38 +652,38 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: AI-45 natural two-to-seven follow-up retains group search even after language switch
     ok 33 - AI-45 natural two-to-seven follow-up retains group search even after language switch
       ---
-      duration_ms: 6.9985
+      duration_ms: 6.19275
       type: 'test'
       ...
     # Subtest: AI-45 a guest-specific family-room preview keeps category on count correction
     ok 34 - AI-45 a guest-specific family-room preview keeps category on count correction
       ---
-      duration_ms: 3.815964
+      duration_ms: 4.213367
       type: 'test'
       ...
     # Subtest: AI-38 stale or unrelated numeric messages cannot bypass resort-only restriction
     ok 35 - AI-38 stale or unrelated numeric messages cannot bypass resort-only restriction
       ---
-      duration_ms: 5.315141
+      duration_ms: 5.729652
       type: 'test'
       ...
     # Subtest: AI-37 selecting a named accommodation or browsing rooms still works without guest question
     ok 36 - AI-37 selecting a named accommodation or browsing rooms still works without guest question
       ---
-      duration_ms: 3.403453
+      duration_ms: 3.496365
       type: 'test'
       ...
     # Subtest: Undated room discovery uses fresh DB preview without claiming slot availability
     ok 37 - Undated room discovery uses fresh DB preview without claiming slot availability
       ---
-      duration_ms: 3.436121
+      duration_ms: 1.933756
       type: 'test'
       ...
     # Gemini request failed (HTTP 500).
     # Subtest: AI-LIVE-03 focused single preview carries through CR follow-up using fresh DB
     not ok 38 - AI-LIVE-03 focused single preview carries through CR follow-up using fresh DB
       ---
-      duration_ms: 3.71894
+      duration_ms: 2.50826
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:860:1'
       failureType: 'testCodeFailure'
@@ -707,7 +707,7 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: AI-LIVE-03 multiple possible rooms never inherit old focus or invent CR
     not ok 39 - AI-LIVE-03 multiple possible rooms never inherit old focus or invent CR
       ---
-      duration_ms: 4.886878
+      duration_ms: 2.555781
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:907:1'
       failureType: 'testCodeFailure'
@@ -730,73 +730,73 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: Invalid same-day reversed times never query availability
     ok 40 - Invalid same-day reversed times never query availability
       ---
-      duration_ms: 18.962223
+      duration_ms: 90.531393
       type: 'test'
       ...
     # Subtest: Valid same-day day tour checks current reservation_items and offers a suggestion
     ok 41 - Valid same-day day tour checks current reservation_items and offers a suggestion
       ---
-      duration_ms: 8.875046
+      duration_ms: 11.318313
       type: 'test'
       ...
     # Subtest: Occupied window cannot generate an AI booking suggestion
     ok 42 - Occupied window cannot generate an AI booking suggestion
       ---
-      duration_ms: 8.996425
+      duration_ms: 5.038504
       type: 'test'
       ...
     # Subtest: Alternative schedule checks active reservation_items without writing
     ok 43 - Alternative schedule checks active reservation_items without writing
       ---
-      duration_ms: 5.825666
+      duration_ms: 3.32164
       type: 'test'
       ...
     # Subtest: Legacy SQL writer removed; frontend navigates through secure Customer form
     ok 44 - Legacy SQL writer removed; frontend navigates through secure Customer form
       ---
-      duration_ms: 1.703048
+      duration_ms: 1.679999
       type: 'test'
       ...
     # Subtest: Spanish text chat overrides an older English chat-language preference
     ok 45 - Spanish text chat overrides an older English chat-language preference
       ---
-      duration_ms: 6.676203
+      duration_ms: 7.330612
       type: 'test'
       ...
     # Subtest: Mandarin text chat overrides an older Spanish chat-language preference
     ok 46 - Mandarin text chat overrides an older Spanish chat-language preference
       ---
-      duration_ms: 27.847294
+      duration_ms: 24.281753
       type: 'test'
       ...
     # Subtest: Voice response switches to Mandarin when the guest speaks Mandarin
     ok 47 - Voice response switches to Mandarin when the guest speaks Mandarin
       ---
-      duration_ms: 2.990162
+      duration_ms: 3.42966
       type: 'test'
       ...
     # Subtest: Voice response switches back to English when the guest speaks English
     ok 48 - Voice response switches back to English when the guest speaks English
       ---
-      duration_ms: 5.633751
+      duration_ms: 3.768414
       type: 'test'
       ...
     # Subtest: AI-44 Taglish and Spanish voice messages follow the latest guest language
     ok 49 - AI-44 Taglish and Spanish voice messages follow the latest guest language
       ---
-      duration_ms: 5.279558
+      duration_ms: 4.774041
       type: 'test'
       ...
     # Subtest: Live voice Gemini prompt remains concise and obeys booking rules
     ok 50 - Live voice Gemini prompt remains concise and obeys booking rules
       ---
-      duration_ms: 4.527846
+      duration_ms: 3.840412
       type: 'test'
       ...
     # Subtest: Normal text chat is not forced into live spoken-conversation style
     not ok 51 - Normal text chat is not forced into live spoken-conversation style
       ---
-      duration_ms: 2.287473
+      duration_ms: 2.775618
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:1077:1'
       failureType: 'testCodeFailure'
@@ -814,40 +814,40 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: English translation route responds with the English text
     ok 52 - English translation route responds with the English text
       ---
-      duration_ms: 2.858457
+      duration_ms: 3.103325
       type: 'test'
       ...
     # Subtest: Temporary Gemini 503 during extraction recovers after one retry
     ok 53 - Temporary Gemini 503 during extraction recovers after one retry
       ---
-      duration_ms: 703.943375
+      duration_ms: 703.670537
       type: 'test'
       ...
     # Gemini request failed (HTTP 503).
     # Subtest: Persistent Gemini 503 returns safe HTTP 503 without exposing SDK errors
     ok 54 - Persistent Gemini 503 returns safe HTTP 503 without exposing SDK errors
       ---
-      duration_ms: 703.506177
+      duration_ms: 703.817761
       type: 'test'
       ...
     # Gemini English translation failed (HTTP 429).
     # Subtest: Gemini free-tier 429 is not retried on translation
     ok 55 - Gemini free-tier 429 is not retried on translation
       ---
-      duration_ms: 2.085785
+      duration_ms: 2.340211
       type: 'test'
       ...
     # Subtest: AI reply actions offer English and Tagalog, not Taglish translation
     ok 56 - AI reply actions offer English and Tagalog, not Taglish translation
       ---
-      duration_ms: 0.517866
+      duration_ms: 0.77289
       type: 'test'
       ...
     # Gemini request failed (HTTP 500).
     # Subtest: New Admin accommodation appears immediately in the verified preview catalog
     not ok 57 - New Admin accommodation appears immediately in the verified preview catalog
       ---
-      duration_ms: 3.361241
+      duration_ms: 4.339964
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:1141:1'
       failureType: 'testCodeFailure'
@@ -870,20 +870,20 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: Admin price update is reflected immediately without stale AI cache
     ok 58 - Admin price update is reflected immediately without stale AI cache
       ---
-      duration_ms: 3.979585
+      duration_ms: 4.989911
       type: 'test'
       ...
     # Subtest: Unavailable accommodation is described but not recommended
     ok 59 - Unavailable accommodation is described but not recommended
       ---
-      duration_ms: 1.877196
+      duration_ms: 2.31255
       type: 'test'
       ...
     # Gemini request failed (HTTP 500).
     # Subtest: Budget and capacity filter read current rates and exclude mismatches
     not ok 60 - Budget and capacity filter read current rates and exclude mismatches
       ---
-      duration_ms: 1.607197
+      duration_ms: 5.484246
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:1202:1'
       failureType: 'testCodeFailure'
@@ -906,56 +906,56 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: Unrelated conversation is not forced to read the accommodation catalog
     ok 61 - Unrelated conversation is not forced to read the accommodation catalog
       ---
-      duration_ms: 4.175586
+      duration_ms: 2.558285
       type: 'test'
       ...
     # Subtest: Verified date availability uses reservation schedules, not catalog guesses
     ok 62 - Verified date availability uses reservation schedules, not catalog guesses
       ---
-      duration_ms: 2.706854
+      duration_ms: 2.503384
       type: 'test'
       ...
     # Subtest: HTTP 429 on accommodation inquiry returns actual live catalog without Gemini
     ok 63 - HTTP 429 on accommodation inquiry returns actual live catalog without Gemini
       ---
-      duration_ms: 3.887219
+      duration_ms: 4.448216
       type: 'test'
       ...
     # Subtest: Database backup rereads newly updated Admin prices during HTTP 429
     ok 64 - Database backup rereads newly updated Admin prices during HTTP 429
       ---
-      duration_ms: 2.837847
+      duration_ms: 3.52325
       type: 'test'
       ...
     # Subtest: Maintenance rooms are excluded from 429 offline recommendations
     ok 65 - Maintenance rooms are excluded from 429 offline recommendations
       ---
-      duration_ms: 2.234084
+      duration_ms: 2.72352
       type: 'test'
       ...
     # Subtest: Voice quota fallback uses language of current spoken question
     ok 66 - Voice quota fallback uses language of current spoken question
       ---
-      duration_ms: 2.316766
+      duration_ms: 2.735047
       type: 'test'
       ...
     # Subtest: HTTP 429 with valid stay details checks reservation_items and creates no booking
     ok 67 - HTTP 429 with valid stay details checks reservation_items and creates no booking
       ---
-      duration_ms: 2.187405
+      duration_ms: 2.640538
       type: 'test'
       ...
     # Gemini request failed (HTTP 429).
     # Subtest: Non-resort questions still show accurate Gemini 429 with no database lookup
     ok 68 - Non-resort questions still show accurate Gemini 429 with no database lookup
       ---
-      duration_ms: 1.774014
+      duration_ms: 2.144409
       type: 'test'
       ...
     # Subtest: Persistent Gemini 503 can still answer read-only accommodation questions
     not ok 69 - Persistent Gemini 503 can still answer read-only accommodation questions
       ---
-      duration_ms: 1.917987
+      duration_ms: 1.991642
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:1323:1'
       failureType: 'testCodeFailure'
@@ -981,7 +981,7 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: Quota fallback parses explicit guest count and peso budget without Gemini
     not ok 70 - Quota fallback parses explicit guest count and peso budget without Gemini
       ---
-      duration_ms: 2.890866
+      duration_ms: 3.400397
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:1337:1'
       failureType: 'testCodeFailure'
@@ -1005,7 +1005,7 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: Quota fallback never guesses check-in dates from free-text
     not ok 71 - Quota fallback never guesses check-in dates from free-text
       ---
-      duration_ms: 1.92764
+      duration_ms: 2.347952
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:1359:1'
       failureType: 'testCodeFailure'
@@ -1028,91 +1028,91 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: English accommodation question remains English during Gemini quota fallback
     ok 72 - English accommodation question remains English during Gemini quota fallback
       ---
-      duration_ms: 2.620826
+      duration_ms: 3.226979
       type: 'test'
       ...
     # Subtest: Simple accommodation catalog inquiry uses ONE Gemini call, still fresh from MySQL
     ok 73 - Simple accommodation catalog inquiry uses ONE Gemini call, still fresh from MySQL
       ---
-      duration_ms: 1.823497
+      duration_ms: 2.177699
       type: 'test'
       ...
     # Subtest: Undated cottage catalog uses one fresh DB read and zero Gemini credits
     ok 74 - Undated cottage catalog uses one fresh DB read and zero Gemini credits
       ---
-      duration_ms: 1.430696
+      duration_ms: 1.71428
       type: 'test'
       ...
     # Subtest: Explicit booking windows still take the safe extraction and slot-check flow
     ok 75 - Explicit booking windows still take the safe extraction and slot-check flow
       ---
-      duration_ms: 1.888813
+      duration_ms: 2.324387
       type: 'test'
       ...
     # Subtest: Undated preview retains saved guest count and excludes undersized cottages
     ok 76 - Undated preview retains saved guest count and excludes undersized cottages
       ---
-      duration_ms: 1.532847
+      duration_ms: 2.095207
       type: 'test'
       ...
     # Subtest: Voice catalog reply uses current English and retains speech prompt
     ok 77 - Voice catalog reply uses current English and retains speech prompt
       ---
-      duration_ms: 1.684381
+      duration_ms: 2.03728
       type: 'test'
       ...
     # Subtest: Optimized prompt does not duplicate full booking context and live details
     ok 78 - Optimized prompt does not duplicate full booking context and live details
       ---
-      duration_ms: 1.905137
+      duration_ms: 2.227353
       type: 'test'
       ...
     # Subtest: Quota fallback does not issue a second catalog SQL read after optimized Gemini call
     ok 79 - Quota fallback does not issue a second catalog SQL read after optimized Gemini call
       ---
-      duration_ms: 2.606364
+      duration_ms: 5.980174
       type: 'test'
       ...
     # Subtest: English spoken catalog quota fallback does not inherit old Mandarin
     ok 80 - English spoken catalog quota fallback does not inherit old Mandarin
       ---
-      duration_ms: 4.507826
+      duration_ms: 2.369394
       type: 'test'
       ...
     # Subtest: Oversized AI message is rejected before Gemini and database access
     ok 81 - Oversized AI message is rejected before Gemini and database access
       ---
-      duration_ms: 1.867312
+      duration_ms: 1.325712
       type: 'test'
       ...
     # Subtest: Oversized stored AI context cannot inflate token usage
     ok 82 - Oversized stored AI context cannot inflate token usage
       ---
-      duration_ms: 1.150732
+      duration_ms: 1.291661
       type: 'test'
       ...
     # Subtest: Oversized translation is rejected before paid Gemini calls
     ok 83 - Oversized translation is rejected before paid Gemini calls
       ---
-      duration_ms: 1.080167
+      duration_ms: 1.216429
       type: 'test'
       ...
     # Subtest: Normal short chat and translation remain usable after size limits
     ok 84 - Normal short chat and translation remain usable after size limits
       ---
-      duration_ms: 2.461431
+      duration_ms: 2.751342
       type: 'test'
       ...
     # Subtest: AI prompts use current Philippine date and explicitly reject stale examples
     ok 85 - AI prompts use current Philippine date and explicitly reject stale examples
       ---
-      duration_ms: 1.892949
+      duration_ms: 2.193342
       type: 'test'
       ...
     # Subtest: AI compares rooms and cottages with their current independent catalog rates
     not ok 86 - AI compares rooms and cottages with their current independent catalog rates
       ---
-      duration_ms: 1.992817
+      duration_ms: 2.33281
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:1563:1'
       failureType: 'testCodeFailure'
@@ -1142,7 +1142,7 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: Tagalog replies and translations request consistently polite customer tone
     not ok 87 - Tagalog replies and translations request consistently polite customer tone
       ---
-      duration_ms: 1.484546
+      duration_ms: 1.867818
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:1587:1'
       failureType: 'testCodeFailure'
@@ -1160,19 +1160,19 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: Standard Taglish downpayment policy is returned locally even with stale context
     ok 88 - Standard Taglish downpayment policy is returned locally even with stale context
       ---
-      duration_ms: 1.856355
+      duration_ms: 2.325268
       type: 'test'
       ...
     # Subtest: Local policy answers Filipino paunang bayad without listing rooms
     ok 89 - Local policy answers Filipino paunang bayad without listing rooms
       ---
-      duration_ms: 1.48101
+      duration_ms: 2.126662
       type: 'test'
       ...
     # Subtest: Named cottage deposit is verified locally without Gemini even during quota outage
     not ok 90 - Named cottage deposit is verified locally without Gemini even during quota outage
       ---
-      duration_ms: 1.470044
+      duration_ms: 1.712437
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:1643:1'
       failureType: 'testCodeFailure'
@@ -1197,73 +1197,73 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: Focused payment never mistakes Nipa Hut 20 for Hut 2
     ok 91 - Focused payment never mistakes Nipa Hut 20 for Hut 2
       ---
-      duration_ms: 3.875652
+      duration_ms: 3.890777
       type: 'test'
       ...
     # Subtest: Local policy answers plain English online booking deposit without SQL
     ok 92 - Local policy answers plain English online booking deposit without SQL
       ---
-      duration_ms: 1.166696
+      duration_ms: 1.451849
       type: 'test'
       ...
     # Subtest: Observed English question gets correct fixed 50% policy using zero API calls
     ok 93 - Observed English question gets correct fixed 50% policy using zero API calls
       ---
-      duration_ms: 1.273794
+      duration_ms: 1.602473
       type: 'test'
       ...
     # Subtest: Named cottage deposit quotes a fresh verified price without paid Gemini
     ok 94 - Named cottage deposit quotes a fresh verified price without paid Gemini
       ---
-      duration_ms: 1.730669
+      duration_ms: 2.017751
       type: 'test'
       ...
     # Subtest: Cancellation plus refund question is handled accurately without Gemini
     ok 95 - Cancellation plus refund question is handled accurately without Gemini
       ---
-      duration_ms: 1.617682
+      duration_ms: 1.981427
       type: 'test'
       ...
     # Subtest: Policy accuracy: Refund policy avoids promising any refund
     ok 96 - Policy accuracy: Refund policy avoids promising any refund
       ---
-      duration_ms: 1.292171
+      duration_ms: 1.543706
       type: 'test'
       ...
     # Subtest: Policy accuracy: Cancellation requires one day and pending/approved
     ok 97 - Policy accuracy: Cancellation requires one day and pending/approved
       ---
-      duration_ms: 1.287073
+      duration_ms: 1.505108
       type: 'test'
       ...
     # Subtest: Policy accuracy: Taglish cancellation stays polite and gives the actual rule
     ok 98 - Policy accuracy: Taglish cancellation stays polite and gives the actual rule
       ---
-      duration_ms: 1.299512
+      duration_ms: 1.509115
       type: 'test'
       ...
     # Subtest: Policy accuracy: Entrance fees are separate and not a fixed price
     ok 99 - Policy accuracy: Entrance fees are separate and not a fixed price
       ---
-      duration_ms: 1.434461
+      duration_ms: 1.650755
       type: 'test'
       ...
     # Subtest: Policy accuracy: Tagalog entrance fee does not invent pesos
     ok 100 - Policy accuracy: Tagalog entrance fee does not invent pesos
       ---
-      duration_ms: 2.527358
+      duration_ms: 2.457064
       type: 'test'
       ...
     # Subtest: Policy accuracy: Walk-in guidance never guarantees accommodation availability
     ok 101 - Policy accuracy: Walk-in guidance never guarantees accommodation availability
       ---
-      duration_ms: 1.77821
+      duration_ms: 1.547381
       type: 'test'
       ...
     # Subtest: Policy accuracy: Taglish walk-in is same-day and onsite
     not ok 102 - Policy accuracy: Taglish walk-in is same-day and onsite
       ---
-      duration_ms: 1.992907
+      duration_ms: 4.510819
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:1820:3'
       failureType: 'testCodeFailure'
@@ -1286,67 +1286,67 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: Policy accuracy: AI never claims that chat confirms a reservation
     ok 103 - Policy accuracy: AI never claims that chat confirms a reservation
       ---
-      duration_ms: 1.774304
+      duration_ms: 2.895486
       type: 'test'
       ...
     # Subtest: A named accommodation keeps fresh database lookups rather than generic policy
     ok 104 - A named accommodation keeps fresh database lookups rather than generic policy
       ---
-      duration_ms: 4.97621
+      duration_ms: 2.025372
       type: 'test'
       ...
     # Subtest: A customer-specific refund amount is not guessed by generic policy
     ok 105 - A customer-specific refund amount is not guessed by generic policy
       ---
-      duration_ms: 1.807353
+      duration_ms: 1.853456
       type: 'test'
       ...
     # Subtest: General policy facts are embedded in Gemini prompt for non-FAQ conversations
     ok 106 - General policy facts are embedded in Gemini prompt for non-FAQ conversations
       ---
-      duration_ms: 1.701727
+      duration_ms: 1.857182
       type: 'test'
       ...
     # Subtest: Spanish cancellation FAQ overrides stale English preference without Gemini
     ok 107 - Spanish cancellation FAQ overrides stale English preference without Gemini
       ---
-      duration_ms: 1.552866
+      duration_ms: 1.73411
       type: 'test'
       ...
     # Subtest: Mandarin refund FAQ overrides stale English preference without Gemini
     ok 108 - Mandarin refund FAQ overrides stale English preference without Gemini
       ---
-      duration_ms: 1.507059
+      duration_ms: 1.431528
       type: 'test'
       ...
     # Subtest: Past explicit year never rolls forward to create a misleading AI booking preview
     ok 109 - Past explicit year never rolls forward to create a misleading AI booking preview
       ---
-      duration_ms: 2.074968
+      duration_ms: 1.86883
       type: 'test'
       ...
     # Subtest: Impossible February 30 is rejected without querying availability
     ok 110 - Impossible February 30 is rejected without querying availability
       ---
-      duration_ms: 2.120275
+      duration_ms: 2.257498
       type: 'test'
       ...
     # Subtest: Reversed same-day window returns an actionable invalid-window response
     ok 111 - Reversed same-day window returns an actionable invalid-window response
       ---
-      duration_ms: 1.550002
+      duration_ms: 1.895389
       type: 'test'
       ...
     # Subtest: Valid future overnight window continues fresh reservation availability lookup
     ok 112 - Valid future overnight window continues fresh reservation availability lookup
       ---
-      duration_ms: 1.899309
+      duration_ms: 2.256726
       type: 'test'
       ...
     # Subtest: Missing accommodation prices are not misrepresented as free PHP 0.00
     not ok 113 - Missing accommodation prices are not misrepresented as free PHP 0.00
       ---
-      duration_ms: 1.455062
+      duration_ms: 2.045553
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:1953:1'
       failureType: 'testCodeFailure'
@@ -1364,7 +1364,7 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: Fresh positive accommodation rate stays numerically exact in AI prompt
     not ok 114 - Fresh positive accommodation rate stays numerically exact in AI prompt
       ---
-      duration_ms: 1.974049
+      duration_ms: 2.103539
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:1970:1'
       failureType: 'testCodeFailure'
@@ -1382,7 +1382,7 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: Parking fee question bypasses room-payment resolver and makes zero paid or SQL calls
     not ok 115 - Parking fee question bypasses room-payment resolver and makes zero paid or SQL calls
       ---
-      duration_ms: 2.421571
+      duration_ms: 2.840354
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:1987:1'
       failureType: 'testCodeFailure'
@@ -1405,7 +1405,7 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: Actual customer van/bus parking question uses verified zero-credit FAQ
     not ok 116 - Actual customer van/bus parking question uses verified zero-credit FAQ
       ---
-      duration_ms: 1.941261
+      duration_ms: 2.307652
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:2005:1'
       failureType: 'testCodeFailure'
@@ -1428,7 +1428,7 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: Parking + entrance question explains fee distinction without room suggestions
     not ok 117 - Parking + entrance question explains fee distinction without room suggestions
       ---
-      duration_ms: 1.591554
+      duration_ms: 1.842701
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:2024:1'
       failureType: 'testCodeFailure'
@@ -1451,7 +1451,7 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: Multi-facility resort question stays grounded with read-only catalog SQL
     not ok 118 - Multi-facility resort question stays grounded with read-only catalog SQL
       ---
-      duration_ms: 2.859348
+      duration_ms: 3.280889
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:2039:1'
       failureType: 'testCodeFailure'
@@ -1779,7 +1779,7 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: Unverified resort-wide Wi-Fi and pet policies do not spend credits or pretend to be confirmed
     not ok 119 - Unverified resort-wide Wi-Fi and pet policies do not spend credits or pretend to be confirmed
       ---
-      duration_ms: 3.797166
+      duration_ms: 3.959599
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:2056:1'
       failureType: 'testCodeFailure'
@@ -1804,7 +1804,7 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: Focused-room Wi-Fi follow-up is not overridden by unknown resort-wide policy
     not ok 120 - Focused-room Wi-Fi follow-up is not overridden by unknown resort-wide policy
       ---
-      duration_ms: 4.964462
+      duration_ms: 5.372119
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:2068:1'
       failureType: 'testCodeFailure'
@@ -1827,85 +1827,85 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: AI-40 Ask About This returns verified facts for every selected accommodation type
     ok 121 - AI-40 Ask About This returns verified facts for every selected accommodation type
       ---
-      duration_ms: 14.398404
+      duration_ms: 16.917051
       type: 'test'
       ...
     # Subtest: AI-40 empty amenities still return capacity and rates, not only a Front Desk referral
     ok 122 - AI-40 empty amenities still return capacity and rates, not only a Front Desk referral
       ---
-      duration_ms: 1.92014
+      duration_ms: 2.582441
       type: 'test'
       ...
     # Subtest: AI-40 stale selected room IDs and renamed listings are not silently described
     ok 123 - AI-40 stale selected room IDs and renamed listings are not silently described
       ---
-      duration_ms: 2.873179
+      duration_ms: 3.490872
       type: 'test'
       ...
     # Subtest: AI-41 Ask About This follows the visitor's genuine Taglish question, not card English
     ok 124 - AI-41 Ask About This follows the visitor's genuine Taglish question, not card English
       ---
-      duration_ms: 1.952968
+      duration_ms: 2.328924
       type: 'test'
       ...
     # Subtest: AI-44 clicked room description uses guest English for both text and voice
     ok 125 - AI-44 clicked room description uses guest English for both text and voice
       ---
-      duration_ms: 3.162287
+      duration_ms: 3.793462
       type: 'test'
       ...
     # Subtest: AI-44 Mandarin pinyin greeting is answered in Chinese with no model call
     ok 126 - AI-44 Mandarin pinyin greeting is answered in Chinese with no model call
       ---
-      duration_ms: 1.302476
+      duration_ms: 1.476606
       type: 'test'
       ...
     # Subtest: UI-38 conversation rows are flex columns with direction-aware alignment
     ok 127 - UI-38 conversation rows are flex columns with direction-aware alignment
       ---
-      duration_ms: 1.537013
+      duration_ms: 1.114909
       type: 'test'
       ...
     # Subtest: UI-38 reply actions and structured booking previews remain usable
     ok 128 - UI-38 reply actions and structured booking previews remain usable
       ---
-      duration_ms: 0.405189
+      duration_ms: 0.257253
       type: 'test'
       ...
     # Subtest: UI-38 fresh CSS is requested across Landing and all Customer chat pages
     ok 129 - UI-38 fresh CSS is requested across Landing and all Customer chat pages
       ---
-      duration_ms: 2.29937
+      duration_ms: 1.459411
       type: 'test'
       ...
     # Subtest: AI keeps only six short allowed recent conversation turns
     ok 130 - AI keeps only six short allowed recent conversation turns
       ---
-      duration_ms: 2.758119
+      duration_ms: 1.837683
       type: 'test'
       ...
     # Subtest: AI suggests cards on new room searches, not on pricing follow-ups
     ok 131 - AI suggests cards on new room searches, not on pricing follow-ups
       ---
-      duration_ms: 1.404497
+      duration_ms: 1.093496
       type: 'test'
       ...
     # Subtest: AI cards are limited, deduplicated and never invent a rate or booking availability
     ok 132 - AI cards are limited, deduplicated and never invent a rate or booking availability
       ---
-      duration_ms: 0.955693
+      duration_ms: 0.696876
       type: 'test'
       ...
     # Subtest: Repeated self-introductions removed, but direct identity answers remain
     ok 133 - Repeated self-introductions removed, but direct identity answers remain
       ---
-      duration_ms: 1.00723
+      duration_ms: 0.741102
       type: 'test'
       ...
     # Subtest: Backend response uses fresh database records instead of model-generated card URLs
     not ok 134 - Backend response uses fresh database records instead of model-generated card URLs
       ---
-      duration_ms: 5.396551
+      duration_ms: 2.302103
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-natural-recommendations.test.js:63:1'
       failureType: 'testCodeFailure'
