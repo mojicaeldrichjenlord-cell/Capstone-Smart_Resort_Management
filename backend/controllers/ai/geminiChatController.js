@@ -1181,7 +1181,7 @@ exports.chatWithGemini = async (req, res) => {
     // AI-104: read-only fixed-slot checks reuse the exact booking API handler.
     if (scheduleTurn(message, scopeContext, semanticIntent || {})) {
       const interpreted = semanticIntent || await extractStructuredIntent(message, scopeContext, recentScopeTurns);
-      if (interpreted.scope !== "unrelated") {
+      if (interpreted.scope === "resort" || (knownScope && interpreted.scope !== "unrelated")) {
         const language = detectLanguageFromMessage(message) || normalizeLanguageStyle(interpreted.language_style) || clarificationLanguage;
         const result = await liveAvailability({message,context:scopeContext,extracted:interpreted,catalog:await getAccommodationCatalog(),today:getResortTodayText(),language,handler:require("../shared/bookingController").checkItemAvailability});
         return res.status(200).json(result);

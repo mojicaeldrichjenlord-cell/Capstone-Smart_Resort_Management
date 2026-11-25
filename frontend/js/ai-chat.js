@@ -1170,7 +1170,6 @@ function getAiCustomerPageUrl(page, accommodationId) {
 }
 
 function aiBookingUrl(id, selection={}) {
-  if(AI_IS_PUBLIC_LANDING)return "../authHTML/login.html";
   const roomId=Number(id);
   if(!Number.isSafeInteger(roomId)||roomId<=0)return "rooms.html";
   const query=new URLSearchParams({room_id:String(roomId)});
@@ -1180,7 +1179,7 @@ function aiBookingUrl(id, selection={}) {
   const duration=Number(selection?.stay_duration), guests=Number(selection?.guests);
   if(Number.isInteger(duration)&&duration>=1&&duration<=5)query.set("stay_duration",String(duration));
   if(Number.isSafeInteger(guests)&&guests>=1&&guests<=200)query.set("guests",String(guests));
-  return "booking.html?"+query;
+  return AI_IS_PUBLIC_LANDING ? "../authHTML/login.html?"+query : "booking.html?"+query;
 }
 
 function setAiFocusedAccommodation(room) {
@@ -1293,7 +1292,7 @@ function createBookingFromPreview(preview, button) {
   // UI-37: Public landing visitors must always go through Customer login.
   // A stale localStorage user object is not proof of authentication.
   if (AI_IS_PUBLIC_LANDING) {
-    window.location.href = "../authHTML/login.html";
+    window.location.href = aiBookingUrl(preview?.room_id,preview?.booking_selection || {check_in:preview?.check_in,slot_type:preview?.slot_type,stay_duration:preview?.stay_duration,guests:preview?.guests});
     return;
   }
   // AI suggestions never create reservations directly. The Customer
