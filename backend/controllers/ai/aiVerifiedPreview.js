@@ -35,7 +35,14 @@ function requestedCategory(value) {
   return "";
 }
 
+// Compound parties need semantic interpretation; a single number is not necessarily the total.
+function hasCompoundParty(value) {
+  const q=String(value||"").normalize("NFKC");
+  return /\b(?:couple|adults?|parents?|mag[- ]?asawa|matanda)\b[\s\S]{0,50}\b(?:with|plus|and|at|kasama|may)\b[\s\S]{0,45}\b(?:children|kids?|bata|anak|adults?|guests?|tao)\b/i.test(q) ||
+    /\b(?:children|kids?|bata|anak)\b[\s\S]{0,45}\b(?:with|plus|and|at|kasama)\b[\s\S]{0,45}\b(?:adults?|parents?|matanda|guests?|tao)\b/i.test(q);
+}
 function guestCountFromText(value) {
+  if (hasCompoundParty(value)) return 0;
   const text = String(value || "").normalize("NFKC");
   if (/\b(?:the\s+two\s+of\s+us|dalawa(?:ng)?\s+lang\s+(?:po\s+)?(?:kami|tayo)|kaming\s+dalawa|aming\s+dalawa|we(?:[’\']re| are)\s+a\s+couple|for\s+a\s+couple)\b/i.test(text)) return 2;
   const match = text.match(/\b(\d{1,3})\s*(?:na\s*)?(?:tao|pax|guests?|persons?|people|kami)\b/i) ||
@@ -252,5 +259,5 @@ function verifiedPreviewReply(selection, language) {
 
 module.exports = {
   isVerifiedPreviewRequest, selectVerifiedPreviews, verifiedPreviewReply,
-  requestedCategory, guestCountFromText,
+  requestedCategory, guestCountFromText, hasCompoundParty,
 };

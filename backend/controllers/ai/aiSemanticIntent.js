@@ -5,7 +5,7 @@ const categories=new Set(["room","single","double","family","single_poolside","s
 const scopes=new Set(["resort","unrelated","unclear"]);
 function normalizeSemanticIntent(value) {
   if(!value||typeof value!=="object"||Array.isArray(value))return {};
-  const count=Number(value.guests);
+  const count=(typeof value.guests==="number"||typeof value.guests==="string")?Number(value.guests):NaN;
   return {...value,scope:scopes.has(value.scope)?value.scope:"unclear",
     intent:intents.has(value.intent)?value.intent:null,
     recommendation_category:categories.has(value.recommendation_category)?value.recommendation_category:null,

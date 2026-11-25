@@ -6,7 +6,7 @@
  * default cards are never mistaken for a capacity-appropriate suggestion.
  * All helpers are deterministic and do not call Gemini or MySQL.
  */
-const { requestedCategory, guestCountFromText } = require("./aiVerifiedPreview");
+const { requestedCategory, guestCountFromText, hasCompoundParty } = require("./aiVerifiedPreview");
 
 const normal = input => String(input || "").normalize("NFKC").toLowerCase().trim();
 
@@ -34,6 +34,7 @@ function isPersonalizedRecommendation(message) {
 // Read simple explicit counts (4 kami, 4 pax, 4 guests, 4 po,
 // 'apat kami'). Do not infer 4 guests from an accommodation name/rate.
 function explicitGuestCount(message) {
+  if (hasCompoundParty(message)) return 0;
   const q = normal(message);
   let count = guestCountFromText(q);
   if (!count) {

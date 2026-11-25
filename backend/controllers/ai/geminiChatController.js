@@ -22,7 +22,7 @@ const { isNaturalRoomDetailsQuestion, naturalRoomDetailsReply } = require("./aiN
 const { isFreeEntranceQuestion, explicitEntranceRoomName, verifiedFreeEntranceReply } = require("./aiAccommodationEntrance");
 const { wantsFocusedRoomOverview, focusedRoomOverview } = require("./aiAccommodationDetails");
 const { isVerifiedPreviewRequest, selectVerifiedPreviews, verifiedPreviewReply,
-  requestedCategory } = require("./aiVerifiedPreview");
+  requestedCategory, hasCompoundParty } = require("./aiVerifiedPreview");
 const { isRoomPaymentInquiry, resolvePaymentRoom, paymentReply } =
   require("./aiFocusedPaymentReply");
 const { compoundTopics, compoundRoom, compoundGuestReply,
@@ -1683,6 +1683,14 @@ exports.chatWithGemini = async (req, res) => {
         recommendation_cards: verifiedAccommodationCards(selection.rows, false),
       });
     }
+    // Preview discovery can be phrased as a request for suitable lodging without
+    // recommendation keywords. Give unfamiliar, count-free phrasing to Gemini,
+    // while retaining the verified fast path for direct catalog/photo browsing.
+    const clearBrowse = /^(?:what|which|anong|ano|mga|list|show|pakita|patingin|ipakita)\s+(?:(?:me|po|ang|mga|available|all|the|inyong)\s+)*(?:rooms?|cottages?|accommodations?|kwarto|kuwarto|pavilions?|pool shades?|family rooms?|single rooms?)(?:\s+(?:do you have|are there|meron kayo|mayroon kayo|ninyo|niyo|po|please|available|photos?|pictures?|previews?))*[?!.\s]*$/i.test(String(message).trim());
+    const needsSemanticPreview = isVerifiedPreviewRequest(message) && !explicitGuestCount(message) && !clearBrowse && !/\b(?:photos?|pictures?|previews?|images?|larawan|litrato)\b/i.test(message);
+    if (!semanticIntent && (hasCompoundParty(message) || needsSemanticPreview)) {
+      semanticIntent = await extractStructuredIntent(message, recommendationSaved, recommendationHistory);
+    }
     const personalRecommendation = isPersonalizedRecommendation(message) || semanticIntent?.intent === "ask_recommendation";
     if (personalRecommendation) {
       let guestCount = explicitGuestCount(message) || savedGuestCount({ guests: req.body.guests }) || savedGuestCount(recommendationSaved);
@@ -1690,6 +1698,7 @@ exports.chatWithGemini = async (req, res) => {
         semanticIntent = await extractStructuredIntent(message, recommendationSaved, recommendationHistory);
       }
       if (semanticIntent?.scope === "resort" && semanticIntent.guests) guestCount = semanticIntent.guests;
+      else if (hasCompoundParty(message)) guestCount = 0;
       if (!guestCount) {
         const language = 
           detectLanguageFromMessage(message) ||
@@ -1904,7 +1913,7 @@ exports.chatWithGemini = async (req, res) => {
       req.body.context?.wants_booking === true
     );
     const semanticSimple = semanticIntent && canUseSimpleRecommendation(semanticIntent, {...scopeContext, ...req.body});
-    const semanticConstraints = semanticIntent && (semanticIntent.max_price || semanticIntent.check_in || semanticIntent.check_out || semanticIntent.wants_booking || semanticIntent.bed_count || semanticIntent.aircon_type || semanticIntent.view_type || semanticIntent.bed_type);
+    const semanticConstraints = semanticIntent && (semanticIntent.scope === "unrelated" || semanticIntent.max_price || semanticIntent.check_in || semanticIntent.check_out || semanticIntent.wants_booking || semanticIntent.bed_count || semanticIntent.aircon_type || semanticIntent.view_type || semanticIntent.bed_type);
     if ((isVerifiedPreviewRequest(message) || semanticSimple) && !previewMustUseBookingFlow && !semanticConstraints && !(semanticIntent?.scope === "resort" && semanticIntent.intent === "ask_recommendation" && !semanticIntent.simple_recommendation)) {
       const storedPreviewContext = req.body.context &&
         typeof req.body.context === "object" && !Array.isArray(req.body.context)
