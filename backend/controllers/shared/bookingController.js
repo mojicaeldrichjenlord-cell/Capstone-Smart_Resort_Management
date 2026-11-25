@@ -51,16 +51,18 @@ function formatLocalDateOnly(date) {
 }
 
 function normalizeReferenceNumber(value) {
-  return String(value || "").replace(/\D/g, "");
+  // Preserve the submitted characters so validation can reject malformed input.
+  return String(value ?? "");
 }
 
 function validateReferenceNumberByMethod(referenceNumber, paymentMethod) {
   const cleanMethod = String(paymentMethod || "").toLowerCase();
   const digits = normalizeReferenceNumber(referenceNumber);
+  const digitsOnly = !/[^0-9]/.test(digits);
 
   if (cleanMethod === "gcash") {
     return {
-      valid: /^\d{13}$/.test(digits),
+      valid: digitsOnly && digits.length === 13,
       message: "GCash reference number must be exactly 13 digits.",
       digits,
     };
@@ -68,7 +70,7 @@ function validateReferenceNumberByMethod(referenceNumber, paymentMethod) {
 
   if (cleanMethod === "paymaya") {
     return {
-      valid: /^\d{6,30}$/.test(digits),
+      valid: digitsOnly && digits.length >= 6 && digits.length <= 30,
       message:
         "Maya / PayMaya reference number must be numbers only, 6 to 30 digits.",
       digits,
@@ -134,7 +136,7 @@ function parseRequestReservationBody(req) {
   const legacyReference = String(parsedBody.proof_of_payment || "").trim();
   const referenceInput = parsedBody.proof_reference ??
     (/^\d[\d\s-]*$/.test(legacyReference) ? legacyReference : "");
-  const proofReference = normalizeNullableText(normalizeReferenceNumber(referenceInput));
+  const proofReference = normalizeReferenceNumber(referenceInput) || null;
 
   return {
     ...parsedBody,

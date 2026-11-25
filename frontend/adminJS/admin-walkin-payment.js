@@ -840,14 +840,7 @@ function getReferenceMaxDigits(method) {
 function formatReferenceNumberForDisplay(value, method) {
   const maxDigits = getReferenceMaxDigits(method);
 
-  const digits = normalizeReferenceNumber(value).slice(
-    0,
-    maxDigits,
-  );
-
-  const groups = digits.match(/.{1,4}/g) || [];
-
-  return groups.join("-");
+  return normalizeReferenceNumber(value).slice(0, maxDigits);
 }
 
 function validateReferenceNumberByMethod(
@@ -855,11 +848,12 @@ function validateReferenceNumberByMethod(
   method,
 ) {
   const cleanMethod = String(method || "").toLowerCase();
-  const digits = normalizeReferenceNumber(referenceNumber);
+  const digits = String(referenceNumber ?? "");
+  const digitsOnly = !/[^0-9]/.test(digits);
 
   if (cleanMethod === "gcash") {
     return {
-      valid: /^\d{13}$/.test(digits),
+      valid: digitsOnly && digits.length === 13,
       message:
         "GCash reference number must be exactly 13 digits.",
       digits,
@@ -868,7 +862,7 @@ function validateReferenceNumberByMethod(
 
   if (cleanMethod === "paymaya") {
     return {
-      valid: /^\d{6,30}$/.test(digits),
+      valid: digitsOnly && digits.length >= 6 && digits.length <= 30,
       message:
         "Maya / PayMaya reference number must be numbers only, 6 to 30 digits.",
       digits,
@@ -932,14 +926,18 @@ function setupPaymentForm() {
         );
     });
 
-    proofReference.addEventListener("paste", () => {
-      setTimeout(() => {
-        proofReference.value =
-          formatReferenceNumberForDisplay(
-            proofReference.value,
-            paymentMethod?.value || "gcash",
-          );
-      }, 0);
+    proofReference.addEventListener("paste", (event) => {
+      if (!event.clipboardData) return;
+      event.preventDefault();
+      const method = paymentMethod?.value || "gcash";
+      const start = proofReference.selectionStart ?? proofReference.value.length;
+      const end = proofReference.selectionEnd ?? start;
+      const before = proofReference.value.slice(0, start);
+      const after = proofReference.value.slice(end);
+      const available = Math.max(0, getReferenceMaxDigits(method) - before.length - after.length);
+      const pasted = normalizeReferenceNumber(event.clipboardData.getData("text")).slice(0, available);
+      proofReference.setRangeText(pasted, start, end, "end");
+      proofReference.dispatchEvent(new Event("input", { bubbles: true }));
     });
   }
 
@@ -1143,10 +1141,12 @@ function updatePaymentRequirementUI() {
       proofReference.value = "";
       proofReference.placeholder = "Not required for cash payment";
       proofReference.removeAttribute("maxlength");
+      proofReference.removeAttribute("pattern");
     } else {
       proofReference.placeholder = method === "gcash"
         ? "Enter GCash reference (13 digits)" : "Enter Maya reference (6–30 digits)";
-      proofReference.setAttribute("maxlength", method === "gcash" ? "16" : "37");
+      proofReference.setAttribute("maxlength", String(getReferenceMaxDigits(method)));
+      proofReference.setAttribute("pattern", method === "gcash" ? "[0-9]{13}" : "[0-9]{6,30}");
       proofReference.value = formatReferenceNumberForDisplay(
         proofReference.value, method,
       );
@@ -1475,10 +1475,7 @@ async function submitManualReservation(event) {
   const proofReferenceInput =
     document.getElementById("proofReference");
 
-  const proofReference =
-    normalizeReferenceNumber(
-      proofReferenceInput?.value || "",
-    );
+  const proofReference = String(proofReferenceInput?.value ?? "");
 
   const proofImageInput =
     document.getElementById("proofImage");
