@@ -250,7 +250,6 @@ async function submitRegistration(e) {
   const lastName = document.getElementById("lastName")?.value.trim();
   const email = document.getElementById("email")?.value.trim().toLowerCase();
   const phone = document.getElementById("phone")?.value.trim();
-  const address = document.getElementById("address")?.value.trim();
   const password = document.getElementById("password")?.value;
   const confirmPassword = document.getElementById("confirmPassword")?.value;
 
@@ -261,7 +260,6 @@ async function submitRegistration(e) {
     !lastName ||
     !email ||
     !phone ||
-    !address ||
     !password ||
     !confirmPassword
   ) {
@@ -314,7 +312,6 @@ async function submitRegistration(e) {
         fullname,
         email,
         phone,
-        address,
         password,
       }),
     });
@@ -602,7 +599,6 @@ function lockRegisterForm() {
     "lastName",
     "email",
     "phone",
-    "address",
     "password",
     "confirmPassword",
   ];

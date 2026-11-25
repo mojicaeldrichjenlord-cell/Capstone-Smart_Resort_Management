@@ -13,15 +13,16 @@ function mount(ok=true){
   const get=id=>nodes[id]||(nodes[id]={id,value:"",type:"text",hidden:false,disabled:false,style:{},attrs:{},classes:new Set(),
     classList:{add(...a){a.forEach(x=>get(id).classes.add(x));},remove(...a){a.forEach(x=>get(id).classes.delete(x));},toggle(){}},
     setAttribute(k,v){this.attrs[k]=v;},addEventListener(k,fn){this[k]=fn;},focus(){this.focused=true;},closest(){return null;}});
-  for(const [id,value] of Object.entries({firstName:"Juan",middleName:"",lastName:"Cruz",email:"test@example.invalid",phone:"09123456789",address:"Naic",password:"GoodPass1!",confirmPassword:"GoodPass1!"}))get(id).value=value;
+  for(const [id,value] of Object.entries({firstName:"Juan",middleName:"",lastName:"Cruz",email:"test@example.invalid",phone:"09123456789",password:"GoodPass1!",confirmPassword:"GoodPass1!"}))get(id).value=value;
   get("password").type=get("confirmPassword").type="password";
   get("registerOtpBox").hidden=true;
   const buttons=["password","confirmPassword"].map(id=>Object.assign(get(id+"Toggle"),{dataset:{target:id}}));
   const store=new Map();
   let calls=0;
-  const ctx={document:{getElementById:get,addEventListener(){},querySelectorAll:()=>buttons},window:{GuestNameValidation:{hasValidNameParts:()=>true},scrollTo(){}},localStorage:{setItem:(k,v)=>store.set(k,v)},API_BASE:"/api",fetch:async()=>{calls++;return {ok,json:async()=>({email:"test@example.invalid",message:ok?"OTP sent":"Failed"})};},setInterval:()=>1,clearInterval(){},console:{error(){}}};
+  let lastBody;
+  const ctx={document:{getElementById:get,addEventListener(){},querySelectorAll:()=>buttons},window:{GuestNameValidation:{hasValidNameParts:()=>true},scrollTo(){}},localStorage:{setItem:(k,v)=>store.set(k,v)},API_BASE:"/api",fetch:async(_url, options)=>{calls++;lastBody=JSON.parse(options.body);return {ok,json:async()=>({email:"test@example.invalid",message:ok?"OTP sent":"Failed"})};},setInterval:()=>1,clearInterval(){},console:{error(){}}};
   vm.createContext(ctx);vm.runInContext(js,ctx);
-  return {get,buttons,ctx,store,calls:()=>calls};
+  return {get,buttons,ctx,store,calls:()=>calls,lastBody:()=>lastBody};
 }
 test("UI-86 both toggles show slash by default and independently reflect actual input type",()=>{
   const h=mount();h.ctx.setupPasswordToggles();
@@ -49,6 +50,7 @@ test("UI-86 successful registration switches to OTP only, clears form and blocks
   assert.equal(h.get("resendOtpBtn").disabled,true);
   await h.ctx.submitRegistration({preventDefault(){}});
   assert.equal(h.calls(),1);
+  assert.equal(Object.hasOwn(h.lastBody(),"address"),false);
 });
 test("UI-86 failed registration preserves input and keeps verification hidden",async()=>{
   const h=mount(false);
@@ -64,6 +66,7 @@ test("UI-86 markup and CSS support actual visibility, OTP autofill, and reduced 
   assert.match(html,/id="registerOtpBox"[^>]*hidden/);
   assert.match(html,/autocomplete="one-time-code"/);
   assert.match(html,/id="registerOtpForm"/);
+  assert.doesNotMatch(html,/id="address"|Home Address/);
   assert.match(css,/\[aria-pressed="true"\] \.password-eye-slash/);
   assert.match(css,/#registerContainer \[hidden\]/);
   assert.match(css,/prefers-reduced-motion/);

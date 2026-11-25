@@ -212,6 +212,6 @@ test("AUTH-70: registration page refreshes corrected JS and does not store JWT i
     "../../frontend/authHTML/register.html"),"utf8");
   const js=fs.readFileSync(path.join(__dirname,
     "../../frontend/authJS/register.js"),"utf8");
-  assert.match(html,/register\.js\?v=20261125-ui86/);
+  assert.match(html,/register\.js\?v=20261125-auth87/);
   assert.doesNotMatch(js,/localStorage\.setItem\(["']customerToken["']/);
 });
