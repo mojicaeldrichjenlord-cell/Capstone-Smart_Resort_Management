@@ -46,6 +46,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupLogout();
   setupForm();
   setupRoomSearch();
+  setupAdminRoomDetails();
   loadCategories();
   loadRooms();
 });
@@ -280,6 +281,11 @@ function setupRoomSearch() {
   const categoryFilter = document.getElementById("adminCategoryFilter");
   const statusFilter = document.getElementById("adminStatusFilter");
   const clearSearchBtn = document.getElementById("clearRoomSearchBtn");
+  const paxInput = document.getElementById("adminPaxFilter");
+  paxInput?.addEventListener("input", () => {
+    paxInput.value = paxInput.value.replace(/[^0-9]/g, "").slice(0,4);
+    applyRoomFilters();
+  });
 
   if (searchInput) {
     searchInput.addEventListener("input", applyRoomFilters);
@@ -298,6 +304,7 @@ function setupRoomSearch() {
       if (searchInput) searchInput.value = "";
       if (categoryFilter) categoryFilter.value = "";
       if (statusFilter) statusFilter.value = "";
+      if (paxInput) paxInput.value = "";
 
       applyRoomFilters();
       searchInput?.focus();
@@ -626,6 +633,7 @@ function applyRoomFilters() {
   const selectedCategory = normalizeSearch(categoryFilter?.value || "");
   const selectedStatus = normalizeSearch(statusFilter?.value || "");
 
+  const pax = Number(document.getElementById("adminPaxFilter")?.value || 0);
   const filteredRooms = allRooms.filter((room) => {
     const roomStatus = normalizeSearch(room.status || "available");
     const roomCategory = normalizeSearch(room.category_name || "");
@@ -650,8 +658,9 @@ function applyRoomFilters() {
       !selectedCategory || roomCategory === selectedCategory;
     const matchesStatus = !selectedStatus || roomStatus === selectedStatus;
 
-    return matchesSearch && matchesCategory && matchesStatus;
+    return matchesSearch && matchesCategory && matchesStatus && (!pax || Number(room.max_capacity) >= pax);
   });
+  if (pax > 0) filteredRooms.sort((a,b) => Number(a.max_capacity)-Number(b.max_capacity));
 
   renderRooms(filteredRooms);
   updateRoomsCount(filteredRooms.length, allRooms.length);
@@ -685,8 +694,36 @@ function renderRooms(rooms) {
     return;
   }
 
-  container.innerHTML = rooms
-    .map((room) => {
+  container.innerHTML = rooms.map(renderAdminRoomPreview).join("");
+}
+function renderAdminRoomPreview(room) {
+  const id=Number(room.id);
+  if(!Number.isSafeInteger(id)||id<1) return "";
+  const name=escapeHtml(room.name||"Accommodation");
+  const status=String(room.status||"available").toLowerCase();
+  const prices=[room.day_price,room.overnight_price,room.extended_price].map(Number).filter(n=>Number.isFinite(n)&&n>0);
+  return `<article class="room-admin-card admin-catalog-preview">
+    <button class="admin-preview-photo" type="button" data-details-id="${id}" aria-label="View details for ${name}"><img src="${escapeHtml(resolveImagePath(room.image||"images/no-image.jpg"))}" alt="${name}" loading="lazy" onerror="this.onerror=null;this.src='../images/no-image.jpg'" /></button>
+    <div class="room-admin-content"><h3>${name}</h3><p>${escapeHtml(room.category_name||"N/A")} · Up to ${Number(room.max_capacity)||0} pax</p><p><strong>Starts at:</strong> ${prices.length?"₱"+formatMoney(Math.min(...prices)):"Rate not listed"}</p><span class="room-status-badge status-${escapeHtml(status)}">${escapeHtml(capitalize(status))}</span>
+    <button type="button" class="admin-view-details" data-details-id="${id}">View Details</button>
+    <div class="room-admin-actions"><button class="btn-edit" onclick="editRoom(${id})">Edit Accommodation</button><button class="btn-delete" onclick="deleteRoom(${id})">Delete / Hide</button></div></div></article>`;
+}
+function setupAdminRoomDetails() {
+  const dialog=document.getElementById("adminRoomDetails");
+  const content=document.getElementById("adminRoomDetailsContent");
+  if(!dialog||!content) return;
+  document.getElementById("adminRoomsContainer")?.addEventListener("click",event=>{
+    const trigger=event.target.closest("[data-details-id]");
+    const room=trigger&&allRooms.find(item=>Number(item.id)===Number(trigger.dataset.detailsId));
+    if(!room) return;
+    content.innerHTML=renderAdminFullRoom(room);
+    dialog.showModal();
+  });
+  document.getElementById("adminRoomDetailsClose")?.addEventListener("click",()=>dialog.close());
+  content.addEventListener("click",event=>{if(event.target.closest(".btn-edit,.btn-delete")) dialog.close();},true);
+  dialog.addEventListener("close",()=>content.replaceChildren());
+}
+function renderAdminFullRoom(room) {
       const roomStatus = String(room.status || "available").toLowerCase();
 
       const galleryImages = Array.isArray(room.gallery_images)
@@ -772,9 +809,8 @@ function renderRooms(rooms) {
           </div>
         </div>
       `;
-    })
-    .join("");
 }
+
 
 // ============================================================
 // SECTION 13: Search helper messages

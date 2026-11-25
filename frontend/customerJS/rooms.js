@@ -13,13 +13,54 @@
 
 let allRooms = [];
 let currentFilter = "all";
+let currentPax = "";
+const catalogDetail = document.body.classList.contains("catalog-detail-page");
+const catalogQuery = new URLSearchParams(location.search);
+const catalogRoomId = Number(catalogQuery.get("room_id"));
+function paxDigits(value) { return String(value ?? "").replace(/[^0-9]/g,"").slice(0,4); }
+function catalogUrl(page, id) {
+  const query = new URLSearchParams();
+  if(id) query.set(page === "rooms.html" ? "return_room" : "room_id",String(id));
+  if(currentFilter!=="all") query.set("category",currentFilter);
+  if(currentPax) query.set("pax",currentPax);
+  return page+(query.toString()?"?"+query:"");
+}
+function syncCatalogFilters() {
+  document.querySelectorAll(".category-filter-btn").forEach(btn=>{
+    const active=btn.dataset.filter===currentFilter;
+    btn.classList.toggle("active",active);
+    btn.setAttribute("aria-pressed",String(active));
+  });
+  const input=document.getElementById("catalogPax");
+  if(input) input.value=currentPax;
+}
+function applyCatalogFilters() {
+  syncCatalogFilters();
+  history.replaceState(history.state,"",catalogUrl("rooms.html"));
+  renderRooms(getFilteredRooms());
+}
+function renderCatalogPreview(room) {
+  const id=Number(room.id);
+  if(!Number.isSafeInteger(id)||id<1) return "";
+  const name=escapeHtml(room.name||"Accommodation");
+  const type=escapeHtml(getGroupLabel(getAccommodationGroup(room.category_name,room.name)));
+  const rates=[room.day_price,room.overnight_price,room.extended_price].map(Number).filter(n=>Number.isFinite(n)&&n>0);
+  const capacity=Number(room.max_capacity)||0;
+  return `<article class="room-ai-card catalog-preview" id="room-card-${id}" data-room-id="${id}">
+    <a class="catalog-preview-link" href="${escapeHtml(catalogUrl("accommodation-details.html",id))}" aria-label="View details for ${name}">
+      <div class="room-photo-wrap"><img src="${escapeHtml(resolveImagePath(room.image||""))}" alt="${name}" loading="lazy" onerror="this.onerror=null;this.src=FALLBACK_IMAGE;" /><span class="catalog-type">${type}</span></div>
+      <div class="room-ai-content catalog-preview-content"><h3>${name}</h3><p>${capacity>0?"Up to "+capacity+" pax":"Capacity not listed"}</p>
+      <div class="catalog-starting-price">${rates.length?"<small>Starts at</small><strong>₱"+formatMoney(Math.min(...rates))+"</strong>":"Ask for rates"}</div>
+      <span class="catalog-view-btn">View Details →</span></div>
+    </a></article>`;
+}
 // UI-43: Compact accommodation accordion for mobile / iPad, including
 // touch devices in landscape. Desktop retains the full card presentation.
 const ROOMS_ACCORDION_QUERY = "(max-width: 1199px), (pointer: coarse)";
 let expandedRoomId = null;
 
 function isCompactRoomLayout() {
-  return window.matchMedia(ROOMS_ACCORDION_QUERY).matches;
+  return !catalogDetail && window.matchMedia(ROOMS_ACCORDION_QUERY).matches;
 }
 
 function syncRoomAccordionState() {
@@ -77,10 +118,23 @@ const FALLBACK_IMAGE =
 // ============================================================
 
 document.addEventListener("DOMContentLoaded", () => {
-  checkCustomerAccess();
+  if (!checkCustomerAccess()) return;
+  const category=catalogQuery.get("category");
+  if(["all","rooms","cottages","function-areas"].includes(category)) currentFilter=category;
+  currentPax=paxDigits(catalogQuery.get("pax"));
+  if(!catalogDetail && Number.isSafeInteger(catalogRoomId) && catalogRoomId>0) {
+    location.replace(catalogUrl("accommodation-details.html",catalogRoomId));
+    return;
+  }
   setupLogout();
-  setupCategoryFilters();
-  setupRoomAccordion();
+  if(catalogDetail) document.getElementById("catalogBack").href=catalogUrl("rooms.html",catalogRoomId);
+  else {
+    setupCategoryFilters();
+    syncCatalogFilters();
+    const input=document.getElementById("catalogPax");
+    input?.addEventListener("input",()=>{currentPax=paxDigits(input.value);applyCatalogFilters();});
+    document.getElementById("catalogReset")?.addEventListener("click",()=>{currentPax="";currentFilter="all";applyCatalogFilters();});
+  }
   setupImageViewerControls();
   loadRooms();
 });
@@ -95,12 +149,14 @@ function checkCustomerAccess() {
 
   if (!user) {
     window.location.href = "../authHTML/login.html";
-    return;
+    return false;
   }
 
   if (user.role === "admin" || user.role === "staff") {
     window.location.href = "../adminHTML/admin.html";
+    return false;
   }
+  return true;
 }
 
 // ============================================================
@@ -148,7 +204,7 @@ function setupCategoryFilters() {
       filterButtons.forEach((btn) => btn.classList.remove("active"));
       button.classList.add("active");
 
-      renderRooms(getFilteredRooms());
+      applyCatalogFilters();
     });
   });
 }
@@ -179,8 +235,15 @@ async function loadRooms() {
 
     allRooms = Array.isArray(data) ? data : data.rooms || [];
 
-    renderRooms(getFilteredRooms());
-    focusRequestedAiAccommodation();
+    if(catalogDetail) {
+      const room=allRooms.find(item=>Number(item.id)===catalogRoomId);
+      document.getElementById("catalogDetailTitle").textContent=room?.name||"Accommodation Details";
+      renderRooms(room?[room]:[]);
+    } else {
+      renderRooms(getFilteredRooms());
+      const card=document.getElementById("room-card-"+Number(catalogQuery.get("return_room")));
+      if(card) requestAnimationFrame(()=>card.scrollIntoView({block:"start"}));
+    }
   } catch (error) {
     console.error("loadRooms error:", error);
 
@@ -218,12 +281,9 @@ function focusRequestedAiAccommodation() {
 // ============================================================
 
 function getFilteredRooms() {
-  if (currentFilter === "all") return allRooms;
-
-  return allRooms.filter((room) => {
-    const group = getAccommodationGroup(room.category_name, room.name);
-    return group === currentFilter;
-  });
+  const categoryRooms=currentFilter==="all"?allRooms:allRooms.filter(room=>getAccommodationGroup(room.category_name,room.name)===currentFilter);
+  const pax=Number(currentPax);
+  return pax?categoryRooms.filter(room=>Number(room.max_capacity)>=pax).sort((a,b)=>Number(a.max_capacity)-Number(b.max_capacity)):categoryRooms;
 }
 
 function getAccommodationGroup(categoryName, roomName = "") {
@@ -285,13 +345,17 @@ function renderRooms(rooms) {
 
   if (!rooms.length) {
     container.innerHTML = renderRoomMessage(
-      "No accommodations found for this category.",
+      catalogDetail ? "This accommodation is unavailable or could not be found." : "No accommodations match your filters. Try a different guest count or type.",
       "#475569",
       "rgba(219,231,239,0.92)"
     );
     return;
   }
 
+  if(!catalogDetail) {
+    container.innerHTML=rooms.map(renderCatalogPreview).join("");
+    return;
+  }
   // If filters removed the open accommodation, don't expand another by mistake.
   if (!rooms.some(room => Number(room.id) === expandedRoomId)) {
     expandedRoomId = null;
@@ -435,6 +499,7 @@ function renderRooms(rooms) {
               <div><strong>Morning / Day Tour</strong><br>₱${dayPrice}</div>
               <div><strong>Evening / Overnight</strong><br>₱${overnightPrice}</div>
               <div><strong>${extendedSlotLabel}</strong><br>₱${extendedPrice}</div>
+              <div><strong>Free Entrance</strong><br>${Number(room.free_entrance_pax) || 0} pax included</div>
               <div><strong>Map Location</strong><br>${mapLabel}</div>
               <div><strong>Photos</strong><br>${
                 galleryImages.length
