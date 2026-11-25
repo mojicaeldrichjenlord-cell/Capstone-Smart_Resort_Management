@@ -393,8 +393,10 @@
       voiceRequest?.abort(); releaseCloudPlayback(); window.speechSynthesis?.cancel(); finish(false);
     }, Math.min(180000, Math.max(30000, content.length * 120 + 18000))); };
     watchdog();
+    let browserStarted=false;
     const speakInBrowser = () => {
-      if (serial !== state.speechSequence) return;
+      if (serial !== state.speechSequence || finished || browserStarted) return;
+      browserStarted=true;
       if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) {
         finish(false);
         return;
@@ -526,7 +528,7 @@
       responseCode=response.status;
       const body = await response.json();
       if (!response.ok || !body.success) throw new Error("Transcription failed");
-      if (controller.signal.aborted || (kind === "live" && (!state.live || state.session !== session))) return;
+      if (transcriptionController!==controller || controller.signal.aborted || (kind === "live" && (!state.live || state.session !== session))) return;
       // This is already a model-transcribed audio result, not a browser
       // guess. Preserve it instead of rewriting specific words afterwards.
       const text = String(body.transcript || "").trim().slice(0, state.transcriptLimit);
@@ -560,6 +562,7 @@
 
   async function startRecordedInput(kind) {
     if (!canRecord()) { status("Voice recording unsupported in this browser."); return false; }
+    if(!sessionStorage.getItem("customerToken")){failInput(kind,"Sign in again to use voice transcription.");return false;}
     recordingTried=true;
     preferRecording=true;
     const generation = ++recordingGeneration, session = state.session;
@@ -615,8 +618,10 @@
           finishRecordedInput(true);
         }
       };
-      await resume;
-      if(context.state==="suspended") await Promise.race([context.resume(),new Promise((_,reject)=>setTimeout(()=>reject(new Error("Audio context suspended")),2000))]);
+      let resumeDeadline;
+      try {
+        await Promise.race([resume.then(()=>context.state==="suspended"?context.resume():undefined),new Promise((_,reject)=>{resumeDeadline=setTimeout(()=>reject(new Error("Audio context suspended")),2500);})]);
+      } finally {clearTimeout(resumeDeadline);}
       if(context.state!=="running")throw new Error("Audio context unavailable");
       if (generation !== recordingGeneration || recording !== active) {
         stream.getTracks().forEach(track => track.stop()); return false;
@@ -647,7 +652,7 @@
     if (canRecord() && !useBrowserFallback) {
       return startRecordedInput(kind);
     }
-    if (state.inputMode === "accurate" && !canRecord()) {
+    if (state.inputMode === "accurate" && !canRecord() && !useBrowserFallback) {
       status("Accurate input unsupported on this device; using browser speech recognition.");
     }
     if(SpeechRecognitionAPI)return beginRecognition(kind);
@@ -829,6 +834,7 @@
       state.error = reason;
       if (["service-not-allowed", "language-not-supported", "network"].includes(reason) && canRecord() && !recordingTried) {
         preferRecording = true;
+        useBrowserFallback = false;
         state.error = "fallback-recording";
         status("Browser speech blocked. Switching to secure audio recording…");
       } else if (reason !== "no-speech" && reason !== "aborted") {
@@ -1022,6 +1028,9 @@
     window.addEventListener("pagehide", () => {
       // Release microphone and speech when navigating away.
       stopConversation("");
+    });
+    document.addEventListener("visibilitychange",()=>{
+      if(document.hidden&&(state.live||state.mode!=="idle"))stopConversation("Voice paused while the page was in the background. Tap Start Conversation to resume.");
     });
 
     if (window.isSecureContext===false) {
