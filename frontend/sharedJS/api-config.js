@@ -119,7 +119,13 @@ const API_BASE =
       }else location.href="../authHTML/login.html";
     });
     dialog.addEventListener("close",()=>dialog.remove(),{once:true});
-    dialog.append(title,desc,button);document.body.append(dialog);
+    const logout=document.createElement("button");logout.type="button";logout.textContent="Log Out Current Account";
+    logout.style.cssText="width:100%;margin-top:8px;padding:10px;border:1px solid #7892a5;border-radius:10px;background:transparent;color:#edf5fa;font:inherit;cursor:pointer;";
+    logout.addEventListener("click",()=>{
+      if(!window.confirm("Log out the current account from all tabs of this browser profile?"))return;
+      signOut();dialog.close();location.href="../authHTML/login.html";
+    });
+    dialog.append(title,desc,button,logout);document.body.append(dialog);
     if(typeof dialog.showModal!=="function"){dialog.remove();return false;}
     dialog.showModal();return true;
   }
@@ -152,5 +158,5 @@ const API_BASE =
   window.addEventListener("pageshow",event=>{
     if(event.persisted&&protectedPage&&(!tabInfo()||identity(profile())!==initial?.identity))leave();
   });
-  window.ArvicAccountSession=Object.freeze({active,identity,assertCompatible,establish,signOut,showConflict,tabInfo,CONFLICT});
+  window.ArvicAccountSession=Object.freeze({active,identity,assertCompatible,establish,signOut,endTab:clearTab,showConflict,tabInfo,CONFLICT});
 })();

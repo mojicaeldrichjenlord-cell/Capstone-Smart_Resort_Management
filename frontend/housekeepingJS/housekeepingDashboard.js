@@ -12,9 +12,9 @@ document.addEventListener("DOMContentLoaded", () => {
   let loading = false;
 
   // Remove the signed token so the next page load must authenticate again.
-  function signOut() {
-    sessionStorage.removeItem("housekeepingToken");
-    localStorage.removeItem("user");
+  function signOut(event) {
+    if (event?.type === "click") window.ArvicAccountSession.signOut();
+    else window.ArvicAccountSession.endTab();
     window.location.replace("../authHTML/login.html");
   }
   document.getElementById("logoutBtn")?.addEventListener("click", signOut);
