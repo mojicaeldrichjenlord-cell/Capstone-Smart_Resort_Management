@@ -1,0 +1,87 @@
+/* FD-DM-01: compact Customer-style sun/moon sliding switch for Front Desk. */
+@media screen {
+  body.frontdesk-manager-tone > header.navbar nav .frontdesk-theme-toggle {
+    position: relative;
+    display: inline-flex;
+    flex: 0 0 68px;
+    align-items: center;
+    justify-content: flex-start;
+    width: 68px;
+    min-width: 68px;
+    height: 38px;
+    min-height: 38px;
+    padding: 4px;
+    margin: 0 5px;
+    overflow: hidden;
+    border: 1px solid #a8bdca;
+    border-radius: 999px;
+    background: #e9f1f6;
+    background-image: none;
+    box-shadow: inset 0 1px 3px rgba(8, 24, 36, .19);
+    cursor: pointer;
+    color: #1b2b3d;
+    -webkit-tap-highlight-color: transparent;
+  }
+  body.frontdesk-manager-tone > header.navbar nav .frontdesk-theme-knob {
+    display: inline-flex;
+    flex: 0 0 28px;
+    width: 28px;
+    height: 28px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: #fff;
+    color: #273649;
+    font-size: 1.02rem;
+    font-weight: 800;
+    line-height: 1;
+    box-shadow: 0 1px 3px rgba(8, 24, 36, .23);
+    transform: translateX(0);
+    transition: transform .18s ease;
+    pointer-events: none;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone > header.navbar nav .frontdesk-theme-toggle {
+    border-color: #698298;
+    background: #193248;
+  }
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone > header.navbar nav .frontdesk-theme-knob {
+    transform: translateX(30px);
+    color: #132c3d;
+    background: #f1f5f9;
+  }
+  body.frontdesk-manager-tone > header.navbar nav .frontdesk-theme-toggle:focus-visible {
+    outline: 3px solid #5eead4;
+    outline-offset: 3px;
+  }
+}
+@media screen and (max-width: 900px) {
+  body.frontdesk-manager-tone > header.navbar nav .frontdesk-theme-toggle {
+    flex: 0 0 46px;
+    width: 100%;
+    min-width: 0;
+    height: 46px;
+    min-height: 46px;
+    margin: 4px 0;
+    padding: 5px 10px;
+    border-radius: 11px;
+    justify-content: flex-end;
+    overflow: visible;
+  }
+  body.frontdesk-manager-tone > header.navbar nav .frontdesk-theme-toggle::before {
+    content: "Theme";
+    margin-right: auto;
+    color: #1b2b3d;
+    font-size: .9rem;
+    font-weight: 750;
+  }
+  body.frontdesk-manager-tone > header.navbar nav .frontdesk-theme-toggle[aria-pressed="true"]::before {
+    color: #e7f0f5;
+  }
+  body.frontdesk-manager-tone > header.navbar nav .frontdesk-theme-knob,
+  html[data-frontdesk-theme="dark"] body.frontdesk-manager-tone > header.navbar nav .frontdesk-theme-knob {
+    transform: none;
+  }
+}
+@media screen and (prefers-reduced-motion: reduce) {
+  body.frontdesk-manager-tone > header.navbar nav .frontdesk-theme-knob { transition: none; }
+}

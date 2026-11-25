@@ -113,3 +113,6 @@
     outline-offset: 3px;
   }
 }
+
+/* FD-DM-02: Remove decorative background emoji on Front Desk screens. */
+@media screen { body.frontdesk-manager-tone::before, body.frontdesk-manager-tone::after { content:none !important; display:none !important; } }
