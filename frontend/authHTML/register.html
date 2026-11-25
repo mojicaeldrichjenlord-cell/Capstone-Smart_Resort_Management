@@ -11,7 +11,7 @@
          PAGE STYLES
     ======================================================= -->
     <link rel="stylesheet" href="../sharedCSS/global.css" />
-    <link rel="stylesheet" href="../authCSS/register.css?v=20261125-ui86" />
+    <link rel="stylesheet" href="../authCSS/register.css?v=20261125-ui88" />
   </head>
 
   <body class="auth-page">
@@ -102,15 +102,12 @@
                  PREMIUM PASSWORD UI
             =================================================== -->
             <div class="register-form-group password-premium-group full-width">
-              <label for="password">Password</label>
-
               <div class="premium-password-field" id="premiumPasswordField">
-                <span class="premium-floating-label">Password</span>
 
                 <input
                   type="password"
                   id="password"
-                  placeholder="8–16 characters"
+                  placeholder=" "
                   minlength="8"
                   maxlength="16"
                   autocomplete="new-password"
@@ -118,6 +115,7 @@
                   required
                 />
 
+                <label class="premium-floating-label" for="password">Password</label>
                 <button type="button" class="password-toggle" data-target="password" aria-label="Show password" aria-controls="password" aria-pressed="false" title="Show password">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                     <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"></path>
@@ -127,37 +125,41 @@
                 </button>
               </div>
 
-              <div class="password-strength" id="passwordStrengthBox" aria-live="polite">
-                <div class="password-strength-header">
-                  <span>Password Strength</span>
-                  <strong id="passwordStrengthText">Not set</strong>
+              <div class="password-guidance">
+                <div class="password-guidance-inner">
+                  <div class="password-strength" id="passwordStrengthBox" aria-live="polite">
+                    <div class="password-strength-header">
+                      <span>Password Strength</span>
+                      <strong id="passwordStrengthText">Not set</strong>
+                    </div>
+    
+                    <div class="password-strength-track">
+                      <div class="password-strength-bar" id="passwordStrengthBar"></div>
+                    </div>
+                  </div>
+    
+                  <div class="password-requirements" id="passwordRequirements">
+                    <span class="password-requirement" id="requirementLength">
+                      <span class="requirement-icon">✓</span>8–16 Chars
+                    </span>
+    
+                    <span class="password-requirement" id="requirementUppercase">
+                      <span class="requirement-icon">✓</span>A-Z
+                    </span>
+    
+                    <span class="password-requirement" id="requirementLowercase">
+                      <span class="requirement-icon">✓</span>a-z
+                    </span>
+    
+                    <span class="password-requirement" id="requirementNumber">
+                      <span class="requirement-icon">✓</span>123
+                    </span>
+    
+                    <span class="password-requirement" id="requirementSpecial">
+                      <span class="requirement-icon">✓</span>@#$
+                    </span>
+                  </div>
                 </div>
-
-                <div class="password-strength-track">
-                  <div class="password-strength-bar" id="passwordStrengthBar"></div>
-                </div>
-              </div>
-
-              <div class="password-requirements" id="passwordRequirements">
-                <span class="password-requirement" id="requirementLength">
-                  <span class="requirement-icon">✓</span>8–16 Chars
-                </span>
-
-                <span class="password-requirement" id="requirementUppercase">
-                  <span class="requirement-icon">✓</span>A-Z
-                </span>
-
-                <span class="password-requirement" id="requirementLowercase">
-                  <span class="requirement-icon">✓</span>a-z
-                </span>
-
-                <span class="password-requirement" id="requirementNumber">
-                  <span class="requirement-icon">✓</span>123
-                </span>
-
-                <span class="password-requirement" id="requirementSpecial">
-                  <span class="requirement-icon">✓</span>@#$
-                </span>
               </div>
             </div>
 
