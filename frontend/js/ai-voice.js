@@ -44,10 +44,15 @@
     (/Macintosh/i.test(window.navigator?.userAgent || "") &&
      Number(window.navigator?.maxTouchPoints) > 1);
   let preferRecording = isIOS || !SpeechRecognitionAPI;
+  let useBrowserFallback = false;
+  let recordingTried = false;
+  let browserTried = false;
+  let playbackTimer = null;
+  let replayText = "";
   let recording = null;
   let recordingGeneration = 0;
   let transcriptionController = null;
-  const canRecord = () => Boolean(window.navigator?.mediaDevices?.getUserMedia &&
+  const canRecord = () => Boolean(window.isSecureContext !== false && window.navigator?.mediaDevices?.getUserMedia &&
     (window.AudioContext || window.webkitAudioContext));
   const canSpeak = () => Boolean(SpeechRecognitionAPI || canRecord());
   const state = {
@@ -138,6 +143,52 @@
       (limited ? " — basic/compact voice; an Enhanced voice may sound better." : ".");
   }
 
+  // AI-99: stable, actionable errors. Never bypass permission or session checks.
+  function micError(error) {
+    switch (error?.name) {
+      case "NotAllowedError": case "PermissionDeniedError": case "SecurityError":
+        return "Microphone permission denied. Allow microphone access in browser settings, then try again.";
+      case "NotFoundError": case "DevicesNotFoundError":
+        return "No microphone detected. Connect or enable a microphone, then try again.";
+      case "NotReadableError": case "TrackStartError":
+        return "Microphone is unavailable or in use. Check your device and close other recording apps.";
+      default: return "Could not start microphone recording. Try again or use text chat.";
+    }
+  }
+  function transcriptionError(code, timedOut) {
+    if(timedOut) return "Voice transcription timed out. Try again or use text chat.";
+    if(code===401||code===403) return "Voice session expired or not authorized. Sign in again to use voice.";
+    if(code===429) return "Voice transcription limit reached. Try again later or use text chat.";
+    if(code===413||code===415||code===400) return "Recording could not be processed. Try a shorter voice message.";
+    return "Voice transcription unavailable. Check your connection or try again later.";
+  }
+  function revealVoiceOptions() {
+    if(controls?.panel) controls.panel.hidden=false;
+    document.getElementById("aiVoiceOptionsToggle")?.setAttribute?.("aria-expanded","true");
+  }
+  function failInput(kind,message) {
+    revealVoiceOptions();
+    if(kind==="live") stopConversation(message);
+    else { state.mode="idle";updateControls();status(message); }
+  }
+  function fallbackToBrowser(kind) {
+    if(!SpeechRecognitionAPI||browserTried||(kind==="live"&&!state.live))return false;
+    revealVoiceOptions();
+    useBrowserFallback=true;
+    preferRecording=false;
+    status("Switching to browser speech recognition. Please repeat your message.");
+    return beginRecognition(kind);
+  }
+  function clearPlaybackTimer() {
+    if(playbackTimer!==null)clearTimeout(playbackTimer);
+    playbackTimer=null;
+  }
+  function setReplay(text) {
+    replayText=String(text||"");
+    if(controls?.replay)controls.replay.hidden=!replayText;
+    if(replayText)revealVoiceOptions();
+  }
+
   function clearRestart() {
     if (state.restartTimer !== null) {
       clearTimeout(state.restartTimer);
@@ -147,6 +198,8 @@
 
   function cancelSpeech() {
     state.speechSequence++;
+    clearPlaybackTimer();
+    setReplay("");
     // Interrupt BOTH browser TTS and Azure MP3/fetch without replaying
     // old responses or restarting the microphone after interruption.
     voiceRequest?.abort();
@@ -269,6 +322,7 @@
     if (!token || cloudUnavailable || content.length > 2000) return false;
     const controller = new AbortController();
     voiceRequest = controller;
+    const deadline=setTimeout(()=>controller.abort(),18000);
     try {
       const response = await fetch(voiceApiBase() + "/ai/voice", {
         method: "POST",
@@ -308,16 +362,18 @@
       status("Speaking with Microsoft Blessica (Filipino).");
       return true;
     } catch (error) {
-      if (controller.signal.aborted || serial !== state.speechSequence) return true;
+      if (serial !== state.speechSequence) return true;
+      releaseCloudPlayback();
       console.warn("Blessica cloud voice unavailable:", error.message);
       status("Blessica cloud voice unavailable; using browser voice.");
       return false;
     } finally {
+      clearTimeout(deadline);
       if (voiceRequest === controller) voiceRequest = null;
     }
   }
 
-  function speakReply(text, onDone = null) {
+  function speakReply(text, onDone = null, browserOnly = false) {
     const content = String(text || "").trim();
     if (content) state.language = inferReplyLanguage(content);
     cancelSpeech();
@@ -327,34 +383,48 @@
       return;
     }
     let finished = false;
-    const finish = () => {
+    const finish = (ok = true) => {
       if (finished || serial !== state.speechSequence) return;
       finished = true;
-      if (onDone) onDone();
+      clearPlaybackTimer();
+      if (!ok) {
+        if (state.live) stopConversation("Audio playback unavailable. Tap Play Reply to hear the response or continue with text.");
+        else status("Audio playback unavailable. Tap Play Reply to retry.");
+        setReplay(content);
+      }
+      if (onDone) onDone(ok);
     };
+    // Prevent a stuck live-speaking state if a mobile audio engine emits no end/error.
+    const watchdog = () => { clearPlaybackTimer(); playbackTimer=setTimeout(()=>{
+      if(serial!==state.speechSequence||finished)return;
+      voiceRequest?.abort(); releaseCloudPlayback(); window.speechSynthesis?.cancel(); finish(false);
+    }, Math.min(180000, Math.max(30000, content.length * 120 + 18000))); };
+    watchdog();
+    let browserStarted=false;
     const speakInBrowser = () => {
-      if (serial !== state.speechSequence) return;
-      if (!("speechSynthesis" in window) ||
-          !("SpeechSynthesisUtterance" in window)) {
-        finish();
+      if (serial !== state.speechSequence || finished || browserStarted) return;
+      browserStarted=true;
+      if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) {
+        finish(false);
         return;
       }
-      const utterance = new SpeechSynthesisUtterance(content);
+      const utterance = new window.SpeechSynthesisUtterance(content);
       const chosenVoice = selectSpeechVoice(utterance);
       reportBrowserVoice(chosenVoice);
       utterance.rate = isIOS ? 1 : 0.98;
       utterance.pitch = 1;
-      utterance.onend = finish;
-      utterance.onerror = finish;
+      utterance.onend = () => finish(true);
+      utterance.onerror = () => finish(false);
       try {
+        if(window.speechSynthesis.paused)window.speechSynthesis.resume();
         window.speechSynthesis.speak(utterance);
       } catch (error) {
         console.warn("Browser TTS failed:", error.message);
-        finish();
+        finish(false);
       }
     };
 
-    if (state.language === "taglish") {
+    if (state.language === "taglish" && !browserOnly) {
       // Cloud voice produces the SAME Filipina voice in Chrome and Edge.
       // Browser TTS is only the graceful fallback when Azure is not ready.
       playBlessicaCloud(content, serial, finish, speakInBrowser)
@@ -444,12 +514,14 @@
   async function transcribeRecording(wav, kind, session, prefix) {
     const token = sessionStorage.getItem("customerToken");
     if (!token) {
-      if (kind === "live") stopConversation("Please log in again to use voice.");
-      else { state.mode = "idle"; updateControls(); status("Please log in again to use voice."); }
+      failInput(kind,"Please log in again to use voice.");
       return;
     }
     const controller = new AbortController();
     transcriptionController = controller;
+    let timedOut=false;
+    let responseCode=0;
+    const deadline=setTimeout(()=>{timedOut=true;controller.abort();},25000);
     try {
       status("Transcribing voice securely…");
       const response = await fetch(voiceApiBase() + "/ai/transcribe", {
@@ -459,9 +531,10 @@
           "Authorization": "Bearer " + token
         }, body: wav, signal: controller.signal
       });
+      responseCode=response.status;
       const body = await response.json();
-      if (!response.ok || !body.success) throw new Error(body.message || "Transcription failed");
-      if (controller.signal.aborted || (kind === "live" && (!state.live || state.session !== session))) return;
+      if (!response.ok || !body.success) throw new Error("Transcription failed");
+      if (transcriptionController!==controller || controller.signal.aborted || (kind === "live" && (!state.live || state.session !== session))) return;
       // This is already a model-transcribed audio result, not a browser
       // guess. Preserve it instead of rewriting specific words afterwards.
       const text = String(body.transcript || "").trim().slice(0, state.transcriptLimit);
@@ -482,17 +555,22 @@
         stopConversation("No speech detected. Tap Start Conversation again.");
       }
     } catch (error) {
-      if (controller.signal.aborted) return;
-      if (kind === "live") stopConversation("Voice transcription unavailable. Please use text chat.");
-      else { state.mode = "idle"; updateControls(); status("Voice transcription unavailable. Please use text chat."); }
-      console.warn("Recorded voice transcription failed:", error.message);
+      if (transcriptionController!==controller || (controller.signal.aborted&&!timedOut)) return;
+      // Retry by asking the guest to speak again, not by sending paid requests repeatedly.
+      if (responseCode!==401 && responseCode!==403 && fallbackToBrowser(kind)) return;
+      failInput(kind,transcriptionError(responseCode,timedOut));
+      console.warn("Recorded voice transcription failed:", error.name || "unknown",responseCode);
     } finally {
+      clearTimeout(deadline);
       if (transcriptionController === controller) transcriptionController = null;
     }
   }
 
   async function startRecordedInput(kind) {
     if (!canRecord()) { status("Voice recording unsupported in this browser."); return false; }
+    if(!sessionStorage.getItem("customerToken")){failInput(kind,"Sign in again to use voice transcription.");return false;}
+    recordingTried=true;
+    preferRecording=true;
     const generation = ++recordingGeneration, session = state.session;
     const prefix = kind === "dictation"
       ? String(document.getElementById("aiChatInput")?.value || "").trim() : "";
@@ -501,22 +579,24 @@
     status("Requesting microphone access…");
     let stream, context;
     try {
+      // Construct/resume audio context from the original user gesture, before permission awaits.
+      const Context = window.AudioContext || window.webkitAudioContext;
+      context = new Context();
+      const resume=context.resume().catch(()=>{});
       stream = await window.navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true,
           channelCount: 1 }
       });
       if (generation !== recordingGeneration || (kind === "live" && (!state.live || state.session !== session))) {
-        stream.getTracks().forEach(track => track.stop()); return false;
+        stream.getTracks().forEach(track => track.stop()); context.close().catch(()=>{});return false;
       }
-      const Context = window.AudioContext || window.webkitAudioContext;
-      context = new Context();
       const source = context.createMediaStreamSource(stream);
       const processor = context.createScriptProcessor(2048, 1, 1);
       const gain = context.createGain();
       gain.gain.value = 0;
       source.connect(processor); processor.connect(gain); gain.connect(context.destination);
       const active = { kind, session, prefix, stream, context, source, processor,
-        gain, parts: [], count: 0, heard: false, voiceFrames: 0,
+        gain, parts: [], count: 0, heard: false, voiceFrames: 0, voiceSeconds:0, noiseFloor:0.002,
         lastSpeech: 0, timeout: null };
       recording = active;
       processor.onaudioprocess = event => {
@@ -526,11 +606,16 @@
         let energy = 0;
         for (let n = 0; n < samples.length; n++) energy += samples[n] * samples[n];
         const elapsed = active.count / context.sampleRate;
-        if (Math.sqrt(energy / samples.length) > 0.012) {
+        const rms=Math.sqrt(energy/samples.length);
+        const threshold=Math.max(0.004,Math.min(0.012,active.noiseFloor*2.5));
+        if(rms>threshold){
           active.voiceFrames++;
-          // Require sustained voice, not a single click or mic pop.
-          if (active.voiceFrames >= 3) active.heard = true;
-          active.lastSpeech = elapsed;
+          active.voiceSeconds+=samples.length/context.sampleRate;
+          if(active.voiceSeconds>=0.12)active.heard=true;
+          active.lastSpeech=elapsed;
+        }else{
+          active.noiseFloor=0.97*active.noiseFloor+0.03*rms;
+          if(!active.heard)active.voiceSeconds=0;
         }
         // Allow natural pauses in Taglish without cutting off the sentence.
         // Keep WAV under the backend's 500 KB audio limit (14 s at 16 kHz).
@@ -539,7 +624,11 @@
           finishRecordedInput(true);
         }
       };
-      await context.resume();
+      let resumeDeadline;
+      try {
+        await Promise.race([resume.then(()=>context.state==="suspended"?context.resume():undefined),new Promise((_,reject)=>{resumeDeadline=setTimeout(()=>reject(new Error("Audio context suspended")),2500);})]);
+      } finally {clearTimeout(resumeDeadline);}
+      if(context.state!=="running")throw new Error("Audio context unavailable");
       if (generation !== recordingGeneration || recording !== active) {
         stream.getTracks().forEach(track => track.stop()); return false;
       }
@@ -551,10 +640,13 @@
         : "Listening… Speak, then pause for the AI reply.");
       return true;
     } catch (error) {
+      const stale=generation!==recordingGeneration||(kind==="live"&&(!state.live||state.session!==session));
       if (recording?.context === context) cancelRecordedInput();
       else { stream?.getTracks().forEach(track => track.stop()); context?.close().catch(() => {}); }
-      if (kind === "live") stopConversation("Microphone access unavailable. Please check browser permission.");
-      else { state.mode = "idle"; updateControls(); status("Microphone access unavailable. Check browser permission."); }
+      if(stale)return false;
+      const denied=["NotAllowedError","PermissionDeniedError","SecurityError","NotFoundError","DevicesNotFoundError"].includes(error.name);
+      if(!denied&&fallbackToBrowser(kind))return true;
+      failInput(kind,micError(error));
       console.warn("Recorded microphone unavailable:", error.name || "unknown");
       return false;
     }
@@ -563,13 +655,15 @@
   function beginVoiceInput(kind) {
     // Multilingual input uses Gemini audio auto-detection whenever available;
     // browser speech recognition is a limited device-language fallback only.
-    if (canRecord()) {
+    if (canRecord() && !useBrowserFallback) {
       return startRecordedInput(kind);
     }
-    if (state.inputMode === "accurate" && !canRecord()) {
+    if (state.inputMode === "accurate" && !canRecord() && !useBrowserFallback) {
       status("Accurate input unsupported on this device; using browser speech recognition.");
     }
-    return beginRecognition(kind);
+    if(SpeechRecognitionAPI)return beginRecognition(kind);
+    failInput(kind,"Voice input unavailable in this browser. Text chat still works.");
+    return false;
   }
 
   function setInputMode(mode) {
@@ -702,7 +796,9 @@
 
     const input = document.getElementById("aiChatInput");
     if (!input) return false;
-    const recognizer = new SpeechRecognitionAPI();
+    browserTried=true;
+    let recognizer;
+    try { recognizer=new SpeechRecognitionAPI(); } catch(error) {failInput(kind,micError(error));return false;}
     const session = state.session;
     state.recognizer = recognizer;
     state.error = "";
@@ -742,8 +838,9 @@
       if (state.recognizer !== recognizer) return;
       const reason = String(event?.error || "unknown");
       state.error = reason;
-      if (["service-not-allowed", "language-not-supported", "network"].includes(reason) && canRecord()) {
+      if (["service-not-allowed", "language-not-supported", "network"].includes(reason) && canRecord() && !recordingTried) {
         preferRecording = true;
+        useBrowserFallback = false;
         state.error = "fallback-recording";
         status("Browser speech blocked. Switching to secure audio recording…");
       } else if (reason !== "no-speech" && reason !== "aborted") {
@@ -765,7 +862,9 @@
         updateControls();
         status(utterance
           ? "Transcript ready. Review/edit it, then press Send."
-          : "No speech captured. Try again or type your message.");
+          : error && !["no-speech","aborted"].includes(error)
+            ? "Voice recognition failed ("+error+"). Check microphone permissions or use text chat."
+            : "No speech captured. Try again or type your message.");
         return;
       }
       if (!state.live || session !== state.session) return;
@@ -821,8 +920,8 @@
     state.mode = "live-speaking";
     updateControls();
     status("AI is speaking. Use Interrupt to ask another question.");
-    speakReply(responseText, () => {
-      if (!state.live || state.session !== session) return;
+    speakReply(responseText, ok => {
+      if (!ok || !state.live || state.session !== session) return;
       state.mode = "live-listening";
       updateControls();
       status("AI finished. Listening for your next question…");
@@ -834,11 +933,12 @@
     if (!canSpeak() || state.live) return;
     if (state.mode === "dictation") {
       status("Finishing transcription…");
-      if (recording || (preferRecording && !state.recognizer)) finishRecordedInput(true);
+      if (recording || !state.recognizer) finishRecordedInput(true);
       else try { state.recognizer?.stop(); } catch (_) { /* ending already */ }
       return;
     }
     if (state.mode === "dictation-transcribing") return;
+    useBrowserFallback=false;recordingTried=false;browserTried=false;
     void beginVoiceInput("dictation");
   }
 
@@ -848,6 +948,7 @@
       stopRecognition(true); cancelRecordedInput(); state.mode = "idle";
     }
     cancelSpeech();
+    useBrowserFallback=false;recordingTried=false;browserTried=false;
     state.live = true; state.session++; state.emptyTurns = 0;
     const input = document.getElementById("aiChatInput");
     if (input) input.value = "";
@@ -867,7 +968,7 @@
     if (state.live) stopConversation("Voice conversation stopped to play this reply.");
     state.language = inferReplyLanguage(text);
     status("Reading response in " + getLocale().label + "…");
-    speakReply(text, () => status("Finished reading aloud."));
+    speakReply(text, ok => {if(ok)status("Finished reading aloud.");});
   }
 
   function init() {
@@ -888,6 +989,7 @@
       // if recording is unsupported, the existing browser fallback is used.
       '<div class="ai-voice-actions">',
       '<button id="aiVoiceInterrupt" type="button" hidden>Interrupt AI</button>',
+      '<button id="aiVoiceReplay" type="button" hidden>Play Reply</button>',
       '</div>',
       '<p id="aiVoiceStatus" role="status" aria-live="polite">',
       'Gemini mic ready · transcription uses credits.</p>',
@@ -901,6 +1003,7 @@
       mic: microphone,
       live: panel.querySelector("#aiVoiceLive"),
       interrupt: panel.querySelector("#aiVoiceInterrupt"),
+      replay: panel.querySelector("#aiVoiceReplay"),
       status: panel.querySelector("#aiVoiceStatus"),
       info: panel.querySelector("#aiVoiceInfo"),
     };
@@ -918,6 +1021,11 @@
       else startConversation();
     });
     controls.interrupt.addEventListener("click", interruptConversation);
+    controls.replay.addEventListener("click",()=>{
+      const text=replayText;if(!text)return;
+      // Direct gesture gives browser TTS the best chance on iOS.
+      speakReply(text,ok=>{if(ok)status("Finished reading aloud.");},true);
+    });
  
     document.getElementById("aiChatClose")?.addEventListener("click", () =>
       stopConversation("Voice controls stopped when the assistant closed."));
@@ -927,8 +1035,13 @@
       // Release microphone and speech when navigating away.
       stopConversation("");
     });
+    document.addEventListener("visibilitychange",()=>{
+      if(document.hidden&&(state.live||state.mode!=="idle"))stopConversation("Voice paused while the page was in the background. Tap Start Conversation to resume.");
+    });
 
-    if (!canSpeak()) {
+    if (window.isSecureContext===false) {
+      status("Microphone requires HTTPS or localhost. Text chat still works.");
+    } else if (!canSpeak()) {
       status("Voice input unavailable in this browser. Text chat still works.");
     } else if (canRecord()) {
       status("Gemini mic ready · transcription uses credits.");

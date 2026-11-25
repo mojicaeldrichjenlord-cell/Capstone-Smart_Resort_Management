@@ -173,7 +173,7 @@ if (loginForm) {
       showMessage("Login successful!", "success");
 
       setTimeout(() => {
-        window.location.href = destination;
+        window.location.href = role === "customer" ? aiBookingDestination(destination) : destination;
       }, 600);
     } catch (error) {
       if (error.code === "ACTIVE_ACCOUNT_CONFLICT") {
@@ -255,4 +255,20 @@ function showMessage(message, type = "success") {
   }
 
   alert(message);
+}
+
+
+// AI-105: allow only known booking form parameters after Customer login.
+// No arbitrary return URL, payment amount or reservation creation.
+function aiBookingDestination(fallback) {
+  const source=new URLSearchParams(window.location.search);
+  const id=Number(source.get("room_id"));
+  if(!Number.isSafeInteger(id)||id<=0)return fallback;
+  const params=new URLSearchParams({room_id:String(id)});
+  const date=source.get("check_in"),slot=source.get("slot_type"),duration=Number(source.get("stay_duration")),guests=Number(source.get("guests"));
+  if(/^\d{4}-\d{2}-\d{2}$/.test(date||""))params.set("check_in",date);
+  if(["day_tour","night","day_extended","night_extended"].includes(slot))params.set("slot_type",slot);
+  if(Number.isInteger(duration)&&duration>=1&&duration<=5)params.set("stay_duration",String(duration));
+  if(Number.isSafeInteger(guests)&&guests>=1&&guests<=200)params.set("guests",String(guests));
+  return "../customerHTML/booking.html?"+params;
 }
