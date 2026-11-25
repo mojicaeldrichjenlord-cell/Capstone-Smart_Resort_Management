@@ -213,3 +213,12 @@
   width: min(100%, 430px);
   max-width: 100%;
 }
+
+/* UI-96: Maximize by default on narrow or landscape phone layouts. */
+@media (max-width:767px), (max-width:950px) and (pointer:coarse) and (max-height:600px) {
+  #aiChatMaximize {display:none !important;}
+  body #aiChatWindow.ai-chat-window.maximized {
+    position:fixed !important; inset:max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left)) !important;
+    width:auto !important; max-width:none !important; height:auto !important; max-height:none !important; min-height:0 !important;
+  }
+}
