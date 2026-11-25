@@ -1146,6 +1146,7 @@ function renderGuestCard(
         </section>
       </div>
 
+      ${window.CustomerBookingNote.render(booking)}
       <div class="guest-card-footer">
         <div class="guest-state-message">
           ${escapeHtml(

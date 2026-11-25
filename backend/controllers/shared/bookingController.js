@@ -1,4 +1,5 @@
 const { findOverlappingDraftItems } = require("../../utils/reservationOverlap");
+const { extractCustomerNote } = require("../../utils/customerBookingNote");
 const { hasValidNameParts, NAME_ERROR } = require("../../utils/guestInputValidation");
 ﻿// ============================================================
 // COMMENTED VERSION
@@ -2449,6 +2450,7 @@ exports.getAllBookings = async (req, res) => {
       booked_guests: Number(row.guest_count || 0),
       actual_guests: Number(row.actual_guest_count ?? row.guest_count ?? 0),
       room_name: row.accommodation_list || row.room_name || "N/A",
+      customer_note: extractCustomerNote(row.note),
       items: [],
     }));
 
