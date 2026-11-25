@@ -1183,3 +1183,135 @@
   .password-eye-slash, .register-card .password-toggle { transition: none; }
   .is-verifying .register-card { animation: none; }
 }
+
+/* UI-88: animated password label and guidance, scoped to the registration page.
+   Focus-within includes keyboard/touch access and the existing visibility button. */
+#registerForm .password-premium-group {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  min-width: 0;
+}
+#registerForm .premium-password-field { margin-top: 0; }
+#registerForm .premium-password-field input {
+  min-height: 54px !important;
+  padding: 13px 52px 12px 14px !important;
+  border: 1.5px solid #b9c9d6 !important;
+  border-radius: 14px !important;
+  font-size: .94rem !important;
+}
+#registerForm .premium-password-field input:focus {
+  border-color: #0d9488 !important;
+  box-shadow: 0 0 0 3px rgba(20,184,166,.12) !important;
+}
+#registerForm .premium-password-field.valid input { border-color: #22c55e !important; }
+#registerForm .premium-password-field.partial input { border-color: #f59e0b !important; }
+#registerForm .premium-password-field.invalid input { border-color: #ef4444 !important; }
+#registerForm .premium-floating-label {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  transform: translateY(-50%);
+  margin: 0;
+  padding: 0;
+  line-height: 1.2;
+  color: #64748b;
+  font-size: .94rem;
+  font-weight: 400;
+  background: #fff;
+  pointer-events: none;
+  transition: top .23s ease, font-size .23s ease, color .23s ease, padding .23s ease;
+}
+#registerForm .premium-password-field:focus-within .premium-floating-label,
+#registerForm .premium-password-field input:not(:placeholder-shown) + .premium-floating-label {
+  top: 0;
+  padding: 0 6px;
+  font-size: .75rem;
+  font-weight: 700;
+  color: #0f766e;
+}
+#registerForm .premium-password-field input:-webkit-autofill + .premium-floating-label {
+  top: 0;
+  padding: 0 6px;
+  font-size: .75rem;
+  font-weight: 700;
+  color: #0f766e;
+}
+#registerForm .password-guidance {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  visibility: hidden;
+  transition: grid-template-rows .3s ease, opacity .25s ease, visibility 0s linear .3s;
+}
+#registerForm .password-guidance-inner {
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+#registerForm .password-premium-group:focus-within .password-guidance {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  visibility: visible;
+  transition: grid-template-rows .3s ease, opacity .25s ease, visibility 0s;
+}
+#registerForm .password-strength { margin-top: 10px; }
+#registerForm .password-strength-header {
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: .75rem;
+  line-height: 1.3;
+  margin-bottom: 6px;
+}
+#registerForm .password-strength-track { height: 5px; }
+#registerForm .password-requirements {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px 10px;
+  margin-top: 9px;
+  padding-bottom: 4px;
+}
+#registerForm .password-requirement {
+  font-size: .7rem;
+  line-height: 1.3;
+  flex: 0 0 auto;
+}
+#registerForm .requirement-icon { width: 15px; height: 15px; flex-shrink: 0; }
+#registerForm .password-toggle {
+  width: 38px;
+  height: 38px;
+  right: 7px;
+}
+#registerForm .confirm-password-group input {
+  min-height: 48px;
+  padding-right: 54px !important;
+}
+/* Keep desktop/tablet layout fluid and the mobile keyboard from causing input zoom. */
+#registerContainer { max-width: 100%; }
+#registerContainer .register-card,
+#registerContainer .register-showcase { min-width: 0; }
+#registerForm .register-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 700px) {
+  #registerForm .register-form-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 768px) {
+  .auth-page { align-items: flex-start; }
+  #registerForm .register-form-group input,
+  #registerForm .premium-password-field input,
+  #registerOtpForm #registerOtp { font-size: 16px !important; }
+  #registerForm .premium-floating-label { font-size: 16px; }
+  #registerForm .premium-password-field:focus-within .premium-floating-label,
+  #registerForm .premium-password-field input:not(:placeholder-shown) + .premium-floating-label { font-size: .75rem; }
+}
+@media (pointer: coarse) {
+  #registerForm .password-toggle { width: 44px; height: 44px; right: 5px; }
+  #registerForm .premium-password-field input,
+  #registerForm .confirm-password-group input { min-height: 54px; padding-right: 58px !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #registerForm .premium-floating-label,
+  #registerForm .password-guidance,
+  #registerForm .password-strength-bar,
+  #registerForm .password-requirement,
+  #registerForm .requirement-icon { transition: none !important; }
+}
