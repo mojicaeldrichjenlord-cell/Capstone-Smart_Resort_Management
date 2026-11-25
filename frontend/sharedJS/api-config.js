@@ -26,7 +26,7 @@ const API_BASE =
   const PREFIX = {customer:"cus1",admin:"adm1",frontdesk:"fd1",manager:"mgr1",housekeeping:"hk1"};
   const ROUTES = {customer:"../customerHTML/index.html",admin:"../adminHTML/admin.html",frontdesk:"../frontdeskHTML/frontdeskDashboard.html",manager:"../managerHTML/managerDashboard.html",housekeeping:"../housekeepingHTML/housekeepingDashboard.html"};
   const LEGACY_AI = ["smartresort_ai_context_v1","smartresort_ai_chat_history_v1","smartresort_ai_window_state_v1"];
-  const CONFLICT = "Please sign in again to restore your current account.";
+  const CONFLICT = "Use your current account or sign out from its open tab before switching accounts.";
   const roleOf = value => { const r=String(value||"").trim().toLowerCase(); return r==="staff"?"frontdesk":r; };
   function identity(user) {
     const id=Number(user?.id),role=roleOf(user?.role);
@@ -63,6 +63,7 @@ const API_BASE =
     return {user,identity:id,expires:meta?.identity===id?meta.expires:null};
   }
   function clearTab() {
+    releaseLease();
     Object.values(KEYS).forEach(k=>sessionStorage.removeItem(k));
     const discard=[];
     for(let i=0;i<sessionStorage.length;i++){
@@ -85,7 +86,7 @@ const API_BASE =
   async function establish(user,token) {
     const info=tokenInfo(token,user);
     if(!info)throw new Error("Secure login session is invalid. Please log in again.");
-    const write=()=>{
+    const write=async()=>{
       assertCompatible(user);
       const existing=active();
       if(!existing||existing.identity!==info.identity||!tabInfo(user)) clearTab();
@@ -93,7 +94,9 @@ const API_BASE =
       sessionStorage.setItem(KEYS[roleOf(user.role)],token);
       const previous=parse(localStorage.getItem(META));
       const epoch=previous?.identity===info.identity && existing && previous.epoch ? previous.epoch : nonce();
-      localStorage.setItem(META,JSON.stringify({identity:info.identity,expires:Math.max(info.expires,existing?.expires||0),epoch}));
+      // A new generation is lease-managed only when every session starts here.
+      const managed=await holdLease();
+      localStorage.setItem(META,JSON.stringify({identity:info.identity,expires:Math.max(info.expires,existing?.expires||0),epoch,leaseManaged:managed&&(!existing||previous?.leaseManaged===true)}));
       localStorage.setItem("user",JSON.stringify({...user,role:roleOf(user.role)}));
       currentEpoch=epoch;
       LEGACY_AI.forEach(k=>localStorage.removeItem(k));
@@ -113,7 +116,6 @@ const API_BASE =
   const protectedPage=/\/(?:adminHTML|frontdeskHTML|managerHTML|housekeepingHTML)\//i.test(path) ||
     /\/customerHTML\/(?:index|rooms|accommodation-details|booking|booking-payment|my-bookings|profile|resort-map)\.html$/i.test(path);
   const authPage=/\/authHTML\/(?:login|register)\.html$/i.test(path);
-  const loginPage=/\/authHTML\/login\.html$/i.test(path);
   const landingPage=path==="/"||/\/landing\.html$/i.test(path);
   const currentUser=profile();
   const initial=tabInfo(currentUser);
@@ -127,13 +129,32 @@ const API_BASE =
     return role==="customer";
   }
   const dashboard=user=>ROUTES[roleOf(user?.role)]||"../authHTML/login.html";
+  // AUTH-101: distinguish stale identity from an active tab using a browser-held
+  // shared lease. A sleeping tab keeps its lock; timeout alone is not logout proof.
+  const LEASE="arvic-active-session-lease-v1";
+  const supportsLease=typeof navigator.locks?.query==="function"&&typeof navigator.locks?.request==="function";
+  let leasePromise=null,releaseHeldLease=null,leaseGeneration=0;
+  function holdLease(){
+    if(!supportsLease)return Promise.resolve(false);
+    if(leasePromise)return leasePromise;
+    const generation=++leaseGeneration;
+    leasePromise=new Promise(resolve=>{
+      navigator.locks.request(LEASE,{mode:"shared"},lock=>{
+        if(!lock||generation!==leaseGeneration){resolve(false);return;}
+        return new Promise(release=>{releaseHeldLease=release;resolve(true);});
+      }).catch(()=>{if(generation===leaseGeneration)leasePromise=null;resolve(false);});
+    });
+    return leasePromise;
+  }
+  function releaseLease(){leaseGeneration++;releaseHeldLease?.();releaseHeldLease=null;leasePromise=null;}
   let channel=null;
   try { if(typeof window.BroadcastChannel==="function")channel=new window.BroadcastChannel("arvic-account-session-v2"); } catch (_) {}
   function metadata(){return parse(localStorage.getItem(META));}
   // Existing sessions from AUTH-98 get a generation without changing their account.
   if(initial){
     const existing=active(),old=metadata();
-    if(existing)localStorage.setItem(META,JSON.stringify({identity:existing.identity,expires:existing.expires,epoch:old?.identity===existing.identity&&old.epoch?old.epoch:nonce()}));
+    if(existing)localStorage.setItem(META,JSON.stringify({identity:existing.identity,expires:existing.expires,epoch:old?.identity===existing.identity&&old.epoch?old.epoch:nonce(),leaseManaged:old?.identity===existing.identity&&old.leaseManaged===true}));
+    void holdLease();
   }
   let currentEpoch=initial?metadata()?.epoch:null;
   let leaving=false;
@@ -188,6 +209,8 @@ const API_BASE =
           const user=profile(),info=tokenInfo(token,user);
           if(!info)return null;
           clearTab();
+          await holdLease();
+          if(metadata()?.epoch!==latest.epoch||identity(profile())!==existing.identity){releaseLease();return null;}
           sessionStorage.setItem(KEYS[roleOf(user.role)],token);
           currentEpoch=latest.epoch;
           return token;
@@ -195,6 +218,19 @@ const API_BASE =
       }else await new Promise(resolve=>setTimeout(resolve,250));
     }
     return null;
+  }
+  async function discardStaleIdentity(existing) {
+    if(!supportsLease||!existing||tabInfo())return false;
+    const snapshot=metadata();
+    // Legacy generations may have open tabs without a lease. Keep their identity
+    // protected until a normal logout/expiry; never evict on a failed handshake.
+    if(snapshot?.leaseManaged!==true||snapshot.identity!==existing.identity)return false;
+    return navigator.locks.request("arvic-account-login-v1",{mode:"exclusive"},()=>
+      navigator.locks.request(LEASE,{mode:"exclusive",ifAvailable:true},lock=>{
+        if(!lock||tabInfo()||identity(profile())!==existing.identity||metadata()?.epoch!==snapshot.epoch)return false;
+        localStorage.removeItem("user");localStorage.removeItem(META);
+        clearTab();return true;
+      })).catch(()=>false);
   }
   let restoring=null;
   function restoreAndRoute() {
@@ -212,35 +248,15 @@ const API_BASE =
         else location.replace(dashboard(existing.user));
         return true;
       }
+      await discardStaleIdentity(existing);
       return false;
-    })();
+    })().finally(()=>{restoring=null;});
     return restoring;
-  }
-  function restrictLogin() {
-    // No live tab could respond (all tabs closed, suspended, or older browser).
-    // Reauthenticate the same account; do not silently trust a cached identity.
-    const existing=active();
-    const email=document.getElementById("email");
-    if(loginPage&&existing&&email&&existing.user.email){
-      email.value=existing.user.email;
-      email.readOnly=true;
-      const note=document.createElement("p");
-      note.textContent="Sign in again to restore your current account.";
-      note.style.cssText="font-size:.85rem;margin:8px 0;color:inherit;";
-      email.parentElement?.appendChild(note);
-      const logout=document.createElement("button");
-      logout.type="button";logout.textContent="Log Out Current Account";
-      logout.style.cssText="display:block;margin:10px 0;border:0;background:transparent;color:#0f766e;text-decoration:underline;cursor:pointer;font:inherit;";
-      logout.addEventListener("click",()=>{signOut();location.reload();});
-      email.parentElement?.appendChild(logout);
-      // Remove alternative-account registration link while this identity is active.
-      document.querySelectorAll('a[href*="register.html"]').forEach(a=>a.hidden=true);
-    }
   }
   const gate=active();
   if(protectedPage&&!initial){
     suspendPage();
-    restoreAndRoute().then(ok=>{if(!ok)leave();});
+    restoreAndRoute().then(ok=>{if(!ok)leave();}).catch(leave);
   }else if(protectedPage&&initial&&!roleAllowed(currentUser)){
     suspendPage();
     location.replace(dashboard(currentUser));
@@ -249,10 +265,10 @@ const API_BASE =
     document.documentElement.style.visibility="hidden";
     restoreAndRoute().then(ok=>{
       if(ok)return;
-      if(!loginPage){location.replace("../authHTML/login.html");return;}
-      restrictLogin();
+      // No valid session could be restored. Render the original form or public
+      // landing page unchanged; never lock the email or add recovery controls.
       document.documentElement.style.visibility="";
-    });
+    }).catch(()=>{document.documentElement.style.visibility="";});
   }
   window.addEventListener("storage",event=>{
     if(event.key==="user"||event.key===null){
