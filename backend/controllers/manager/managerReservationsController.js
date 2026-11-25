@@ -3,6 +3,7 @@
 // Manager can APPROVE or REJECT pending, not-yet-checked-in reservations.
 // No cancellation, payment changes, check-in, checkout or account operations.
 const db = require("../../config/db");
+const { extractCustomerNote } = require("../../utils/customerBookingNote");
 const SEARCH_MAX_LENGTH = 80;
 const RESULT_LIMIT = 200;
 const VALID_FILTERS = new Set([
@@ -49,7 +50,7 @@ exports.listManagerReservations = async (req, res) => {
         r.first_name, r.last_name, r.guest_count,
         r.reservation_status AS status, r.payment_status,
         COALESCE(r.is_checked_in, 0) AS is_checked_in,
-        r.created_at,
+        r.created_at, r.note,
         ri.check_in_date, ri.check_in_time,
         ri.check_out_date, ri.check_out_time,
         a.name AS accommodation_name
@@ -83,6 +84,7 @@ exports.listManagerReservations = async (req, res) => {
         check_out_date: row.check_out_date ?? null,
         check_out_time: row.check_out_time ?? null,
         created_at: row.created_at ?? null,
+        customer_note: extractCustomerNote(row.note),
       })),
       limit: RESULT_LIMIT,
       note: "Limited to the 200 most recent matching reservations. No payment proof or personal contact details are included.",

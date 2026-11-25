@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="../sharedCSS/logout-confirm.css" />
     <!-- UI-23: muted Front Desk theme; screen-only, loaded after page styles. -->
   <link rel="stylesheet" href="../frontdeskCSS/frontdesk-manager-tone.css?v=20261119-ui23" />
+  <link rel="stylesheet" href="../frontdeskCSS/frontdesk-records-scroll-ui89.css?v=20261125-ui89" />
 </head>
 
   <body class="has-fixed-navbar frontdesk-manager-tone">
@@ -175,7 +176,7 @@
           <span id="recordCount" class="record-count">0 records</span>
         </div>
 
-        <div id="paymentRecords">
+        <div id="paymentRecords" class="fd-records-scroll" tabindex="0" role="region" aria-label="Payment records">
           <div class="payment-state-box">
             Loading payment records...
           </div>

@@ -377,6 +377,7 @@ function renderReservationCard(booking) {
           }
         </section>
       </div>
+      ${window.CustomerBookingNote.render(booking)}
     </article>
   `;
 }

@@ -1096,6 +1096,7 @@ function renderReservationCard(
           </section>
         </div>
 
+        ${window.CustomerBookingNote.render(booking)}
         <div class="reservation-footer">
           <div class="created-text">
             Created:

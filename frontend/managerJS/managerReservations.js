@@ -97,7 +97,9 @@ document.addEventListener("DOMContentLoaded", () => {
       for (const reservation of rows) {
         const tr = document.createElement("tr");
         cell(tr, reservation.reservation_code || "#" + reservation.id);
-        cell(tr, reservation.guest_name || "—");
+        const guestCell = cell(tr, reservation.guest_name || "—");
+        const concern = window.CustomerBookingNote.create(reservation);
+        if (concern) guestCell.appendChild(concern);
         cell(tr, reservation.accommodation || "—");
         cell(tr,
           datePart(reservation.check_in_date) + " " + timePart(reservation.check_in_time) +

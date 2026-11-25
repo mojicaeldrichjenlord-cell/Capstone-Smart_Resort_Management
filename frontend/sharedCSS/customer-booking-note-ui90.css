@@ -1,0 +1,49 @@
+/* UI-90: Read-only customer concern; absent for blank notes. */
+.customer-booking-note {
+  box-sizing: border-box;
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid #b8d9d5;
+  border-radius: 12px;
+  background: #f0f9f8;
+  color: #164e4a;
+  font-size: .875rem;
+  line-height: 1.5;
+}
+.customer-booking-note .customer-booking-note-label {
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .035em;
+  text-transform: uppercase;
+}
+.customer-booking-note .customer-booking-note-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  min-width: 0;
+  color: inherit;
+}
+html[data-frontdesk-theme="dark"] .customer-booking-note {
+  background: #1b3440;
+  border-color: #326765;
+  color: #e2f5f3;
+}
+html[data-frontdesk-theme="dark"] .customer-booking-note .customer-booking-note-label {
+  color: #a7e9df !important;
+}
+.manager-activity td .customer-booking-note {
+  min-width: 0;
+  max-width: 18rem;
+  text-align: left;
+  white-space: normal;
+  font-weight: 400;
+}
+@media (max-width: 680px) {
+  .customer-booking-note { padding: 10px; }
+}
+@media print {
+  .customer-booking-note { background: white; color: black; border-color: #aaa; }
+}

@@ -13,6 +13,8 @@
     <link rel="stylesheet" href="../sharedCSS/logout-confirm.css" />
     <!-- UI-23: muted Front Desk theme; screen-only, loaded after page styles. -->
   <link rel="stylesheet" href="../frontdeskCSS/frontdesk-manager-tone.css?v=20261119-ui23" />
+  <link rel="stylesheet" href="../frontdeskCSS/frontdesk-records-scroll-ui89.css?v=20261125-ui89" />
+  <link rel="stylesheet" href="../sharedCSS/customer-booking-note-ui90.css?v=20261125-ui90" />
 </head>
 
   <body class="has-fixed-navbar frontdesk-manager-tone">
@@ -147,7 +149,7 @@
           <span id="recordCount" class="record-count">0 records</span>
         </div>
 
-        <div id="reservationRecords">
+        <div id="reservationRecords" class="fd-records-scroll" tabindex="0" role="region" aria-label="Reservation records">
           <div class="reservation-state-box">
             Loading reservation records...
           </div>
@@ -157,7 +159,8 @@
 
     <script src="../sharedJS/toast.js"></script>
     <script src="../sharedJS/api-config.js"></script>
-    <script src="../frontdeskJS/frontdeskReservations.js?v=20261124-ui80"></script>
+    <script src="../sharedJS/customer-booking-note-ui90.js?v=20261125-ui90"></script>
+    <script src="../frontdeskJS/frontdeskReservations.js?v=20261125-ui90"></script>
     <script src="../frontdeskJS/frontdeskReservationReceiptActions.js"></script>
       <script src="../sharedJS/logout-confirm.js"></script>
   </body>
