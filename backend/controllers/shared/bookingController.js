@@ -130,11 +130,11 @@ function parseRequestReservationBody(req) {
   */
   const proofImageData = normalizeNullableText(parsedBody.proof_image_data);
 
-  const proofReference = normalizeNullableText(
-    normalizeReferenceNumber(
-      parsedBody.proof_reference || parsedBody.proof_of_payment,
-    ),
-  );
+  // Never interpret a proof image path as a transaction reference.
+  const legacyReference = String(parsedBody.proof_of_payment || "").trim();
+  const referenceInput = parsedBody.proof_reference ??
+    (/^\d[\d\s-]*$/.test(legacyReference) ? legacyReference : "");
+  const proofReference = normalizeNullableText(normalizeReferenceNumber(referenceInput));
 
   return {
     ...parsedBody,
@@ -1051,12 +1051,11 @@ async function createReservation({
       };
     }
 
-    // Reference is optional. Validate only when staff entered one.
-    if (
-      isWalkInEWallet &&
-      cleanProofReference &&
-      !proofReferenceValidation.valid
-    ) {
+    // Both independent payment evidence fields are required.
+    if (isWalkInEWallet && !cleanProofReference) {
+      throw { status: 400, message: "Transaction reference number is required for GCash or Maya payments." };
+    }
+    if (isWalkInEWallet && !proofReferenceValidation.valid) {
       throw {
         status: 400,
         message: proofReferenceValidation.message,
@@ -1083,7 +1082,7 @@ async function createReservation({
 
     /*
       Facebook/Messenger payment evidence rule:
-      - GCash/Maya: screenshot is required; reference is optional.
+      - GCash/Maya: screenshot and transaction reference are both required.
       - PayPal: no manual screenshot/reference is required because the
         automated PayPal capture flow will be the payment evidence.
     */
@@ -1106,11 +1105,10 @@ async function createReservation({
       };
     }
 
-    if (
-      isFacebookManualWallet &&
-      cleanProofReference &&
-      !proofReferenceValidation.valid
-    ) {
+    if (isFacebookManualWallet && !cleanProofReference) {
+      throw { status: 400, message: "Transaction reference number is required for GCash or Maya payments." };
+    }
+    if (isFacebookManualWallet && !proofReferenceValidation.valid) {
       throw {
         status: 400,
         message: proofReferenceValidation.message,

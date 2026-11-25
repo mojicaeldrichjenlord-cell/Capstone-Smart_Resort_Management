@@ -615,14 +615,14 @@ function getWalkInDraft() {
 // Walk-in:
 // - Cash, GCash, or Maya
 // - Full accommodation payment only
-// - GCash/Maya reference is OPTIONAL
+// - GCash/Maya reference is REQUIRED
 // - GCash/Maya proof screenshot is REQUIRED
 // - Auto check-in
 //
 // Facebook / Messenger:
 // - GCash or Maya
 // - 50% downpayment or full payment
-// - Reference is OPTIONAL
+// - Reference is REQUIRED
 // - Proof screenshot is REQUIRED
 // ============================================================
 
@@ -1137,7 +1137,7 @@ function updatePaymentRequirementUI() {
   const submitBtn = document.getElementById("submitPaymentBtn");
 
   if (proofReference) {
-    proofReference.required = false;
+    proofReference.required = requiresScreenshot;
     proofReference.disabled = isCash;
     if (isCash) {
       proofReference.value = "";
@@ -1145,7 +1145,7 @@ function updatePaymentRequirementUI() {
       proofReference.removeAttribute("maxlength");
     } else {
       proofReference.placeholder = method === "gcash"
-        ? "Optional GCash reference" : "Optional Maya reference";
+        ? "Enter GCash reference (13 digits)" : "Enter Maya reference (6–30 digits)";
       proofReference.setAttribute("maxlength", method === "gcash" ? "16" : "37");
       proofReference.value = formatReferenceNumberForDisplay(
         proofReference.value, method,
@@ -1166,8 +1166,8 @@ function updatePaymentRequirementUI() {
   if (proofGroup) proofGroup.style.display = requiresScreenshot ? "flex" : "none";
 
   if (referenceRequiredText) {
-    referenceRequiredText.textContent = requiresScreenshot ? " (Optional)" : " (Not needed)";
-    referenceRequiredText.style.color = "#64748b";
+    referenceRequiredText.textContent = requiresScreenshot ? " *Required" : " (Not needed)";
+    referenceRequiredText.style.color = requiresScreenshot ? "#dc2626" : "#64748b";
   }
   if (proofRequiredText) {
     proofRequiredText.textContent = requiresScreenshot ? " *Required" : " (Not needed)";
@@ -1176,8 +1176,8 @@ function updatePaymentRequirementUI() {
 
   if (methodHelp) {
     methodHelp.textContent = isWalkIn
-      ? "Walk-in accepts Cash, GCash, or Maya. GCash/Maya needs proof screenshot; reference is optional."
-      : "Facebook/Messenger accepts GCash or Maya. A proof screenshot is required; reference is optional.";
+      ? "Walk-in accepts Cash, GCash, or Maya. GCash/Maya requires both a reference number and proof screenshot."
+      : "Facebook/Messenger accepts GCash or Maya. Both a reference number and proof screenshot are required.";
   }
 
   const pendingLegacyPayPal = getMatchingLegacyPayPalPending();
@@ -1190,12 +1190,11 @@ function updatePaymentRequirementUI() {
       : isWalkIn
         ? `<strong>Walk-in Rule:</strong><br />
            Collect the full accommodation amount through Cash, GCash, or Maya.
-           For GCash/Maya, upload the payment proof screenshot (reference optional).
+           For GCash/Maya, enter the transaction reference number and upload the payment proof screenshot.
            After submission, the reservation is automatically checked in.
            Entrance fee is finalized and collected separately.`
         : `<strong>Facebook Messenger / Other Reservation Rule:</strong><br />
-           Only GCash or Maya is accepted. Upload a payment proof screenshot
-           (reference optional). Collect either the selected 50% downpayment
+           Only GCash or Maya is accepted. Enter the transaction reference number and upload a payment proof screenshot. Collect either the selected 50% downpayment
            or full accommodation payment. Entrance fee is collected at arrival.`;
   }
 
@@ -1549,10 +1548,13 @@ async function submitManualReservation(event) {
     return;
   }
 
-  if (
-    proofReference &&
-    ["gcash", "paymaya"].includes(paymentMethod)
-  ) {
+  if (requiresScreenshot && !proofReference) {
+    showMessage("Transaction reference number is required for GCash or Maya payments.", "error");
+    proofReferenceInput?.focus();
+    return;
+  }
+
+  if (requiresScreenshot) {
     const referenceValidation =
       validateReferenceNumberByMethod(
         proofReference,

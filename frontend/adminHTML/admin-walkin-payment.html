@@ -74,7 +74,7 @@
 
         <p class="manual-payment-intro">
           Review the reservation and collect payment based on the booking type.
-          GCash/Maya requires a proof screenshot; reference number is optional.
+          GCash/Maya requires a transaction reference number and a proof screenshot.
         </p>
       </section>
 
@@ -127,12 +127,11 @@
                     <input
                       type="text"
                       id="proofReference"
-                      placeholder="Example: 123456789012"
+                      placeholder="Enter transaction reference number" inputmode="numeric"
                     />
 
                     <small class="field-help">
-                      Optional for GCash and Maya. If entered, the reference
-                      number format will be validated.
+                      Required for GCash and Maya. GCash: 13 digits; Maya: 6 to 30 digits.
                     </small>
                   </div>
 
@@ -233,9 +232,8 @@
               <div class="payment-note" id="paymentRuleNote">
                 <strong>Manual Reservation Flow:</strong><br />
                 Walk-in accepts Cash, GCash, or Maya and uses full payment only.
-                For GCash/Maya, proof screenshot is required and reference
-                number is optional. Facebook/Messenger uses GCash or Maya with
-                required screenshot and optional reference number.
+                For GCash/Maya, both proof screenshot and reference number are required.
+                Facebook/Messenger uses GCash or Maya with the same requirements.
               </div>
 
               <div class="payment-note success-note" id="paymentCollectionNote">
@@ -256,7 +254,7 @@
     <script src="../sharedJS/manualReservationRoleNav.js"></script>
     <!-- Block expired fixed slots before payment; backend validates again. -->
     <script src="../sharedJS/manual-schedule-guard.js"></script>
-    <script src="../adminJS/admin-walkin-payment.js?v=20261124-ui74"></script>
+    <script src="../adminJS/admin-walkin-payment.js?v=20261125-payment91"></script>
     <script src="../adminJS/admin-mobile-nav.js"></script>
     <script src="../sharedJS/logout-confirm.js"></script>
   </body>
