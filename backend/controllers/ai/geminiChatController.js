@@ -36,6 +36,7 @@ const { matchRoomPriceFollowup, shortlistRoomFollowup, roomPriceFollowupReply } 
   require("./aiRoomPriceFollowup");
 const { isResortQuestion, resortOnlyReply, isExplicitlyUnrelated } = require("./aiResortScopeGuard");
 const { normalizeSemanticIntent, canUseSimpleRecommendation } = require("./aiSemanticIntent");
+const { scheduleTurn, liveAvailability } = require("./aiLiveAvailability");
 const { isPersonalizedRecommendation, explicitGuestCount, savedGuestCount,
   guestCountQuestion, guestCountFollowUp: pendingGuestRecommendationAnswer,
   guestCountCorrection, recommendationLookupMessage
@@ -701,6 +702,7 @@ Use this exact JSON shape:
   "check_out": null,
   "check_out_time": null,
   "slot_preference": null,
+  "stay_duration": null,
   "guests": null,
   "bed_count": null,
   "view_type": null,
@@ -726,6 +728,7 @@ Time rules:
 - Return time in HH:MM:SS only if the guest explicitly gives a clock time.
 - Morning/day tour or evening/night preferences are NOT exact clock times: leave time fields null because each accommodation category has its own fixed hours.
 - Set slot_preference to "day_tour" for a clearly stated Day Tour/morning/umaga preference, "night" for Night/overnight/evening/gabi, otherwise null. If the message changes an earlier preference, use the new choice.
+- For explicit extended stays use day_extended or night_extended only if the guest specified day/night; otherwise null. Extract stay_duration as number of days only when explicitly stated; regular slots are one day/night. A single visit date is check_in, not a required checkout date. For availability questions, intent is ask_availability even when the guest uses casual language.
 - Never invent a clock time or treat a custom time as an officially bookable slot.
 - If time is not mentioned, return null.
 - Examples:
@@ -1129,7 +1132,7 @@ exports.chatWithGemini = async (req, res) => {
     // A bare price or recommendation follow-up can be resolved by the current
     // conversation. Only use the canned clarification for a context-free turn.
     const hasRelevantContext = Boolean(scopeContext.room_id || scopeContext.room_name || scopeContext.guests || recentScopeTurns.some(turn => turn.role === "user" && isResortQuestion(turn.text)));
-    if (clarification && !hasRelevantContext) {
+    if (clarification && !hasRelevantContext && !scheduleTurn(message, scopeContext)) {
       return res.status(200).json({
         success: true, mode: "clarification_needed", reply: clarification,
         extracted_context: mergeContext(scopeContext, {
@@ -1173,6 +1176,16 @@ exports.chatWithGemini = async (req, res) => {
         matched_rooms: [], catalog_recommendations: [],
         alternative_dates: [], booking_preview: null, recommendation_cards: [],
       });
+    }
+
+    // AI-104: read-only fixed-slot checks reuse the exact booking API handler.
+    if (scheduleTurn(message, scopeContext, semanticIntent || {})) {
+      const interpreted = semanticIntent || await extractStructuredIntent(message, scopeContext, recentScopeTurns);
+      if (interpreted.scope !== "unrelated") {
+        const language = detectLanguageFromMessage(message) || normalizeLanguageStyle(interpreted.language_style) || clarificationLanguage;
+        const result = await liveAvailability({message,context:scopeContext,extracted:interpreted,catalog:await getAccommodationCatalog(),today:getResortTodayText(),language,handler:require("../shared/bookingController").checkItemAvailability});
+        return res.status(200).json(result);
+      }
     }
 
     // AI-68: A changed group size or "mas mura ba diyan?" means SEARCH
@@ -2622,7 +2635,7 @@ Normal replies: 1-2 short sentences, roughly 10-35 words; at most ONE useful fol
 Text chat should be natural and concise too, not just voice mode.
 Do not repeat saved booking details or greet the customer every turn.
 Understand intent across paraphrases, slang, typos, speech transcripts and mixed languages. Never ask again for information the customer has already provided or that is clearly established in the current conversation. If there are several plausible meanings, ask one specific clarifying question rather than guessing. A missing verified resort fact is different from an unclear customer intent.
-For recommendations: one friendly line, then let the visual accommodation cards show details.
+For recommendations: warmly acknowledge the guest’s specific needs, explain why the first verified option fits, and offer one useful next step. Let cards show remaining details; do not recite them or say merely “matching accommodations”.
 For questions like "magkano yan" / "may CR ba yan", use the focused accommodation
 below and answer based ONLY on its fresh data; if not listed, say so briefly.
 If asked about ONE amenity (e.g. "May aircon?"), answer ONLY that amenity

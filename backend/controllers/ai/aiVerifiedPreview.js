@@ -214,6 +214,14 @@ function selectVerifiedPreviews(catalog, message, recentTurns = [], context = {}
 }
 
 function verifiedPreviewReply(selection, language) {
+  const first=selection?.rows?.[0];
+  const count=Number(selection?.requestedGuests);
+  if(first&&count>0&&!selection.alternative){
+    const name=String(first.room_name||first.name||"Accommodation");
+    if(language==="taglish"||language==="tagalog") return "Para sa "+count+" na guests, magandang option po ang "+name+". Heto po ang mga pagpipilian ninyo. Anong date at schedule ang plan ninyo para ma-check ko ang availability?";
+    if(language==="english") return "For your group of "+count+", I'd suggest "+name+". Here are some suitable options. When are you planning to visit so I can check the schedule?";
+    if(language==="bisaya") return "Para sa "+count+" ka guests, maayo nga option ang "+name+". Kanus-a mo magbisita aron ma-check nato ang schedule?";
+  }
   // Keep the separate pure-Tagalog wording while using everyday Taglish in
   // voice and text chat. Room selection and card facts remain unchanged.
   if (language === "bisaya") {
@@ -259,5 +267,5 @@ function verifiedPreviewReply(selection, language) {
 
 module.exports = {
   isVerifiedPreviewRequest, selectVerifiedPreviews, verifiedPreviewReply,
-  requestedCategory, guestCountFromText, hasCompoundParty,
+  requestedCategory, guestCountFromText, hasCompoundParty, categoryMatches, findExactNamedRoom,
 };
