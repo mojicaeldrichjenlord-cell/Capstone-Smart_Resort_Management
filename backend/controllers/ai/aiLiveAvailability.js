@@ -18,7 +18,8 @@ function scheduleTurn(message,context={},semantic={}){
  const informationOnly=/\b(?:magkano|presyo|how much|price|rate|amenit(?:y|ies)|inclusions?|aircon|private cr|wifi|parking|entrance fee|downpayment|payment)\b/i.test(q);
  if(informationOnly&&!availability)return false;
  return semantic.intent==="ask_availability"||semantic.intent==="ask_alternative_dates"||
-   (related&&(availability||dateOrSlot)&&(dateOrSlot||availability&&/\b(?:pa|still|slot|date|when|kailan|bakante|vacant)\b/i.test(q)))||
+   (related&&(availability||dateOrSlot)&&(dateOrSlot||availability&&/\b(?:pa|ba|is|still|slot|date|when|kailan|bakante|vacant)\b/i.test(q)))||
+   (context.availability_pending===true&&/\b(?:book|reserve|reservation|ipa[- ]?reserve|i[- ]?book)\b/i.test(q)&&!informationOnly)||
    (context.availability_pending===true&&(/^(?:\d{1,3}\s*(?:kami|pax|guests?|tao)?|day tour|overnight|night|umaga|gabi)[?!.\s]*$/i.test(q)||dateOrSlot||availability||guestCountFromText(q)>0));
 }
 function getSlot(message,extracted,context){
@@ -49,7 +50,9 @@ async function liveAvailability({message,context={},extracted={},catalog=[],toda
  const guests=guestCountFromText(q)||Number(extracted.guests||context.guests)||0;
  const explicit=findExactNamedRoom(catalog,q);
  const newCategory=requestedCategory(q)||extracted.recommendation_category;
- const exact=explicit||(!requestedCategory(q)?findExactNamedRoom(catalog,String(extracted.room_name||""))||catalog.find(r=>Number(r.id)===Number(context.room_id))||findExactNamedRoom(catalog,String(context.room_name||"")):null);
+ const interpretedName=findExactNamedRoom(catalog,String(extracted.room_name||""));
+ const changing=/\b(?:other|another|ibang|alternative|instead|hindi)\b/i.test(q);
+ const exact=explicit||(!changing&&interpretedName&&(!newCategory||categoryMatches(interpretedName,newCategory))&&(!requestedCategory(q)||String(interpretedName.room_name)!==String(context.room_name))?interpretedName:null)||(!requestedCategory(q)&&!changing?catalog.find(r=>Number(r.id)===Number(context.room_id))||findExactNamedRoom(catalog,String(context.room_name||"")):null);
  const category=newCategory||context.recommendation_category||null;
  const duration=Number(extracted.stay_duration||((slot&&slot!==context.slot_preference)?1:context.stay_duration)||1);
  const extendedPending=!slot&&(/\b(?:22|23)\s*(?:h|hours?|oras)\b/i.test(q)||context.extended_pending===true);

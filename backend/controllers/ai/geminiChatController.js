@@ -2361,6 +2361,13 @@ exports.chatWithGemini = async (req, res) => {
     const extractedContext = semanticIntent || (useCatalogFastPath
       ? {}
       : await extractStructuredIntent(message, requestContext, recentTurns));
+    // A semantic availability interpretation can also be reached without any
+    // recognized keyword. Use the same fixed-slot checker in that case.
+    if (extractedContext.scope === "resort" && scheduleTurn(message, requestContext, extractedContext)) {
+      const language = detectLanguageFromMessage(message) || normalizeLanguageStyle(extractedContext.language_style) || clarificationLanguage;
+      const result = await liveAvailability({message,context:requestContext,extracted:extractedContext,catalog:requestCatalog || await getAccommodationCatalog(),today:getResortTodayText(),language,handler:require("../shared/bookingController").checkItemAvailability});
+      return res.status(200).json(result);
+    }
     if (extractedContext.scope === "unrelated") {
       const language = detectLanguageFromMessage(message) || normalizeLanguageStyle(requestContext.language_style) || "taglish";
       return res.status(200).json({success:true,mode:"resort_scope_only",resort_scope_allowed:false,reply:resortOnlyReply(language),extracted_context:mergeContext(requestContext,{language_style:language}),matched_rooms:[],catalog_recommendations:[],alternative_dates:[],booking_preview:null,recommendation_cards:[]});
