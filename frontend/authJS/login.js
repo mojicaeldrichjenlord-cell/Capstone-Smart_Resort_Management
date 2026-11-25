@@ -91,10 +91,6 @@ function updateRememberedCustomerEmail(email) {
 }
 
 loadRememberedCustomerEmail();
-// AUTH-100: a recovery login can authenticate only the profile\u2019s current account.
-if (emailInput?.readOnly && window.ArvicAccountSession.active()?.user?.email) {
-  emailInput.value = window.ArvicAccountSession.active().user.email;
-}
 rememberMeInput?.addEventListener("change", () => {
   // Unchecking must immediately forget a previously remembered Customer email.
   if (!rememberMeInput.checked) {
@@ -182,7 +178,7 @@ if (loginForm) {
     } catch (error) {
       if (error.code === "ACTIVE_ACCOUNT_CONFLICT") {
         if (await window.ArvicAccountSession.restoreAndRoute()) return;
-        window.location.reload();
+        showMessage(window.ArvicAccountSession.CONFLICT, "error");
         return;
       }
       console.error("login error:", error);
