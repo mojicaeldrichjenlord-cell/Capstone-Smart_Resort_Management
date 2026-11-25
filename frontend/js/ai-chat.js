@@ -111,7 +111,8 @@ async function sendAiMessage(options = {}) {
   const sendBtn = document.getElementById("aiSendBtn");
 
   if (!input || !sendBtn || aiMessageInFlight) return null;
-  const message = input.value.trim();
+  const isAccommodationAction = options.source === "accommodation";
+  const message = isAccommodationAction ? String(options.message || "").trim() : input.value.trim();
   if (!message) return null;
 
   // Manual messages must not race with an active voice conversation.
@@ -122,7 +123,7 @@ async function sendAiMessage(options = {}) {
   aiMessageInFlight = true;
   const requestGeneration = aiPublicChatGeneration;
   // New broad recommendation requests must not stay locked to an older card.
-  const freshSearch = isFreshAiAccommodationSearch(message, getStoredAiContext());
+  const freshSearch = !isAccommodationAction && isFreshAiAccommodationSearch(message, getStoredAiContext());
   if (freshSearch) {
     const current = getStoredAiContext();
     delete current.room_id;
@@ -133,7 +134,7 @@ async function sendAiMessage(options = {}) {
   // Starter prompts are visual shortcuts only, never conversation memory.
   document.getElementById("aiQuickQuestions")?.remove();
   appendAiMessage("user", message);
-  input.value = "";
+  if (!isAccommodationAction) input.value = "";
 
   const storedContext = getStoredAiContext();
   const pageContext = getAiPageContext();
@@ -1172,6 +1173,20 @@ function setAiFocusedAccommodation(room) {
   saveAiContext(context);
 }
 
+// UI-97: a deliberate accommodation click sends one focused inquiry.
+window.askAiAboutAccommodation = function(room) {
+  const id = Number(room?.id);
+  const input = document.getElementById("aiChatInput");
+  const sendBtn = document.getElementById("aiSendBtn");
+  const chat = document.getElementById("aiChatWindow");
+  if (!Number.isSafeInteger(id) || id <= 0 || !input || !sendBtn || !chat) return;
+  chat.classList.add("show");
+  // Never replace the active request or the user's unsent draft.
+  if (aiMessageInFlight) return;
+  setAiFocusedAccommodation(room);
+  return sendAiMessage({ source: "accommodation", message: "Tell me more about " + String(room.name || "this accommodation") + "." });
+};
+
 function appendAiRecommendationCards(items, save = true) {
   const messages = document.getElementById("aiChatMessages");
   if (!messages || !Array.isArray(items)) return;
@@ -1232,16 +1247,7 @@ function appendAiRecommendationCards(items, save = true) {
     ask.type = "button";
     ask.textContent = "Ask About This";
     ask.className = "ai-recommendation-link";
-    ask.addEventListener("click", () => {
-      setAiFocusedAccommodation(room);
-      const chat = document.getElementById("aiChatWindow");
-      chat?.classList.add("show");
-      const input = document.getElementById("aiChatInput");
-      if (input) {
-        input.value = "Tell me more about " + String(room.name || "this accommodation") + ".";
-        input.focus();
-      }
-    });
+    ask.addEventListener("click", () => window.askAiAboutAccommodation(room));
     actions.append(detail, book, ask);
     body.appendChild(actions);
     card.appendChild(body);
