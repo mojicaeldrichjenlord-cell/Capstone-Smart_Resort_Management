@@ -38,7 +38,7 @@ function explicitGuestCount(message) {
   let count = guestCountFromText(q);
   if (!count) {
     const match = q.match(/^\s*(\d{1,3})\s*(?:kami|mi|po|pax|guests?|persons?|people|tao|adults?|persons?\s+po)?\s*[.!?]?\s*$/i) ||
-      q.match(/\b(?:for|para\s+sa|good\s+for)\s+(\d{1,3})\s*(?:guests?|pax|people|persons?|tao|kami)?\b/i) ||
+      q.match(/\b(?:for|para\s+sa|good\s+for)\s+(\d{1,3})\b(?!\s*(?:nights?|days?|hours?|rooms?|cottages?|months?|weeks?|gabi|araw|oras|kwarto|pesos?|php|years?)\b|[,.]\d)/i) ||
       q.match(/\b(\d{1,3})\s*(?:kami|mi|guests?|pax|people|persons?|tao)\b/i);
     if (match) count = Number(match[1]);
   }

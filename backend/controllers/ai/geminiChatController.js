@@ -455,7 +455,7 @@ function preferredAccommodationType(message, context) {
 }
 
 function catalogMatchFilter(rooms, context, message) {
-  const selectedType = preferredAccommodationType(message, context);
+  const selectedType = preferredAccommodationType(message, context) || ({room:"room",single:"room",double:"room",family:"room",cottage:"cottage",function:"function"}[context.recommendation_category] || null);
   const name = normalizeText(context.room_name || "");
   const guestCount = Number(context.guests || 0);
   const budget = Number(context.max_price || 0);
@@ -1126,7 +1126,10 @@ exports.chatWithGemini = async (req, res) => {
     const clarificationLanguage = detectLanguageFromMessage(message) ||
       normalizeLanguageStyle(scopeContext.language_style) || "taglish";
     const clarification = clarifyAmbiguousResortQuestion(message, clarificationLanguage);
-    if (clarification) {
+    // A bare price or recommendation follow-up can be resolved by the current
+    // conversation. Only use the canned clarification for a context-free turn.
+    const hasRelevantContext = Boolean(scopeContext.room_id || scopeContext.room_name || scopeContext.guests || recentScopeTurns.some(turn => turn.role === "user" && isResortQuestion(turn.text)));
+    if (clarification && !hasRelevantContext) {
       return res.status(200).json({
         success: true, mode: "clarification_needed", reply: clarification,
         extracted_context: mergeContext(scopeContext, {
@@ -1163,7 +1166,9 @@ exports.chatWithGemini = async (req, res) => {
         success: true,
         mode: "resort_scope_only",
         resort_scope_allowed: false,
-        reply: resortOnlyReply(language),
+        reply: !isExplicitlyUnrelated(message) && semanticIntent?.scope === "unclear"
+          ? ({english:"Could you clarify what you would like to know about your stay?",tagalog:"Ano po ang gusto ninyong malaman tungkol sa inyong pagbisita?",taglish:"Pwede po bang linawin kung ano ang gusto niyong malaman tungkol sa stay ninyo?",spanish:"¿Podrías aclarar qué te gustaría saber sobre tu estancia?",mandarin:"请问您想了解住宿的哪方面？"}[language] || resortOnlyReply(language))
+          : resortOnlyReply(language),
         extracted_context: mergeContext(scopeContext, { language_style: language }),
         matched_rooms: [], catalog_recommendations: [],
         alternative_dates: [], booking_preview: null, recommendation_cards: [],
@@ -2334,6 +2339,10 @@ exports.chatWithGemini = async (req, res) => {
     const extractedContext = semanticIntent || (useCatalogFastPath
       ? {}
       : await extractStructuredIntent(message, requestContext, recentTurns));
+    if (extractedContext.scope === "unrelated") {
+      const language = detectLanguageFromMessage(message) || normalizeLanguageStyle(requestContext.language_style) || "taglish";
+      return res.status(200).json({success:true,mode:"resort_scope_only",resort_scope_allowed:false,reply:resortOnlyReply(language),extracted_context:mergeContext(requestContext,{language_style:language}),matched_rooms:[],catalog_recommendations:[],alternative_dates:[],booking_preview:null,recommendation_cards:[]});
+    }
     const mergedContext = mergeContext(requestContext, extractedContext);
     if (extractedContext.recommendation_category && extractedContext.intent === "ask_recommendation") mergedContext.recommendation_category = extractedContext.recommendation_category;
     // Store the clearly stated choice even if model extraction missed it.
