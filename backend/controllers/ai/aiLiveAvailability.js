@@ -13,7 +13,7 @@ function plusDays(date,days){const d=new Date(date+"T00:00:00Z");d.setUTCDate(d.
 function scheduleTurn(message,context={},semantic={}){
  const q=String(message||"");
  const related=Boolean(requestedCategory(q)||context.room_id||context.room_name||context.recommendation_category||/\b(?:accommodation|room|kwarto|kuwarto|cottage|pavilion|booking|reservation|slot)\b/i.test(q));
- const dateOrSlot=/\b(?:today|tomorrow|tonight|bukas|mamaya|ngayon|monday|tuesday|wednesday|thursday|friday|saturday|sunday|lunes|martes|miyerkules|huwebes|biyernes|sabado|linggo|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may\s+\d|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|overnight|day\s*tour|night|morning|umaga|gabi|(?:22|23)\s*(?:h|hours?|oras)|\d{4}-\d{2}-\d{2})\b/i.test(q);
+ const dateOrSlot=/\b(?:today|tomorrow|tonight|bukas|mamaya|ngayon|monday|tuesday|wednesday|thursday|friday|saturday|sunday|lunes|martes|miyerkules|huwebes|biyernes|sabado|linggo|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may\s+\d|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|overnight|day\s*tour|night|morning|umaga|gabi|extended|(?:22|23)\s*(?:h|hours?|oras)|\d{4}-\d{2}-\d{2})\b/i.test(q);
  const availability=/\b(?:available|availability|vacant|reserved|occupied|free slot|bakante|libre pa|may slot|kailan|kanus-a|puno)\b/i.test(q);
  const informationOnly=/\b(?:magkano|presyo|how much|price|rate|amenit(?:y|ies)|inclusions?|aircon|private cr|wifi|parking|entrance fee|downpayment|payment)\b/i.test(q);
  if(informationOnly&&!availability)return false;
@@ -24,7 +24,7 @@ function scheduleTurn(message,context={},semantic={}){
 }
 function getSlot(message,extracted,context){
  const q=String(message||"");
- if(/\b(?:22|23)\s*(?:h|hours?|oras)\b/i.test(q)){
+ if(/\b(?:22|23)\s*(?:h|hours?|oras)\b|\bextended(?:\s+stay)?\b/i.test(q)){
    if(/\b(?:night|evening|overnight|gabi)\b/i.test(q))return "night_extended";
    if(/\b(?:day|morning|umaga)\b/i.test(q))return "day_extended";
    return null;
@@ -55,7 +55,7 @@ async function liveAvailability({message,context={},extracted={},catalog=[],toda
  const exact=explicit||(!changing&&interpretedName&&(!newCategory||categoryMatches(interpretedName,newCategory))&&(!requestedCategory(q)||String(interpretedName.room_name)!==String(context.room_name))?interpretedName:null)||(!requestedCategory(q)&&!changing?catalog.find(r=>Number(r.id)===Number(context.room_id))||findExactNamedRoom(catalog,String(context.room_name||"")):null);
  const category=newCategory||context.recommendation_category||null;
  const duration=Number(extracted.stay_duration||((slot&&slot!==context.slot_preference)?1:context.stay_duration)||1);
- const extendedPending=!slot&&(/\b(?:22|23)\s*(?:h|hours?|oras)\b/i.test(q)||context.extended_pending===true);
+ const extendedPending=!slot&&(/\b(?:22|23)\s*(?:h|hours?|oras)\b|\bextended(?:\s+stay)?\b/i.test(q)||context.extended_pending===true);
  const next={...context,availability_pending:true,extended_pending:extendedPending,check_in:date||null,check_out:null,check_in_time:null,check_out_time:null,slot_preference:slot,stay_duration:duration,guests:guests||null,room_id:exact?Number(exact.id):null,room_name:exact?exact.room_name:null,recommendation_category:category,intent:"ask_availability",language_style:language};
  const result=(reply,cards=[],alternatives=[])=>({success:true,mode:"verified_live_availability",reply,extracted_context:next,matched_rooms:[],catalog_recommendations:[],alternative_dates:alternatives,booking_preview:null,recommendation_cards:cards});
  if(!exact&&!category)return result(say("Which accommodation would you like me to check?","Anong room o accommodation po ang gusto ninyong ipa-check?"));
