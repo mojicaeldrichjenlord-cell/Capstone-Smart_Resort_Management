@@ -95,6 +95,7 @@ const API_BASE =
       const epoch=previous?.identity===info.identity && existing && previous.epoch ? previous.epoch : nonce();
       localStorage.setItem(META,JSON.stringify({identity:info.identity,expires:Math.max(info.expires,existing?.expires||0),epoch}));
       localStorage.setItem("user",JSON.stringify({...user,role:roleOf(user.role)}));
+      currentEpoch=epoch;
       LEGACY_AI.forEach(k=>localStorage.removeItem(k));
     };
     if(navigator.locks?.request) return navigator.locks.request("arvic-account-login-v1",{mode:"exclusive"},write);
@@ -155,7 +156,7 @@ const API_BASE =
     const msg=event.data;
     if(!msg||typeof msg!=="object")return;
     const user=profile(),meta=metadata(),info=tabInfo(user);
-    if(msg.type==="request"&&info&&meta?.identity===info.identity&&meta.epoch&&
+    if(msg.type==="request"&&!leaving&&info&&meta?.identity===info.identity&&meta.epoch&&currentEpoch===meta.epoch&&
        msg.identity===info.identity&&msg.epoch===meta.epoch&&
        typeof msg.nonce==="string"&&/^[a-f0-9]{32}$/.test(msg.nonce)){
       channel.postMessage({type:"reply",nonce:msg.nonce,identity:info.identity,epoch:meta.epoch,token:sessionStorage.getItem(KEYS[roleOf(user.role)])});
@@ -227,6 +228,11 @@ const API_BASE =
       note.textContent="Sign in again to restore your current account.";
       note.style.cssText="font-size:.85rem;margin:8px 0;color:inherit;";
       email.parentElement?.appendChild(note);
+      const logout=document.createElement("button");
+      logout.type="button";logout.textContent="Log Out Current Account";
+      logout.style.cssText="display:block;margin:10px 0;border:0;background:transparent;color:#0f766e;text-decoration:underline;cursor:pointer;font:inherit;";
+      logout.addEventListener("click",()=>{signOut();location.reload();});
+      email.parentElement?.appendChild(logout);
       // Remove alternative-account registration link while this identity is active.
       document.querySelectorAll('a[href*="register.html"]').forEach(a=>a.hidden=true);
     }
@@ -250,9 +256,10 @@ const API_BASE =
   }
   window.addEventListener("storage",event=>{
     if(event.key==="user"||event.key===null){
-      if(initial&&(event.key===null||identity(parse(event.newValue))!==initial.identity))leave();
+      const ownIdentity=initial?.identity||tabInfo()?.identity;
+      if(currentEpoch&&(event.key===null||!event.newValue||identity(parse(event.newValue))!==ownIdentity))leave();
     }
-    if(event.key===META&&initial&&currentEpoch&&parse(event.newValue)?.epoch!==currentEpoch)leave();
+    if(event.key===META&&currentEpoch&&parse(event.newValue)?.epoch!==currentEpoch)leave();
   });
   window.addEventListener("pageshow",event=>{
     if(event.persisted&&protectedPage&&(!tabInfo()||identity(profile())!==initial?.identity||metadata()?.epoch!==currentEpoch))leave();

@@ -91,6 +91,10 @@ function updateRememberedCustomerEmail(email) {
 }
 
 loadRememberedCustomerEmail();
+// AUTH-100: a recovery login can authenticate only the profile\u2019s current account.
+if (emailInput?.readOnly && window.ArvicAccountSession.active()?.user?.email) {
+  emailInput.value = window.ArvicAccountSession.active().user.email;
+}
 rememberMeInput?.addEventListener("change", () => {
   // Unchecking must immediately forget a previously remembered Customer email.
   if (!rememberMeInput.checked) {
