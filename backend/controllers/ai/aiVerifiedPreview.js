@@ -36,9 +36,10 @@ function requestedCategory(value) {
 }
 
 function guestCountFromText(value) {
-  const text = String(value || "");
+  const text = String(value || "").normalize("NFKC");
+  if (/\b(?:the\s+two\s+of\s+us|dalawa(?:ng)?\s+lang\s+(?:po\s+)?(?:kami|tayo)|kaming\s+dalawa|aming\s+dalawa|we(?:[’\']re| are)\s+a\s+couple|for\s+a\s+couple)\b/i.test(text)) return 2;
   const match = text.match(/\b(\d{1,3})\s*(?:na\s*)?(?:tao|pax|guests?|persons?|people|kami)\b/i) ||
-    text.match(/\b(?:para\s+sa|good\s+for|for)\s+(\d{1,3})\b/i) ||
+    text.match(/\b(?:para\s+sa|good\s+for|for)\s+(\d{1,3})\b(?!\s*(?:nights?|days?|hours?|rooms?|cottages?|months?|weeks?|gabi|araw|oras|kwarto|pesos?|php|years?)\b|[,.]\d)/i) ||
     // AI-65: English group-size phrasing in compound resort questions.
     text.match(/\b(?:group|party)\s+of\s+(\d{1,3})\b/i) ||
     text.match(/\b(?:we(?:'re| are)|there are)\s+(\d{1,3})\s+(?:of\s+us|guests?|people)\b/i) ||
@@ -50,18 +51,18 @@ function guestCountFromText(value) {
   // AI-45: Written-out counts in genuine group-size phrases (not room
   // names, day/night slot numbers or arbitrary history trivia).
   const words = {
-    isa: 1, isang: 1, dalawa: 2, tatlo: 3, apat: 4, lima: 5,
-    anim: 6, pito: 7, walo: 8, siyam: 9, sampu: 10,
+    isa: 1, isang: 1, dalawa: 2, dalawang: 2, tatlo: 3, tatlong: 3, apat: 4, lima: 5, limang: 5,
+    anim: 6, pito: 7, pitong: 7, walo: 8, walong: 8, siyam: 9, sampu: 10, sampung: 10,
     one: 1, two: 2, three: 3, four: 4, five: 5,
     six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
   };
   const wordList = Object.keys(words).join("|");
   const phrase = new RegExp(
     "\\b(?:para\\s+sa|good\\s+for|for)\\s+(?:mga\\s+)?(" +
-    wordList + ")(?=\\b)", "i"
+    wordList + ")(?=\\b)(?!\\s*(?:nights?|days?|hours?|rooms?|cottages?|months?|weeks?|gabi|araw|oras|kwarto|pesos?|years?)\\b)", "i"
   );
   const people = new RegExp(
-    "\\b(" + wordList + ")\\s+(?:tao|kami|guests?|people|persons?|pax)\\b", "i"
+    "\\b(" + wordList + ")\\s+(?:na\\s+|po\\s+|lang\\s+)*(?:tao|kami|kaming|bisita|guests?|people|persons?|pax)\\b", "i"
   );
   const named = text.match(phrase) || text.match(people);
   return named ? words[named[1].toLowerCase()] || 0 : 0;
