@@ -1,0 +1,21 @@
+/* UI-94/95: inventory filtering and compact management cards */
+.rooms-search-panel{grid-template-columns:minmax(210px,1.5fr) repeat(3,minmax(100px,1fr))}
+#adminPaxFilter{width:100%;min-height:48px;border:1px solid #cbd5e1;border-radius:14px;padding:10px 12px;background:#fff;color:#0f172a;font:inherit}
+#adminRoomsContainer.room-list-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.admin-catalog-preview{min-width:0}
+.admin-preview-photo{width:100%;display:block;padding:0;background:transparent;border:0;cursor:pointer}
+.admin-catalog-preview .admin-preview-photo img{height:auto;aspect-ratio:16/10;object-fit:cover;display:block}
+.admin-catalog-preview .room-admin-content{display:flex;flex:1;flex-direction:column;align-items:flex-start;gap:8px;min-width:0}
+.admin-catalog-preview h3{overflow-wrap:anywhere}
+.admin-catalog-preview p{margin:0}
+.admin-view-details{width:100%;min-height:44px;border:1px solid #b7d5d4;border-radius:10px;background:#eff8f7;color:#115e59;font:inherit;font-weight:700;cursor:pointer;margin-top:auto}
+.admin-catalog-preview .room-admin-actions{width:100%}
+.admin-catalog-preview .room-admin-actions button{flex:1 1 110px;min-height:44px;border-radius:10px}
+.admin-room-details{position:fixed;inset:0;margin:auto;width:min(760px,calc(100% - 24px));max-height:88vh;max-height:88dvh;overflow:auto;padding:16px;border:1px solid #cbd5e1;border-radius:18px;background:#f8fafc;color:#0f172a}
+.admin-room-details::backdrop{background:#0f172aa6}
+.admin-room-details-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}
+.admin-room-details-head h2{margin:0;font-size:1.2rem}
+.admin-room-details-head button{min-height:44px;border:1px solid #cbd5e1;border-radius:10px;padding:8px 14px;background:white;color:#0f172a;cursor:pointer}
+#adminRoomDetailsContent .room-admin-card > img{height:auto;max-height:340px;object-fit:contain}
+@media(max-width:980px){.rooms-search-panel{grid-template-columns:repeat(2,minmax(0,1fr))}.rooms-search-main{grid-column:1/-1}#adminRoomsContainer.room-list-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.rooms-search-panel,#adminRoomsContainer.room-list-grid{grid-template-columns:minmax(0,1fr)}}
