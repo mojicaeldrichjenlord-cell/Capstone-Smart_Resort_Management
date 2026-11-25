@@ -261,14 +261,11 @@ const API_BASE =
     suspendPage();
     location.replace(dashboard(currentUser));
   }else if((authPage||landingPage)&&gate){
-    // No login form or warning flashes when a valid existing session is available.
-    document.documentElement.style.visibility="hidden";
-    restoreAndRoute().then(ok=>{
-      if(ok)return;
-      // No valid session could be restored. Render the original form or public
-      // landing page unchanged; never lock the email or add recovery controls.
-      document.documentElement.style.visibility="";
-    }).catch(()=>{document.documentElement.style.visibility="";});
+    // AUTH-106: Public pages must paint normally even when a stale account
+    // identity requires a cross-tab handshake. Keep private pages guarded.
+    // Valid sessions still redirect automatically; a timeout never hides
+    // the login, registration or landing UI.
+    void restoreAndRoute().catch(()=>{});
   }
   window.addEventListener("storage",event=>{
     if(event.key==="user"||event.key===null){
