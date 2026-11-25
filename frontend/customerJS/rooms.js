@@ -437,6 +437,7 @@ function renderRooms(rooms) {
           </button>
           <section class="room-accordion-panel" id="room-panel-${roomId}"
             aria-label="${itemName} details" role="region"${initiallyExpanded ? "" : " hidden"}>
+          <div class="catalog-detail-media">
           <div class="room-photo-wrap">
             <img
               src="${imageSrc}"
@@ -477,44 +478,30 @@ function renderRooms(rooms) {
           </div>
 
           ${galleryStrip}
+          <div class="room-customer-inclusions">
+            <strong>Amenities / Inclusions</strong>
+            ${formatAmenitiesList(room.amenities)}
+          </div>
+          </div>
 
           <div class="room-ai-content">
-            <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:10px;">
-              <h3 style="margin:0;">${itemName}</h3>
-            </div>
-
-            <p>${itemDescription}</p>
-
-            <div class="room-customer-inclusions">
-              <strong>Amenities / Inclusions:</strong>
-              ${formatAmenitiesList(room.amenities)}
-            </div>
-
+            <p class="catalog-detail-description">${itemDescription}</p>
             <div class="room-price">Best for up to ${maxCapacity} pax</div>
-
-            <div class="room-ai-meta">
-              <div><strong>Category</strong><br>${categoryName}</div>
-              <div><strong>Type</strong><br>${displayGroup}</div>
-              <div><strong>Max Capacity</strong><br>${maxCapacity} guest(s)</div>
-              <div><strong>Morning / Day Tour</strong><br>₱${dayPrice}</div>
-              <div><strong>Evening / Overnight</strong><br>₱${overnightPrice}</div>
-              <div><strong>${extendedSlotLabel}</strong><br>₱${extendedPrice}</div>
+            <div class="catalog-detail-rates">
+              <h3>Rates &amp; Schedule</h3>
+              ${[
+                ["Morning / Day Tour", room.day_price, dayPrice, room.day_start_time, room.day_end_time],
+                ["Evening / Overnight", room.overnight_price, overnightPrice, room.overnight_start_time, room.overnight_end_time],
+                [extendedSlotLabel, room.extended_price, extendedPrice, room.extended_start_time, room.extended_end_time],
+              ].map(([label, raw, price, from, to]) => `<div class="catalog-rate-row"><strong>${escapeHtml(label)}</strong><b>${Number(raw)>0?"₱"+price:"Rate not listed"}</b><small>${escapeHtml(formatTimeRange(from,to))}</small></div>`).join("")}
+            </div>
+            <div class="room-ai-meta catalog-detail-meta">
               <div><strong>Free Entrance</strong><br>${Number(room.free_entrance_pax) || 0} pax included</div>
               <div><strong>Map Location</strong><br>${mapLabel}</div>
-              <div><strong>Photos</strong><br>${
-                galleryImages.length
-                  ? galleryImages.length + " gallery photo(s)"
-                  : "Cover photo only"
-              }</div>
+              <div><strong>Category / Type</strong><br>${categoryName} · ${displayGroup}</div>
+              <div><strong>Photos</strong><br>${galleryImages.length ? galleryImages.length + " gallery photo(s)" : "Cover photo only"}</div>
             </div>
-
-            <div class="room-ai-amenities">
-              <strong>Schedule Preview:</strong><br>
-              Day Tour: ${formatTimeRange(room.day_start_time, room.day_end_time)}<br>
-              Overnight: ${formatTimeRange(room.overnight_start_time, room.overnight_end_time)}<br>
-              ${extendedSlotLabel}: ${formatTimeRange(room.extended_start_time, room.extended_end_time)}
-            </div>
-
+            <p class="catalog-slot-note">Select your dates and time slot when reserving.</p>
             <div class="room-ai-actions">
               <a href="booking.html?room_id=${room.id}" class="book-now-btn">
                 Reserve This
@@ -523,7 +510,7 @@ function renderRooms(rooms) {
               <button
                 type="button"
                 class="ask-ai-btn"
-                onclick="openAiForRoom('${escapeForJs(room.name || "")}', ${room.id})"
+                onclick="openAiForRoom(${roomId})"
               >
                 Ask AI About This
               </button>
@@ -588,34 +575,10 @@ function getExtendedLabel(categoryName, isExtended = true) {
   return "23 Hours";
 }
 
-function openAiForRoom(roomName, roomId) {
-  const chatWindow = document.getElementById("aiChatWindow");
-  const input = document.getElementById("aiChatInput");
-
-  if (chatWindow) {
-    chatWindow.classList.add("show");
-  }
-
-  if (input) {
-    // The button opens details for this exact room, not a generic room search.
-    input.value = `Tell me more about ${roomName}.`;
-    input.focus();
-  }
-
-  try {
-    const savedContext = JSON.parse(
-      localStorage.getItem("smartresort_ai_context_v1") || "{}"
-    );
-
-    savedContext.room_name = roomName;
-    savedContext.room_id = roomId;
-
-    localStorage.setItem(
-      "smartresort_ai_context_v1",
-      JSON.stringify(savedContext)
-    );
-  } catch (error) {
-    console.error("openAiForRoom context save error:", error);
+function openAiForRoom(roomId) {
+  const room = allRooms.find(item => Number(item.id) === Number(roomId));
+  if (room && typeof window.askAiAboutAccommodation === "function") {
+    window.askAiAboutAccommodation({ id: Number(room.id), name: room.name });
   }
 }
 
