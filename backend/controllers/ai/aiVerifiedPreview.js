@@ -218,9 +218,11 @@ function verifiedPreviewReply(selection, language) {
   const count=Number(selection?.requestedGuests);
   if(first&&count>0&&!selection.alternative){
     const name=String(first.room_name||first.name||"Accommodation");
-    if(language==="taglish"||language==="tagalog") return "Para sa "+count+" na guests, magandang option po ang "+name+". Heto po ang mga pagpipilian ninyo. Anong date at schedule ang plan ninyo para ma-check ko ang availability?";
+    if(language==="taglish"||language==="tagalog") return (count===2?"Para sa inyong dalawa":"Para sa group niyo na "+count+" guests")+", magandang option po ang "+name+". Anong date po ang plan ninyo para ma-check ko rin ang availability?";
     if(language==="english") return "For your group of "+count+", I'd suggest "+name+". Here are some suitable options. When are you planning to visit so I can check the schedule?";
     if(language==="bisaya") return "Para sa "+count+" ka guests, maayo nga option ang "+name+". Kanus-a mo magbisita aron ma-check nato ang schedule?";
+    if(language==="spanish") return "Para su grupo de "+count+" personas, les recomiendo "+name+". ¿En qué fecha planean visitarnos para comprobar la disponibilidad?";
+    if(language==="mandarin") return "您们一共"+count+"位，推荐考虑"+name+"。计划哪天入住呢？我可以帮您查询空房。";
   }
   // Keep the separate pure-Tagalog wording while using everyday Taglish in
   // voice and text chat. Room selection and card facts remain unchanged.

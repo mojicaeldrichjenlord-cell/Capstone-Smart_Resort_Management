@@ -28,9 +28,9 @@ function getSlot(message,extracted,context){
    if(/\b(?:day|morning|umaga)\b/i.test(q))return "day_extended";
    return null;
  }
+ if(/\b(?:overnight|night|evening|gabi)\b/i.test(q))return context.extended_pending===true?"night_extended":"night";
+ if(/\b(?:day\s*tour|morning|umaga)\b/i.test(q))return context.extended_pending===true&&!/\bday\s*tour\b/i.test(q)?"day_extended":"day_tour";
  if(slots.includes(extracted.slot_preference))return extracted.slot_preference;
- if(/\b(?:overnight|night|evening|gabi)\b/i.test(q))return "night";
- if(/\b(?:day\s*tour|morning|umaga)\b/i.test(q))return "day_tour";
  return slots.includes(context.slot_preference)?context.slot_preference:null;
 }
 async function checkOne(handler,room,date,slot,duration){
@@ -52,13 +52,14 @@ async function liveAvailability({message,context={},extracted={},catalog=[],toda
  const exact=explicit||(!requestedCategory(q)?findExactNamedRoom(catalog,String(extracted.room_name||""))||catalog.find(r=>Number(r.id)===Number(context.room_id))||findExactNamedRoom(catalog,String(context.room_name||"")):null);
  const category=newCategory||context.recommendation_category||null;
  const duration=Number(extracted.stay_duration||((slot&&slot!==context.slot_preference)?1:context.stay_duration)||1);
- const next={...context,availability_pending:true,check_in:date||null,check_out:null,check_in_time:null,check_out_time:null,slot_preference:slot,stay_duration:duration,guests:guests||null,room_id:exact?Number(exact.id):null,room_name:exact?exact.room_name:null,recommendation_category:category,intent:"ask_availability",language_style:language};
+ const extendedPending=!slot&&(/\b(?:22|23)\s*(?:h|hours?|oras)\b/i.test(q)||context.extended_pending===true);
+ const next={...context,availability_pending:true,extended_pending:extendedPending,check_in:date||null,check_out:null,check_in_time:null,check_out_time:null,slot_preference:slot,stay_duration:duration,guests:guests||null,room_id:exact?Number(exact.id):null,room_name:exact?exact.room_name:null,recommendation_category:category,intent:"ask_availability",language_style:language};
  const result=(reply,cards=[],alternatives=[])=>({success:true,mode:"verified_live_availability",reply,extracted_context:next,matched_rooms:[],catalog_recommendations:[],alternative_dates:alternatives,booking_preview:null,recommendation_cards:cards});
  if(!exact&&!category)return result(say("Which accommodation would you like me to check?","Anong room o accommodation po ang gusto ninyong ipa-check?"));
  if(!date||!validDate(date))return result(say("What date are you planning to visit?","Anong date po ang plan ninyong pumunta?"));
  const earliest=plusDays(today,2);
  if(date<earliest)return result(say("Online reservations need two days' advance notice. The earliest online date is "+earliest+". Would that work for you?","At least 2 days ahead po ang online booking. Earliest date po ay "+earliest+". Okay po ba sa inyo iyon?"));
- if(!slot)return result(say("Would you prefer Day Tour, Overnight, or a day/night extended stay?","Day tour, overnight, o day/night extended stay po ang gusto ninyo?"));
+ if(!slot)return result(extendedPending?say("For the extended stay, would you prefer a morning or evening check-in?","Para sa extended stay, morning o evening check-in po ang gusto ninyo?"):say("Would you prefer Day Tour, Overnight, or a day/night extended stay?","Day tour, overnight, o day/night extended stay po ang gusto ninyo?"));
  if(!Number.isInteger(duration)||duration<1||duration>5||(!slot.endsWith("extended")&&duration!==1))return result(say("Extended stays can be 1–5 days; regular slots are one day/night. Which duration would you like?","1–5 days po ang extended stay, at isang araw/gabi lang ang regular slot. Ilang days po ang gusto ninyo?"));
  if(extracted.check_in_time||extracted.check_out_time)return result(say("We use fixed schedules rather than custom check-in or checkout times. Would you like me to check the fixed "+names[slot]+" slot?","Fixed schedules po tayo, hindi custom check-in o checkout time. I-check ko po ba ang fixed "+names[slot]+" slot?"));
  let candidates=exact?[exact]:catalog.filter(r=>categoryMatches(r,category)&&(!guests||Number(r.capacity)>=guests));
@@ -84,6 +85,7 @@ async function liveAvailability({message,context={},extracted={},catalog=[],toda
    const cards=yes.map(r=>card(r)).filter(Boolean);
    if(yes.length===1){next.room_id=Number(yes[0].room.id);next.room_name=yes[0].room.room_name;}
    const name=exact?exact.room_name:yes.length===1?yes[0].room.room_name:null;
+   if(exact&&guests>Number(exact.capacity)&&Number(exact.capacity)>0)return result(say("The selected slot is available, but "+exact.room_name+" has a listed capacity of "+exact.capacity+" for your group of "+guests+". Would you like me to find a larger option?","Available po ang slot, pero "+exact.capacity+" pax ang listed capacity ng "+exact.room_name+" para sa "+guests+" guests ninyo. Hanapan ko po ba kayo ng mas malaking option?"),cards);
    return result(say("Good news! "+(name||"These options")+" "+(name?"is":"are")+" available for "+date+" ("+names[slot]+") at the time of checking. You can choose Book This to continue.","Good news po! Available pa "+(name?"ang "+name:"itong mga options")+" sa "+date+" ("+names[slot]+") noong chineck ko. Pwede po kayong mag-proceed sa booking."),cards);
  }
  if(exact&&no.length){

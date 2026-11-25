@@ -555,6 +555,7 @@ function clearAiConversation() {
 function mergeContext(oldContext = {}, newContext = {}) {
   return {
     availability_pending: newContext.availability_pending ?? oldContext.availability_pending ?? false,
+    extended_pending: newContext.extended_pending ?? oldContext.extended_pending ?? false,
     stay_duration: newContext.stay_duration ?? oldContext.stay_duration ?? null,
     check_in: newContext.check_in ?? oldContext.check_in ?? null,
     check_in_time: newContext.check_in_time ?? oldContext.check_in_time ?? null,
