@@ -19,7 +19,8 @@
     <!-- FD-DM-01: accessible Front Desk toggle and dark palette; screen-only. -->
     <link rel="stylesheet" href="../frontdeskCSS/frontdesk-theme-toggle.css?v=20261121-fddm01" />
     <link rel="stylesheet" href="../frontdeskCSS/frontdesk-dark-fd01.css?v=20261121-fddm04" />
-</head>
+  <link rel="stylesheet" href="../frontdeskCSS/frontdesk-records-scroll-ui89.css?v=20261125-ui89" />
+  </head>
 
   <body class="has-fixed-navbar frontdesk-manager-tone">
     <!-- ======================================================
@@ -178,7 +179,7 @@
           <span id="recordCount" class="record-count">0 records</span>
         </div>
 
-        <div id="paymentRecords">
+        <div id="paymentRecords" class="fd-records-scroll" tabindex="0" role="region" aria-label="Payment records">
           <div class="payment-state-box">
             Loading payment records...
           </div>
