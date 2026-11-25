@@ -11,9 +11,9 @@ document.addEventListener("DOMContentLoaded", () => {
   let loading = false;
 
   // Manager reports require the dedicated signed mgr1 session.
-  function signOut() {
-    sessionStorage.removeItem("managerToken");
-    localStorage.removeItem("user");
+  function signOut(event) {
+    if (event?.type === "click") window.ArvicAccountSession.signOut();
+    else window.ArvicAccountSession.endTab();
     window.location.replace("../authHTML/login.html");
   }
   document.getElementById("logoutBtn")?.addEventListener("click", signOut);

@@ -9,9 +9,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const filter = document.getElementById("managerStatusFilter");
 
   // Signed Manager session is distinct from Admin and Housekeeping sessions.
-  function signOut() {
-    sessionStorage.removeItem("managerToken");
-    localStorage.removeItem("user");
+  function signOut(event) {
+    if (event?.type === "click") window.ArvicAccountSession.signOut();
+    else window.ArvicAccountSession.endTab();
     window.location.replace("../authHTML/login.html");
   }
   document.getElementById("logoutBtn")?.addEventListener("click", signOut);

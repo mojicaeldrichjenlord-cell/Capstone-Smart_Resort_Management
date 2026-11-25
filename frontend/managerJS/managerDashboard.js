@@ -8,9 +8,9 @@ document.addEventListener("DOMContentLoaded", () => {
   const refresh = document.getElementById("refreshBtn");
 
   // Clear mgr1 token on logout; the UI must never authorize by stored role alone.
-  const signOut = () => {
-    sessionStorage.removeItem("managerToken");
-    localStorage.removeItem("user");
+  const signOut = (event) => {
+    if (event?.type === "click") window.ArvicAccountSession.signOut();
+    else window.ArvicAccountSession.endTab();
     window.location.replace("../authHTML/login.html");
   };
   document.getElementById("logoutBtn")?.addEventListener("click", signOut);

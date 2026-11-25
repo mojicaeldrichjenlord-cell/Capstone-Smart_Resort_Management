@@ -19,9 +19,9 @@ document.addEventListener("DOMContentLoaded", () => {
     status.setAttribute("aria-busy", String(next));
   }
   // Revoked or expired session: clear local auth and return to the login page.
-  function signOut() {
-    sessionStorage.removeItem("housekeepingToken");
-    localStorage.removeItem("user");
+  function signOut(event) {
+    if (event?.type === "click") window.ArvicAccountSession.signOut();
+    else window.ArvicAccountSession.endTab();
     window.location.replace("../authHTML/login.html");
   }
   // Every GET/PUT request is authorized server-side, not by this UI alone.
