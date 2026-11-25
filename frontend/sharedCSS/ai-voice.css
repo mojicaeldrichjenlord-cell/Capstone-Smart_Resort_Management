@@ -100,3 +100,6 @@
   flex: 0 1 auto;
 }
 .ai-voice-actions #aiVoiceLive { flex: 1 1 170px; }
+
+/* AI-99: explicit playback recovery control; never show when hidden. */
+.ai-voice-actions #aiVoiceReplay[hidden] { display:none !important; }
