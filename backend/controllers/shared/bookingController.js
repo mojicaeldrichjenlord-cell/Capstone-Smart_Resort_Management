@@ -70,9 +70,9 @@ function validateReferenceNumberByMethod(referenceNumber, paymentMethod) {
 
   if (cleanMethod === "paymaya") {
     return {
-      valid: digitsOnly && digits.length >= 6 && digits.length <= 30,
+      valid: !/[^A-Za-z0-9-]/.test(digits) && /[A-Za-z0-9]/.test(digits) && digits.length >= 6 && digits.length <= 36,
       message:
-        "Maya / PayMaya reference number must be numbers only, 6 to 30 digits.",
+        "Maya reference must contain 6 to 36 characters: letters, numbers or hyphens, with at least one letter or number.",
       digits,
     };
   }

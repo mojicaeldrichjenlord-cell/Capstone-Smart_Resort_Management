@@ -824,23 +824,24 @@ async function loadAccommodations() {
 // ============================================================
 // SECTION 7: Payment reference helpers
 // GCash: exactly 13 digits
-// Maya: 6 to 30 digits
+// Maya: 6 to 36 characters (ASCII letters, digits, hyphens)
 // ============================================================
 
-function normalizeReferenceNumber(value) {
-  return String(value || "").replace(/\D/g, "");
+function normalizeReferenceNumber(value, method) {
+  const isMaya = String(method || "").toLowerCase() === "paymaya";
+  return String(value ?? "").replace(isMaya ? /[^A-Za-z0-9-]/g : /[^0-9]/g, "");
 }
 
 function getReferenceMaxDigits(method) {
   return String(method || "").toLowerCase() === "gcash"
     ? 13
-    : 30;
+    : 36;
 }
 
 function formatReferenceNumberForDisplay(value, method) {
   const maxDigits = getReferenceMaxDigits(method);
 
-  return normalizeReferenceNumber(value).slice(0, maxDigits);
+  return normalizeReferenceNumber(value, method).slice(0, maxDigits);
 }
 
 function validateReferenceNumberByMethod(
@@ -862,9 +863,9 @@ function validateReferenceNumberByMethod(
 
   if (cleanMethod === "paymaya") {
     return {
-      valid: digitsOnly && digits.length >= 6 && digits.length <= 30,
+      valid: !/[^A-Za-z0-9-]/.test(digits) && /[A-Za-z0-9]/.test(digits) && digits.length >= 6 && digits.length <= 36,
       message:
-        "Maya / PayMaya reference number must be numbers only, 6 to 30 digits.",
+        "Maya reference must contain 6 to 36 characters: letters, numbers or hyphens, with at least one letter or number.",
       digits,
     };
   }
@@ -895,16 +896,10 @@ function setupPaymentForm() {
 
   if (paymentMethod) {
     paymentMethod.addEventListener("change", () => {
+      // A reference belongs to its original payment provider.
+      if (proofReference) proofReference.value = "";
       updatePaymentRequirementUI();
       updatePaymentBreakdown();
-
-      if (proofReference) {
-        proofReference.value =
-          formatReferenceNumberForDisplay(
-            proofReference.value,
-            paymentMethod.value,
-          );
-      }
     });
   }
 
@@ -935,7 +930,7 @@ function setupPaymentForm() {
       const before = proofReference.value.slice(0, start);
       const after = proofReference.value.slice(end);
       const available = Math.max(0, getReferenceMaxDigits(method) - before.length - after.length);
-      const pasted = normalizeReferenceNumber(event.clipboardData.getData("text")).slice(0, available);
+      const pasted = normalizeReferenceNumber(event.clipboardData.getData("text"), method).slice(0, available);
       proofReference.setRangeText(pasted, start, end, "end");
       proofReference.dispatchEvent(new Event("input", { bubbles: true }));
     });
@@ -1142,11 +1137,13 @@ function updatePaymentRequirementUI() {
       proofReference.placeholder = "Not required for cash payment";
       proofReference.removeAttribute("maxlength");
       proofReference.removeAttribute("pattern");
+      proofReference.removeAttribute("inputmode");
     } else {
       proofReference.placeholder = method === "gcash"
-        ? "Enter GCash reference (13 digits)" : "Enter Maya reference (6–30 digits)";
+        ? "Enter GCash reference (13 digits)" : "Enter Maya reference (6–36 characters)";
       proofReference.setAttribute("maxlength", String(getReferenceMaxDigits(method)));
-      proofReference.setAttribute("pattern", method === "gcash" ? "[0-9]{13}" : "[0-9]{6,30}");
+      proofReference.setAttribute("pattern", method === "gcash" ? "[0-9]{13}" : "[A-Za-z0-9\\-]{6,36}");
+      proofReference.setAttribute("inputmode", method === "gcash" ? "numeric" : "text");
       proofReference.value = formatReferenceNumberForDisplay(
         proofReference.value, method,
       );

@@ -14,18 +14,21 @@ function helpers(source, end) {
 test("input cleanup retains only digits with method-specific maximum and leading zeros", () => {
   const h = helpers(front, "function setupPaymentForm(");
   assert.equal(h.formatReferenceNumberForDisplay("00a12-345678901234", "gcash"), "0012345678901");
-  assert.equal(h.formatReferenceNumberForDisplay("9".repeat(40), "paymaya"), "9".repeat(30));
+  assert.equal(h.formatReferenceNumberForDisplay("9".repeat(40), "paymaya"), "9".repeat(36));
   assert.equal(h.formatReferenceNumberForDisplay("a!@- ", "gcash"), "");
+  assert.equal(h.formatReferenceNumberForDisplay("Ab12- CD34@!", "paymaya"), "Ab12-CD34");
   assert.match(front, /setAttribute\("maxlength", String\(getReferenceMaxDigits\(method\)\)\)/);
 });
-test("frontend and backend reject non-digit characters and overlength references", () => {
+test("frontend and backend enforce provider-specific characters and length", () => {
   for (const h of [helpers(front, "function setupPaymentForm("), helpers(back, "function normalizeContactNumber(")]) {
     const v = h.validateReferenceNumberByMethod;
     for (const invalid of ["", "123456789012", "12345678901234", "a1234567890123", "1234-567890123", "1234567890123\n", "1234567890123 "]) assert.equal(v(invalid, "gcash").valid, false);
     assert.equal(v("0123456789012", "gcash").valid, true);
-    for (const invalid of ["12345", "1".repeat(31), "123a456", "123 456", "123456\n"]) assert.equal(v(invalid, "paymaya").valid, false);
+    for (const invalid of ["12345", "1".repeat(37), "123@456", "123 456", "123456\n", "------"]) assert.equal(v(invalid, "paymaya").valid, false);
     assert.equal(v("012345", "paymaya").valid, true);
-    assert.equal(v("0".repeat(30), "paymaya").valid, true);
+    assert.equal(v("0".repeat(36), "paymaya").valid, true);
+    assert.equal(v("Ab12-CD34", "paymaya").valid, true);
+    assert.equal(v("fce48a15-7e54-4c36-b2af-eee19a6abd9c", "paymaya").valid, true);
     assert.equal(v("", "cash").valid, true);
     assert.equal(v("", "paypal").valid, true);
   }
