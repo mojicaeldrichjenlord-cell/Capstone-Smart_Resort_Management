@@ -432,8 +432,7 @@ async function verifyRegistrationOtp() {
     }, 1000);
   } catch (error) {
     if (error.code === "ACTIVE_ACCOUNT_CONFLICT") {
-      showMessage("Email verified. Log out of the current account or use another browser to sign in.", "success");
-      if (!window.ArvicAccountSession.showConflict()) window.location.href="../authHTML/login.html";
+      if (!await window.ArvicAccountSession.restoreAndRoute()) window.location.href="../authHTML/login.html";
       return;
     }
     console.error("verifyRegistrationOtp error:", error);
