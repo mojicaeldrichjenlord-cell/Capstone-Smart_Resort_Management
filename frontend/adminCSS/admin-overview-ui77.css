@@ -1,0 +1,78 @@
+/* UI-77 — dashboard-only presentation; existing admin palette stays intact. */
+body.admin-manager-tone .admin-overview-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  align-items: stretch;
+}
+body.admin-manager-tone .admin-overview-grid .overview-card {
+  min-width: 0;
+  padding: 18px 20px;
+  border-radius: 16px;
+}
+.admin-overview-grid .overview-card-heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 9px;
+  min-height: 24px;
+}
+.admin-overview-grid .overview-card-heading .overview-label {
+  margin: 0;
+  line-height: 1.35;
+}
+.admin-overview-grid .overview-icon {
+  width: 20px;
+  height: 20px;
+  color: #64748b;
+  flex-shrink: 0;
+}
+.admin-overview-grid .overview-value {
+  font-size: clamp(1.45rem, 2.6vw, 2rem);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+.admin-overview-grid .overview-money {
+  font-size: clamp(1.3rem, 2.5vw, 1.85rem);
+}
+.admin-overview-grid .overview-breakdown {
+  margin-top: 7px;
+}
+.admin-overview-grid .overview-breakdown-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  color: #475569;
+  font-size: .84rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+.admin-overview-grid .overview-breakdown-row strong {
+  font-variant-numeric: tabular-nums;
+}
+.admin-overview-grid .overview-payment-breakdown .overview-value {
+  font-size: 1.4rem;
+}
+.admin-overview-grid .overview-source-track {
+  display: flex;
+  height: 6px;
+  margin-top: 9px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #e2e8f0;
+}
+.admin-overview-grid .overview-source-track span {
+  display: block;
+  width: 0;
+  flex: 0 0 auto;
+}
+.admin-overview-grid .overview-source-online { background: #0f766e; }
+.admin-overview-grid .overview-source-manual { background: #94a3b8; }
+@media (max-width: 1100px) {
+  body.admin-manager-tone .admin-overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 600px) {
+  body.admin-manager-tone .admin-overview-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  body.admin-manager-tone .admin-overview-grid .overview-card { padding: 14px 16px; }
+}

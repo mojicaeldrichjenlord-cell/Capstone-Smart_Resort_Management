@@ -313,3 +313,37 @@ body.customer-manager-tone.customer-profile-page .profile-card {
     transition: none;
   }
 }
+
+/* UI-72: Password disclosure, scoped to Customer Profile. */
+.customer-profile-page .profile-security-heading {
+  align-items: center;
+  margin-bottom: 0;
+}
+.customer-profile-page .password-disclosure-toggle {
+  gap: 8px;
+  white-space: nowrap;
+}
+.customer-profile-page .password-disclosure-chevron {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+}
+.customer-profile-page .password-disclosure-toggle[aria-expanded="true"] .password-disclosure-chevron {
+  transform: rotate(180deg);
+}
+.customer-profile-page .password-form[hidden] {
+  display: none !important;
+}
+.customer-profile-page .password-form:not([hidden]) {
+  margin-top: 20px;
+}
+@media (max-width: 600px) {
+  .customer-profile-page .profile-security-heading {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    margin-bottom: 0;
+  }
+  .customer-profile-page .password-disclosure-toggle {
+    width: 100%;
+  }
+}

@@ -75,27 +75,27 @@
           <div class="register-form-grid">
             <div class="register-form-group">
               <label for="firstName">First Name</label>
-              <input type="text" id="firstName" placeholder="Enter first name" autocomplete="given-name" required />
+              <input type="text" id="firstName" placeholder="Example: Juan" autocomplete="given-name" required />
             </div>
 
             <div class="register-form-group">
               <label for="middleName">Middle Name <span class="optional-text">(Optional)</span></label>
-              <input type="text" id="middleName" placeholder="Enter middle name" autocomplete="additional-name" />
+              <input type="text" id="middleName" placeholder="Example: Santos" autocomplete="additional-name" />
             </div>
 
             <div class="register-form-group">
               <label for="lastName">Last Name</label>
-              <input type="text" id="lastName" placeholder="Enter last name" autocomplete="family-name" required />
+              <input type="text" id="lastName" placeholder="Example: Dela Cruz" autocomplete="family-name" required />
             </div>
 
             <div class="register-form-group">
               <label for="email">Email</label>
-              <input type="email" id="email" placeholder="Enter working email" autocomplete="email" required />
+              <input type="email" id="email" placeholder="Example: juan@gmail.com" autocomplete="email" required />
             </div>
 
             <div class="register-form-group">
               <label for="phone">Phone Number</label>
-              <input type="text" id="phone" placeholder="Example: 09XXXXXXXXX" maxlength="11" inputmode="numeric" autocomplete="tel" required />
+              <input type="text" id="phone" placeholder="Example: 09123456789" maxlength="11" inputmode="numeric" autocomplete="tel" required />
             </div>
 
             <!-- ==================================================
@@ -110,8 +110,9 @@
                 <input
                   type="password"
                   id="password"
-                  placeholder="Create a secure password"
+                  placeholder="8–16 characters"
                   minlength="8"
+                  maxlength="16"
                   autocomplete="new-password"
                   aria-describedby="passwordRequirements"
                   required
@@ -138,7 +139,7 @@
 
               <div class="password-requirements" id="passwordRequirements">
                 <span class="password-requirement" id="requirementLength">
-                  <span class="requirement-icon">✓</span>8+ Chars
+                  <span class="requirement-icon">✓</span>8–16 Chars
                 </span>
 
                 <span class="password-requirement" id="requirementUppercase">
@@ -171,6 +172,7 @@
                   id="confirmPassword"
                   placeholder="Re-enter password"
                   minlength="8"
+                  maxlength="16"
                   autocomplete="new-password"
                   required
                 />
@@ -190,7 +192,7 @@
 
             <div class="register-form-group full-width">
               <label for="address">Home Address</label>
-              <textarea id="address" placeholder="Enter your home address" autocomplete="street-address" required></textarea>
+              <textarea id="address" placeholder="Example: Naic, Cavite" autocomplete="street-address" required></textarea>
             </div>
           </div>
 
@@ -237,6 +239,7 @@
     ======================================================= -->
     <script src="../sharedJS/toast.js"></script>
     <script src="../sharedJS/api-config.js"></script>
-    <script src="../authJS/register.js?v=20261123-auth70"></script>
+    <script src="../sharedJS/guest-name-validation.js?v=20261124-auth71"></script>
+    <script src="../authJS/register.js?v=20261124-auth71"></script>
   </body>
 </html>

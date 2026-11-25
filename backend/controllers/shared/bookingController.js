@@ -1,4 +1,5 @@
 const { findOverlappingDraftItems } = require("../../utils/reservationOverlap");
+const { hasValidNameParts, NAME_ERROR } = require("../../utils/guestInputValidation");
 ﻿// ============================================================
 // COMMENTED VERSION
 // This copy keeps the same logic and adds block comments so groupmates can follow the code easier.
@@ -905,6 +906,10 @@ async function createReservation({
     proof_reference,
     items,
   } = body;
+
+  if (!hasValidNameParts(first_name, middle_name, last_name)) {
+    throw { status: 400, message: NAME_ERROR };
+  }
 
   const cleanFirstName = normalizeText(first_name);
   const cleanMiddleName = normalizeNullableText(middle_name);

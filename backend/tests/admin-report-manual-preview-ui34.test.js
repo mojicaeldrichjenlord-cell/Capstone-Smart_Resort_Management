@@ -19,11 +19,11 @@ const manualHtml = read("frontend/adminHTML/admin-walkin.html");
 const manualJs = read("frontend/adminJS/admin-walkin.js");
 const manualCss = read("frontend/adminCSS/admin-walkin.css");
 const paymentJs = read("frontend/adminJS/admin-walkin-payment.js");
+const previewCss = read("frontend/sharedCSS/reservation-preview.css");
 
-test("UI-34 reports show exactly two paid-charge cards, not the three removed cards", () => {
-  const section = reportsHtml.match(/<section class="report-charge-grid"[\s\S]*?<\/section>/)?.[0] || "";
-  assert.ok(section, "Paid charge card section missing");
-  assert.equal((section.match(/class="report-charge-card"/g) || []).length, 2);
+test("UI-81 reports retain both paid-charge figures in one card, not the three removed cards", () => {
+  const section = reportsHtml.match(/<div class="stat-card report-breakdown-card" aria-label="Paid charge reconciliation">[\s\S]*?<small class="report-breakdown-note">[\s\S]*?<\/small>\s*<\/div>/)?.[0] || "";
+  assert.ok(section, "Paid charge reconciliation missing");
   assert.match(section, /id="paidBookingChargesAmount"/);
   assert.match(section, /id="paidBedOverlapAmount"/);
   for (const field of [
@@ -34,7 +34,7 @@ test("UI-34 reports show exactly two paid-charge cards, not the three removed ca
     assert.ok(!reportsJs.includes('setText("' + field + '"'), "Obsolete JS update: " + field);
   }
   assert.match(reportsHtml, /admin-reports\.js\?v=20261121-ui34/);
-  assert.match(reportsHtml, /admin-reports-minimal\.css\?v=20261121-ui34/);
+  assert.match(reportsHtml, /admin-reports-minimal\.css\?v=20261124-ui81/);
 });
 
 test("UI-34 reports retain paid charges, accurate caveat and balanced print layout", () => {
@@ -47,9 +47,9 @@ test("UI-34 reports retain paid charges, accurate caveat and balanced print layo
   assert.match(reportsHtml, /not audited net revenue/);
   assert.match(reportsHtml, /Refunds, payment corrections, and differences between/);
   assert.match(reportsHtml, /not included in these displayed totals/);
-  assert.match(reportsCss, /report-charge-grid\s*\{[^}]*grid-template-columns:\s*repeat\(2,\s*minmax\(0,1fr\)\)/s);
+  assert.match(reportsCss, /report-breakdown-row\s*\{/);
   const print = reportsCss.slice(reportsCss.indexOf("@media print"));
-  assert.match(print, /report-charge-grid\s*\{[^}]*grid-template-columns:\s*repeat\(2,minmax\(0,1fr\)\) !important/s);
+  assert.match(print, /stats-grid\s*\{[^}]*grid-template-columns:\s*repeat\(3,minmax\(0,1fr\)\) !important/s);
 });
 
 function manualPreviewHarness() {
@@ -77,11 +77,12 @@ test("UI-34 walk-in preview shows full accommodation payment and NO 50% card", (
   h.update();
   assert.equal(h.element("requiredPaymentLabel").textContent, "Full Accommodation Payment (Due Now)");
   assert.equal(h.element("requiredDownpayment").textContent, "₱3,000.00");
-  assert.equal(h.element("highlightDownpaymentRow").hidden, true);
+  assert.equal(h.element("previewAccommodationRow").hidden, true);
+  assert.equal(h.element("previewBalanceRow").hidden, true);
+  assert.equal(h.element("previewOtherNote").hidden, true);
   assert.equal(h.element("highlightRemainingBalance").textContent, "₱0.00");
-  assert.match(h.element("highlightRemainingLabel").textContent, /After Full Payment/);
-  assert.equal(h.element("highlightEntranceFee").textContent, "₱750.00");
-  assert.equal(h.element("highlightAccommodationTotal").textContent, "₱3,000.00");
+  assert.equal(h.element("estimatedEntranceFee").textContent, "₱750.00");
+  assert.equal(h.element("accommodationTotal").textContent, "₱3,000.00");
 });
 
 test("UI-34 Facebook manual reservation still previews a 50% minimum payment", () => {
@@ -90,22 +91,25 @@ test("UI-34 Facebook manual reservation still previews a 50% minimum payment", (
   h.update();
   assert.equal(h.element("requiredPaymentLabel").textContent, "Required Down Payment (50%)");
   assert.equal(h.element("requiredDownpayment").textContent, "₱1,500.00");
-  assert.equal(h.element("highlightDownpaymentRow").hidden, false);
-  assert.equal(h.element("highlightDownpayment").textContent, "₱1,500.00");
+  assert.equal(h.element("previewAccommodationRow").hidden, false);
+  assert.equal(h.element("previewBalanceRow").hidden, false);
+  assert.equal(h.element("previewOtherNote").hidden, false);
   assert.equal(h.element("highlightRemainingBalance").textContent, "₱1,500.00");
   h.element("manualReservationType").value = "walkin";
   h.update();
-  assert.equal(h.element("highlightDownpaymentRow").hidden, true,
-    "Switching back to walk-in must remove the deposit preview again");
+  assert.equal(h.element("previewAccommodationRow").hidden, true);
+  assert.equal(h.element("previewBalanceRow").hidden, true);
+  assert.equal(h.element("previewOtherNote").hidden, true);
+  assert.equal(h.element("requiredDownpayment").textContent, "₱3,000.00");
 });
 
 test("UI-34 preview code is presentation-only; secure payment flow still enforces full walk-in", () => {
   assert.match(manualHtml, /id="requiredPaymentLabel"/);
-  assert.match(manualHtml, /id="highlightDownpaymentRow" hidden/);
-  assert.match(manualHtml, /id="highlightRemainingLabel"/);
-  assert.match(manualHtml, /admin-walkin\.js\?v=20261121-ui34/);
+  assert.match(manualHtml, /id="previewAccommodationRow" hidden/);
+  assert.match(manualHtml, /id="previewBalanceRow" hidden/);
+  assert.match(manualHtml, /admin-walkin\.js\?v=20261124-ui76/);
   assert.match(manualHtml, /admin-walkin\.css\?v=20261121-ui35/);
-  assert.match(manualCss, /#highlightDownpaymentRow\[hidden\]\s*\{\s*display:\s*none !important;/);
+  assert.match(previewCss, /\.reservation-preview-row\[hidden\][^{]*\{\s*display: none !important;/);
   assert.match(manualJs, /const isWalkIn = getManualReservationType\(\) === "walkin"/);
   assert.match(manualJs, /const requiredPayment = isWalkIn \? accommodationTotal : requiredDownpayment/);
   // Payment UI and submission logic must still force full payment for walk-ins.

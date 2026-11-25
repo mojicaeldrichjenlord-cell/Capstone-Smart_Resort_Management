@@ -28,6 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupLogout();
   setupPasswordToggles();
   loadProfile(user.id);
+  setupPasswordDisclosure();
   setupPasswordForm(user.id);
 });
 
@@ -127,6 +128,44 @@ async function loadProfile(userId) {
 // SECTION 4: Change password form
 // ============================================================
 
+// UI-72: keep the form closed initially and clear credentials on collapse.
+function setPasswordFormOpen(open) {
+  const form = document.getElementById("changePasswordForm");
+  const toggle = document.getElementById("changePasswordToggle");
+  if (!form || !toggle) return;
+
+  if (!open) {
+    form.reset();
+    form.querySelectorAll(".toggle-password").forEach((button) => {
+      const input = document.getElementById(button.getAttribute("data-target"));
+      if (input) input.type = "password";
+      button.textContent = "Show";
+      button.setAttribute("aria-pressed", "false");
+      const fieldName = ({
+        currentPassword: "current password",
+        newPassword: "new password",
+        confirmNewPassword: "new password confirmation",
+      })[button.getAttribute("data-target")] || "password";
+      button.setAttribute("aria-label", "Show " + fieldName);
+    });
+  }
+
+  form.hidden = !open;
+  toggle.setAttribute("aria-expanded", String(open));
+  if (open) document.getElementById("currentPassword")?.focus();
+  else toggle.focus();
+}
+
+function setupPasswordDisclosure() {
+  const form = document.getElementById("changePasswordForm");
+  const toggle = document.getElementById("changePasswordToggle");
+  if (!form || !toggle) return;
+  toggle.addEventListener("click", () => {
+    if (form.querySelector('button[type="submit"]')?.disabled) return;
+    setPasswordFormOpen(form.hidden);
+  });
+}
+
 function setupPasswordForm(userId) {
   const changePasswordForm = document.getElementById("changePasswordForm");
 
@@ -134,6 +173,7 @@ function setupPasswordForm(userId) {
 
   changePasswordForm.addEventListener("submit", async (e) => {
     e.preventDefault();
+    if (changePasswordForm.hidden) return;
 
     const currentPassword = document.getElementById("currentPassword").value;
     const newPassword = document.getElementById("newPassword").value;
@@ -144,8 +184,8 @@ function setupPasswordForm(userId) {
       return;
     }
 
-    if (newPassword.length < 8) {
-      showMessage("New password must be at least 8 characters.", "error");
+    if (newPassword.length < 8 || newPassword.length > 16) {
+      showMessage("New password must be 8–16 characters long.", "error");
       return;
     }
 
@@ -186,25 +226,7 @@ function setupPasswordForm(userId) {
       }
 
       showMessage(data.message || "Password changed successfully.", "success");
-      changePasswordForm.reset();
-
-      document.querySelectorAll(".toggle-password").forEach((button) => {
-        const targetId = button.getAttribute("data-target");
-        const input = document.getElementById(targetId);
-
-        if (input) {
-          input.type = "password";
-        }
-
-        button.textContent = "Show";
-        button.setAttribute("aria-pressed", "false");
-        const fieldName = ({
-          currentPassword: "current password",
-          newPassword: "new password",
-          confirmNewPassword: "new password confirmation",
-        })[targetId] || "password";
-        button.setAttribute("aria-label", "Show " + fieldName);
-      });
+      setPasswordFormOpen(false);
     } catch (error) {
       console.error("changePassword error:", error);
       showMessage(error.message || "Failed to change password.", "error");

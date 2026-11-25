@@ -71,10 +71,12 @@ test("all nine chart IDs and report financial fields remain wired exactly once",
     "salesByCategoryChart", "guestsPerRoomChart", "slotUsageChart",
     "peakReservationDaysChart", "guestVolumeTrendChart", "monthlyCancellationChart",
     "totalBookingsCount", "totalGuestsCount", "totalRevenueAmount",
-    "paidBookingChargesAmount", "paidBedOverlapAmount", "entranceRefundAmount",
-    "entranceCorrectionAmount", "adjustedCollectionsEstimate",
+    "paidBookingChargesAmount", "paidBedOverlapAmount",
   ]) {
     assert.equal(html.split('id="' + id + '"').length - 1, 1, id);
+  }
+  for (const id of ["entranceRefundAmount","entranceCorrectionAmount","adjustedCollectionsEstimate"]) {
+    assert.ok(!html.includes('id="' + id + '"'), "UI-34 removed figure: " + id);
   }
   assert.match(html, /class="revenue-report-disclaimer"/);
   assert.match(html, /id="printReportRange"/);

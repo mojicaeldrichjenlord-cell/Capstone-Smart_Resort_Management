@@ -8,7 +8,7 @@
 
     <link rel="stylesheet" href="../sharedCSS/global.css" />
     <link rel="stylesheet" href="../css/style.css" />
-    <link rel="stylesheet" href="../frontdeskCSS/frontdeskReservations.css" />
+    <link rel="stylesheet" href="../frontdeskCSS/frontdeskReservations.css?v=20261124-ui78" />
       <!-- Consistent, centered confirmation for accidental logout clicks. -->
     <link rel="stylesheet" href="../sharedCSS/logout-confirm.css" />
     <!-- UI-23: muted Front Desk theme; screen-only, loaded after page styles. -->
@@ -55,25 +55,23 @@
         </button>
       </section>
 
-      <section class="frontdesk-summary-grid">
+      <section class="frontdesk-summary-grid" aria-label="Reservation overview">
         <article class="summary-card">
-          <span>Active / Current</span>
+          <div class="reservation-summary-heading">
+            <svg class="reservation-summary-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18m-12 5 3 3 5-5"/></svg>
+            <span>Active / Current</span>
+          </div>
           <strong id="activeCount">0</strong>
+          <small>Active reservation records</small>
         </article>
 
         <article class="summary-card">
-          <span>Pending</span>
+          <div class="reservation-summary-heading">
+            <svg class="reservation-summary-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            <span>Pending</span>
+          </div>
           <strong id="pendingCount">0</strong>
-        </article>
-
-        <article class="summary-card">
-          <span>Partially Paid</span>
-          <strong id="partiallyPaidCount">0</strong>
-        </article>
-
-        <article class="summary-card">
-          <span>Paid</span>
-          <strong id="paidCount">0</strong>
+          <small>Awaiting confirmation</small>
         </article>
       </section>
 
@@ -82,8 +80,8 @@
           <div>
             <h2>Search and Filter</h2>
             <p>
-              Active/current reservations are shown by default. Use the filters
-              to review completed, cancelled, rejected, No-Show, or older records.
+              Active/current reservations are shown by default. Related statuses
+              are grouped in the filters; each record still shows its exact status.
             </p>
           </div>
         </div>
@@ -107,9 +105,7 @@
               <option value="pending">Pending</option>
               <option value="approved">Confirmed</option>
               <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
-              <option value="rejected">Rejected</option>
-              <option value="no_show">No-Show</option>
+              <option value="unsuccessful">Cancelled / Rejected / No-Show</option>
               <option value="all">All Records</option>
             </select>
           </div>
@@ -119,8 +115,7 @@
 
             <select id="paymentStatusFilter">
               <option value="">All</option>
-              <option value="pending">Pending</option>
-              <option value="unpaid">Unpaid</option>
+              <option value="awaiting_payment">Pending / Unpaid</option>
               <option value="partially_paid">Partially Paid</option>
               <option value="paid">Paid</option>
               <option value="rejected">Rejected</option>
@@ -162,7 +157,7 @@
 
     <script src="../sharedJS/toast.js"></script>
     <script src="../sharedJS/api-config.js"></script>
-    <script src="../frontdeskJS/frontdeskReservations.js"></script>
+    <script src="../frontdeskJS/frontdeskReservations.js?v=20261124-ui80"></script>
     <script src="../frontdeskJS/frontdeskReservationReceiptActions.js"></script>
       <script src="../sharedJS/logout-confirm.js"></script>
   </body>

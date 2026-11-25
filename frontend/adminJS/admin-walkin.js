@@ -205,11 +205,11 @@ function setupReservationTypeField() {
   wrapper.innerHTML = `
     <label for="manualReservationType">Reservation Type</label>
     <select id="manualReservationType" required>
-      <option value="walkin">Walk-in Guest</option>
-      <option value="facebook">Facebook / Messenger Reservation</option>
+      <option value="walkin">Walk-in / On-the-Day Guest</option>
+      <option value="facebook">Facebook Messenger / Other Reservation</option>
     </select>
     <small class="field-help">
-      Walk-in is for guests already onsite. Facebook/Messenger is for guests who message the resort instead of using the website.
+      Walk-in / On-the-Day is for guests already onsite. Facebook Messenger / Other Reservation is for bookings arranged through Messenger or another approved channel.
     </small>
   `;
 
@@ -230,7 +230,7 @@ function getManualReservationType() {
 }
 
 function formatManualReservationType(type) {
-  return type === "facebook" ? "Facebook / Messenger Reservation" : "Walk-in Guest";
+  return type === "facebook" ? "Facebook Messenger / Other Reservation" : "Walk-in / On-the-Day Guest";
 }
 
 function setupManualReservationDateRules() {
@@ -708,6 +708,11 @@ async function goToPaymentScreen(e) {
 
   if (!first_name || !last_name || !contact_no || !guest_count) {
     showMessage("Please fill in all required guest information.", "error");
+    return;
+  }
+
+  if (!window.GuestNameValidation.hasValidNameParts(first_name, middle_name, last_name)) {
+    showMessage(window.GuestNameValidation.NAME_ERROR, "error");
     return;
   }
 
@@ -1635,13 +1640,11 @@ function updateSummary() {
     ? "Full Accommodation Payment (Due Now)" : "Required Down Payment (50%)";
   document.getElementById("requiredDownpayment").textContent = `₱${formatMoney(requiredPayment)}`;
 
-  document.getElementById("highlightAccommodationTotal").textContent = `₱${formatMoney(accommodationTotal)}`;
-  document.getElementById("highlightDownpaymentRow").hidden = isWalkIn;
-  document.getElementById("highlightDownpayment").textContent = `₱${formatMoney(requiredDownpayment)}`;
-  document.getElementById("highlightRemainingLabel").textContent = isWalkIn
-    ? "Accommodation Balance After Full Payment" : "Remaining Accommodation Balance";
+  // Walk-ins already pay the full accommodation total; avoid repeating it or a zero balance.
+  document.getElementById("previewAccommodationRow").hidden = isWalkIn;
+  document.getElementById("previewBalanceRow").hidden = isWalkIn;
+  document.getElementById("previewOtherNote").hidden = isWalkIn;
   document.getElementById("highlightRemainingBalance").textContent = `₱${formatMoney(remainingBalance)}`;
-  document.getElementById("highlightEntranceFee").textContent = `₱${formatMoney(estimatedEntranceFee)}`;
 }
 
 function formatMoney(value) {

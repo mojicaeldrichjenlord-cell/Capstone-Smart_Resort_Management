@@ -646,8 +646,8 @@ function formatManualReservationType(
   type = getManualReservationType(),
 ) {
   return type === "facebook"
-    ? "Facebook / Messenger Reservation"
-    : "Walk-in Guest";
+    ? "Facebook Messenger / Other Reservation"
+    : "Walk-in / On-the-Day Guest";
 }
 
 
@@ -1193,7 +1193,7 @@ function updatePaymentRequirementUI() {
            For GCash/Maya, upload the payment proof screenshot (reference optional).
            After submission, the reservation is automatically checked in.
            Entrance fee is finalized and collected separately.`
-        : `<strong>Facebook / Messenger Rule:</strong><br />
+        : `<strong>Facebook Messenger / Other Reservation Rule:</strong><br />
            Only GCash or Maya is accepted. Upload a payment proof screenshot
            (reference optional). Collect either the selected 50% downpayment
            or full accommodation payment. Entrance fee is collected at arrival.`;

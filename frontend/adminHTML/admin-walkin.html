@@ -24,6 +24,7 @@
     <link rel="stylesheet" href="../sharedCSS/logout-confirm.css" />
     <!-- UI-23: muted Front Desk theme; screen-only, loaded after page styles. -->
   <link rel="stylesheet" href="../frontdeskCSS/frontdesk-manager-tone.css?v=20261119-ui23" />
+    <link rel="stylesheet" href="../sharedCSS/reservation-preview.css?v=20261124-ui76" />
 </head>
 
   <body class="has-fixed-navbar frontdesk-manager-tone">
@@ -88,17 +89,17 @@
             <div class="walkin-grid">
               <div class="walkin-group">
                 <label for="firstName">First Name</label>
-                <input type="text" id="firstName" required />
+                <input type="text" id="firstName" placeholder="Example: Juan" required />
               </div>
 
               <div class="walkin-group">
                 <label for="middleName">Middle Name (Optional)</label>
-                <input type="text" id="middleName" />
+                <input type="text" id="middleName" placeholder="Example: Santos" />
               </div>
 
               <div class="walkin-group">
                 <label for="lastName">Last Name</label>
-                <input type="text" id="lastName" required />
+                <input type="text" id="lastName" placeholder="Example: Dela Cruz" required />
               </div>
 
               <div class="walkin-group">
@@ -130,7 +131,7 @@
 
                 <textarea
                   id="customerNote"
-                  placeholder="Kung may gusto kayong ihabilin or concern, ilagay dito. If may kids, senior, or PWD guests, ilagay dito for front-desk verification."
+                  placeholder="Ilagay dito ang mga habilin o concern ng guest. Pakibanggit kung may kasamang bata, senior citizen, o PWD para ma-verify ng front desk."
                 ></textarea>
               </div>
             </div>
@@ -157,51 +158,30 @@
           <section class="section-box">
             <h2>Manual Reservation Preview</h2>
 
-            <div class="summary-grid">
-              <div class="summary-box">
-                <strong>Total Selected Accommodations</strong>
-                <span id="summaryItemCount">0 item(s)</span>
+            <div class="reservation-preview-breakdown">
+              <div class="reservation-preview-row reservation-preview-count">
+                <span>Selected Accommodations</span>
+                <strong id="summaryItemCount">0 item(s)</strong>
               </div>
-
-              <div class="summary-box">
-                <strong>Estimated Entrance Fee</strong>
-                <span id="estimatedEntranceFee">₱0.00</span>
-              </div>
-
-              <div class="summary-box">
-                <strong>Accommodation Total</strong>
-                <span id="accommodationTotal">₱0.00</span>
-              </div>
-
-              <div class="summary-box">
-                <strong id="requiredPaymentLabel">Full Accommodation Payment</strong>
-                <span id="requiredDownpayment">₱0.00</span>
-              </div>
-            </div>
-
-            <div class="highlight-box">
-              <div class="highlight-row">
+              <div class="reservation-preview-row" id="previewAccommodationRow" hidden>
                 <span>Accommodation Total</span>
-                <strong id="highlightAccommodationTotal">₱0.00</strong>
+                <strong id="accommodationTotal">₱0.00</strong>
               </div>
-
-              <!-- UI-34: 50% guidance is for Facebook/Messenger only; never show
-                   this row for walk-ins, which must pay accommodation in full. -->
-              <div class="highlight-row" id="highlightDownpaymentRow" hidden>
-                <span>Required Down Payment (50%)</span>
-                <strong id="highlightDownpayment">₱0.00</strong>
+              <div class="reservation-preview-row">
+                <span>Estimated Entrance Fee</span>
+                <strong id="estimatedEntranceFee">₱0.00</strong>
               </div>
-
-              <div class="highlight-row">
-                <span id="highlightRemainingLabel">Remaining Accommodation Balance</span>
+              <div class="reservation-preview-row" id="previewBalanceRow" hidden>
+                <span>Remaining Accommodation Balance</span>
                 <strong id="highlightRemainingBalance">₱0.00</strong>
               </div>
-
-              <div class="highlight-row">
-                <span>Entrance Fee Estimate</span>
-                <strong id="highlightEntranceFee">₱0.00</strong>
+              <div class="reservation-preview-row reservation-preview-due">
+                <span id="requiredPaymentLabel">Full Accommodation Payment (Due Now)</span>
+                <strong id="requiredDownpayment">₱0.00</strong>
               </div>
             </div>
+            <p class="reservation-preview-note">Entrance fee is estimated and finalized at the front desk.</p>
+            <p class="reservation-preview-note" id="previewOtherNote" hidden>The remaining balance assumes the minimum 50% downpayment. Full payment can be selected on the next screen.</p>
           </section>
 
           <!-- ======================================================
@@ -234,10 +214,11 @@
     ======================================================= -->
     <script src="../sharedJS/toast.js"></script>
     <script src="../sharedJS/api-config.js"></script>
+    <script src="../sharedJS/guest-name-validation.js?v=20261124-auth71"></script>
     <script src="../sharedJS/manualReservationRoleNav.js"></script>
     <!-- Block expired fixed slots before payment; backend validates again. -->
     <script src="../sharedJS/manual-schedule-guard.js"></script>
-    <script src="../adminJS/admin-walkin.js?v=20261121-ui34"></script>
+    <script src="../adminJS/admin-walkin.js?v=20261124-ui76"></script>
     <script src="../adminJS/admin-mobile-nav.js"></script>
     <script src="../sharedJS/logout-confirm.js"></script>
   </body>

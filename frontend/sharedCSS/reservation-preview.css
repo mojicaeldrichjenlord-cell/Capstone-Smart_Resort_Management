@@ -1,0 +1,62 @@
+/* UI-76: single, compact reservation breakdown for Customer and manual booking. */
+.reservation-preview-breakdown {
+  --preview-bg: #f8fafc;
+  --preview-text: #334155;
+  --preview-strong: #0f172a;
+  --preview-border: #dbe7ef;
+  --preview-accent: #0f766e;
+  --preview-due-bg: #e9f5f2;
+  border: 1px solid var(--preview-border);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--preview-bg);
+  color: var(--preview-text);
+}
+.reservation-preview-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 20px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--preview-border);
+  line-height: 1.45;
+}
+.reservation-preview-row[hidden], .reservation-preview-note[hidden] { display: none !important; }
+.reservation-preview-row > span { min-width: 0; overflow-wrap: anywhere; }
+.reservation-preview-row > strong {
+  color: var(--preview-strong);
+  text-align: right;
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+}
+.reservation-preview-count { font-size: .9rem; }
+.reservation-preview-due {
+  border-bottom: 0;
+  background: var(--preview-due-bg);
+  font-weight: 700;
+}
+.reservation-preview-due > strong {
+  font-size: clamp(1.1rem, 3vw, 1.45rem);
+  color: var(--preview-accent);
+}
+.reservation-preview-note {
+  margin: 12px 0 0;
+  font-size: .85rem;
+  line-height: 1.5;
+  color: #64748b;
+}
+html[data-customer-theme="dark"] .reservation-preview-breakdown,
+html[data-frontdesk-theme="dark"] .reservation-preview-breakdown {
+  --preview-bg: #203145;
+  --preview-text: #cbd5e1;
+  --preview-strong: #f1f5f9;
+  --preview-border: #3c5668;
+  --preview-accent: #8ce4d5;
+  --preview-due-bg: #21474a;
+}
+html[data-customer-theme="dark"] .reservation-preview-note,
+html[data-frontdesk-theme="dark"] .reservation-preview-note { color: #b7c5d5; }
+@media (max-width: 480px) {
+  .reservation-preview-row { padding: 11px 12px; gap: 8px 12px; font-size: .85rem; }
+  .reservation-preview-row > strong { max-width: 48%; overflow-wrap: anywhere; }
+}

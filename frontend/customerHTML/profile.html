@@ -29,7 +29,7 @@
     <!-- Stage UI-22: visual-only muted Customer theme, loaded last. -->
   <link rel="stylesheet" href="../customerCSS/customer-manager-tone.css?v=20261119-ui22" />
     <!-- UI-31: Profile-specific final layer overrides shared hero/card styling only here. -->
-    <link rel="stylesheet" href="../customerCSS/profile.css?v=20261120-ui31" />
+    <link rel="stylesheet" href="../customerCSS/profile.css?v=20261124-ui72" />
   <link rel="stylesheet" href="../sharedCSS/ai-chat-airy.css?v=20261120-ui30" />
   <!-- DM-01: Customer-only theme palette. Default is the existing Light Mode. -->
   <link rel="stylesheet" href="../customerCSS/customer-theme-tokens.css?v=20261121-dm01" />
@@ -112,14 +112,18 @@
       </section>
 
       <section class="profile-card profile-security-card" aria-labelledby="profileSecurityTitle">
-        <div class="profile-card-heading">
+        <div class="profile-card-heading profile-security-heading">
           <div>
             <h2 id="profileSecurityTitle">Password & Security</h2>
-            <p>Enter your current password to set a new one.</p>
+            <p>Manage and update your account password.</p>
           </div>
+          <button type="button" id="changePasswordToggle" class="profile-submit-btn password-disclosure-toggle" aria-expanded="false" aria-controls="changePasswordForm">
+            Change Password
+            <svg class="password-disclosure-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg>
+          </button>
         </div>
 
-        <form id="changePasswordForm" class="password-form">
+        <form id="changePasswordForm" class="password-form" hidden>
           <div class="password-form-grid">
           <div class="profile-form-group full-width">
             <label for="currentPassword">Current Password</label>
@@ -144,7 +148,7 @@
             <label for="newPassword">New Password</label>
 
             <div class="password-group">
-              <input type="password" id="newPassword" autocomplete="new-password" required />
+              <input type="password" id="newPassword" minlength="8" maxlength="16" placeholder="8–16 characters" autocomplete="new-password" required />
 
               <button
                 type="button"
@@ -163,7 +167,7 @@
             <label for="confirmNewPassword">Confirm New Password</label>
 
             <div class="password-group">
-              <input type="password" id="confirmNewPassword" autocomplete="new-password" required />
+              <input type="password" id="confirmNewPassword" minlength="8" maxlength="16" autocomplete="new-password" required />
 
               <button
                 type="button"
@@ -180,7 +184,7 @@
 
           </div>
           <div class="password-form-footer">
-            <p class="password-help">Use at least 8 characters for your new password.</p>
+            <p class="password-help">Use 8–16 characters for your new password.</p>
             <button type="submit" class="profile-submit-btn">
               Update Password
             </button>
@@ -194,7 +198,7 @@
     ======================================================= -->
     <script src="../sharedJS/toast.js"></script>
     <script src="../sharedJS/api-config.js"></script>
-    <script src="../customerJS/profile.js?v=20261120-ui31"></script>
+    <script src="../customerJS/profile.js?v=20261124-ui72"></script>
     <!-- Mount existing Customer AI behavior with shared visual styling. -->
     <script src="../js/ai-chat-widget.js?v=20261116-chatv2"></script>
     <script src="../js/ai-chat.js?v=20261121-ai45"></script>
