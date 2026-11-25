@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+  <!-- DM-02: Restore Customer theme before first paint; navbar switch initializes after DOM load. -->
+  <script src="../sharedJS/customer-theme-toggle.js?v=20261121-dm04"></script>
+
+    <!-- ======================================================
+       RESPONSIVE VIEWPORT
+       Makes accommodations page mobile-friendly.
+    ======================================================= -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Accommodation Details | Arvic Seaside</title>
+    <!-- Arvic Seaside: square brand favicon for browser tabs and Google Search. -->
+    <link rel="icon" type="image/svg+xml" sizes="any" href="../favicon.svg" />
+
+    <!-- ======================================================
+       PAGE CSS FILES
+    ======================================================= -->
+    <link rel="stylesheet" href="../sharedCSS/global.css" />
+    <link rel="stylesheet" href="../css/style.css" />
+    <link rel="stylesheet" href="../customerCSS/rooms.css" />
+    <link rel="stylesheet" href="../sharedCSS/customer-navbar.css?v=20261120-ui30" />
+    <link rel="stylesheet" href="../sharedCSS/ai-voice.css?v=20261121-auto44" />
+    <link rel="stylesheet" href="../sharedCSS/ai-recommendations.css" />
+    <link rel="stylesheet" href="../sharedCSS/ai-chat-layout.css?v=20261121-ui38" />
+      <!-- Consistent, centered confirmation for accidental logout clicks. -->
+    <link rel="stylesheet" href="../sharedCSS/logout-confirm.css" />
+    <!-- Stage UI-22: visual-only muted Customer theme, loaded last. -->
+  <link rel="stylesheet" href="../customerCSS/customer-manager-tone.css?v=20261119-ui22" />
+    <!-- UI-26: Light, airy shared AI chat skin; load AFTER customer theme. -->
+    <link rel="stylesheet" href="../sharedCSS/ai-chat-airy.css?v=20261120-ui30" />
+    <!-- UI-43: Mobile / iPad compact accordion; desktop cards unchanged. -->
+    <link rel="stylesheet" href="../customerCSS/rooms-accordion-ui43.css?v=20261121-ui43" />
+  <!-- DM-01: Customer-only theme palette. Default is the existing Light Mode. -->
+  <link rel="stylesheet" href="../customerCSS/customer-theme-tokens.css?v=20261121-dm01" />
+  <link rel="stylesheet" href="../customerCSS/customer-theme-toggle.css?v=20261121-dm04" />
+  <!-- DM-03: Soft Dark styling, screen-only and customer-only. Light Mode unaffected. -->
+  <link rel="stylesheet" href="../customerCSS/customer-dark-skin-dm03.css?v=20261121-dm03" />
+  <!-- DM-04: Soft Dark polish, background icon removal and My Bookings fixes. -->
+  <link rel="stylesheet" href="../customerCSS/customer-comfort-polish-dm04.css?v=20261121-dm04" />
+  <!-- DM-05: Compact signed-in Customer mobile menu, touch-friendly Theme row. -->
+  <link rel="stylesheet" href="../customerCSS/customer-mobile-nav-dm05.css?v=20261121-dm05" />
+  <!-- DM-06: Last dark-only AI concierge palette; keep Light Mode untouched. -->
+  <link rel="stylesheet" href="../customerCSS/customer-ai-dark-polish-dm06.css?v=20261121-dm06" />
+  <!-- DM-07: one compact, unified Customer AI concierge skin (must load last). -->
+  <link rel="stylesheet" href="../sharedCSS/ai-concierge-dm07.css?v=20261121-dm08" />
+<link rel="stylesheet" href="../customerCSS/catalog-ui95.css?v=20261126-ui95" />
+</head>
+
+  <body class="customer-manager-tone catalog-detail-page">
+    <!-- ======================================================
+       CUSTOMER NAVBAR
+       Same Resort Map navbar style.
+    ======================================================= -->
+    <header class="navbar">
+      <!-- UI-30: Tappable Customer brand link; booking/payment routes retain exit confirmation. -->
+      <a class="logo" href="index.html" aria-label="Arvic Seaside — Customer Home">Arvic Seaside</a>
+
+      <button id="menuToggle" class="menu-toggle" type="button" aria-controls="mobileNav" aria-expanded="false">☰</button>
+
+      <nav id="mobileNav">
+        <a href="index.html">Home</a>
+        <a href="rooms.html" class="active-nav">Accommodations</a>
+        <a href="resort-map.html">Resort Map</a>
+        <a href="my-bookings.html">My Bookings</a>
+        <a href="profile.html">Profile</a>
+        <a href="#" id="logoutBtn">Logout</a>
+      </nav>
+    </header>
+
+    <!-- ======================================================
+       PAGE HEADER
+    ======================================================= -->
+    <main class="rooms-wrapper">
+      <div class="rooms-top-actions"><a href="rooms.html" id="catalogBack" class="back-btn">← Back to Accommodations</a><a href="resort-map.html" class="map-link-btn">View Resort Map</a></div>
+      <h1 id="catalogDetailTitle">Accommodation Details</h1>
+      <div class="room-ai-grid" id="roomsContainer"></div>
+    </main>
+
+    <!-- ======================================================
+       IMAGE VIEWER MODAL
+    ======================================================= -->
+    <div id="imageViewerModal" class="image-viewer-modal">
+      <div class="image-viewer-box">
+        <button id="imageViewerClose" class="image-viewer-close" type="button" aria-label="Close image viewer">&times;</button>
+
+        <button
+          id="imageViewerPrev"
+          class="image-viewer-arrow image-viewer-prev"
+         type="button" aria-label="Previous photo">
+          &#10094;
+        </button>
+
+        <img id="imageViewerImg" src="" alt="Accommodation Photo" />
+
+        <button
+          id="imageViewerNext"
+          class="image-viewer-arrow image-viewer-next"
+         type="button" aria-label="Next photo">
+          &#10095;
+        </button>
+
+        <p id="imageViewerCaption"></p>
+        <p id="imageViewerCounter"></p>
+      </div>
+    </div>
+
+    <!-- ======================================================
+       AI CHAT WIDGET
+    ======================================================= -->
+    <button id="aiChatToggle" class="ai-chat-toggle" type="button">Ask AI Assistant</button>
+
+    <div id="aiChatWindow" class="ai-chat-window">
+      <div class="ai-chat-header">
+        <!-- UI-27: Branded concierge identity. Keep existing title and controls. -->
+        <div class="ai-assistant-brand">
+          <span class="ai-assistant-mark" aria-hidden="true">AI</span>
+          <div class="ai-assistant-heading">
+            <h3>Arvic Seaside Resort AI Assistant</h3>
+            <span class="ai-assistant-caption">Your resort concierge · Here to help</span>
+          </div>
+        </div>
+
+        <div class="ai-chat-header-actions">
+          <button id="aiNewChatBtn" class="ai-chat-header-btn" title="New Chat" type="button">
+            New
+          </button>
+
+          <button
+            id="aiChatMaximize"
+            class="ai-chat-header-btn"
+            title="Maximize"
+           type="button">
+            ▢
+          </button>
+
+          <button id="aiChatClose" class="ai-chat-header-btn" title="Close" type="button">
+            &times;
+          </button>
+        </div>
+      </div>
+
+      <div id="aiChatMessages" class="ai-chat-messages"></div>
+
+      <div class="ai-chat-input-area">
+        <input
+          type="text"
+          id="aiChatInput"
+          placeholder="Ask about accommodation recommendations, dates, or payment..."
+        />
+
+        <button
+          id="aiMicBtn"
+          class="ai-chat-mic-btn"
+          title="Voice input"
+          aria-label="Voice input"
+         type="button">
+          🎤
+        </button>
+
+        <button id="aiSendBtn" class="ai-chat-send" type="button">Send</button>
+      </div>
+    </div>
+
+    <!-- ======================================================
+       PAGE SCRIPTS
+    ======================================================= -->
+    <script src="../sharedJS/toast.js"></script>
+    <script src="../sharedJS/api-config.js"></script>
+
+    <!-- Existing rooms logic -->
+    <script src="../customerJS/rooms.js?v=20261126-ui95"></script>
+
+    <!-- ======================================================
+       MOBILE / VERCEL ACCOMMODATION IMAGE FIX
+       Must load after rooms.js and before DOMContentLoaded fires.
+    ======================================================= -->
+    <script src="../customerJS/rooms-image-mobile-fix.js"></script>
+
+    <script src="../js/ai-chat.js?v=20261122-ai62"></script>
+    <script src="../js/ai-voice.js?v=20261121-dm08"></script>
+    <script src="../js/ai-chat-polish.js?v=20261121-dm08"></script>
+
+    <script>
+      const menuToggle = document.getElementById("menuToggle");
+      const mobileNav = document.getElementById("mobileNav");
+
+      if (menuToggle && mobileNav) {
+        menuToggle.addEventListener("click", () => {
+          mobileNav.classList.toggle("show");
+          menuToggle.textContent = mobileNav.classList.contains("show")
+            ? "×"
+            : "☰";
+        });
+      }
+    </script>
+      <!-- Shared Customer scroll navigation: stays hidden down, reappears after slight up-scroll. -->
+    <script src="../sharedJS/customer-scroll-nav.js?v=20261120-ui30"></script>
+    <script src="../sharedJS/logout-confirm.js"></script>
+  </body>
+</html>
