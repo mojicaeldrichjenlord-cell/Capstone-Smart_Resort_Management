@@ -6,12 +6,13 @@ const AI_API_BASE = typeof API_BASE === "string" ? API_BASE
 // UI-37: Public landing inquiries and signed-in Customer chats must not share
 // local history, recommendation context, or saved popup size.
 const AI_IS_PUBLIC_LANDING = document.body?.dataset.aiChatSurface === "public";
+const AI_ACCOUNT_SCOPE = window.ArvicAccountSession?.tabInfo()?.identity || "no-authenticated-account";
 const AI_CONTEXT_KEY = AI_IS_PUBLIC_LANDING
-  ? "arvic_public_ai_context_v1" : "smartresort_ai_context_v1";
+  ? "arvic_public_ai_context_v1" : "arvic_ai_account_" + AI_ACCOUNT_SCOPE + "_context_v1";
 const AI_WINDOW_STATE_KEY = AI_IS_PUBLIC_LANDING
-  ? "arvic_public_ai_window_state_v1" : "smartresort_ai_window_state_v1";
+  ? "arvic_public_ai_window_state_v1" : "arvic_ai_account_" + AI_ACCOUNT_SCOPE + "_window_state_v1";
 const AI_CHAT_HISTORY_KEY = AI_IS_PUBLIC_LANDING
-  ? "arvic_public_ai_chat_history_v1" : "smartresort_ai_chat_history_v1";
+  ? "arvic_public_ai_chat_history_v1" : "arvic_ai_account_" + AI_ACCOUNT_SCOPE + "_chat_history_v1";
 // UI-42: Public visitor conversations live only in this page's JavaScript
 // memory. A new load, separate tab or next visitor starts completely fresh.
 // Customer Home retains its existing separately keyed localStorage behavior.
@@ -315,7 +316,7 @@ function normalizeTimeForContext(value) {
 function getStoredAiContext() {
   if (AI_IS_PUBLIC_LANDING) return { ...aiPublicChatContext };
   try {
-    const raw = localStorage.getItem(AI_CONTEXT_KEY);
+    const raw = sessionStorage.getItem(AI_CONTEXT_KEY);
     return raw ? JSON.parse(raw) : {};
   } catch (error) {
     return {};
@@ -327,7 +328,7 @@ function saveAiContext(context) {
     aiPublicChatContext = { ...(context || {}) };
     return;
   }
-  localStorage.setItem(AI_CONTEXT_KEY, JSON.stringify(context || {}));
+  sessionStorage.setItem(AI_CONTEXT_KEY, JSON.stringify(context || {}));
 }
 
 // Send only a few recent conversational messages. Skip UI notices and
@@ -366,7 +367,7 @@ function isFreshAiAccommodationSearch(text, context = {}) {
 function getStoredChatHistory() {
   if (AI_IS_PUBLIC_LANDING) return aiPublicChatHistory.slice();
   try {
-    const raw = localStorage.getItem(AI_CHAT_HISTORY_KEY);
+    const raw = sessionStorage.getItem(AI_CHAT_HISTORY_KEY);
     return raw ? JSON.parse(raw) : [];
   } catch (error) {
     return [];
@@ -378,7 +379,7 @@ function saveChatHistory(history) {
     aiPublicChatHistory = Array.isArray(history) ? history.slice(-80) : [];
     return;
   }
-  localStorage.setItem(AI_CHAT_HISTORY_KEY, JSON.stringify(history || []));
+  sessionStorage.setItem(AI_CHAT_HISTORY_KEY, JSON.stringify(history || []));
 }
 
 function addToChatHistory(entry) {
@@ -530,8 +531,8 @@ function clearAiConversation() {
       sendBtn.textContent = "Send";
     }
   } else {
-    localStorage.removeItem(AI_CHAT_HISTORY_KEY);
-    localStorage.removeItem(AI_CONTEXT_KEY);
+    sessionStorage.removeItem(AI_CHAT_HISTORY_KEY);
+    sessionStorage.removeItem(AI_CONTEXT_KEY);
   }
 
   const input = document.getElementById("aiChatInput");
@@ -1922,7 +1923,7 @@ function toggleMaximize() {
   const isMaximized = chatWindow.classList.contains("maximized");
   syncChatSizeButton(chatWindow, maximizeBtn);
   if (!AI_IS_PUBLIC_LANDING) {
-    localStorage.setItem(AI_WINDOW_STATE_KEY, isMaximized ? "maximized" : "normal");
+    sessionStorage.setItem(AI_WINDOW_STATE_KEY, isMaximized ? "maximized" : "normal");
   }
 }
 
@@ -1931,7 +1932,7 @@ function restoreWindowState() {
   const maximizeBtn = document.getElementById("aiChatMaximize");
   if (!chatWindow || !maximizeBtn) return;
 
-  const savedState = AI_IS_PUBLIC_LANDING ? "normal" : localStorage.getItem(AI_WINDOW_STATE_KEY);
+  const savedState = AI_IS_PUBLIC_LANDING ? "normal" : sessionStorage.getItem(AI_WINDOW_STATE_KEY);
   chatWindow.classList.toggle("maximized", savedState === "maximized");
   syncChatSizeButton(chatWindow, maximizeBtn);
 }
