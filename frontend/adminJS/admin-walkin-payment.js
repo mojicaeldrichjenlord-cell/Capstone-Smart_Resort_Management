@@ -615,14 +615,14 @@ function getWalkInDraft() {
 // Walk-in:
 // - Cash, GCash, or Maya
 // - Full accommodation payment only
-// - GCash/Maya reference is OPTIONAL
+// - GCash/Maya reference is REQUIRED
 // - GCash/Maya proof screenshot is REQUIRED
 // - Auto check-in
 //
 // Facebook / Messenger:
 // - GCash or Maya
 // - 50% downpayment or full payment
-// - Reference is OPTIONAL
+// - Reference is REQUIRED
 // - Proof screenshot is REQUIRED
 // ============================================================
 
@@ -824,30 +824,24 @@ async function loadAccommodations() {
 // ============================================================
 // SECTION 7: Payment reference helpers
 // GCash: exactly 13 digits
-// Maya: 6 to 30 digits
+// Maya: 6 to 36 characters (ASCII letters, digits, hyphens)
 // ============================================================
 
-function normalizeReferenceNumber(value) {
-  return String(value || "").replace(/\D/g, "");
+function normalizeReferenceNumber(value, method) {
+  const isMaya = String(method || "").toLowerCase() === "paymaya";
+  return String(value ?? "").replace(isMaya ? /[^A-Za-z0-9-]/g : /[^0-9]/g, "");
 }
 
 function getReferenceMaxDigits(method) {
   return String(method || "").toLowerCase() === "gcash"
     ? 13
-    : 30;
+    : 36;
 }
 
 function formatReferenceNumberForDisplay(value, method) {
   const maxDigits = getReferenceMaxDigits(method);
 
-  const digits = normalizeReferenceNumber(value).slice(
-    0,
-    maxDigits,
-  );
-
-  const groups = digits.match(/.{1,4}/g) || [];
-
-  return groups.join("-");
+  return normalizeReferenceNumber(value, method).slice(0, maxDigits);
 }
 
 function validateReferenceNumberByMethod(
@@ -855,11 +849,12 @@ function validateReferenceNumberByMethod(
   method,
 ) {
   const cleanMethod = String(method || "").toLowerCase();
-  const digits = normalizeReferenceNumber(referenceNumber);
+  const digits = String(referenceNumber ?? "");
+  const digitsOnly = !/[^0-9]/.test(digits);
 
   if (cleanMethod === "gcash") {
     return {
-      valid: /^\d{13}$/.test(digits),
+      valid: digitsOnly && digits.length === 13,
       message:
         "GCash reference number must be exactly 13 digits.",
       digits,
@@ -868,9 +863,9 @@ function validateReferenceNumberByMethod(
 
   if (cleanMethod === "paymaya") {
     return {
-      valid: /^\d{6,30}$/.test(digits),
+      valid: !/[^A-Za-z0-9-]/.test(digits) && /[A-Za-z0-9]/.test(digits) && digits.length >= 6 && digits.length <= 36,
       message:
-        "Maya / PayMaya reference number must be numbers only, 6 to 30 digits.",
+        "Maya reference must contain 6 to 36 characters: letters, numbers or hyphens, with at least one letter or number.",
       digits,
     };
   }
@@ -901,16 +896,10 @@ function setupPaymentForm() {
 
   if (paymentMethod) {
     paymentMethod.addEventListener("change", () => {
+      // A reference belongs to its original payment provider.
+      if (proofReference) proofReference.value = "";
       updatePaymentRequirementUI();
       updatePaymentBreakdown();
-
-      if (proofReference) {
-        proofReference.value =
-          formatReferenceNumberForDisplay(
-            proofReference.value,
-            paymentMethod.value,
-          );
-      }
     });
   }
 
@@ -932,14 +921,18 @@ function setupPaymentForm() {
         );
     });
 
-    proofReference.addEventListener("paste", () => {
-      setTimeout(() => {
-        proofReference.value =
-          formatReferenceNumberForDisplay(
-            proofReference.value,
-            paymentMethod?.value || "gcash",
-          );
-      }, 0);
+    proofReference.addEventListener("paste", (event) => {
+      if (!event.clipboardData) return;
+      event.preventDefault();
+      const method = paymentMethod?.value || "gcash";
+      const start = proofReference.selectionStart ?? proofReference.value.length;
+      const end = proofReference.selectionEnd ?? start;
+      const before = proofReference.value.slice(0, start);
+      const after = proofReference.value.slice(end);
+      const available = Math.max(0, getReferenceMaxDigits(method) - before.length - after.length);
+      const pasted = normalizeReferenceNumber(event.clipboardData.getData("text"), method).slice(0, available);
+      proofReference.setRangeText(pasted, start, end, "end");
+      proofReference.dispatchEvent(new Event("input", { bubbles: true }));
     });
   }
 
@@ -1137,16 +1130,20 @@ function updatePaymentRequirementUI() {
   const submitBtn = document.getElementById("submitPaymentBtn");
 
   if (proofReference) {
-    proofReference.required = false;
+    proofReference.required = requiresScreenshot;
     proofReference.disabled = isCash;
     if (isCash) {
       proofReference.value = "";
       proofReference.placeholder = "Not required for cash payment";
       proofReference.removeAttribute("maxlength");
+      proofReference.removeAttribute("pattern");
+      proofReference.removeAttribute("inputmode");
     } else {
       proofReference.placeholder = method === "gcash"
-        ? "Optional GCash reference" : "Optional Maya reference";
-      proofReference.setAttribute("maxlength", method === "gcash" ? "16" : "37");
+        ? "Enter GCash reference (13 digits)" : "Enter Maya reference (6–36 characters)";
+      proofReference.setAttribute("maxlength", String(getReferenceMaxDigits(method)));
+      proofReference.setAttribute("pattern", method === "gcash" ? "[0-9]{13}" : "[A-Za-z0-9\\-]{6,36}");
+      proofReference.setAttribute("inputmode", method === "gcash" ? "numeric" : "text");
       proofReference.value = formatReferenceNumberForDisplay(
         proofReference.value, method,
       );
@@ -1166,8 +1163,8 @@ function updatePaymentRequirementUI() {
   if (proofGroup) proofGroup.style.display = requiresScreenshot ? "flex" : "none";
 
   if (referenceRequiredText) {
-    referenceRequiredText.textContent = requiresScreenshot ? " (Optional)" : " (Not needed)";
-    referenceRequiredText.style.color = "#64748b";
+    referenceRequiredText.textContent = requiresScreenshot ? " *Required" : " (Not needed)";
+    referenceRequiredText.style.color = requiresScreenshot ? "#dc2626" : "#64748b";
   }
   if (proofRequiredText) {
     proofRequiredText.textContent = requiresScreenshot ? " *Required" : " (Not needed)";
@@ -1176,8 +1173,8 @@ function updatePaymentRequirementUI() {
 
   if (methodHelp) {
     methodHelp.textContent = isWalkIn
-      ? "Walk-in accepts Cash, GCash, or Maya. GCash/Maya needs proof screenshot; reference is optional."
-      : "Facebook/Messenger accepts GCash or Maya. A proof screenshot is required; reference is optional.";
+      ? "Walk-in accepts Cash, GCash, or Maya. GCash/Maya requires both a reference number and proof screenshot."
+      : "Facebook/Messenger accepts GCash or Maya. Both a reference number and proof screenshot are required.";
   }
 
   const pendingLegacyPayPal = getMatchingLegacyPayPalPending();
@@ -1190,12 +1187,11 @@ function updatePaymentRequirementUI() {
       : isWalkIn
         ? `<strong>Walk-in Rule:</strong><br />
            Collect the full accommodation amount through Cash, GCash, or Maya.
-           For GCash/Maya, upload the payment proof screenshot (reference optional).
+           For GCash/Maya, enter the transaction reference number and upload the payment proof screenshot.
            After submission, the reservation is automatically checked in.
            Entrance fee is finalized and collected separately.`
         : `<strong>Facebook Messenger / Other Reservation Rule:</strong><br />
-           Only GCash or Maya is accepted. Upload a payment proof screenshot
-           (reference optional). Collect either the selected 50% downpayment
+           Only GCash or Maya is accepted. Enter the transaction reference number and upload a payment proof screenshot. Collect either the selected 50% downpayment
            or full accommodation payment. Entrance fee is collected at arrival.`;
   }
 
@@ -1476,10 +1472,7 @@ async function submitManualReservation(event) {
   const proofReferenceInput =
     document.getElementById("proofReference");
 
-  const proofReference =
-    normalizeReferenceNumber(
-      proofReferenceInput?.value || "",
-    );
+  const proofReference = String(proofReferenceInput?.value ?? "");
 
   const proofImageInput =
     document.getElementById("proofImage");
@@ -1549,10 +1542,13 @@ async function submitManualReservation(event) {
     return;
   }
 
-  if (
-    proofReference &&
-    ["gcash", "paymaya"].includes(paymentMethod)
-  ) {
+  if (requiresScreenshot && !proofReference) {
+    showMessage("Transaction reference number is required for GCash or Maya payments.", "error");
+    proofReferenceInput?.focus();
+    return;
+  }
+
+  if (requiresScreenshot) {
     const referenceValidation =
       validateReferenceNumberByMethod(
         proofReference,

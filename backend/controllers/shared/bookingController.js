@@ -1,4 +1,5 @@
 const { findOverlappingDraftItems } = require("../../utils/reservationOverlap");
+const { extractCustomerNote } = require("../../utils/customerBookingNote");
 const { hasValidNameParts, NAME_ERROR } = require("../../utils/guestInputValidation");
 ﻿// ============================================================
 // COMMENTED VERSION
@@ -50,16 +51,18 @@ function formatLocalDateOnly(date) {
 }
 
 function normalizeReferenceNumber(value) {
-  return String(value || "").replace(/\D/g, "");
+  // Preserve the submitted characters so validation can reject malformed input.
+  return String(value ?? "");
 }
 
 function validateReferenceNumberByMethod(referenceNumber, paymentMethod) {
   const cleanMethod = String(paymentMethod || "").toLowerCase();
   const digits = normalizeReferenceNumber(referenceNumber);
+  const digitsOnly = !/[^0-9]/.test(digits);
 
   if (cleanMethod === "gcash") {
     return {
-      valid: /^\d{13}$/.test(digits),
+      valid: digitsOnly && digits.length === 13,
       message: "GCash reference number must be exactly 13 digits.",
       digits,
     };
@@ -67,9 +70,9 @@ function validateReferenceNumberByMethod(referenceNumber, paymentMethod) {
 
   if (cleanMethod === "paymaya") {
     return {
-      valid: /^\d{6,30}$/.test(digits),
+      valid: !/[^A-Za-z0-9-]/.test(digits) && /[A-Za-z0-9]/.test(digits) && digits.length >= 6 && digits.length <= 36,
       message:
-        "Maya / PayMaya reference number must be numbers only, 6 to 30 digits.",
+        "Maya reference must contain 6 to 36 characters: letters, numbers or hyphens, with at least one letter or number.",
       digits,
     };
   }
@@ -129,11 +132,11 @@ function parseRequestReservationBody(req) {
   */
   const proofImageData = normalizeNullableText(parsedBody.proof_image_data);
 
-  const proofReference = normalizeNullableText(
-    normalizeReferenceNumber(
-      parsedBody.proof_reference || parsedBody.proof_of_payment,
-    ),
-  );
+  // Never interpret a proof image path as a transaction reference.
+  const legacyReference = String(parsedBody.proof_of_payment || "").trim();
+  const referenceInput = parsedBody.proof_reference ??
+    (/^\d[\d\s-]*$/.test(legacyReference) ? legacyReference : "");
+  const proofReference = normalizeReferenceNumber(referenceInput) || null;
 
   return {
     ...parsedBody,
@@ -1050,12 +1053,11 @@ async function createReservation({
       };
     }
 
-    // Reference is optional. Validate only when staff entered one.
-    if (
-      isWalkInEWallet &&
-      cleanProofReference &&
-      !proofReferenceValidation.valid
-    ) {
+    // Both independent payment evidence fields are required.
+    if (isWalkInEWallet && !cleanProofReference) {
+      throw { status: 400, message: "Transaction reference number is required for GCash or Maya payments." };
+    }
+    if (isWalkInEWallet && !proofReferenceValidation.valid) {
       throw {
         status: 400,
         message: proofReferenceValidation.message,
@@ -1082,7 +1084,7 @@ async function createReservation({
 
     /*
       Facebook/Messenger payment evidence rule:
-      - GCash/Maya: screenshot is required; reference is optional.
+      - GCash/Maya: screenshot and transaction reference are both required.
       - PayPal: no manual screenshot/reference is required because the
         automated PayPal capture flow will be the payment evidence.
     */
@@ -1105,11 +1107,10 @@ async function createReservation({
       };
     }
 
-    if (
-      isFacebookManualWallet &&
-      cleanProofReference &&
-      !proofReferenceValidation.valid
-    ) {
+    if (isFacebookManualWallet && !cleanProofReference) {
+      throw { status: 400, message: "Transaction reference number is required for GCash or Maya payments." };
+    }
+    if (isFacebookManualWallet && !proofReferenceValidation.valid) {
       throw {
         status: 400,
         message: proofReferenceValidation.message,
@@ -2449,6 +2450,7 @@ exports.getAllBookings = async (req, res) => {
       booked_guests: Number(row.guest_count || 0),
       actual_guests: Number(row.actual_guest_count ?? row.guest_count ?? 0),
       room_name: row.accommodation_list || row.room_name || "N/A",
+      customer_note: extractCustomerNote(row.note),
       items: [],
     }));
 
