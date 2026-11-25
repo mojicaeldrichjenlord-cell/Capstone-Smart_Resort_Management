@@ -117,14 +117,15 @@ function isResortPaymentFollowUp(message, context = {}, recentTurns = []) {
     /\b(?:room|cottage|accommodation|reservation|booking|check[\s-]?in|arriv(?:e|ing|al)|resort)\b/i.test(text);
 }
 
+function isExplicitlyUnrelated(message) {
+  const text = normalize(message);
+  return NON_RESORT_TASK.test(text) ||
+    (asksFullVsPartialPayment(text) && UNRELATED_PAYMENT_OBJECT.test(text)) ||
+    (HISTORICAL_PERSON.test(text) && !CURRENT_ACCOMMODATION_REFERENCE.test(text));
+}
 function isResortQuestion(message, context = {}, recentTurns = []) {
   const text = normalize(message);
-  if (!text) return false;
-  if (NON_RESORT_TASK.test(text)) return false;
-  if (asksFullVsPartialPayment(text) && UNRELATED_PAYMENT_OBJECT.test(text))
-    return false;
-  if (HISTORICAL_PERSON.test(text) && !CURRENT_ACCOMMODATION_REFERENCE.test(text))
-    return false;
+  if (!text || isExplicitlyUnrelated(text)) return false;
   if (GREETING.test(text)) return true;
   // Common phrasing like "tuwing kelan po kayo open?" is resort-related,
   // even if the visitor did not explicitly say "resort" or "hours".
@@ -152,5 +153,5 @@ function resortOnlyReply(language = "taglish") {
 
 module.exports = {
   hasResortTopic, isResortQuestion, isRecognizedResortFollowUp,
-  isResortPaymentFollowUp, resortOnlyReply,
+  isResortPaymentFollowUp, resortOnlyReply, isExplicitlyUnrelated,
 };

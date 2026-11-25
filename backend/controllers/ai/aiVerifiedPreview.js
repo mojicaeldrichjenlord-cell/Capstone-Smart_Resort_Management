@@ -35,10 +35,18 @@ function requestedCategory(value) {
   return "";
 }
 
+// Compound parties need semantic interpretation; a single number is not necessarily the total.
+function hasCompoundParty(value) {
+  const q=String(value||"").normalize("NFKC");
+  return /\b(?:couple|adults?|parents?|mag[- ]?asawa|matanda)\b[\s\S]{0,50}\b(?:with|plus|and|at|kasama|may)\b[\s\S]{0,45}\b(?:children|kids?|bata|anak|adults?|guests?|tao)\b/i.test(q) ||
+    /\b(?:children|kids?|bata|anak)\b[\s\S]{0,45}\b(?:with|plus|and|at|kasama)\b[\s\S]{0,45}\b(?:adults?|parents?|matanda|guests?|tao)\b/i.test(q);
+}
 function guestCountFromText(value) {
-  const text = String(value || "");
+  if (hasCompoundParty(value)) return 0;
+  const text = String(value || "").normalize("NFKC");
+  if (/\b(?:the\s+two\s+of\s+us|dalawa(?:ng)?\s+lang\s+(?:po\s+)?(?:kami|tayo)|kaming\s+dalawa|aming\s+dalawa|we(?:[’\']re| are)\s+a\s+couple|for\s+a\s+couple)\b/i.test(text)) return 2;
   const match = text.match(/\b(\d{1,3})\s*(?:na\s*)?(?:tao|pax|guests?|persons?|people|kami)\b/i) ||
-    text.match(/\b(?:para\s+sa|good\s+for|for)\s+(\d{1,3})\b/i) ||
+    text.match(/\b(?:para\s+sa|good\s+for|for)\s+(\d{1,3})\b(?!\s*(?:nights?|days?|hours?|rooms?|cottages?|months?|weeks?|gabi|araw|oras|kwarto|pesos?|php|years?)\b|[,.]\d)/i) ||
     // AI-65: English group-size phrasing in compound resort questions.
     text.match(/\b(?:group|party)\s+of\s+(\d{1,3})\b/i) ||
     text.match(/\b(?:we(?:'re| are)|there are)\s+(\d{1,3})\s+(?:of\s+us|guests?|people)\b/i) ||
@@ -50,18 +58,18 @@ function guestCountFromText(value) {
   // AI-45: Written-out counts in genuine group-size phrases (not room
   // names, day/night slot numbers or arbitrary history trivia).
   const words = {
-    isa: 1, isang: 1, dalawa: 2, tatlo: 3, apat: 4, lima: 5,
-    anim: 6, pito: 7, walo: 8, siyam: 9, sampu: 10,
+    isa: 1, isang: 1, dalawa: 2, dalawang: 2, tatlo: 3, tatlong: 3, apat: 4, lima: 5, limang: 5,
+    anim: 6, pito: 7, pitong: 7, walo: 8, walong: 8, siyam: 9, sampu: 10, sampung: 10,
     one: 1, two: 2, three: 3, four: 4, five: 5,
     six: 6, seven: 7, eight: 8, nine: 9, ten: 10,
   };
   const wordList = Object.keys(words).join("|");
   const phrase = new RegExp(
     "\\b(?:para\\s+sa|good\\s+for|for)\\s+(?:mga\\s+)?(" +
-    wordList + ")(?=\\b)", "i"
+    wordList + ")(?=\\b)(?!\\s*(?:nights?|days?|hours?|rooms?|cottages?|months?|weeks?|gabi|araw|oras|kwarto|pesos?|years?)\\b)", "i"
   );
   const people = new RegExp(
-    "\\b(" + wordList + ")\\s+(?:tao|kami|guests?|people|persons?|pax)\\b", "i"
+    "\\b(" + wordList + ")\\s+(?:na\\s+|po\\s+|lang\\s+)*(?:tao|kami|kaming|bisita|guests?|people|persons?|pax)\\b", "i"
   );
   const named = text.match(phrase) || text.match(people);
   return named ? words[named[1].toLowerCase()] || 0 : 0;
@@ -206,6 +214,16 @@ function selectVerifiedPreviews(catalog, message, recentTurns = [], context = {}
 }
 
 function verifiedPreviewReply(selection, language) {
+  const first=selection?.rows?.[0];
+  const count=Number(selection?.requestedGuests);
+  if(first&&count>0&&!selection.alternative){
+    const name=String(first.room_name||first.name||"Accommodation");
+    if(language==="taglish"||language==="tagalog") return (count===2?"Para sa inyong dalawa":"Para sa group niyo na "+count+" guests")+", magandang option po ang "+name+". Anong date po ang plan ninyo para ma-check ko rin ang availability?";
+    if(language==="english") return "For your group of "+count+", I'd suggest "+name+". Here are some suitable options. When are you planning to visit so I can check the schedule?";
+    if(language==="bisaya") return "Para sa "+count+" ka guests, maayo nga option ang "+name+". Kanus-a mo magbisita aron ma-check nato ang schedule?";
+    if(language==="spanish") return "Para su grupo de "+count+" personas, les recomiendo "+name+". ¿En qué fecha planean visitarnos para comprobar la disponibilidad?";
+    if(language==="mandarin") return "您们一共"+count+"位，推荐考虑"+name+"。计划哪天入住呢？我可以帮您查询空房。";
+  }
   // Keep the separate pure-Tagalog wording while using everyday Taglish in
   // voice and text chat. Room selection and card facts remain unchanged.
   if (language === "bisaya") {
@@ -251,5 +269,5 @@ function verifiedPreviewReply(selection, language) {
 
 module.exports = {
   isVerifiedPreviewRequest, selectVerifiedPreviews, verifiedPreviewReply,
-  requestedCategory, guestCountFromText,
+  requestedCategory, guestCountFromText, hasCompoundParty, categoryMatches, findExactNamedRoom,
 };
