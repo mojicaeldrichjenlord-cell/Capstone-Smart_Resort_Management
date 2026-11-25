@@ -162,12 +162,18 @@
     if(code===413||code===415||code===400) return "Recording could not be processed. Try a shorter voice message.";
     return "Voice transcription unavailable. Check your connection or try again later.";
   }
+  function revealVoiceOptions() {
+    if(controls?.panel) controls.panel.hidden=false;
+    document.getElementById("aiVoiceOptionsToggle")?.setAttribute?.("aria-expanded","true");
+  }
   function failInput(kind,message) {
+    revealVoiceOptions();
     if(kind==="live") stopConversation(message);
     else { state.mode="idle";updateControls();status(message); }
   }
   function fallbackToBrowser(kind) {
     if(!SpeechRecognitionAPI||browserTried||(kind==="live"&&!state.live))return false;
+    revealVoiceOptions();
     useBrowserFallback=true;
     preferRecording=false;
     status("Switching to browser speech recognition. Please repeat your message.");
@@ -180,6 +186,7 @@
   function setReplay(text) {
     replayText=String(text||"");
     if(controls?.replay)controls.replay.hidden=!replayText;
+    if(replayText)revealVoiceOptions();
   }
 
   function clearRestart() {
@@ -507,8 +514,7 @@
   async function transcribeRecording(wav, kind, session, prefix) {
     const token = sessionStorage.getItem("customerToken");
     if (!token) {
-      if (kind === "live") stopConversation("Please log in again to use voice.");
-      else { state.mode = "idle"; updateControls(); status("Please log in again to use voice."); }
+      failInput(kind,"Please log in again to use voice.");
       return;
     }
     const controller = new AbortController();
@@ -962,7 +968,7 @@
     if (state.live) stopConversation("Voice conversation stopped to play this reply.");
     state.language = inferReplyLanguage(text);
     status("Reading response in " + getLocale().label + "…");
-    speakReply(text, ok => {if(ok)status("Finished reading aloud.");}, isIOS);
+    speakReply(text, ok => {if(ok)status("Finished reading aloud.");});
   }
 
   function init() {
