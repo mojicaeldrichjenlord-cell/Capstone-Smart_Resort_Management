@@ -1089,3 +1089,97 @@
     font-size: 0.59rem;
   }
 }
+
+/* UI-86: consistent password visibility state and a dedicated OTP step. */
+.register-card .password-toggle,
+.register-card .premium-password-field .password-toggle {
+  width: 34px;
+  height: 34px;
+  right: 7px;
+  color: #475569;
+  background: #edf2f6;
+}
+.register-card .password-toggle svg,
+.register-card .premium-password-field .password-toggle svg {
+  width: 18px;
+  height: 18px;
+}
+.register-card .password-toggle[aria-pressed="true"] {
+  color: #0f766e;
+  background: #d9f3ee;
+}
+.register-card .password-toggle:focus-visible {
+  outline: 2px solid #0f766e;
+  outline-offset: 2px;
+}
+.password-eye-slash {
+  opacity: 1;
+  stroke-dasharray: 26;
+  stroke-dashoffset: 0;
+  transition: opacity .18s ease, stroke-dashoffset .18s ease;
+}
+.password-toggle[aria-pressed="true"] .password-eye-slash {
+  opacity: 0;
+  stroke-dashoffset: 26;
+}
+#registerContainer [hidden] { display: none !important; }
+.register-container.is-verifying {
+  width: min(460px, 92vw);
+  grid-template-columns: minmax(0, 1fr);
+}
+.is-verifying .register-card {
+  max-width: none;
+  justify-self: stretch;
+  padding: 30px 26px;
+  animation: otp-step-enter .22s ease-out;
+}
+.is-verifying .otp-box.show {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  text-align: center;
+}
+.otp-step-icon {
+  width: 58px;
+  height: 58px;
+  margin: 0 auto 15px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  color: #0f766e;
+  background: #d9f3ee;
+}
+.otp-step-icon svg { width: 30px; height: 30px; }
+.is-verifying .otp-step-label {
+  font-weight: 700;
+  color: #0f766e;
+  font-size: .75rem;
+  margin-bottom: 8px;
+}
+.is-verifying .otp-box h2 { margin-bottom: 10px; }
+.is-verifying .otp-box p { font-size: .88rem; line-height: 1.55; overflow-wrap: anywhere; }
+.is-verifying #registerOtpForm { margin-top: 22px; }
+.is-verifying #registerOtpForm label { text-align: left; }
+.is-verifying #registerOtp {
+  text-align: center;
+  min-height: 56px;
+  letter-spacing: .45em;
+  padding-left: calc(13px + .45em);
+  font-size: 1.35rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.is-verifying .otp-actions { grid-template-columns: 1fr; gap: 10px; margin-top: 16px; }
+.is-verifying .otp-box .otp-help { margin: 16px 0 0; font-size: .78rem; }
+@keyframes otp-step-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (max-width: 480px) {
+  .is-verifying .register-card { padding: 24px 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .password-eye-slash, .register-card .password-toggle { transition: none; }
+  .is-verifying .register-card { animation: none; }
+}

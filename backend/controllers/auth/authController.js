@@ -211,10 +211,13 @@ exports.register = async (req, res) => {
   try {
     const { email, password, phone, address } = req.body;
     const fullname = getRegistrationName(req.body);
+    // AUTH-87: home address is no longer required to create a guest account.
+    // Accept optional legacy-client addresses without erasing previously stored data.
+    const registrationAddress = typeof address === "string" ? address.trim() : "";
 
     const cleanEmail = normalizeEmail(email);
 
-    if (!cleanEmail || !password || !phone || !address) {
+    if (!cleanEmail || !password || !phone) {
       return res.status(400).json({
         success: false,
         message: "Please fill in all required fields.",
@@ -273,7 +276,7 @@ exports.register = async (req, res) => {
           fullname = ?,
           password = ?,
           phone = ?,
-          address = ?,
+          address = COALESCE(NULLIF(?, ''), address),
           role = ?,
           account_status = ?,
           is_verified = 0,
@@ -285,7 +288,7 @@ exports.register = async (req, res) => {
           fullname,
           hashedPassword,
           phone,
-          address,
+          registrationAddress,
           "customer",
           "active",
           otpHash,
@@ -333,7 +336,7 @@ exports.register = async (req, res) => {
         cleanEmail,
         hashedPassword,
         phone,
-        address,
+        registrationAddress,
         "customer",
         "active",
         0,
