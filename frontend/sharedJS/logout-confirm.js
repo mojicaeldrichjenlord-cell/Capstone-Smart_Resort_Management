@@ -20,7 +20,7 @@
       '<div class="logout-confirm-icon" aria-hidden="true">↪</div>',
       '<h2 id="logoutConfirmTitle">Log out of your account?</h2>',
       '<p id="logoutConfirmDescription">Are you sure you want to log out? ',
-      'You will need to sign in again to access your account.</p>',
+      'This will sign you out of this browser profile, including other tabs.</p>',
       '<div class="logout-confirm-actions">',
       '<button type="button" class="logout-confirm-cancel">Cancel</button>',
       '<button type="button" class="logout-confirm-accept">Yes, Log Out</button>',
@@ -39,6 +39,7 @@
       try {
         trigger.click();
       } finally {
+        window.ArvicAccountSession?.signOut();
         approvedTrigger = null;
       }
     });

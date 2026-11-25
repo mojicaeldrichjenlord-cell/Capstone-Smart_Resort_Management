@@ -162,93 +162,9 @@ if (loginForm) {
         );
       }
 
-      // The server only issues a Front Desk token after checking the
-      // employee's password, role, and active/verified account status.
-      // Never use the ID or role from localStorage as API authentication.
-      if (role === "frontdesk") {
-        const frontDeskToken = data.frontDeskToken;
-
-        if (
-          typeof frontDeskToken !== "string" ||
-          !/^fd1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(frontDeskToken)
-        ) {
-          throw new Error(
-            "Secure Front Desk login token was not returned. Check backend authentication configuration and log in again.",
-          );
-        }
-
-        sessionStorage.setItem("frontDeskToken", frontDeskToken);
-        sessionStorage.removeItem("adminToken");
-        sessionStorage.removeItem("customerToken");
-        sessionStorage.removeItem("managerToken");
-        sessionStorage.removeItem("housekeepingToken");
-      } else if (role === "admin") {
-        const adminToken = data.adminToken;
-        if (
-          typeof adminToken !== "string" ||
-          !/^adm1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(adminToken)
-        ) {
-          throw new Error(
-            "Secure Administrator login token was not returned. Check backend authentication configuration and log in again.",
-          );
-        }
-        sessionStorage.setItem("adminToken", adminToken);
-        sessionStorage.removeItem("frontDeskToken");
-        sessionStorage.removeItem("customerToken");
-        sessionStorage.removeItem("managerToken");
-        sessionStorage.removeItem("housekeepingToken");
-      } else if (role === "manager") {
-        const managerToken = data.managerToken;
-        if (typeof managerToken !== "string" ||
-            !/^mgr1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(managerToken)) {
-          throw new Error("Secure Manager token not returned. Contact support.");
-        }
-        sessionStorage.setItem("managerToken", managerToken);
-        sessionStorage.removeItem("adminToken");
-        sessionStorage.removeItem("frontDeskToken");
-        sessionStorage.removeItem("customerToken");
-      // Housekeeping receives its own signed token; never reuse Manager/Admin auth.
-      } else if (role === "housekeeping") {
-        const housekeepingToken = data.housekeepingToken;
-        if (typeof housekeepingToken !== "string" ||
-            !/^hk1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(housekeepingToken)) {
-          throw new Error("Secure Housekeeping token was not returned. Contact support.");
-        }
-        // Persist only this role's signed session for the next dashboard page.
-        sessionStorage.setItem("housekeepingToken", housekeepingToken);
-        sessionStorage.removeItem("adminToken");
-        sessionStorage.removeItem("frontDeskToken");
-        sessionStorage.removeItem("customerToken");
-        sessionStorage.removeItem("managerToken");
-      } else if (role === "customer") {
-        const customerToken = data.customerToken;
-        if (
-          typeof customerToken !== "string" ||
-          !/^cus1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(customerToken)
-        ) {
-          throw new Error("Secure Customer login token was not returned. Please try again.");
-        }
-        sessionStorage.setItem("customerToken", customerToken);
-        sessionStorage.removeItem("frontDeskToken");
-        sessionStorage.removeItem("adminToken");
-        sessionStorage.removeItem("managerToken");
-        sessionStorage.removeItem("housekeepingToken");
-      } else {
-        // Prevent stale signed sessions when switching user roles.
-        sessionStorage.removeItem("frontDeskToken");
-        sessionStorage.removeItem("adminToken");
-        sessionStorage.removeItem("customerToken");
-        sessionStorage.removeItem("managerToken");
-        sessionStorage.removeItem("housekeepingToken");
-      }
-
-      localStorage.setItem(
-        "user",
-        JSON.stringify({
-          ...data.user,
-          role,
-        }),
-      );
+      const tokens = {frontdesk:data.frontDeskToken,admin:data.adminToken,manager:data.managerToken,housekeeping:data.housekeepingToken,customer:data.customerToken};
+      // Validate and commit under the profile-wide account guard before any storage mutation.
+      await window.ArvicAccountSession.establish({...data.user,role},tokens[role]);
 
       // The login page is shared by all roles. Only successful Customer
       // authentication may save the opted-in email; never store passwords.
@@ -260,6 +176,7 @@ if (loginForm) {
         window.location.href = destination;
       }, 600);
     } catch (error) {
+      if (error.code === "ACTIVE_ACCOUNT_CONFLICT" && window.ArvicAccountSession.showConflict()) return;
       console.error("login error:", error);
 
       showMessage(

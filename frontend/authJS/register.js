@@ -323,7 +323,7 @@ async function submitRegistration(e) {
     }
 
     pendingVerificationEmail = data.email || email;
-    localStorage.setItem("pendingVerificationEmail", pendingVerificationEmail);
+    sessionStorage.setItem("pendingVerificationEmail", pendingVerificationEmail);
 
     lockRegisterForm();
     showOtpBox(pendingVerificationEmail);
@@ -350,7 +350,7 @@ async function submitRegistration(e) {
 async function verifyRegistrationOtp() {
   const email =
     pendingVerificationEmail ||
-    localStorage.getItem("pendingVerificationEmail") ||
+    sessionStorage.getItem("pendingVerificationEmail") ||
     document.getElementById("email")?.value.trim().toLowerCase();
 
   const otp = document.getElementById("registerOtp")?.value.trim();
@@ -390,7 +390,7 @@ async function verifyRegistrationOtp() {
 
     stopResendCooldown();
 
-    localStorage.removeItem("pendingVerificationEmail");
+    sessionStorage.removeItem("pendingVerificationEmail");
     localStorage.removeItem("registeredEmail");
 
     // AUTH-70: A profile object is NOT an authenticated session. The
@@ -404,15 +404,6 @@ async function verifyRegistrationOtp() {
       Number(data.user.is_verified) === 1;
     const validCustomerToken = typeof customerToken === "string" &&
       /^cus1\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/.test(customerToken);
-
-    // Remove any previous account session, including an earlier token
-    // from another role, before establishing the newly verified identity.
-    localStorage.removeItem("user");
-    sessionStorage.removeItem("customerToken");
-    sessionStorage.removeItem("frontDeskToken");
-    sessionStorage.removeItem("adminToken");
-    sessionStorage.removeItem("managerToken");
-    sessionStorage.removeItem("housekeepingToken");
 
     if (!verifiedCustomer || !validCustomerToken) {
       // Already-verified addresses must use password login. If an older
@@ -428,8 +419,8 @@ async function verifyRegistrationOtp() {
       return;
     }
 
-    sessionStorage.setItem("customerToken", customerToken);
-    localStorage.setItem("user", JSON.stringify(data.user));
+    // A verified OTP must never replace an already signed-in different account.
+    await window.ArvicAccountSession.establish(data.user, customerToken);
 
     showMessage(
       "Email verified successfully. Redirecting to dashboard...",
@@ -440,6 +431,11 @@ async function verifyRegistrationOtp() {
       window.location.href = "../customerHTML/index.html";
     }, 1000);
   } catch (error) {
+    if (error.code === "ACTIVE_ACCOUNT_CONFLICT") {
+      showMessage("Email verified. Log out of the current account or use another browser to sign in.", "success");
+      if (!window.ArvicAccountSession.showConflict()) window.location.href="../authHTML/login.html";
+      return;
+    }
     console.error("verifyRegistrationOtp error:", error);
     showMessage(error.message || "OTP verification failed.", "error");
   } finally {
@@ -462,7 +458,7 @@ async function resendRegistrationOtp() {
 
   const email =
     pendingVerificationEmail ||
-    localStorage.getItem("pendingVerificationEmail") ||
+    sessionStorage.getItem("pendingVerificationEmail") ||
     document.getElementById("email")?.value.trim().toLowerCase();
 
   if (!email) {
