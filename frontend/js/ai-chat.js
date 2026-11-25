@@ -47,7 +47,7 @@ function aiReplyForSurface(reply) {
   const text = String(reply || "");
   if (!AI_IS_PUBLIC_LANDING) return text;
   return text.replace(/\bView Details\b/gi, "Login for Details")
-    .replace(/\bBook This\b/gi, "Login to Book");
+    .replace(/\bBook This\b/gi, "Log In to Book This");
 }
 
 function setupAiChat() {
@@ -178,6 +178,9 @@ async function sendAiMessage(options = {}) {
 
     if (data.extracted_context) {
       const merged = mergeContext(getStoredAiContext(), data.extracted_context);
+      if (data.mode === "verified_live_availability") {
+        Object.assign(merged,data.extracted_context);
+      }
       // Keep ONE-card recommendations focused for follow-up amenity questions.
       // If a new search has zero/multiple results, or the backend cannot verify
       // an old selected room, clear the stale context instead of resurrecting
@@ -551,6 +554,8 @@ function clearAiConversation() {
 
 function mergeContext(oldContext = {}, newContext = {}) {
   return {
+    availability_pending: newContext.availability_pending ?? oldContext.availability_pending ?? false,
+    stay_duration: newContext.stay_duration ?? oldContext.stay_duration ?? null,
     check_in: newContext.check_in ?? oldContext.check_in ?? null,
     check_in_time: newContext.check_in_time ?? oldContext.check_in_time ?? null,
     check_out: newContext.check_out ?? oldContext.check_out ?? null,
@@ -878,7 +883,7 @@ function appendBookingPreviewCard(preview, save = true) {
       class="ai-confirm-booking-btn"
       style="margin-top:12px;width:100%;border:none;background:#14b8a6;color:white;padding:11px 12px;border-radius:10px;font-weight:700;cursor:pointer;"
     >
-      Continue to Booking
+      ${AI_IS_PUBLIC_LANDING ? "Log In to Book This" : "Continue to Booking"}
     </button>
   `;
 
@@ -1164,6 +1169,20 @@ function getAiCustomerPageUrl(page, accommodationId) {
   return page + "?room_id=" + encodeURIComponent(String(id));
 }
 
+function aiBookingUrl(id, selection={}) {
+  if(AI_IS_PUBLIC_LANDING)return "../authHTML/login.html";
+  const roomId=Number(id);
+  if(!Number.isSafeInteger(roomId)||roomId<=0)return "rooms.html";
+  const query=new URLSearchParams({room_id:String(roomId)});
+  const slot=selection?.slot_type;
+  if(/^\d{4}-\d{2}-\d{2}$/.test(String(selection?.check_in||"")))query.set("check_in",selection.check_in);
+  if(["day_tour","night","day_extended","night_extended"].includes(slot))query.set("slot_type",slot);
+  const duration=Number(selection?.stay_duration), guests=Number(selection?.guests);
+  if(Number.isInteger(duration)&&duration>=1&&duration<=5)query.set("stay_duration",String(duration));
+  if(Number.isSafeInteger(guests)&&guests>=1&&guests<=200)query.set("guests",String(guests));
+  return "booking.html?"+query;
+}
+
 function setAiFocusedAccommodation(room) {
   const id = Number(room?.id);
   if (!Number.isSafeInteger(id) || id <= 0) return;
@@ -1229,7 +1248,13 @@ function appendAiRecommendationCards(items, save = true) {
       " · Night " + aiRoomMoney(room.overnight_price);
     const note = document.createElement("p");
     note.className = "ai-recommendation-note";
-    note.textContent = room.availability_verified
+    const selection=room.booking_selection;
+    const status=room.availability_status;
+    if(selection&&["available","unavailable","unknown"].includes(status)){
+      const label={day_tour:"Day Tour",night:"Overnight",day_extended:"Day Extended",night_extended:"Night Extended"}[selection.slot_type]||"Selected slot";
+      note.textContent=(status==="available"?"Available when checked":status==="unavailable"?"Unavailable":"Not verified")+" · "+selection.check_in+" · "+label+(selection.check_out?" · "+formatTime(selection.check_in_time)+" to "+selection.check_out+" "+formatTime(selection.check_out_time):"")+(status==="available"?" · Recheck before payment":"");
+      if(Number(room.selected_rate)>0)prices.textContent=label+" rate "+aiRoomMoney(room.selected_rate)+(Number(selection.stay_duration)>1?" per day":"");
+    }else note.textContent = room.availability_verified
       ? "Preliminary date match · Recheck exact time slot before payment"
       : "Listing available · Date and time slot not checked yet";
     body.append(name, info, prices, note);
@@ -1241,15 +1266,17 @@ function appendAiRecommendationCards(items, save = true) {
     detail.textContent = AI_IS_PUBLIC_LANDING ? "Login for Details" : "View Details";
     detail.className = "ai-recommendation-link";
     const book = document.createElement("a");
-    book.href = getAiCustomerPageUrl("booking.html", room.id);
-    book.textContent = AI_IS_PUBLIC_LANDING ? "Login to Book" : "Book This";
+    book.href = aiBookingUrl(room.id,room.booking_selection);
+    book.textContent = AI_IS_PUBLIC_LANDING ? "Log In to Book This" : "Book This";
     book.className = "ai-recommendation-link primary";
     const ask = document.createElement("button");
     ask.type = "button";
     ask.textContent = "Ask About This";
     ask.className = "ai-recommendation-link";
     ask.addEventListener("click", () => window.askAiAboutAccommodation(room));
-    actions.append(detail, book, ask);
+    actions.append(detail);
+    if(room.availability_status!=="unavailable"&&room.availability_status!=="unknown")actions.append(book);
+    actions.append(ask);
     body.appendChild(actions);
     card.appendChild(body);
     grid.appendChild(card);
@@ -1296,9 +1323,7 @@ function createBookingFromPreview(preview, button) {
   button.disabled = true;
   button.textContent = "Opening booking form...";
   appendAiSystemNote("No reservation has been created yet. Confirm dates, slot, official price and payment on the secure booking form.");
-  window.location.href =
-    frontendPrefix + "/customerHTML/booking.html?room_id=" +
-    encodeURIComponent(String(accommodationId));
+  window.location.href = aiBookingUrl(accommodationId,preview.booking_selection || {check_in:preview.check_in,slot_type:preview.slot_type,stay_duration:preview.stay_duration,guests:preview.guests});
 }
 
 function getOfflineFallbackReply(message, storedContext = {}, pageContext = {}) {

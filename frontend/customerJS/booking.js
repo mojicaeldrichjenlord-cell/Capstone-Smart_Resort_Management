@@ -224,6 +224,7 @@ async function loadAccommodations() {
     }
 
     addBookingItem(selectedRoomIdFromUrl);
+    if(selectedRoomIdFromUrl) applyAiBookingSelection();
     updateSummary();
   } catch (error) {
     console.error("loadAccommodations error:", error);
@@ -234,6 +235,26 @@ async function loadAccommodations() {
 // ============================================================
 // SECTION 6: Booking form setup
 // ============================================================
+
+// AI-105: URL values are suggestions only. Existing form validation and
+// availability requests remain authoritative; never prefill a payment amount.
+function applyAiBookingSelection(){
+  const card=bookingItemsWrap?.querySelector(".booking-item-card");
+  if(!card||Number(card.querySelector(".accommodation-value")?.value)!==selectedRoomIdFromUrl)return;
+  const date=card.querySelector(".date-input"),slot=card.querySelector(".slot-select"),duration=card.querySelector(".stay-duration-select");
+  const requestedDate=params.get("check_in"),requestedSlot=params.get("slot_type");
+  if(date&&/^\d{4}-\d{2}-\d{2}$/.test(requestedDate||"")&&requestedDate>=getCustomerEarliestBookingDate())date.value=requestedDate;
+  if(slot&&["day_tour","night","day_extended","night_extended"].includes(requestedSlot)&&Array.from(slot.options).some(o=>o.value===requestedSlot)){
+    slot.value=requestedSlot;
+    populateStayDurationOptions(Number(card.dataset.itemId),card);
+    const days=Number(params.get("stay_duration"));
+    if(duration&&getAllowedStayDurations(requestedSlot).includes(days))duration.value=String(days);
+  }
+  const guests=Number(params.get("guests")),guestInput=document.getElementById("guestCount");
+  if(guestInput&&Number.isSafeInteger(guests)&&guests>=1&&guests<=200)guestInput.value=String(guests);
+  updateItemPreview(Number(card.dataset.itemId),card);
+  scheduleAllCustomerAvailabilityChecks();
+}
 
 function setupBookingForm(user) {
   if (addItemBtn) {
