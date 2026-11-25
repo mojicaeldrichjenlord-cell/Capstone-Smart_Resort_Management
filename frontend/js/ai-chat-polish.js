@@ -66,7 +66,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Covers the normal launcher AND programmatic opening from a selected
   // accommodation. Don't leave an extra floating launcher over the composer.
+  const mobileLayout = window.matchMedia("(max-width: 767px), (max-width: 950px) and (pointer: coarse) and (max-height: 600px)");
+  let wasMobile = false;
+  let desktopMaximized = chat.classList.contains("maximized");
   const syncWindow = () => {
+    const mobile = mobileLayout.matches;
+    if (mobile && !wasMobile) desktopMaximized = chat.classList.contains("maximized");
+    if (mobile && !chat.classList.contains("maximized")) chat.classList.add("maximized");
+    if (!mobile && wasMobile) chat.classList.toggle("maximized", desktopMaximized);
+    wasMobile = mobile;
+    if (maximize) {
+      maximize.hidden = mobile;
+      maximize.disabled = mobile;
+      if (mobile) maximize.style.setProperty("display", "none", "important");
+      else maximize.style.removeProperty("display");
+    }
     const open = chat.classList.contains("show");
     toggle.setAttribute("aria-expanded", String(open));
     toggle.hidden = open;
@@ -84,22 +98,20 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     const minimize = document.getElementById("aiChatMinimize");
     if (minimize) {
-      const reduceOnPhone = window.matchMedia("(max-width: 560px)").matches &&
-        chat.classList.contains("maximized");
-      minimize.title = reduceOnPhone ? "Reduce to compact size" : "Minimize";
-      minimize.setAttribute("aria-label",
-        reduceOnPhone ? "Reduce chat to compact size" : "Minimize chat to launcher");
+      minimize.title = "Minimize";
+      minimize.setAttribute("aria-label", "Minimize chat to launcher");
     }
   };
   syncWindow();
+  if (mobileLayout.addEventListener) mobileLayout.addEventListener("change", syncWindow);
+  else mobileLayout.addListener(syncWindow);
   new MutationObserver(syncWindow).observe(chat, {
     attributes: true, attributeFilter: ["class"]
   });
 
   close?.addEventListener("click", () => toggle.focus());
 
-  // UI-30: On phones, Minimize reduces a maximized chat to compact first.
-  // In compact mode (and on desktop), it hides the popup to the launcher.
+  // UI-96: Mobile always opens maximized; Minimize returns to the launcher.
   // Hiding the chat preserves conversation history/context; only then stop
   // an active microphone session to avoid invisible audio recording.
   const headerActions = chat.querySelector(".ai-chat-header-actions");
@@ -113,12 +125,6 @@ document.addEventListener("DOMContentLoaded", () => {
     minimize.setAttribute("aria-label", "Minimize chat");
     headerActions.insertBefore(minimize, maximize || close);
     minimize.addEventListener("click", () => {
-      // The square resize control already saves the preferred size.
-      if (window.matchMedia("(max-width: 560px)").matches &&
-          chat.classList.contains("maximized")) {
-        toggleMaximize();
-        return;
-      }
       window.ArvicVoice?.stopConversation?.("");
       chat.classList.remove("show");
       toggle.focus();
