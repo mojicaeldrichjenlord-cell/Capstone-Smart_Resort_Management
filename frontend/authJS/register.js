@@ -27,7 +27,7 @@ let resendRemainingSeconds = 0;
 
 document.addEventListener("DOMContentLoaded", () => {
   const registerForm = document.getElementById("registerForm");
-  const verifyOtpBtn = document.getElementById("verifyOtpBtn");
+  const otpForm = document.getElementById("registerOtpForm");
   const resendOtpBtn = document.getElementById("resendOtpBtn");
   const phoneInput = document.getElementById("phone");
   const otpInput = document.getElementById("registerOtp");
@@ -41,8 +41,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   registerForm.addEventListener("submit", submitRegistration);
 
-  if (verifyOtpBtn) {
-    verifyOtpBtn.addEventListener("click", verifyRegistrationOtp);
+  if (otpForm) {
+    otpForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (!document.getElementById("verifyOtpBtn")?.disabled) verifyRegistrationOtp();
+    });
   }
 
   if (resendOtpBtn) {
@@ -83,20 +86,22 @@ document.addEventListener("DOMContentLoaded", () => {
 // SECTION 2.1: Password show/hide controls
 // ============================================================
 
+function setPasswordVisibility(input, button, visible) {
+  input.type = visible ? "text" : "password";
+  const label = input.id === "confirmPassword" ? "confirm password" : "password";
+  const action = (visible ? "Hide " : "Show ") + label;
+  button.setAttribute("aria-pressed", String(visible));
+  button.setAttribute("aria-label", action);
+  button.setAttribute("title", action);
+}
+
 function setupPasswordToggles() {
   document.querySelectorAll(".password-toggle").forEach((button) => {
+    const input = document.getElementById(button.dataset.target);
+    if (!input) return;
+    setPasswordVisibility(input, button, false);
     button.addEventListener("click", () => {
-      const input = document.getElementById(button.dataset.target);
-
-      if (!input) return;
-
-      const isPassword = input.type === "password";
-      input.type = isPassword ? "text" : "password";
-
-      button.setAttribute(
-        "aria-label",
-        isPassword ? "Hide password" : "Show password",
-      );
+      setPasswordVisibility(input, button, input.type === "password");
     });
   });
 }
@@ -238,6 +243,7 @@ function updatePasswordMatchUi() {
 
 async function submitRegistration(e) {
   e.preventDefault();
+  if (pendingVerificationEmail || document.getElementById("registerSubmitBtn")?.disabled) return;
 
   const firstName = document.getElementById("firstName")?.value.trim();
   const middleName = document.getElementById("middleName")?.value.trim();
@@ -322,6 +328,7 @@ async function submitRegistration(e) {
     pendingVerificationEmail = data.email || email;
     localStorage.setItem("pendingVerificationEmail", pendingVerificationEmail);
 
+    lockRegisterForm();
     showOtpBox(pendingVerificationEmail);
 
     showMessage(
@@ -330,13 +337,12 @@ async function submitRegistration(e) {
       "success",
     );
 
-    lockRegisterForm();
     startResendCooldown();
   } catch (error) {
     console.error("register error:", error);
     showMessage(error.message || "Registration failed.", "error");
   } finally {
-    resetButton(submitBtn, originalText);
+    if (!pendingVerificationEmail) resetButton(submitBtn, originalText);
   }
 }
 
@@ -363,7 +369,7 @@ async function verifyRegistrationOtp() {
   }
 
   const verifyBtn = document.getElementById("verifyOtpBtn");
-  const originalText = verifyBtn ? verifyBtn.textContent : "Verify OTP";
+  const originalText = verifyBtn ? verifyBtn.textContent : "Verify Email";
 
   try {
     setButtonLoading(verifyBtn, "Verifying...");
@@ -572,10 +578,17 @@ function showOtpBox(email) {
     otpEmailText.textContent = email;
   }
 
-  if (otpBox) {
-    otpBox.classList.add("show");
-    otpBox.scrollIntoView({ behavior: "smooth", block: "center" });
+  for (const id of ["registerHeading", "registerSubtext", "registerForm", "registerShowcase"]) {
+    const element = document.getElementById(id);
+    if (element) element.hidden = true;
   }
+  document.getElementById("registerContainer")?.classList.add("is-verifying");
+  if (otpBox) {
+    otpBox.hidden = false;
+    otpBox.classList.add("show");
+  }
+  document.getElementById("registerOtp")?.focus({ preventScroll: true });
+  window.scrollTo?.({ top: 0, behavior: "auto" });
 }
 
 // ============================================================
@@ -594,10 +607,13 @@ function lockRegisterForm() {
     "confirmPassword",
   ];
 
+  // Registration has succeeded; discard the hidden form's sensitive values.
   fields.forEach((id) => {
     const field = document.getElementById(id);
     if (field) {
-      field.readOnly = true;
+      field.value = "";
+      field.disabled = true;
+      if (id === "password" || id === "confirmPassword") field.type = "password";
     }
   });
 }
