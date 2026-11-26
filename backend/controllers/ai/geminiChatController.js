@@ -36,7 +36,7 @@ const { matchRoomPriceFollowup, shortlistRoomFollowup, roomPriceFollowupReply } 
   require("./aiRoomPriceFollowup");
 const { isResortQuestion, resortOnlyReply, isExplicitlyUnrelated } = require("./aiResortScopeGuard");
 const { normalizeSemanticIntent, canUseSimpleRecommendation } = require("./aiSemanticIntent");
-const { scheduleTurn, liveAvailability } = require("./aiLiveAvailability");
+const { scheduleTurn, liveAvailability, validDate } = require("./aiLiveAvailability");
 const { isPersonalizedRecommendation, explicitGuestCount, savedGuestCount,
   guestCountQuestion, guestCountFollowUp: pendingGuestRecommendationAnswer,
   guestCountCorrection, recommendationLookupMessage
@@ -1176,6 +1176,18 @@ exports.chatWithGemini = async (req, res) => {
         matched_rooms: [], catalog_recommendations: [],
         alternative_dates: [], booking_preview: null, recommendation_cards: [],
       });
+    }
+
+    // AI-109: a cheaper follow-up in an active booking discussion keeps the
+    // same group, category and fixed schedule.
+    if (roomPriceFollowup?.kind === "cheaper" && validDate(scopeContext.check_in) &&
+        ["day_tour","night","day_extended","night_extended"].includes(scopeContext.slot_preference) &&
+        roomPriceFollowup.guests > 0) {
+      const language = detectLanguageFromMessage(message) || clarificationLanguage;
+      const result = await liveAvailability({message,context:scopeContext,extracted:{},
+        catalog:await getAccommodationCatalog(),today:getResortTodayText(),language,
+        handler:require("../shared/bookingController").checkItemAvailability,cheaper:roomPriceFollowup});
+      return res.status(200).json(result);
     }
 
     // AI-104: read-only fixed-slot checks reuse the exact booking API handler.
