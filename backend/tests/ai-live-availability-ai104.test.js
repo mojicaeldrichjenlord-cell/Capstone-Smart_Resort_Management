@@ -64,3 +64,24 @@ test("ordinary rate inquiry bypasses availability workflow",()=>{
  assert.equal(scheduleTurn("Magkano overnight ng Family Room B?",{availability_pending:true}),false);
  assert.equal(validDate("2026-02-30"),false);
 });
+
+test("AI-108: guest correction reuses date and slot and discards stale small room",async()=>{
+ const {run,calls}=fixture();
+ const context={intent:"ask_availability",availability_pending:true,guests:2,room_id:2,room_name:"Single Room B",recommendation_category:"room",check_in:"2026-12-05",slot_preference:"night",stay_duration:1};
+ const message="Ay sorry, anim pala kami. May mas suitable ba na room para sa amin?";
+ assert.equal(scheduleTurn(message,context),true);
+ const result=await run(message,context,{scope:"resort",intent:"ask_recommendation",guests:6,room_name:"Single Room B"});
+ assert.equal(result.extracted_context.guests,6);
+ assert.equal(result.recommendation_cards.length,1);
+ assert.equal(result.recommendation_cards[0].id,3);
+ assert.equal(result.recommendation_cards[0].availability_verified,true);
+ assert.equal(result.recommendation_cards[0].booking_selection.guests,6);
+ assert.deepEqual(calls,[{mode:"add",accommodation_id:3,slot_type:"night",check_in_date:"2026-12-05",stay_duration:1}]);
+});
+test("AI-108: short corrections are checked, ordinary price or policy questions are not",()=>{
+ const context={intent:"ask_availability",availability_pending:true,guests:2,check_in:"2026-12-05",slot_preference:"night",recommendation_category:"room"};
+ assert.equal(scheduleTurn("6 pala kami",context),true);
+ assert.equal(scheduleTurn("Magkano para sa 6 guests?",context),false);
+ assert.equal(scheduleTurn("May parking ba para sa 6 guests?",context),false);
+ assert.equal(scheduleTurn("6 guests",{}),false);
+});
