@@ -53,3 +53,28 @@ test("Parking FAQ is free",()=>assert.match(knowledge.getResortInquiryReply(know
 test("Refund is not a guaranteed automated payment reversal",()=>assert.equal(policy.matchGeneralPolicyQuestion("Can I request a refund?"),"refund"));
 test("Walk-in policy recognized",()=>assert.equal(policy.matchGeneralPolicyQuestion("Pwede ba walk-in?"),"walkin"));
 test("Check-in schedule policy recognized",()=>assert.equal(policy.matchGeneralPolicyQuestion("What are the check-in times?"),"schedule"));
+
+
+test("QA-118 bed presence in a mixed amenity question is not omitted",()=>{
+  const q="Paano naman yung Small Nipa Hut 3? May sarili ba itong CR, aircon, refrigerator at kama?";
+  const kinds=requestedAmenities(q);
+  assert.ok(kinds.includes("beds"));
+  assert.ok(kinds.includes("aircon"));
+  assert.ok(kinds.includes("ref"));
+  assert.ok(kinds.includes("cr")||kinds.includes("private_cr"));
+  const reply=multiAmenityReply(cottage,kinds,"taglish");
+  assert.match(reply,/wala pong included na kama/i);
+  assert.match(reply,/CR/i);
+  assert.match(reply,/aircon/i);
+  assert.match(reply,/ref/i);
+});
+test("QA-118 standalone bed presence uses verified facts, not preview routing",()=>{
+  const {isVerifiedPreviewRequest}=require("../controllers/ai/aiVerifiedPreview");
+  for(const q of ["May kama ba ang Small Nipa Hut 3?","Does Double Room 1 have a bed?","Are there beds in Family Room A?","May kasamang kama ba?"]){
+    assert.ok(requestedAmenities(q).includes("beds"),q);
+    assert.equal(isVerifiedPreviewRequest(q),false,q);
+  }
+  assert.match(amenityReply(room,"beds","May kama ba?","taglish"),/2 Queen-Size Beds/);
+  assert.match(amenityReply({...room,amenities:"Private CR"},"beds","May kama ba?","taglish"),/Hindi pa/);
+  assert.equal(isVerifiedPreviewRequest("Show me photos of Double Room 1 with beds"),true);
+});
