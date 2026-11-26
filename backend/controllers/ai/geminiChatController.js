@@ -1150,9 +1150,19 @@ exports.chatWithGemini = async (req, res) => {
     // AI-68: This limited resolver needs an active room discussion for
     // pronouns like "may mas mura ba diyan?" or "para sa 7 na tao".
     // It cannot turn unrelated shopping or fee questions into resort chat.
-    const roomPriceFollowup = matchRoomPriceFollowup(
+    const matchedPriceFollowup = matchRoomPriceFollowup(
       message, recentScopeTurns, scopeContext,
     );
+    // Fresh recommendations and corrections retain their own scope/constraints.
+    const isFreshGroupSearch = Boolean(requestedCategory(message) &&
+      (isPersonalizedRecommendation(message) ||
+       (!scopeContext.room_id && !scopeContext.recommendation_category &&
+        !recentScopeTurns.length)));
+    const hasBudgetConstraint = Boolean(req.body.max_price || scopeContext.max_price ||
+      /₱|\b(?:php\s*\d|budget|under|below|less\s+than|up\s+to|maximum|not\s+more\s+than)\b/i.test(message));
+    const roomPriceFollowup = matchedPriceFollowup?.kind === "group" &&
+      (guestCorrection || isFreshGroupSearch || hasBudgetConstraint) &&
+      !scopeContext.availability_pending ? null : matchedPriceFollowup;
     // Narrow deterministic inventory intents should not spend Gemini credits
     // on semantic preview parsing or be mistaken for a date/slot request.
     const inventoryCountIntent = matchAccommodationCountQuestion(message);
@@ -1391,16 +1401,23 @@ exports.chatWithGemini = async (req, res) => {
     if (supportedConciergeLanguages.has(conciergeLanguage) &&
         !namedDepositQuote && (conciergeIntent || combinedPolicy)) {
       const kind = conciergeIntent || "entrance_corkage";
+      const asksRatesToo = kind === "booking" &&
+        /\b(?:magkano|presyo|how much|prices?|rates?)\b/i.test(message) &&
+        Boolean(requestedCategory(message));
+      const overview = asksRatesToo
+        ? catalogRateOverview(await getAccommodationCatalog(), message, conciergeLanguage) : null;
       return res.status(200).json({
         success: true, mode: "concierge_" + kind,
-        reply: conciergeGuideReply(kind, conciergeLanguage),
+        reply: conciergeGuideReply(kind, conciergeLanguage) +
+          (overview ? "\n\n" + overview.reply : ""),
         handoff: kind === "booking" ? "booking" :
           kind === "special_event" ? "human" : null,
         extracted_context: mergeContext(scopeContext, {
           language_style: conciergeLanguage,
         }),
         matched_rooms: [], catalog_recommendations: [],
-        alternative_dates: [], booking_preview: null, recommendation_cards: [],
+        alternative_dates: [], booking_preview: null,
+        recommendation_cards: overview ? verifiedAccommodationCards(overview.rows, false) : [],
       });
     }
 
@@ -1734,7 +1751,7 @@ exports.chatWithGemini = async (req, res) => {
     // Preview discovery can be phrased as a request for suitable lodging without
     // recommendation keywords. Give unfamiliar, count-free phrasing to Gemini,
     // while retaining the verified fast path for direct catalog/photo browsing.
-    const clearBrowse = /^(?:what|which|anong|ano|mga|list|show|pakita|patingin|ipakita)\s+(?:(?:me|po|ang|mga|available|all|the|inyong)\s+)*(?:rooms?|cottages?|accommodations?|kwarto|kuwarto|pavilions?|pool shades?|family rooms?|single rooms?)(?:\s+(?:do you have|are there|meron kayo|mayroon kayo|ninyo|niyo|po|please|available|photos?|pictures?|previews?))*[?!.\s]*$/i.test(String(message).trim());
+    const clearBrowse = /^(?:what|which|anong|ano|mga|list|show|pakita|patingin|ipakita)\s+(?:(?:me|po|ang|mga|available|all|the|inyong)\s+)*(?:rooms?|cottages?|accommodations?|kwarto|kuwarto|pavilions?|pool shades?|family rooms?|single rooms?)(?:\s+(?:do you have|are there|are available|meron kayo|mayroon kayo|ninyo|niyo|po|please|available|photos?|pictures?|previews?))*[?!.\s]*$/i.test(String(message).trim());
     const needsSemanticPreview = isVerifiedPreviewRequest(message) && !explicitGuestCount(message) && !clearBrowse && !simplePersonal && !/\b(?:photos?|pictures?|previews?|images?|larawan|litrato)\b/i.test(message);
     if (!simpleInventoryInquiry && !semanticIntent && (hasCompoundParty(message) || needsSemanticPreview)) {
       semanticIntent = await extractStructuredIntent(message, recommendationSaved, recommendationHistory);
