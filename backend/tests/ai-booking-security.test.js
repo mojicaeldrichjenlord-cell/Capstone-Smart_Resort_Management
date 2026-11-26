@@ -1001,7 +1001,8 @@ test("Legacy SQL writer removed; frontend navigates through secure Customer form
   assert.doesNotMatch(controller, /\bFROM bookings\b/i);
   assert.doesNotMatch(controller, /exports\.createBookingFromChat/);
   assert.doesNotMatch(frontend, /\/ai\/create-booking/);
-  assert.match(frontend, /\/customerHTML\/booking\.html\?room_id=/);
+  assert.match(frontend, /new URLSearchParams\(\{room_id:String\(roomId\)\}\)/);
+  assert.match(frontend, /AI_IS_PUBLIC_LANDING \? "\.\.\/authHTML\/login\.html\?"\+query : "booking\.html\?"\+query/);
   assert.match(frontend, /Continue to Booking/);
   assert.match(frontend, /preview\?\.booking_schema !== "accommodations_v2"/);
 });
@@ -1083,7 +1084,11 @@ test("Normal text chat is not forced into live spoken-conversation style", async
     message: "How can I book?",
   });
   assert.equal(result.status, 200);
-  assert.doesNotMatch(modelPrompts[1], /LIVE SPOKEN CONVERSATION/);
+  assert.equal(result.body.mode, "concierge_booking");
+  assert.equal(result.body.handoff, "booking");
+  assert.match(result.body.reply, /PayPal/);
+  assert.equal(modelCalls, 0);
+  assert.doesNotMatch(result.body.reply, /LIVE SPOKEN CONVERSATION/);
 });
 
 
@@ -1331,10 +1336,11 @@ test("Persistent Gemini 503 can still answer read-only accommodation questions",
     message: "What room rates are available at the resort?",
   });
   assert.equal(result.status, 200);
-  assert.equal(result.body.mode, "database_fallback");
+  assert.equal(result.body.mode, "verified_catalog_rates");
   assert.match(result.body.reply, /Family Room A/);
   assert.equal(queries.length, 1);
-  assert.equal(modelCalls, 2); // One bounded retry, then database fallback.
+  assert.equal(modelCalls, 0);
+  assert.equal(result.body.recommendation_cards[0].availability_verified, false);
 });
 
 
@@ -1576,14 +1582,15 @@ test("AI compares rooms and cottages with their current independent catalog rate
   });
   assert.equal(result.status, 200);
   assert.equal(queries.length, 1);
-  assert.deepEqual(result.body.catalog_recommendations.map(room => room.name),
+  assert.equal(result.body.mode, "verified_catalog_rates");
+  assert.deepEqual(result.body.recommendation_cards.map(room => room.name),
     ["Current Test Room", "Current Test Cottage"]);
-  assert.equal(result.body.catalog_recommendations[0].day_price, 3000);
-  assert.equal(result.body.catalog_recommendations[1].day_price, 800);
-  assert.match(modelPrompts.at(-1), /Day Tour: PHP 3,000/);
-  assert.match(modelPrompts.at(-1), /Day Tour: PHP 800/);
-  assert.match(modelPrompts.at(-1), /Never reuse prices from older conversations/);
-  assert.ok(result.body.catalog_recommendations.every(room => room.availability_verified === false));
+  assert.equal(result.body.recommendation_cards[0].day_price, 3000);
+  assert.equal(result.body.recommendation_cards[1].day_price, 800);
+  assert.match(result.body.reply, /Current Test Room: Day Tour ₱3,000\.00/);
+  assert.match(result.body.reply, /Current Test Cottage: Day Tour ₱800\.00/);
+  assert.equal(modelCalls, 0);
+  assert.ok(result.body.recommendation_cards.every(room => room.availability_verified === false));
 });
 
 // Text chat and manual translation should keep the same polite Filipino tone,
@@ -1593,9 +1600,11 @@ test("Tagalog replies and translations request consistently polite customer tone
     message: "Magkano po ang kwarto at paano mag-reserve?",
   });
   assert.equal(reply.status, 200);
-  // Assert the current polite-Filipino safety instruction, not retired phrasing.
-  assert.match(modelPrompts.at(-1), /For Tagalog: use polite, clear Filipino/);
-  assert.match(modelPrompts.at(-1), /exact Day Tour\/Overnight\/Extended rate/);
+  assert.equal(reply.body.mode, "concierge_booking");
+  assert.match(reply.body.reply, /po\b/i);
+  assert.match(reply.body.reply, /PayPal/);
+  assert.match(reply.body.reply, /Family Room A: Day Tour ₱3,500\.00/);
+  assert.equal(modelCalls, 0);
   modelPrompts = [];
   const translated = await post("/api/ai/translate", {
     text: "Your room costs PHP 3,000 for the day tour.",
@@ -1964,11 +1973,12 @@ test("Missing accommodation prices are not misrepresented as free PHP 0.00", asy
   });
   assert.equal(r.status, 200);
   assert.equal(queries.length, 1);
-  const finalPrompt = modelPrompts.at(-1);
-  assert.match(finalPrompt, /Day Tour: Not listed/);
-  assert.match(finalPrompt, /Overnight: Not listed/);
-  assert.match(finalPrompt, /Extended: Not listed/);
-  assert.doesNotMatch(finalPrompt, /Day Tour: PHP 0\.00/);
+  assert.equal(r.body.mode, "verified_catalog_rates");
+  assert.match(r.body.reply, /Day Tour not listed/i);
+  assert.match(r.body.reply, /Overnight not listed/i);
+  assert.match(r.body.reply, /Extended not listed/i);
+  assert.doesNotMatch(r.body.reply, /₱0\.00/);
+  assert.equal(modelCalls, 0);
 });
 
 test("Fresh positive accommodation rate stays numerically exact in AI prompt", async () => {
@@ -1980,9 +1990,11 @@ test("Fresh positive accommodation rate stays numerically exact in AI prompt", a
     message: "What room rates do you offer?",
   });
   assert.equal(r.status, 200);
-  assert.match(modelPrompts.at(-1), /Day Tour: PHP 3,500\.00/);
-  assert.match(modelPrompts.at(-1), /Overnight: PHP 4,300\.00/);
-  assert.match(modelPrompts.at(-1), /Extended: PHP 5,000\.00/);
+  assert.equal(r.body.mode, "verified_catalog_rates");
+  assert.match(r.body.reply, /Day Tour ₱3,500\.00/);
+  assert.match(r.body.reply, /Overnight ₱4,300\.00/);
+  assert.match(r.body.reply, /Extended ₱5,000\.00/);
+  assert.equal(modelCalls, 0);
 });
 
 
@@ -2080,8 +2092,11 @@ test("Focused-room Wi-Fi follow-up is not overridden by unknown resort-wide poli
     context: { room_id: 61, room_name: "Family Room A" }
   });
   assert.equal(r.status, 200);
-  assert.notEqual(r.body.mode, "unverified_resort_policy");
-  assert.ok(modelCalls >= 1);
+  assert.equal(r.body.mode, "verified_guest_policies");
+  assert.match(r.body.reply, /rooms?|kuwarto/i);
+  assert.match(r.body.reply, /free|libreng?/i);
+  assert.equal(r.body.extracted_context.room_id, 61);
+  assert.equal(modelCalls, 0);
 });
 
 
