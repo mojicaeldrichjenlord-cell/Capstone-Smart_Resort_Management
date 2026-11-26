@@ -48,7 +48,7 @@ substitute("@google/genai", {
           // Identify prompt type rather than relying on alternating calls.
           // A simple catalog question now skips structured extraction.
           return {
-            text: String(contents).includes("You are extracting booking details")
+            text: String(contents).includes("You are interpreting natural language for Arvic Seaside Resort guest services")
               ? JSON.stringify(extraction)
               : "Mock AI response; no external service called.",
           };
@@ -468,7 +468,7 @@ test("AI-LIVE-04 Ilang rooms meron kayo returns a count, not room cards", async 
   assert.equal(result.body.mode, "verified_accommodation_count");
   assert.match(result.body.reply, /3 rooms/i);
   assert.match(result.body.reply, /2 marked available/i);
-  assert.match(result.body.reply, /date at time/i);
+  assert.match(result.body.reply, /(?:date at time|petsa at oras)/i);
   assert.doesNotMatch(result.body.reply, /Nipa Hut|5 accommodations|room preview/i);
   assert.deepEqual(result.body.recommendation_cards, []);
   assert.deepEqual(result.body.catalog_recommendations, []);
@@ -1197,7 +1197,7 @@ test("Unavailable accommodation is described but not recommended", async () => {
   // A named accommodation is explicitly supplied, so the safe flow
   // still extracts intent first instead of taking the general-catalog shortcut.
   assert.equal(modelCalls, 2);
-  assert.match(modelPrompts[0], /You are extracting booking details/);
+  assert.match(modelPrompts[0], /You are interpreting natural language for Arvic Seaside Resort guest services/);
   assert.match(modelPrompts.at(-1), /Maintenance Cottage/);
   assert.match(modelPrompts.at(-1), /Admin status: maintenance/);
   assert.equal(result.body.booking_preview, null);
@@ -1811,7 +1811,7 @@ const policyAccuracyCases = [
     name: "Taglish walk-in is same-day and onsite",
     question: "Pwede po ba mag walk in?",
     topic: "walkin", response: /same-day/i,
-    verify: /Onsite po/i,
+    verify: /(?:Onsite po|Sa Front Desk po ang accommodation payment)/i,
   },
   {
     name: "AI never claims that chat confirms a reservation",
@@ -1996,7 +1996,7 @@ test("Parking fee question bypasses room-payment resolver and makes zero paid or
   assert.equal(r.status, 200);
   assert.equal(r.body.mode, "verified_resort_inquiry");
   assert.equal(r.body.inquiry_topic, "parking");
-  assert.match(r.body.reply, /free parking|Walang parking fee/i);
+  assert.match(r.body.reply, /free parking|Walang parking fee|libreng paradahan/i);
   assert.deepEqual(r.body.recommendation_cards, []);
   assert.equal(r.body.extracted_context.room_id, 61, "should preserve focus without using it for parking");
   assert.equal(modelCalls, 0);
@@ -2015,7 +2015,7 @@ test("Actual customer van/bus parking question uses verified zero-credit FAQ", a
   assert.equal(r.body.mode, "verified_resort_inquiry");
   assert.equal(r.body.inquiry_topic, "parking");
   assert.equal(r.body.extracted_context.room_id, 61);
-  assert.match(r.body.reply, /free parking/i);
+  assert.match(r.body.reply, /free parking|libreng paradahan/i);
   assert.match(r.body.reply, /van/i);
   assert.match(r.body.reply, /bus/i);
   assert.match(r.body.reply, /Walang parking fee/i);
@@ -2033,7 +2033,7 @@ test("Parking + entrance question explains fee distinction without room suggesti
   assert.equal(r.status, 200);
   assert.equal(r.body.mode, "verified_resort_inquiry");
   assert.equal(r.body.inquiry_topic, "parkingEntrance");
-  assert.match(r.body.reply, /Free po ang parking/);
+  assert.match(r.body.reply, /(?:Free po ang parking|Libre po ang paradahan)/i);
   assert.match(r.body.reply, /Separate naman po ang entrance fee/);
   assert.deepEqual(r.body.recommendation_cards, []);
   assert.equal(modelCalls, 0);
