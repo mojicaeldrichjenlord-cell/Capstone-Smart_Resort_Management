@@ -79,4 +79,34 @@ function catalogRateOverview(catalog, message, language="taglish") {
     "- Additional accommodations are available in the website catalog.");
   return { reply:[head[language]||head.english, ...lines, tail[language]||tail.english].join("\n"), rows:chosen };
 }
-module.exports={isCatalogRateOverviewQuestion,catalogRateOverview};
+// A personalized price inquiry must filter by party size and the requested
+// stay's actual positive rate before limiting the displayed recommendations.
+function personalizedRateOverview(catalog, {category,guests,stay}, language="english") {
+  const {categoryMatches}=require("./aiVerifiedPreview");
+  const filipino=["taglish","tagalog"].includes(language);
+  const rateKey=stay==="night"?"overnight_price":"day_price";
+  const slot=stay==="night"?"Overnight":"Day Tour";
+  const rows=(Array.isArray(catalog)?catalog:[]).filter(r=>
+    String(r?.status||"").trim().toLowerCase()==="available" &&
+    Number.isSafeInteger(Number(r.id)) && Number(r.id)>0 &&
+    categoryMatches(r,category) &&
+    (category!=="cottage" || /^cottages?$/i.test(String(r.category_name||"").trim())) &&
+    Number(r.capacity)>=guests && positiveMoney(r[rateKey])!==null
+  ).sort((a,b)=>positiveMoney(a[rateKey])-positiveMoney(b[rateKey]) ||
+    Number(a.capacity)-Number(b.capacity)||Number(a.id)-Number(b.id));
+  const chosen=[...new Map(rows.map(r=>[Number(r.id),r])).values()].slice(0,3);
+  if(!chosen.length)return {rows:[],reply:filipino
+    ? "Wala po akong makitang matching accommodation na kasya sa "+guests+" guests at may listed "+slot+" rate. Puwede po nating tingnan ang ibang type."
+    : "I couldn't find a matching listed accommodation for "+guests+" guests with a "+slot+" rate. We can check another type."};
+  const first=chosen[0];
+  const alternatives=chosen.slice(1).map(r=>r.room_name+" ("+formatPeso(positiveMoney(r[rateKey]))+")").join(", ");
+  const price=formatPeso(positiveMoney(first[rateKey]));
+  return {rows:chosen,reply:filipino
+    ? "Para sa "+guests+" guests, recommended po ang "+first.room_name+" — "+price+" for "+slot+"."
+      +(alternatives?" Other options: "+alternatives+".":"")
+      +" Anong date po ang plan ninyo para ma-check ko ang availability?"
+    : "For "+guests+" guests, I'd recommend "+first.room_name+" at "+price+" for "+slot+"."
+      +(alternatives?" Other options: "+alternatives+".":"")
+      +" What date are you planning to visit so I can check availability?"};
+}
+module.exports={isCatalogRateOverviewQuestion,catalogRateOverview,personalizedRateOverview};
