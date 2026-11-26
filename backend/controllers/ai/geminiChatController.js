@@ -2722,7 +2722,7 @@ ${resortInquiryPromptLines()}
 - If rooms are available, recommend only the best 1 to 3 options.
 - Briefly explain why each recommended room matches.
 - If there are no exact matches, say that clearly and mention alternative dates if provided.
-- A booking suggestion is NOT a reservation. Tell the user to press Continue to Booking, then confirm dates, slot price, and payment on the secure reservation page.
+- A booking suggestion is NOT a reservation. For accommodation preview cards, refer to the Book This button (Log In to Book This on the public landing page), then confirm dates, slot price, and payment on the secure reservation page. Only say Continue to Booking when that actual booking confirmation button is present.
 - Explain that online downpayments use PayPal; the secure Customer booking/payment page verifies the final amount. Do not promise cash on arrival for online reservations.
 - Online guests do NOT choose arbitrary check-in or check-out hours: the resort uses preset Day Tour and Night booking slots.
 - When a guest wants to book, ask whether they prefer Day Tour (umaga/morning) or Night (gabi/evening), never ask "What exact time would you like to check in or check out?"
