@@ -135,3 +135,12 @@ test("AI-110: consent to switch category retains the previous room price ceiling
  assert.doesNotMatch(result.reply,/Hindi ko po ma-confirm/);
  assert.deepEqual(calls,[{mode:"add",accommodation_id:13,slot_type:"night",check_in_date:"2026-12-05",stay_duration:1}]);
 });
+
+
+test("Undated catalog and budget recommendations do not trigger live availability",()=>{
+ for(const message of ["What rooms are available?","Need a day tour cottage for 10 guests under 3500","Recommend a room for 3 guests overnight"]){
+  assert.equal(scheduleTurn(message,{}),false,message);
+ }
+ assert.equal(scheduleTurn("Is Family Room B available on December 5?",{}),true);
+ assert.equal(scheduleTurn("Available ba ang Family Room B overnight?",{}),true);
+});
