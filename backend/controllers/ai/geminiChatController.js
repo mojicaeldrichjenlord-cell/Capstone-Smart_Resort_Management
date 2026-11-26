@@ -1153,6 +1153,12 @@ exports.chatWithGemini = async (req, res) => {
     const roomPriceFollowup = matchRoomPriceFollowup(
       message, recentScopeTurns, scopeContext,
     );
+    // Narrow deterministic inventory intents should not spend Gemini credits
+    // on semantic preview parsing or be mistaken for a date/slot request.
+    const inventoryCountIntent = matchAccommodationCountQuestion(message);
+    const cheapestListingIntent = matchCheapestInquiry(message, recentScopeTurns, scopeContext);
+    const datedPriceInquiry = /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2}\b|\b\d{1,2}[/-]\d{1,2}\b/i.test(message);
+    const simpleInventoryInquiry = Boolean(inventoryCountIntent || (cheapestListingIntent && !datedPriceInquiry && !scopeContext.availability_pending));
     let semanticIntent = null;
     const knownScope = isResortQuestion(message, scopeContext, recentScopeTurns) ||
       pendingGuestRecommendationAnswer(message, recentScopeTurns, scopeContext) || guestCorrection || roomPriceFollowup;
@@ -1191,7 +1197,7 @@ exports.chatWithGemini = async (req, res) => {
     }
 
     // AI-104: read-only fixed-slot checks reuse the exact booking API handler.
-    if (scheduleTurn(message, scopeContext, semanticIntent || {})) {
+    if (!simpleInventoryInquiry && scheduleTurn(message, scopeContext, semanticIntent || {})) {
       const interpreted = semanticIntent || await extractStructuredIntent(message, scopeContext, recentScopeTurns);
       if (interpreted.scope === "resort" || (knownScope && interpreted.scope !== "unrelated")) {
         const language = detectLanguageFromMessage(message) || normalizeLanguageStyle(interpreted.language_style) || clarificationLanguage;
@@ -1365,8 +1371,11 @@ exports.chatWithGemini = async (req, res) => {
     ]);
     const conciergeIntent = matchConciergeGuide(message);
     const combinedPolicy = isMixedEntranceAndCorkage(message);
+    const namedDepositQuote = conciergeIntent === "booking" && isRoomPaymentInquiry(message) &&
+      /\b(?:down[\s-]?payment|deposit)\b/i.test(message) &&
+      /\b(?:family\s+room\s+[ab]|double\s+room\s+\d+|single\s+room(?:\s+cottage|\s*\(pool\s*side\))?\s+[a-z0-9]+|(?:nipa\s+hut|pool\s+shade|big\s+shade|small\s+shade|cottage)\s+\d+)\b/i.test(message);
     if (supportedConciergeLanguages.has(conciergeLanguage) &&
-        (conciergeIntent || combinedPolicy)) {
+        !namedDepositQuote && (conciergeIntent || combinedPolicy)) {
       const kind = conciergeIntent || "entrance_corkage";
       return res.status(200).json({
         success: true, mode: "concierge_" + kind,
@@ -1384,7 +1393,7 @@ exports.chatWithGemini = async (req, res) => {
     // AI-48: Explicit broad "room and cottage rates" is answered directly
     // from the FRESH Admin-managed catalog, not a model's guessed rate.
     // Never claim that listing status means a date/slot is bookable.
-    if (isCatalogRateOverviewQuestion(message)) {
+    if (!simpleInventoryInquiry && isCatalogRateOverviewQuestion(message)) {
       const catalog = await getAccommodationCatalog();
       const language = conciergeLanguage;
       const overview = catalogRateOverview(catalog, message, language);
@@ -1713,10 +1722,10 @@ exports.chatWithGemini = async (req, res) => {
     // while retaining the verified fast path for direct catalog/photo browsing.
     const clearBrowse = /^(?:what|which|anong|ano|mga|list|show|pakita|patingin|ipakita)\s+(?:(?:me|po|ang|mga|available|all|the|inyong)\s+)*(?:rooms?|cottages?|accommodations?|kwarto|kuwarto|pavilions?|pool shades?|family rooms?|single rooms?)(?:\s+(?:do you have|are there|meron kayo|mayroon kayo|ninyo|niyo|po|please|available|photos?|pictures?|previews?))*[?!.\s]*$/i.test(String(message).trim());
     const needsSemanticPreview = isVerifiedPreviewRequest(message) && !explicitGuestCount(message) && !clearBrowse && !/\b(?:photos?|pictures?|previews?|images?|larawan|litrato)\b/i.test(message);
-    if (!semanticIntent && (hasCompoundParty(message) || needsSemanticPreview)) {
+    if (!simpleInventoryInquiry && !semanticIntent && (hasCompoundParty(message) || needsSemanticPreview)) {
       semanticIntent = await extractStructuredIntent(message, recommendationSaved, recommendationHistory);
     }
-    const personalRecommendation = isPersonalizedRecommendation(message) || semanticIntent?.intent === "ask_recommendation";
+    const personalRecommendation = !simpleInventoryInquiry && (isPersonalizedRecommendation(message) || semanticIntent?.intent === "ask_recommendation");
     if (personalRecommendation) {
       let guestCount = explicitGuestCount(message) || savedGuestCount({ guests: req.body.guests }) || savedGuestCount(recommendationSaved);
       if (!explicitGuestCount(message) && !semanticIntent) {
