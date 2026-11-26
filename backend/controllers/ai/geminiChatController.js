@@ -15,7 +15,7 @@ const { validateAiStayWindow, calendarDayDifference, addCalendarDays } = require
 const { normalizeRecentTurns, wantsAccommodationCards, verifiedAccommodationCards, tidyAssistantReply } =
   require("./aiConversationStyle");
 const {
-  requestedAmenities, amenityReply, multiAmenityReply,
+  requestedAmenities, amenityReply, multiAmenityReply, resolveAmenityTarget,
 } = require("./aiAccommodationAmenities");
 const { generalCategoryAmenitiesReply } = require("./aiAccommodationCategoryPolicy");
 const { isNaturalRoomDetailsQuestion, naturalRoomDetailsReply } = require("./aiNaturalRoomDetails");
@@ -2003,7 +2003,20 @@ exports.chatWithGemini = async (req, res) => {
         ? "taglish" : null) ||
       detectLanguageFromMessage(message) ||
       normalizeLanguageStyle(req.body.context?.language_style) || "english";
-    const categoryReply = generalCategoryAmenitiesReply(
+    // AI-111: resolve the latest named accommodation before using saved focus.
+    const namedAmenityKinds = requestedAmenities(message);
+    const possibleAmenityName = requestedCategory(message) ||
+      /\b(?:ang|ng|sa|of|in|the)\s+(?!ito\b|iyan\b|room\s+ba\b)/i.test(message);
+    let amenityTarget = {record:null, ambiguous:false};
+    if (namedAmenityKinds.length && possibleAmenityName) {
+      const [amenityRows] = await db.promise().query(
+        "SELECT a.id, a.name AS room_name, a.description, a.amenities, c.name AS category_name " +
+        "FROM accommodations a LEFT JOIN accommodation_categories c ON c.id = a.category_id " +
+        "ORDER BY a.id ASC",
+      );
+      amenityTarget = resolveAmenityTarget(amenityRows, message);
+    }
+    const categoryReply = amenityTarget.record || amenityTarget.ambiguous ? null : generalCategoryAmenitiesReply(
       message, req.body?.context?.room_id ?? req.body?.room_id, generalAmenityLanguage,
     );
     if (categoryReply) {
@@ -2083,10 +2096,10 @@ exports.chatWithGemini = async (req, res) => {
     const amenityKind = amenityKinds.length === 1 ? amenityKinds[0] : null;
     // When a guest names a different room, that EXPLICIT room wins over
     // any selected card from a previous turn. Never pick one of two names.
-    const explicitlyNamedAmenityRoom = explicitEntranceRoomName(message);
-    const unresolvedNamedAmenityRoom =
-      /\b(?:single|double|family)\s+room\b/i.test(message) &&
-      !explicitlyNamedAmenityRoom;
+    const explicitlyNamedAmenityRoom = amenityTarget.record?.room_name ||
+      (!amenityTarget.ambiguous ? explicitEntranceRoomName(message) : null);
+    const unresolvedNamedAmenityRoom = amenityTarget.ambiguous ||
+      (Boolean(requestedCategory(message)) && !explicitlyNamedAmenityRoom);
     const rawFocusedRoomId = req.body?.context?.room_id ?? req.body?.room_id;
     const focusedRoomId = Number(rawFocusedRoomId);
     const focusedRoomName = String(
@@ -2108,7 +2121,7 @@ exports.chatWithGemini = async (req, res) => {
       const columns = "SELECT a.id, a.name AS room_name, a.description, a.amenities, " +
         "c.name AS category_name FROM accommodations a " +
         "LEFT JOIN accommodation_categories c ON c.id = a.category_id ";
-      const [rows] = await db.promise().query(
+      const [rows] = amenityTarget.record ? [[amenityTarget.record]] : await db.promise().query(
         byId ? columns + "WHERE a.id = ? LIMIT 1" :
           columns + "WHERE a.name = ? LIMIT 2",
         [lookup],
@@ -2124,7 +2137,7 @@ exports.chatWithGemini = async (req, res) => {
         const namedMention = String(message).match(
           /\b(?:family\s+room|room|cottage|pavilion)\s+[a-z0-9]+\b/i
         );
-        const namesMatch = !namedMention ||
+        const namesMatch = Boolean(amenityTarget.record) || !namedMention ||
           String(message).toLowerCase().includes(String(record.room_name).toLowerCase());
         if (namesMatch) {
           // Text messages with Filipino cues should not be classified as
@@ -2151,6 +2164,7 @@ exports.chatWithGemini = async (req, res) => {
               : amenityReply(record, amenityKind, message, language),
             extracted_context: mergeContext(savedContext, {
               room_id: record.id, room_name: record.room_name,
+              ...(explicitlyNamedAmenityRoom ? {recommendation_category: requestedCategory(record.room_name) || requestedCategory(record.category_name) || null} : {}),
               language_style: language,
             }),
             matched_rooms: [], catalog_recommendations: [],
