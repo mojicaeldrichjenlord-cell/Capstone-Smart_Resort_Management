@@ -11,7 +11,7 @@ const {
 // Deliberately broad phrasing but narrow intent: a FULL inclusion question,
 // not one-feature questions ("does it have a CR?"), booking, or room availability.
 function isNaturalRoomDetailsQuestion(message) {
-  const text = String(message || "").normalize("NFKC").trim().toLowerCase();
+  const text = String(message || "").normalize("NFKC").trim().toLowerCase().replace(/\bano[\s-]+ano\b/g, "ano");
   if (!text || text.length > 300) return false;
   if (/\b(?:available|availability|vacant|price|cost|magkano|book|reservation|reserve|open\s+now|occupied|downpayment|refund)\b/.test(text))
     return false;
