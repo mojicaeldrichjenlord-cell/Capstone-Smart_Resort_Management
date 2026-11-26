@@ -2054,15 +2054,20 @@ test("Multi-facility resort question stays grounded with read-only catalog SQL",
   assert.equal(r.body.booking_preview, null);
   assert.ok(modelCalls > 0);
   assert.match(modelPrompts.at(-1), /FREE on-site parking for ANY type of vehicle/);
-  assert.match(modelPrompts.at(-1), /For unverified pet rules, Wi-Fi/);
+  assert.match(modelPrompts.at(-1), /Animals and pets are NOT ALLOWED/);
+  assert.match(modelPrompts.at(-1), /NO CORKAGE FEE/);
 });
 
-test("Unverified resort-wide Wi-Fi and pet policies do not spend credits or pretend to be confirmed", async () => {
-  for (const message of ["May WiFi ba kayo?", "Pet-friendly ba kayo?", "Pwede outside food?"]) {
+test("Client-verified Wi-Fi, no pets and outside food policies use zero credits", async () => {
+  for (const [message,mode,fact] of [
+    ["May WiFi ba kayo?","verified_guest_policies",/(?:room|kuwarto)/i],
+    ["Pet-friendly ba kayo?","verified_pet_policy",/bawal|not allowed|hindi.*pet.friendly/i],
+    ["Pwede outside food?","verified_guest_policies",/puwede|pwede|maaari|allowed|may bring/i],
+  ]) {
     const r = await post("/api/ai/chat", { message, voice_language: "taglish" });
     assert.equal(r.status, 200, message);
-    assert.equal(r.body.mode, "unverified_resort_policy", message);
-    assert.match(r.body.reply, /hindi pa po confirmed/i);
+    assert.equal(r.body.mode, mode, message);
+    assert.match(r.body.reply, fact, message);
     assert.deepEqual(r.body.recommendation_cards, []);
   }
   assert.equal(modelCalls, 0);
