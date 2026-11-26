@@ -1,6 +1,6 @@
 # AI Mock Regression — testing branch
 
-Source commit: 3faf3edabb1b74f78b82c8a3622f464ab2f8a948
+Source commit: 127d6eaef335458ef485979c562546ea2ce0f9e7
 Exit code: 1
 
 No live Gemini, PayPal or production MySQL credentials.
@@ -10,296 +10,157 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: UI-81 reports retain both paid-charge figures in one card, not the three removed cards
     ok 1 - UI-81 reports retain both paid-charge figures in one card, not the three removed cards
       ---
-      duration_ms: 0.80029
+      duration_ms: 1.635234
       type: 'test'
       ...
     # Subtest: UI-34 reports retain paid charges, accurate caveat and balanced print layout
     ok 2 - UI-34 reports retain paid charges, accurate caveat and balanced print layout
       ---
-      duration_ms: 0.263818
+      duration_ms: 0.509199
       type: 'test'
       ...
     # Subtest: UI-34 walk-in preview shows full accommodation payment and NO 50% card
     ok 3 - UI-34 walk-in preview shows full accommodation payment and NO 50% card
       ---
-      duration_ms: 308.053683
+      duration_ms: 44.14817
       type: 'test'
       ...
     # Subtest: UI-34 Facebook manual reservation still previews a 50% minimum payment
     ok 4 - UI-34 Facebook manual reservation still previews a 50% minimum payment
       ---
-      duration_ms: 0.977939
+      duration_ms: 2.704626
       type: 'test'
       ...
     # Subtest: UI-34 preview code is presentation-only; secure payment flow still enforces full walk-in
     ok 5 - UI-34 preview code is presentation-only; secure payment flow still enforces full walk-in
       ---
-      duration_ms: 0.330021
+      duration_ms: 0.502064
       type: 'test'
       ...
     # Subtest: AI-44 customer voice has no manual language selector or persisted language setting
     ok 6 - AI-44 customer voice has no manual language selector or persisted language setting
       ---
-      duration_ms: 3.233827
+      duration_ms: 3.335259
       type: 'test'
       ...
     # Subtest: AI-44 voice and text requests detect each utterance independently
     ok 7 - AI-44 voice and text requests detect each utterance independently
       ---
-      duration_ms: 0.489467
+      duration_ms: 0.361162
       type: 'test'
       ...
     # Subtest: AI-44 signed Gemini audio accepts mixed spoken languages without translating
     ok 8 - AI-44 signed Gemini audio accepts mixed spoken languages without translating
       ---
-      duration_ms: 0.933828
+      duration_ms: 1.009449
       type: 'test'
       ...
     # Subtest: AI-44 safe Romanized Mandarin greeting and multilingual resort guard
     ok 9 - AI-44 safe Romanized Mandarin greeting and multilingual resort guard
       ---
-      duration_ms: 0.222955
+      duration_ms: 0.196615
       type: 'test'
       ...
     # Subtest: AI-44 all authenticated Customer pages load fresh voice implementation
     ok 10 - AI-44 all authenticated Customer pages load fresh voice implementation
       ---
-      duration_ms: 0.770221
+      duration_ms: 0.826418
       type: 'test'
       ...
     # Subtest: AI-36 history trivia is politely refused with zero Gemini credits or SQL reads
     ok 11 - AI-36 history trivia is politely refused with zero Gemini credits or SQL reads
       ---
-      duration_ms: 94.566011
+      duration_ms: 171.400521
       type: 'test'
       ...
     # Subtest: AI-36 second non-resort turn is still blocked even after prior refusal
     ok 12 - AI-36 second non-resort turn is still blocked even after prior refusal
       ---
-      duration_ms: 6.893617
+      duration_ms: 26.419907
       type: 'test'
       ...
     # Subtest: AI-36 mixed history and parking request cannot get a generic AI answer
     ok 13 - AI-36 mixed history and parking request cannot get a generic AI answer
       ---
-      duration_ms: 3.668862
+      duration_ms: 7.042601
       type: 'test'
       ...
     # Subtest: Retired AI create-booking route refuses unauthenticated direct writes
     ok 14 - Retired AI create-booking route refuses unauthenticated direct writes
       ---
-      duration_ms: 2.921554
+      duration_ms: 4.779027
       type: 'test'
       ...
     # Subtest: Retired AI create-booking cannot write with a spoofed user_id
     ok 15 - Retired AI create-booking cannot write with a spoofed user_id
       ---
-      duration_ms: 4.934763
+      duration_ms: 5.23676
       type: 'test'
       ...
     # Subtest: AI chat with missing message is rejected without DB access
     ok 16 - AI chat with missing message is rejected without DB access
       ---
-      duration_ms: 3.546011
+      duration_ms: 7.297877
       type: 'test'
       ...
     # Subtest: AI-LIVE-05 count 45 cottages then cheapest follows cottage scope and exact prices
-    not ok 17 - AI-LIVE-05 count 45 cottages then cheapest follows cottage scope and exact prices
+    ok 17 - AI-LIVE-05 count 45 cottages then cheapest follows cottage scope and exact prices
       ---
-      duration_ms: 142.216859
+      duration_ms: 97.214893
       type: 'test'
-      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:292:1'
-      failureType: 'testCodeFailure'
-      error: |-
-        Expected values to be strictly equal:
-        
-        1 !== 0
-        
-      code: 'ERR_ASSERTION'
-      name: 'AssertionError'
-      expected: 0
-      actual: 1
-      operator: 'strictEqual'
-      stack: |-
-        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:341:10)
-        process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-        async Test.run (node:internal/test_runner/test:1054:7)
-        async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
       ...
     # Subtest: AI-LIVE-05 named cheapest replies reread Admin pricing, no cached ₱800
-    not ok 18 - AI-LIVE-05 named cheapest replies reread Admin pricing, no cached ₱800
+    ok 18 - AI-LIVE-05 named cheapest replies reread Admin pricing, no cached ₱800
       ---
-      duration_ms: 14.262266
+      duration_ms: 17.981299
       type: 'test'
-      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:344:1'
-      failureType: 'testCodeFailure'
-      error: |-
-        Expected values to be strictly equal:
-        
-        2 !== 0
-        
-      code: 'ERR_ASSERTION'
-      name: 'AssertionError'
-      expected: 0
-      actual: 2
-      operator: 'strictEqual'
-      stack: |-
-        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:364:10)
-        process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-        async Test.run (node:internal/test_runner/test:1054:7)
-        async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
       ...
     # Subtest: AI-LIVE-05 overnight cheapest ignores cheaper Day Tour and zero prices
-    not ok 19 - AI-LIVE-05 overnight cheapest ignores cheaper Day Tour and zero prices
+    ok 19 - AI-LIVE-05 overnight cheapest ignores cheaper Day Tour and zero prices
       ---
-      duration_ms: 5.529164
+      duration_ms: 8.655063
       type: 'test'
-      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:367:1'
-      failureType: 'testCodeFailure'
-      error: |-
-        Expected values to be strictly equal:
-        + actual - expected
-        
-        + 'verified_catalog_rates'
-        - 'verified_cheapest_accommodation'
-                     ^
-        
-      code: 'ERR_ASSERTION'
-      name: 'AssertionError'
-      expected: 'verified_cheapest_accommodation'
-      actual: 'verified_catalog_rates'
-      operator: 'strictEqual'
-      stack: |-
-        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:379:10)
-        process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-        async Test.run (node:internal/test_runner/test:1054:7)
-        async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
       ...
     # Subtest: AI-LIVE-05 same-priced listings never select an arbitrary old room
-    not ok 20 - AI-LIVE-05 same-priced listings never select an arbitrary old room
+    ok 20 - AI-LIVE-05 same-priced listings never select an arbitrary old room
       ---
-      duration_ms: 4.271032
+      duration_ms: 4.919709
       type: 'test'
-      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:387:1'
-      failureType: 'testCodeFailure'
-      error: |-
-        Expected values to be strictly equal:
-        
-        1 !== 0
-        
-      code: 'ERR_ASSERTION'
-      name: 'AssertionError'
-      expected: 0
-      actual: 1
-      operator: 'strictEqual'
-      stack: |-
-        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:404:10)
-        process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-        async Test.run (node:internal/test_runner/test:1054:7)
-        async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
       ...
     # Subtest: AI-LIVE-05 selected cheapest room remains focused for a CR follow-up
-    not ok 21 - AI-LIVE-05 selected cheapest room remains focused for a CR follow-up
+    ok 21 - AI-LIVE-05 selected cheapest room remains focused for a CR follow-up
       ---
-      duration_ms: 13.394754
+      duration_ms: 31.19125
       type: 'test'
-      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:407:1'
-      failureType: 'testCodeFailure'
-      error: |-
-        Expected values to be strictly equal:
-        
-        1 !== 0
-        
-      code: 'ERR_ASSERTION'
-      name: 'AssertionError'
-      expected: 0
-      actual: 1
-      operator: 'strictEqual'
-      stack: |-
-        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:439:10)
-        process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-        async Test.run (node:internal/test_runner/test:1054:7)
-        async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
       ...
     # Subtest: AI-LIVE-05 unknown scope asks rooms or cottages without spending credits
     ok 22 - AI-LIVE-05 unknown scope asks rooms or cottages without spending credits
       ---
-      duration_ms: 3.762606
+      duration_ms: 9.2922
       type: 'test'
       ...
     # Subtest: AI-LIVE-04 Ilang rooms meron kayo returns a count, not room cards
-    not ok 23 - AI-LIVE-04 Ilang rooms meron kayo returns a count, not room cards
+    ok 23 - AI-LIVE-04 Ilang rooms meron kayo returns a count, not room cards
       ---
-      duration_ms: 2.526633
+      duration_ms: 5.507975
       type: 'test'
-      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:455:1'
-      failureType: 'testCodeFailure'
-      error: |-
-        Expected values to be strictly equal:
-        
-        1 !== 0
-        
-      code: 'ERR_ASSERTION'
-      name: 'AssertionError'
-      expected: 0
-      actual: 1
-      operator: 'strictEqual'
-      stack: |-
-        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:481:10)
-        process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-        async Test.run (node:internal/test_runner/test:1054:7)
-        async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
       ...
     # Subtest: Inventory counting always re-reads Admin state and never caps at 150
-    not ok 24 - Inventory counting always re-reads Admin state and never caps at 150
+    ok 24 - Inventory counting always re-reads Admin state and never caps at 150
       ---
-      duration_ms: 4.003723
+      duration_ms: 8.353042
       type: 'test'
-      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:484:1'
-      failureType: 'testCodeFailure'
-      error: |-
-        Expected values to be strictly equal:
-        
-        1 !== 0
-        
-      code: 'ERR_ASSERTION'
-      name: 'AssertionError'
-      expected: 0
-      actual: 1
-      operator: 'strictEqual'
-      stack: |-
-        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:498:10)
-        process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-        async Test.run (node:internal/test_runner/test:1054:7)
-        async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
       ...
     # Subtest: Count questions distinguish room, cottage, function and available listing statuses
-    not ok 25 - Count questions distinguish room, cottage, function and available listing statuses
+    ok 25 - Count questions distinguish room, cottage, function and available listing statuses
       ---
-      duration_ms: 3.283047
+      duration_ms: 18.200387
       type: 'test'
-      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:501:1'
-      failureType: 'testCodeFailure'
-      error: |-
-        Ilang available na rooms meron kayo?
-        
-        1 !== 0
-        
-      code: 'ERR_ASSERTION'
-      name: 'AssertionError'
-      expected: 0
-      actual: 1
-      operator: 'strictEqual'
-      stack: |-
-        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:522:12)
-        process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-        async Test.run (node:internal/test_runner/test:1054:7)
-        async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
       ...
     # Subtest: AI-37 generic recommendation asks for guests first, no random cards or credits
     not ok 26 - AI-37 generic recommendation asks for guests first, no random cards or credits
       ---
-      duration_ms: 3.316976
+      duration_ms: 19.715485
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:528:1'
       failureType: 'testCodeFailure'
@@ -322,19 +183,19 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: AI-37 natural 4 kami follow-up filters fresh rooms by capacity and gives cards
     ok 27 - AI-37 natural 4 kami follow-up filters fresh rooms by capacity and gives cards
       ---
-      duration_ms: 5.329047
+      duration_ms: 12.474594
       type: 'test'
       ...
     # Subtest: AI-37 bare 4, apat kami and 4 po follow the guest prompt without extra Gemini
     ok 28 - AI-37 bare 4, apat kami and 4 po follow the guest prompt without extra Gemini
       ---
-      duration_ms: 5.463526
+      duration_ms: 14.938532
       type: 'test'
       ...
     # Subtest: AI-37 previously supplied guests are reused; explicit group size takes precedence
     not ok 29 - AI-37 previously supplied guests are reused; explicit group size takes precedence
       ---
-      duration_ms: 5.093771
+      duration_ms: 7.15975
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:594:1'
       failureType: 'testCodeFailure'
@@ -355,60 +216,22 @@ No live Gemini, PayPal or production MySQL credentials.
         async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
       ...
     # Subtest: AI-38 after 10 guests, 7 pala refreshes matching rooms instead of refusing the topic
-    not ok 30 - AI-38 after 10 guests, 7 pala refreshes matching rooms instead of refusing the topic
+    ok 30 - AI-38 after 10 guests, 7 pala refreshes matching rooms instead of refusing the topic
       ---
-      duration_ms: 8.890357
+      duration_ms: 16.680494
       type: 'test'
-      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:618:1'
-      failureType: 'testCodeFailure'
-      error: |-
-        Expected values to be strictly equal:
-        + actual - expected
-        
-        + 'resort_scope_only'
-        - 'verified_accommodation_preview'
-        
-      code: 'ERR_ASSERTION'
-      name: 'AssertionError'
-      expected: 'verified_accommodation_preview'
-      actual: 'resort_scope_only'
-      operator: 'strictEqual'
-      stack: |-
-        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:659:10)
-        process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-        async Test.run (node:internal/test_runner/test:1054:7)
-        async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
       ...
     # Subtest: AI-38 corrected guest count sees newly updated Admin prices and inventory
-    not ok 31 - AI-38 corrected guest count sees newly updated Admin prices and inventory
+    ok 31 - AI-38 corrected guest count sees newly updated Admin prices and inventory
       ---
-      duration_ms: 5.288356
+      duration_ms: 15.123606
       type: 'test'
-      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:672:1'
-      failureType: 'testCodeFailure'
-      error: |-
-        Expected values to be strictly equal:
-        + actual - expected
-        
-        + 'resort_scope_only'
-        - 'verified_accommodation_preview'
-        
-      code: 'ERR_ASSERTION'
-      name: 'AssertionError'
-      expected: 'verified_accommodation_preview'
-      actual: 'resort_scope_only'
-      operator: 'strictEqual'
-      stack: |-
-        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:707:10)
-        process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-        async Test.run (node:internal/test_runner/test:1054:7)
-        async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
       ...
     # Gemini request failed (HTTP 500).
     # Subtest: AI-38 original family-room scope persists after revising 10 guests to 7
     not ok 32 - AI-38 original family-room scope persists after revising 10 guests to 7
       ---
-      duration_ms: 6.240726
+      duration_ms: 12.219119
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:715:1'
       failureType: 'testCodeFailure'
@@ -429,59 +252,21 @@ No live Gemini, PayPal or production MySQL credentials.
         async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
       ...
     # Subtest: AI-45 natural two-to-seven follow-up retains group search even after language switch
-    not ok 33 - AI-45 natural two-to-seven follow-up retains group search even after language switch
+    ok 33 - AI-45 natural two-to-seven follow-up retains group search even after language switch
       ---
-      duration_ms: 3.92486
+      duration_ms: 12.636425
       type: 'test'
-      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:746:1'
-      failureType: 'testCodeFailure'
-      error: |-
-        Pito pala kami
-        + actual - expected
-        
-        + 'resort_scope_only'
-        - 'verified_accommodation_preview'
-        
-      code: 'ERR_ASSERTION'
-      name: 'AssertionError'
-      expected: 'verified_accommodation_preview'
-      actual: 'resort_scope_only'
-      operator: 'strictEqual'
-      stack: |-
-        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:780:12)
-        process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-        async Test.run (node:internal/test_runner/test:1054:7)
-        async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
       ...
     # Subtest: AI-45 a guest-specific family-room preview keeps category on count correction
-    not ok 34 - AI-45 a guest-specific family-room preview keeps category on count correction
+    ok 34 - AI-45 a guest-specific family-room preview keeps category on count correction
       ---
-      duration_ms: 3.884992
+      duration_ms: 7.298528
       type: 'test'
-      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:791:1'
-      failureType: 'testCodeFailure'
-      error: |-
-        Expected values to be strictly equal:
-        + actual - expected
-        
-        + 'resort_scope_only'
-        - 'verified_accommodation_preview'
-        
-      code: 'ERR_ASSERTION'
-      name: 'AssertionError'
-      expected: 'verified_accommodation_preview'
-      actual: 'resort_scope_only'
-      operator: 'strictEqual'
-      stack: |-
-        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:809:10)
-        process.processTicksAndRejections (node:internal/process/task_queues:103:5)
-        async Test.run (node:internal/test_runner/test:1054:7)
-        async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
       ...
     # Subtest: AI-38 stale or unrelated numeric messages cannot bypass resort-only restriction
     not ok 35 - AI-38 stale or unrelated numeric messages cannot bypass resort-only restriction
       ---
-      duration_ms: 2.232915
+      duration_ms: 4.669403
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:816:1'
       failureType: 'testCodeFailure'
@@ -504,7 +289,7 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: AI-37 selecting a named accommodation or browsing rooms still works without guest question
     not ok 36 - AI-37 selecting a named accommodation or browsing rooms still works without guest question
       ---
-      duration_ms: 2.548166
+      duration_ms: 6.550886
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:839:1'
       failureType: 'testCodeFailure'
@@ -527,7 +312,7 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: Undated room discovery uses fresh DB preview without claiming slot availability
     not ok 37 - Undated room discovery uses fresh DB preview without claiming slot availability
       ---
-      duration_ms: 2.431725
+      duration_ms: 9.897391
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:846:1'
       failureType: 'testCodeFailure'
@@ -551,7 +336,7 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: AI-LIVE-03 focused single preview carries through CR follow-up using fresh DB
     not ok 38 - AI-LIVE-03 focused single preview carries through CR follow-up using fresh DB
       ---
-      duration_ms: 2.6911
+      duration_ms: 8.349827
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:864:1'
       failureType: 'testCodeFailure'
@@ -571,11 +356,11 @@ No live Gemini, PayPal or production MySQL credentials.
         async Test.run (node:internal/test_runner/test:1054:7)
         async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
       ...
-    # Gemini request failed (HTTP 500).
     # Subtest: AI-LIVE-03 multiple possible rooms never inherit old focus or invent CR
+    # Gemini request failed (HTTP 500).
     not ok 39 - AI-LIVE-03 multiple possible rooms never inherit old focus or invent CR
       ---
-      duration_ms: 2.430295
+      duration_ms: 5.837035
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:911:1'
       failureType: 'testCodeFailure'
@@ -598,7 +383,7 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: Invalid same-day reversed times never query availability
     not ok 40 - Invalid same-day reversed times never query availability
       ---
-      duration_ms: 8.668862
+      duration_ms: 12.581122
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:945:1'
       failureType: 'testCodeFailure'
@@ -621,7 +406,7 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: Valid same-day day tour checks current reservation_items and offers a suggestion
     not ok 41 - Valid same-day day tour checks current reservation_items and offers a suggestion
       ---
-      duration_ms: 3.347935
+      duration_ms: 6.817768
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:953:1'
       failureType: 'testCodeFailure'
@@ -644,13 +429,13 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: Occupied window cannot generate an AI booking suggestion
     ok 42 - Occupied window cannot generate an AI booking suggestion
       ---
-      duration_ms: 4.337153
+      duration_ms: 10.174392
       type: 'test'
       ...
     # Subtest: Alternative schedule checks active reservation_items without writing
     not ok 43 - Alternative schedule checks active reservation_items without writing
       ---
-      duration_ms: 3.055122
+      duration_ms: 6.954177
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:979:1'
       failureType: 'testCodeFailure'
@@ -673,7 +458,7 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: Legacy SQL writer removed; frontend navigates through secure Customer form
     not ok 44 - Legacy SQL writer removed; frontend navigates through secure Customer form
       ---
-      duration_ms: 2.830682
+      duration_ms: 4.12007
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:995:1'
       failureType: 'testCodeFailure'
@@ -2206,3 +1991,218 @@ No live Gemini, PayPal or production MySQL credentials.
             actions.append(ask);
             body.appendChild(actions);
             card.appendChild(body);
+            grid.appendChild(card);
+          });
+          wrapper.appendChild(grid);
+          messages.appendChild(wrapper);
+          messages.scrollTop = messages.scrollHeight;
+          if (save) {
+            addToChatHistory({ type: "recommendations", cards });
+          }
+        }
+        
+        function createBookingFromPreview(preview, button) {
+          // UI-37: Public landing visitors must always go through Customer login.
+          // A stale localStorage user object is not proof of authentication.
+          if (AI_IS_PUBLIC_LANDING) {
+            window.location.href = aiBookingUrl(preview?.room_id,preview?.booking_selection || {check_in:preview?.check_in,slot_type:preview?.slot_type,stay_duration:preview?.stay_duration,guests:preview?.guests});
+            return;
+          }
+          // AI suggestions never create reservations directly. The Customer
+          // booking form owns final dates, slot pricing, payment and conflict checks.
+          const user = JSON.parse(localStorage.getItem("user") || "null");
+          const frontendPrefix = window.location.pathname.includes("/frontend/")
+            ? "/frontend"
+            : "";
+        
+          if (!user || String(user.role || "").toLowerCase() !== "customer") {
+            appendAiSystemNote("Please log in as a Customer before continuing to booking.");
+            window.location.href = frontendPrefix + "/authHTML/login.html";
+            return;
+          }
+        
+          if (preview?.booking_schema !== "accommodations_v2") {
+            appendAiSystemNote("This AI suggestion is outdated. Please ask for an updated accommodation recommendation.");
+            return;
+          }
+        
+          const accommodationId = Number(preview?.room_id);
+          if (!Number.isSafeInteger(accommodationId) || accommodationId <= 0) {
+            appendAiSystemNote("Please select an accommodation on the booking page.");
+            return;
+          }
+        
+          button.disabled = true;
+          button.textContent = "Opening booking form...";
+          appendAiSystemNote("No reservation has been created yet. Confirm dates, slot, official price and payment on the secure booking form.");
+          window.location.href = aiBookingUrl(accommodationId,preview.booking_selection || {check_in:preview.check_in,slot_type:preview.slot_type,stay_duration:preview.stay_duration,guests:preview.guests});
+        }
+        
+        function getOfflineFallbackReply(message, storedContext = {}, pageContext = {}) {
+          const text = String(message || "").toLowerCase();
+          const context = {
+            ...storedContext,
+            ...pageContext,
+          };
+        
+          const extracted = extractOfflineDetails(message);
+          const detectedLanguage = detectOfflineLanguage(message, context);
+          extracted.language_style = detectedLanguage;
+        
+          const merged = mergeContext(context, extracted);
+        
+          // Resort-wide verified facts are still available when Gemini/network fails.
+          // This helper never creates a booking or infers any unconfirmed policy.
+          const inquiryLanguage = /\b(?:may|meron|kayo|ba|bang|po|opo|libre|libreng|magkano|pwede|puwede|saan|sasakyan)\b/i.test(String(message))
+            ? "taglish" : detectedLanguage;
+          const verifiedResortReply = getOfflineVerifiedResortReply(
+            message, inquiryLanguage, merged
+          );
+          if (verifiedResortReply) return verifiedResortReply;
+        
+          if (detectedLanguage === "tagalog") {
+            return getTagalogFallbackReply(text, merged);
+          }
+        
+          if (detectedLanguage === "taglish") {
+            return getTaglishFallbackReply(text, merged);
+          }
+        
+          return getEnglishFallbackReply(text, merged);
+        }
+        
+        // Keep this tiny offline mirror aligned with backend/resortInquiryKnowledge.js.
+        // Source of truth for parking: client-confirmed November 19, 2026;
+        // no-animals policy: client-confirmed November 22, 2026.
+        // Outside food/drinks allowed (corkage fee unknown), free Wi-Fi in Rooms only,
+         // pool always open with no swimwear restrictions. Pool fees still unverified.
+        function getOfflineVerifiedResortReply(message, language, context) {
+          const t = String(message || "").normalize("NFKC").toLowerCase().trim();
+          if (!t || t.length > 600) return null;
+          const park = /\b(?:parking|park|car\s*park|paradahan|mag[ -]?park)\b/i.test(t);
+          const address = /\b(?:address|located|location|nasaan\s+(?:ang\s+)?resort|saan\s+(?:kayo|ang\s+resort))\b/i.test(t);
+          const hours = /\b(?:open\s+(?:24\s*(?:\/\s*7|hours?)|everyday)|operating\s+hours?|opening\s+hours?|bukas\s+ba\s+kayo)\b/i.test(t);
+          const contact = /\b(?:contact\s+(?:number|details?)|phone\s+number|hotline|numero\s+ng\s+resort)\b/i.test(t);
+          const pool = /\b(?:swimming\s+pool|pool(?![\s-]?(?:shade|side|pavilion|pavillion))|may\s+(?:ba\s+)?pool|have\s+(?:a\s+)?pool|swim(?:ming)?\s+(?:at|hours?|anytime|attire|clothes|wear|dress)|swimwear|palanguyan|panglangoy)\b/i.test(t);
+          const entry = /\b(?:entrance\s+(?:fee|charge|payment)|free\s+entrance|libre(?:ng)?(?:\s+rin)?(?:\s+ba)?\s+(?:ang\s+)?entrance)\b/i.test(t);
+          const lang = ["english", "tagalog", "taglish"].includes(language) ? language : "english";
+          const notice = lang === "english"
+            ? "AI is temporarily unavailable. Offline assistant mode is active."
+            : lang === "tagalog"
+              ? "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna."
+              : "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.";
+          const reply = (english, tagalog, taglish) =>
+            ({ english, tagalog, taglish })[lang];
+          const withReply = answer => ({ modeNotice: notice, reply: answer, context });
+        
+          // AI-60: Approved no-pets policy also applies when the backend is offline.
+          // The question may involve a named room because this restriction is
+          // property-wide. Never infer pet-fee exceptions or pet boarding options.
+          const pet = /\b(?:pets?|pet[\s-]?friendly|dogs?|cats?|pupp(?:y|ies)|kittens?|animals?|aso|pusa|hayop|alagang\s+hayop|iro|iring|mascotas?|perros?|gatos?)\b/iu.test(t) ||
+            /(?:宠物|猫|狗)/u.test(t);
+          const wifi = /\b(?:wi-?fi|wireless|internet)\b/i.test(t);
+          const food = /\b(?:corkage|outside[\s-]?food|outside[\s-]?drinks?|own\s+(?:food|drinks?|beverages?)|bring(?:ing)?\s+(?:(?:my|our|your|their|some|own)\s+)?(?:food|drinks?|snacks?|beverages?)|baon|magbaon|dalang\s+(?:pagkain|inumin|food)|magdala\s+(?:ng\s+)?(?:pagkain|inumin|food)|(?:pwede|puwede)\s+.*\b(?:pagkain|inumin)\b|food\s+policy|food\s+allowed)\b/i.test(t);
+          // AI-62: Same resort-confirmed guest permissions offline, without claiming
+          // any booked accommodation includes karaoke/audio equipment. In multi-part
+          // inquiries, include the other verified facts rather than ignoring them.
+          const guestAlcohol = /\b(?:alcohol(?:ic)?|beer|liquor|wine|spirits|alak|inuming\s+may\s+alkohol)\b/i.test(t);
+          const guestSmoke = /\b(?:smok(?:e|ing)|cigarettes?|tobacco|vap(?:e|ing)|e[\s-]?cigarettes?|yosi|sigarilyo|manigarilyo|mag[\s-]?yosi)\b/i.test(t);
+          const guestAudio = /\b(?:videoke|karaoke|mag[\s-]?videoke|mag[\s-]?karaoke|speakers?|bluetooth\s+speakers?|sound\s+system|soundbox|music\s+system|microphone|mikropono)\b/i.test(t);
+          const audioProvided = guestAudio &&
+            /\b(?:do\s+you\s+(?:have|provide|offer)|(?:is\s+there|are\s+there)\s+(?:(?:a|any|some)\s+)?(?:videoke|karaoke|speakers?|sound\s+system)|included|inclusions?|comes?\s+with|may\s+(?:(?:ba|po|sariling)\s+)*(?:videoke|karaoke|speaker)|meron\s+(?:(?:ba|po|sariling)\s+)*(?:videoke|karaoke|speaker)|kasama\s+(?:(?:ba|po|ang)\s+)*(?:videoke|karaoke|speaker)|provided|built[\s-]?in|rental|rent(?:ing)?)\b/i.test(t) &&
+            !/\b(?:bring|bringing|own|our|my|dalhin|magdala|pwede|puwede|allowed|bawal)\b/i.test(t);
+          const alcoholRetail = guestAlcohol && /\b(?:sell|selling|sold|serve|serving|provide|buy|purchase|order|for\s+sale|magbenta|nagbebenta|tinda)\b/i.test(t);
+          const otherFinancial = /\b(?:downpayment|deposit|paypal|refund|booking\s+total|room\s+rate|room\s+price|magkano\s+(?:ang\s+)?(?:room|kwarto))\b/i.test(t);
+          if ((guestAlcohol || guestSmoke || guestAudio) && !audioProvided &&
+              !alcoholRetail && !otherFinancial) {
+            const answer=[];
+            if (guestAlcohol) answer.push(reply(
+              "Yes, guests may bring alcoholic drinks.",
+              "Opo, maaaring magdala ng mga inuming may alkohol.",
+              "Yes po, puwede magdala ng alcoholic drinks."
+            ));
+            if (guestSmoke) answer.push(reply(
+              "Smoking and vaping are allowed.",
+              "Pinapayagan po ang paninigarilyo at paggamit ng vape.",
+              "Allowed po ang smoking at vaping."
+            ));
+            if (guestAudio) answer.push(reply(
+              "You may bring and use your own videoke or speakers.",
+              "Maaari pong magdala at gumamit ng sariling videoke o speakers.",
+              "Puwede po magdala at gumamit ng sariling videoke at speakers."
+            ));
+            answer.push(reply(
+              "The resort has no specific time restrictions for these activities.",
+              "Wala pong itinakdang oras ng pagbabawal ang resort para sa mga gawaing ito.",
+              "Wala pong specific time restrictions ang resort para sa mga ito."
+            ));
+            if (guestSmoke && /\b(?:inside\s+(?:a|the|our|my)\s+room|in\s+(?:a|the|our|my)\s+room|sa\s+(?:loob\s+ng\s+)?(?:room|kwarto|kuwarto|cottage)|indoors?|balcony|poolside|designated\s+(?:area|zone))\b/i.test(t)) answer.push(reply(
+              "Whether smoking/vaping is allowed inside a specific room or area isn't confirmed; please ask Front Desk.",
+              "Hindi pa kumpirmado kung puwede sa loob ng partikular na kuwarto o lugar; pakitanong sa Front Desk.",
+              "Hindi pa confirmed kung puwede mismo sa loob ng room o specific area; pa-check sa Front Desk."
+            ));
+            if (pet) answer.push(reply(
+              "Pets and other animals are not allowed.",
+              "Bawal po ang mga alagang hayop at iba pang hayop.",
+              "Bawal po ang pets at ibang hayop."
+            ));
+            if (wifi) answer.push(reply(
+              "Free Wi-Fi is provided in rooms only, not cottages or common areas.",
+              "Sa mga kuwarto lamang po may libreng Wi-Fi, hindi sa cottages o common areas.",
+              "Sa rooms lang po may free Wi-Fi, hindi sa cottages o common areas."
+            ));
+            if (food) answer.push(reply(
+              "Guests may bring food and drinks. Corkage fees are not yet confirmed.",
+              "Maaaring magdala ng pagkain at inumin. Hindi pa kumpirmado ang corkage fee.",
+              "Puwede magdala ng food at drinks; hindi pa confirmed ang corkage fee."
+            ));
+            if (pool) answer.push(reply(
+              "The pool is always open, with no specific swimwear restrictions.",
+              "Laging bukas ang pool at walang partikular na swimwear restrictions.",
+              "Always open po ang pool, walang specific swimwear restrictions."
+            ));
+            if (park) answer.push(reply(
+              "Vehicle parking is free.","Libre po ang paradahan ng mga sasakyan.",
+              "Free po ang parking ng vehicles."
+            ));
+            return withReply(answer.join(" "));
+          }
+        
+          if (pet && !/\b(?:downpayment|deposit|paypal|refund|booking\s+total|room\s+rate|magkano\s+(?:ang\s+)?(?:room|kwarto))\b/i.test(t)) {
+            const policy = reply(
+              "Sorry, animals and pets are not allowed at Arvic Seaside Resort, including dogs and cats.",
+              "Pasensya na po, bawal magdala ng mga hayop sa Arvic Seaside Resort, kasama ang aso at pusa.",
+              "Sorry po, hindi pet-friendly ang Arvic Seaside Resort. Bawal magdala ng pets o kahit anong hayop, including dogs and cats."
+            );
+            const parkingNote = park ? reply(
+              " Parking for vehicles is free.", " Libre ang parking ng sasakyan.",
+              " Free po ang parking ng vehicles."
+            ) : "";
+            const wifiNote = wifi ? reply(
+              " Free Wi-Fi is available in room accommodations only, not in cottages or common areas.",
+              " Sa mga kuwarto lamang po may libreng Wi-Fi, hindi sa cottages o common areas.",
+              " Sa rooms lang po may free Wi-Fi, hindi sa cottages o common areas."
+            ) : "";
+            const foodNote = food ? reply(
+              " Guests may bring their own food and drinks. Corkage fees have not been confirmed.",
+              " Maaari pong magdala ng pagkain at inumin. Hindi pa kumpirmado ang corkage fee.",
+              " Puwede magdala ng sariling food at drinks; hindi pa confirmed ang corkage fee."
+            ) : "";
+            return withReply(policy + parkingNote + wifiNote + foodNote);
+          }
+        
+          // AI-61: Offline facts mirror the verified backend; don't guess corkage,
+          // Wi-Fi credentials, pool entrance price or unrelated safety rules.
+          const alcoholRule = /\b(?:alcohol(?:ic)?|beer|liquor|wine|alak|smoking|vaping|yosi|sigarilyo|videoke|karaoke)\b/i.test(t);
+          const otherBooking= /\b(?:downpayment|deposit|paypal|refund|booking\s+status|room\s+rate|magkano\s+(?:ang\s+)?(?:room|kwarto))\b/i.test(t);
+          if ((wifi || food || pool) && !alcoholRule && !otherBooking) {
+            const cottage = /\b(?:cottages?|kubo|nipa\s+hut|pavilions?|function\s+areas?|lobby|common\s+areas?|poolside)\b/i.test(t) &&
+              !/\bsingle\s+room\s+cottage\b/i.test(t);
+            const asksCorkage = food && /\b(?:corkage|charge|fee|free|libre|bayad|magkano|how\s+much)\b/i.test(t);
+            const asksPoolFee = pool && (
+              /\b(?:pool|swimming|piscina)\b.{0,55}\b(?:entrance|admission|fees?|ticket|price|cost|libre|free|magkano|how\s+much|bayad)\b/i.test(t) ||
+              /\b(?:entrance|admission|fees?|ticket|price|cost|magkano|how\s+much|bayad)\b.{0,55}\b(?:pool|swimming|piscina)\b/i.test(t)
+            );
+            const asksPoolRule = pool && /\b(?:life[\s-]?guards?|children|bata|safety|supervis|age|depth|rules?|restrictions?)\b/i.test(t);
+            const answer=[];
+            if (wifi) answer.push(cottage ? reply(
