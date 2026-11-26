@@ -237,7 +237,27 @@ function multiAmenityReply(room, kinds, language = "taglish") {
   }
   return messages.join(" ");
 }
+// Resolve explicit names from current inventory using whole-token matches.
+function resolveAmenityTarget(rows, message) {
+  const norm = v => String(v || "").normalize("NFKC").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const q = " " + norm(message) + " ", hits = [];
+  for (const row of rows || []) {
+    const name = norm(row.room_name || row.name);
+    if (!name) continue;
+    const needle = " " + name + " ";
+    let at = q.indexOf(needle);
+    while (at !== -1) {
+      hits.push({row, start:at, end:at+needle.length});
+      at = q.indexOf(needle, at+1);
+    }
+  }
+  const full = hits.filter(h => !hits.some(other =>
+    other.start <= h.start && other.end >= h.end &&
+    (other.start < h.start || other.end > h.end)));
+  const unique = [...new Map(full.map(h => [h.row.id, h.row])).values()];
+  return {record: unique.length === 1 ? unique[0] : null, ambiguous: unique.length > 1};
+}
 module.exports = {
-  requestedAmenity, requestedAmenities, amenityEvidence,
+  resolveAmenityTarget, requestedAmenity, requestedAmenities, amenityEvidence,
   amenityReply, multiAmenityReply,
 };
