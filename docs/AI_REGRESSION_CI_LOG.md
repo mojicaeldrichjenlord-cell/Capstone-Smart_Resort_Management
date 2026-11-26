@@ -1,6 +1,6 @@
 # AI Mock Regression — testing branch
 
-Source commit: 0fb586eb6a732b6d7b5c7cf77371b5681d641650
+Source commit: 749dff24c27ba955e08f1ff0c2b56e3c5d46a6c6
 Exit code: 1
 
 No live Gemini, PayPal or production MySQL credentials.
@@ -10,37 +10,37 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: UI-81 reports retain both paid-charge figures in one card, not the three removed cards
     ok 1 - UI-81 reports retain both paid-charge figures in one card, not the three removed cards
       ---
-      duration_ms: 1.687003
+      duration_ms: 1.080994
       type: 'test'
       ...
     # Subtest: UI-34 reports retain paid charges, accurate caveat and balanced print layout
     ok 2 - UI-34 reports retain paid charges, accurate caveat and balanced print layout
       ---
-      duration_ms: 0.56918
+      duration_ms: 0.390897
       type: 'test'
       ...
     # Subtest: UI-34 walk-in preview shows full accommodation payment and NO 50% card
     ok 3 - UI-34 walk-in preview shows full accommodation payment and NO 50% card
       ---
-      duration_ms: 27.098766
+      duration_ms: 285.014728
       type: 'test'
       ...
     # Subtest: UI-34 Facebook manual reservation still previews a 50% minimum payment
     ok 4 - UI-34 Facebook manual reservation still previews a 50% minimum payment
       ---
-      duration_ms: 2.027257
+      duration_ms: 0.959645
       type: 'test'
       ...
     # Subtest: UI-34 preview code is presentation-only; secure payment flow still enforces full walk-in
     ok 5 - UI-34 preview code is presentation-only; secure payment flow still enforces full walk-in
       ---
-      duration_ms: 0.599437
+      duration_ms: 0.43015
       type: 'test'
       ...
     # Subtest: AI-44 customer voice has no manual language selector or persisted language setting
     not ok 6 - AI-44 customer voice has no manual language selector or persisted language setting
       ---
-      duration_ms: 11.574473
+      duration_ms: 5.748802
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-auto-multilingual-ui44.test.js:16:1'
       failureType: 'testCodeFailure'
@@ -1362,25 +1362,25 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: AI-44 voice and text requests detect each utterance independently
     ok 7 - AI-44 voice and text requests detect each utterance independently
       ---
-      duration_ms: 0.463133
+      duration_ms: 0.324281
       type: 'test'
       ...
     # Subtest: AI-44 signed Gemini audio accepts mixed spoken languages without translating
     ok 8 - AI-44 signed Gemini audio accepts mixed spoken languages without translating
       ---
-      duration_ms: 0.251217
+      duration_ms: 0.130003
       type: 'test'
       ...
     # Subtest: AI-44 safe Romanized Mandarin greeting and multilingual resort guard
     ok 9 - AI-44 safe Romanized Mandarin greeting and multilingual resort guard
       ---
-      duration_ms: 0.250837
+      duration_ms: 0.113897
       type: 'test'
       ...
     # Subtest: AI-44 all authenticated Customer pages load fresh voice implementation
     not ok 10 - AI-44 all authenticated Customer pages load fresh voice implementation
       ---
-      duration_ms: 0.419992
+      duration_ms: 0.223781
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-auto-multilingual-ui44.test.js:51:1'
       failureType: 'testCodeFailure'
@@ -1781,45 +1781,45 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: AI-36 history trivia is politely refused with zero Gemini credits or SQL reads
     ok 11 - AI-36 history trivia is politely refused with zero Gemini credits or SQL reads
       ---
-      duration_ms: 200.118186
+      duration_ms: 71.607305
       type: 'test'
       ...
     # Subtest: AI-36 second non-resort turn is still blocked even after prior refusal
     ok 12 - AI-36 second non-resort turn is still blocked even after prior refusal
       ---
-      duration_ms: 18.512079
+      duration_ms: 10.383163
       type: 'test'
       ...
     # Subtest: AI-36 mixed history and parking request cannot get a generic AI answer
     ok 13 - AI-36 mixed history and parking request cannot get a generic AI answer
       ---
-      duration_ms: 10.61703
+      duration_ms: 4.032566
       type: 'test'
       ...
     # Subtest: Retired AI create-booking route refuses unauthenticated direct writes
     ok 14 - Retired AI create-booking route refuses unauthenticated direct writes
       ---
-      duration_ms: 16.922697
+      duration_ms: 3.196011
       type: 'test'
       ...
     # Subtest: Retired AI create-booking cannot write with a spoofed user_id
     ok 15 - Retired AI create-booking cannot write with a spoofed user_id
       ---
-      duration_ms: 13.050093
+      duration_ms: 3.849124
       type: 'test'
       ...
     # Subtest: AI chat with missing message is rejected without DB access
     ok 16 - AI chat with missing message is rejected without DB access
       ---
-      duration_ms: 6.611658
+      duration_ms: 2.963617
       type: 'test'
       ...
     # Subtest: AI-LIVE-05 count 45 cottages then cheapest follows cottage scope and exact prices
     not ok 17 - AI-LIVE-05 count 45 cottages then cheapest follows cottage scope and exact prices
       ---
-      duration_ms: 137.439488
+      duration_ms: 139.214772
       type: 'test'
-      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:288:1'
+      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:292:1'
       failureType: 'testCodeFailure'
       error: |-
         Expected values to be strictly equal:
@@ -1832,7 +1832,7 @@ No live Gemini, PayPal or production MySQL credentials.
       actual: 1
       operator: 'strictEqual'
       stack: |-
-        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:337:10)
+        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:341:10)
         process.processTicksAndRejections (node:internal/process/task_queues:103:5)
         async Test.run (node:internal/test_runner/test:1054:7)
         async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
@@ -1840,9 +1840,9 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: AI-LIVE-05 named cheapest replies reread Admin pricing, no cached ₱800
     not ok 18 - AI-LIVE-05 named cheapest replies reread Admin pricing, no cached ₱800
       ---
-      duration_ms: 22.767828
+      duration_ms: 12.799819
       type: 'test'
-      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:340:1'
+      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:344:1'
       failureType: 'testCodeFailure'
       error: |-
         Expected values to be strictly equal:
@@ -1855,7 +1855,7 @@ No live Gemini, PayPal or production MySQL credentials.
       actual: 2
       operator: 'strictEqual'
       stack: |-
-        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:360:10)
+        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:364:10)
         process.processTicksAndRejections (node:internal/process/task_queues:103:5)
         async Test.run (node:internal/test_runner/test:1054:7)
         async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
@@ -1863,9 +1863,9 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: AI-LIVE-05 overnight cheapest ignores cheaper Day Tour and zero prices
     not ok 19 - AI-LIVE-05 overnight cheapest ignores cheaper Day Tour and zero prices
       ---
-      duration_ms: 8.852492
+      duration_ms: 4.572165
       type: 'test'
-      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:363:1'
+      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:367:1'
       failureType: 'testCodeFailure'
       error: |-
         Expected values to be strictly equal:
@@ -1881,7 +1881,7 @@ No live Gemini, PayPal or production MySQL credentials.
       actual: 'verified_catalog_rates'
       operator: 'strictEqual'
       stack: |-
-        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:375:10)
+        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:379:10)
         process.processTicksAndRejections (node:internal/process/task_queues:103:5)
         async Test.run (node:internal/test_runner/test:1054:7)
         async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
@@ -1889,9 +1889,9 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: AI-LIVE-05 same-priced listings never select an arbitrary old room
     not ok 20 - AI-LIVE-05 same-priced listings never select an arbitrary old room
       ---
-      duration_ms: 6.810598
+      duration_ms: 3.753142
       type: 'test'
-      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:383:1'
+      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:387:1'
       failureType: 'testCodeFailure'
       error: |-
         Expected values to be strictly equal:
@@ -1904,7 +1904,7 @@ No live Gemini, PayPal or production MySQL credentials.
       actual: 1
       operator: 'strictEqual'
       stack: |-
-        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:400:10)
+        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:404:10)
         process.processTicksAndRejections (node:internal/process/task_queues:103:5)
         async Test.run (node:internal/test_runner/test:1054:7)
         async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
@@ -1912,9 +1912,9 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: AI-LIVE-05 selected cheapest room remains focused for a CR follow-up
     not ok 21 - AI-LIVE-05 selected cheapest room remains focused for a CR follow-up
       ---
-      duration_ms: 20.152835
+      duration_ms: 14.780546
       type: 'test'
-      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:403:1'
+      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:407:1'
       failureType: 'testCodeFailure'
       error: |-
         Expected values to be strictly equal:
@@ -1927,7 +1927,7 @@ No live Gemini, PayPal or production MySQL credentials.
       actual: 1
       operator: 'strictEqual'
       stack: |-
-        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:435:10)
+        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:439:10)
         process.processTicksAndRejections (node:internal/process/task_queues:103:5)
         async Test.run (node:internal/test_runner/test:1054:7)
         async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
@@ -1935,15 +1935,15 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: AI-LIVE-05 unknown scope asks rooms or cottages without spending credits
     ok 22 - AI-LIVE-05 unknown scope asks rooms or cottages without spending credits
       ---
-      duration_ms: 7.297536
+      duration_ms: 4.82689
       type: 'test'
       ...
     # Subtest: AI-LIVE-04 Ilang rooms meron kayo returns a count, not room cards
     not ok 23 - AI-LIVE-04 Ilang rooms meron kayo returns a count, not room cards
       ---
-      duration_ms: 4.333343
+      duration_ms: 3.756144
       type: 'test'
-      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:451:1'
+      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:455:1'
       failureType: 'testCodeFailure'
       error: |-
         The input did not match the regular expression /date at time/i. Input:
@@ -1956,7 +1956,7 @@ No live Gemini, PayPal or production MySQL credentials.
       actual: 'May 3 rooms pong nakalista sa resort ngayon (2 marked available). Bilang ito ng mga nakalista, hindi pa kumpirmadong bakante sa napiling petsa at oras.'
       operator: 'match'
       stack: |-
-        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:467:10)
+        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:471:10)
         process.processTicksAndRejections (node:internal/process/task_queues:103:5)
         async Test.run (node:internal/test_runner/test:1054:7)
         async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
@@ -1964,9 +1964,9 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: Inventory counting always re-reads Admin state and never caps at 150
     not ok 24 - Inventory counting always re-reads Admin state and never caps at 150
       ---
-      duration_ms: 7.76678
+      duration_ms: 5.458831
       type: 'test'
-      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:480:1'
+      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:484:1'
       failureType: 'testCodeFailure'
       error: |-
         Expected values to be strictly equal:
@@ -1979,7 +1979,7 @@ No live Gemini, PayPal or production MySQL credentials.
       actual: 1
       operator: 'strictEqual'
       stack: |-
-        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:494:10)
+        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:498:10)
         process.processTicksAndRejections (node:internal/process/task_queues:103:5)
         async Test.run (node:internal/test_runner/test:1054:7)
         async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
@@ -1987,9 +1987,9 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: Count questions distinguish room, cottage, function and available listing statuses
     not ok 25 - Count questions distinguish room, cottage, function and available listing statuses
       ---
-      duration_ms: 5.935368
+      duration_ms: 3.882866
       type: 'test'
-      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:497:1'
+      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:501:1'
       failureType: 'testCodeFailure'
       error: |-
         Ilang available na rooms meron kayo?
@@ -2002,7 +2002,7 @@ No live Gemini, PayPal or production MySQL credentials.
       actual: 1
       operator: 'strictEqual'
       stack: |-
-        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:518:12)
+        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:522:12)
         process.processTicksAndRejections (node:internal/process/task_queues:103:5)
         async Test.run (node:internal/test_runner/test:1054:7)
         async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
@@ -2010,9 +2010,9 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: AI-37 generic recommendation asks for guests first, no random cards or credits
     not ok 26 - AI-37 generic recommendation asks for guests first, no random cards or credits
       ---
-      duration_ms: 6.165366
+      duration_ms: 3.747875
       type: 'test'
-      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:524:1'
+      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:528:1'
       failureType: 'testCodeFailure'
       error: |-
         Expected values to be strictly equal:
@@ -2025,7 +2025,7 @@ No live Gemini, PayPal or production MySQL credentials.
       actual: 1
       operator: 'strictEqual'
       stack: |-
-        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:536:10)
+        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:540:10)
         process.processTicksAndRejections (node:internal/process/task_queues:103:5)
         async Test.run (node:internal/test_runner/test:1054:7)
         async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
@@ -2033,21 +2033,21 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: AI-37 natural 4 kami follow-up filters fresh rooms by capacity and gives cards
     ok 27 - AI-37 natural 4 kami follow-up filters fresh rooms by capacity and gives cards
       ---
-      duration_ms: 10.406878
+      duration_ms: 5.573486
       type: 'test'
       ...
     # Subtest: AI-37 bare 4, apat kami and 4 po follow the guest prompt without extra Gemini
     ok 28 - AI-37 bare 4, apat kami and 4 po follow the guest prompt without extra Gemini
       ---
-      duration_ms: 10.07503
+      duration_ms: 6.205361
       type: 'test'
       ...
     # Subtest: AI-37 previously supplied guests are reused; explicit group size takes precedence
     not ok 29 - AI-37 previously supplied guests are reused; explicit group size takes precedence
       ---
-      duration_ms: 7.043061
+      duration_ms: 6.267521
       type: 'test'
-      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:590:1'
+      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:594:1'
       failureType: 'testCodeFailure'
       error: |-
         Expected values to be strictly equal:
@@ -2060,7 +2060,7 @@ No live Gemini, PayPal or production MySQL credentials.
       actual: 1
       operator: 'strictEqual'
       stack: |-
-        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:602:10)
+        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:606:10)
         process.processTicksAndRejections (node:internal/process/task_queues:103:5)
         async Test.run (node:internal/test_runner/test:1054:7)
         async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
@@ -2068,9 +2068,9 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: AI-38 after 10 guests, 7 pala refreshes matching rooms instead of refusing the topic
     not ok 30 - AI-38 after 10 guests, 7 pala refreshes matching rooms instead of refusing the topic
       ---
-      duration_ms: 14.066135
+      duration_ms: 10.980901
       type: 'test'
-      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:614:1'
+      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:618:1'
       failureType: 'testCodeFailure'
       error: |-
         Expected values to be strictly equal:
@@ -2085,7 +2085,7 @@ No live Gemini, PayPal or production MySQL credentials.
       actual: 'resort_scope_only'
       operator: 'strictEqual'
       stack: |-
-        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:655:10)
+        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:659:10)
         process.processTicksAndRejections (node:internal/process/task_queues:103:5)
         async Test.run (node:internal/test_runner/test:1054:7)
         async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
@@ -2093,9 +2093,9 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: AI-38 corrected guest count sees newly updated Admin prices and inventory
     not ok 31 - AI-38 corrected guest count sees newly updated Admin prices and inventory
       ---
-      duration_ms: 9.29709
+      duration_ms: 7.158617
       type: 'test'
-      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:668:1'
+      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:672:1'
       failureType: 'testCodeFailure'
       error: |-
         Expected values to be strictly equal:
@@ -2110,7 +2110,7 @@ No live Gemini, PayPal or production MySQL credentials.
       actual: 'resort_scope_only'
       operator: 'strictEqual'
       stack: |-
-        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:703:10)
+        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:707:10)
         process.processTicksAndRejections (node:internal/process/task_queues:103:5)
         async Test.run (node:internal/test_runner/test:1054:7)
         async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
@@ -2119,9 +2119,9 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: AI-38 original family-room scope persists after revising 10 guests to 7
     not ok 32 - AI-38 original family-room scope persists after revising 10 guests to 7
       ---
-      duration_ms: 11.05698
+      duration_ms: 7.12238
       type: 'test'
-      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:711:1'
+      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:715:1'
       failureType: 'testCodeFailure'
       error: |-
         Expected values to be strictly equal:
@@ -2134,7 +2134,7 @@ No live Gemini, PayPal or production MySQL credentials.
       actual: 500
       operator: 'strictEqual'
       stack: |-
-        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:735:10)
+        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:739:10)
         process.processTicksAndRejections (node:internal/process/task_queues:103:5)
         async Test.run (node:internal/test_runner/test:1054:7)
         async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
@@ -2142,9 +2142,9 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: AI-45 natural two-to-seven follow-up retains group search even after language switch
     not ok 33 - AI-45 natural two-to-seven follow-up retains group search even after language switch
       ---
-      duration_ms: 7.259314
+      duration_ms: 4.95535
       type: 'test'
-      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:742:1'
+      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:746:1'
       failureType: 'testCodeFailure'
       error: |-
         Pito pala kami
@@ -2159,7 +2159,7 @@ No live Gemini, PayPal or production MySQL credentials.
       actual: 'resort_scope_only'
       operator: 'strictEqual'
       stack: |-
-        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:776:12)
+        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:780:12)
         process.processTicksAndRejections (node:internal/process/task_queues:103:5)
         async Test.run (node:internal/test_runner/test:1054:7)
         async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
@@ -2167,9 +2167,9 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: AI-45 a guest-specific family-room preview keeps category on count correction
     not ok 34 - AI-45 a guest-specific family-room preview keeps category on count correction
       ---
-      duration_ms: 6.815086
+      duration_ms: 4.407784
       type: 'test'
-      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:787:1'
+      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:791:1'
       failureType: 'testCodeFailure'
       error: |-
         Expected values to be strictly equal:
@@ -2184,7 +2184,7 @@ No live Gemini, PayPal or production MySQL credentials.
       actual: 'resort_scope_only'
       operator: 'strictEqual'
       stack: |-
-        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:805:10)
+        TestContext.<anonymous> (/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:809:10)
         process.processTicksAndRejections (node:internal/process/task_queues:103:5)
         async Test.run (node:internal/test_runner/test:1054:7)
         async Test.processPendingSubtests (node:internal/test_runner/test:744:7)
@@ -2192,9 +2192,9 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: AI-38 stale or unrelated numeric messages cannot bypass resort-only restriction
     not ok 35 - AI-38 stale or unrelated numeric messages cannot bypass resort-only restriction
       ---
-      duration_ms: 6.338017
+      duration_ms: 2.540237
       type: 'test'
-      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:812:1'
+      location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-booking-security.test.js:816:1'
       failureType: 'testCodeFailure'
       error: |-
         7 pala
