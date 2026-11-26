@@ -72,6 +72,7 @@ function catalogRateOverview(catalog, message, language="taglish") {
     return "- " + String(room.room_name||"Accommodation").slice(0,100) +
       ": Day Tour " + formatPeso(positiveMoney(room.day_price)) +
       " | Overnight " + formatPeso(positiveMoney(room.overnight_price)) +
+      " | Extended " + formatPeso(positiveMoney(room.extended_price)) +
       " | " + pax;
   });
   if(rows.length>chosen.length) lines.push(language==="taglish" ? "- May iba pa pong accommodation sa website; piliin ang type para sa complete details." :
