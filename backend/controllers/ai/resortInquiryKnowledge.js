@@ -223,8 +223,8 @@ function matchVerifiedGuestAmenities(message) {
   const food=/\b(?:corkage|outside[\s-]?food|outside[\s-]?drinks?|own\s+(?:food|drinks?|beverages?)|bring(?:ing)?\s+(?:(?:my|our|your|their|some|own)\s+)?(?:food|drinks?|snacks?|beverages?)|baon|magbaon|dalang\s+(?:pagkain|inumin|food)|magdala\s+(?:ng\s+)?(?:pagkain|inumin|food)|pagkain\s+(?:mula\s+sa\s+labas|na\s+dala)|(?:pwede|puwede)\s+.*\b(?:pagkain|inumin)\b|food\s+policy|food\s+allowed)\b/i.test(t);
   const pool=/\b(?:swimming\s+pool|pool(?![\s-]?(?:shade|side|pavilion|pavillion))|swim(?:ming)?\s+(?:time|hours?|attire|wear|clothes|dress\s+code|at\s+night|at\s+\d{1,2}\s*(?:am|pm)|anytime)|swimwear|panglangoy|palanguyan|piscina)\b/i.test(t) || /(?:泳池|游泳池)/u.test(t);
   if (!wifi && !food && !pool) return null;
-  const parking=/\b(?:parking|park(?:ing)?\s+(?:lot|area)|paradahan)\b/i.test(t);
-  const pets=/\b(?:pets?|pet[\s-]?friendly|dogs?|cats?|animals?|aso|pusa|hayop|mascotas?)\b/i.test(t);
+  const parking=/\b(?:parking|park(?:ing)?\s+(?:lot|area)|paradahan|estacionamiento|aparcamiento|estacionar|aparcar)\b/iu.test(t) || /停车|停車|泊车|泊車/u.test(t);
+  const pets=/\b(?:pets?|pet[\s-]?friendly|dogs?|cats?|animals?|aso|pusa|hayop|iro|iring|mascotas?|perros?|gatos?)\b/iu.test(t) || /宠物|寵物|狗|猫|貓/u.test(t);
   const cottage=/\b(?:cottages?|kubo|nipa\s+hut|pavilions?|function\s+areas?|lobby|common\s+areas?|outside\s+(?:the\s+)?rooms?|poolside)\b/i.test(t) &&
     !/\bsingle\s+room\s+cottage\b/i.test(t);
   const rooms=/\b(?:rooms?|kwarto|kuwarto|family\s+room|double\s+room|single\s+room|bedrooms?)\b/i.test(t);
@@ -437,7 +437,8 @@ function matchVerifiedPetPolicy(message) {
   // model to address all the parts; it will still receive the verified fact.
   if (/\b(?:downpayment|deposit|paypal|refund|cancellation|check[\s-]?in|check[\s-]?out|room\s+rate|total\s+price|magkano\s+(?:ang\s+)?(?:room|kwarto)|presyo\s+ng\s+kwarto)\b/iu.test(t)) return null;
   return {
-    parking: /\b(?:parking|park|paradahan|mag[\s-]?park)\b/i.test(t),
+    // Match localized parking terms when a guest combines pets and parking.
+    parking: /\b(?:parking|park|paradahan|mag[\s-]?park|estacionamiento|aparcamiento|estacionar|aparcar)\b/iu.test(t) || /停车|停車|泊车|泊車/u.test(t),
     wifi: /\b(?:wi[\s-]?fi|internet|wireless)\b/i.test(t),
     food: /\b(?:corkage|outside\s+food|bring\s+food|magdala\s+ng\s+pagkain|dalang\s+pagkain)\b/i.test(t),
   };
