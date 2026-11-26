@@ -32,6 +32,11 @@ function scheduleTurn(message,context={},semantic={}){
  const dateOrSlot=/\b(?:today|tomorrow|tonight|bukas|mamaya|ngayon|monday|tuesday|wednesday|thursday|friday|saturday|sunday|lunes|martes|miyerkules|huwebes|biyernes|sabado|linggo|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may\s+\d|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|overnight|day\s*tour|night|morning|umaga|gabi|extended|(?:22|23)\s*(?:h|hours?|oras)|\d{4}-\d{2}-\d{2})\b/i.test(q);
  const availability=/\b(?:available|availability|vacant|reserved|occupied|free slot|bakante|libre pa|may slot|kailan|kanus-a|puno)\b/i.test(q);
  const informationOnly=/\b(?:magkano|presyo|how much|price|rate|amenit(?:y|ies)|inclusions?|aircon|private cr|wifi|parking|entrance fee|downpayment|payment)\b/i.test(q);
+ const actualDate=/\b(?:today|tomorrow|tonight|bukas|mamaya|ngayon|monday|tuesday|wednesday|thursday|friday|saturday|sunday|lunes|martes|miyerkules|huwebes|biyernes|sabado|linggo|jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may\s+\d|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?|\d{4}-\d{2}-\d{2})\b/i.test(q);
+ if(!actualDate&&!context.availability_pending&&!context.check_in&&!semantic.check_in&&
+    !["ask_availability","ask_alternative_dates"].includes(semantic.intent)&&
+    !/\b(?:availability|vacant|reserved|occupied|free slot|bakante|libre pa|may slot|kailan|kanus-a|puno|available\s+pa|available\s+ba|still\s+available)\b/i.test(q)&&
+    (isPersonalizedRecommendation(q)||/\b(?:recommend|suggest|need|find|looking for|what|which|anong|ano|any)\b/i.test(q)))return false;
  if(informationOnly&&!availability)return false;
  if(scheduleGuestChange(q,context,semantic))return true;
  return semantic.intent==="ask_availability"||semantic.intent==="ask_alternative_dates"||
