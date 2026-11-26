@@ -110,3 +110,28 @@ test("AI-109: cheaper follow-up retains room scope, saved group and verified slo
  assert.match(none.reply,/Wala po akong nakitang mas murang/);
  assert.equal(calls.length,1);
 });
+
+test("AI-110: consent to switch category retains the previous room price ceiling",async()=>{
+ const {matchRoomPriceFollowup}=require("../controllers/ai/aiRoomPriceFollowup");
+ const rows=[
+  {id:11,room_name:"Double Room 1",category_name:"Room",capacity:7,status:"available",overnight_price:4000},
+  {id:12,room_name:"Family Room A",category_name:"Room",capacity:7,status:"available",overnight_price:3500},
+  {id:13,room_name:"Small Nipa Hut 2",category_name:"Cottage",capacity:10,status:"available",overnight_price:800},
+  {id:14,room_name:"Big Cottage",category_name:"Cottage",capacity:10,status:"available",overnight_price:3600},
+  {id:15,room_name:"Tiny Cottage",category_name:"Cottage",capacity:4,status:"available",overnight_price:500},
+ ];
+ const context={intent:"ask_availability",availability_pending:true,guests:6,recommendation_category:"room",check_in:"2026-12-05",slot_preference:"night",stay_duration:1,last_verified_room_ids:[11,12]};
+ const message="Sige, okay lang kahit cottage basta kasya kaming lahat at mas mura.";
+ const cheaper=matchRoomPriceFollowup(message,[],context);
+ assert.equal(cheaper.scope,"cottage");
+ const calls=[];
+ const handler=async(req,res)=>{calls.push(req.body);return res.json({available:true,schedule:{check_out_date:"2026-12-06"}});};
+ const result=await liveAvailability({message,context,catalog:rows,today:"2026-11-26",language:"taglish",handler,cheaper});
+ assert.deepEqual(result.recommendation_cards.map(c=>c.id),[13]);
+ assert.equal(result.recommendation_cards[0].availability_verified,true);
+ assert.equal(result.recommendation_cards[0].selected_rate,800);
+ assert.equal(result.recommendation_cards[0].booking_selection.guests,6);
+ assert.match(result.reply,/₱3,500/);
+ assert.doesNotMatch(result.reply,/Hindi ko po ma-confirm/);
+ assert.deepEqual(calls,[{mode:"add",accommodation_id:13,slot_type:"night",check_in_date:"2026-12-05",stay_duration:1}]);
+});
