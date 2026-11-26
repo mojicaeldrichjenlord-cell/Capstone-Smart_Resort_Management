@@ -1,6 +1,7 @@
 "use strict";
 const {categoryMatches,findExactNamedRoom,requestedCategory,guestCountFromText}=require("./aiVerifiedPreview");
 const {verifiedAccommodationCards}=require("./aiConversationStyle");
+const {explicitGuestCount,correctedGuestCount,isPersonalizedRecommendation}=require("./aiRecommendationIntake");
 const slots=["day_tour","night","day_extended","night_extended"];
 const names={day_tour:"Day Tour",night:"Overnight",day_extended:"Day Extended",night_extended:"Night Extended"};
 const datePattern=/^\d{4}-\d{2}-\d{2}$/;
@@ -10,6 +11,21 @@ function validDate(value){
  return Number.isFinite(date.getTime())&&date.toISOString().slice(0,10)===value;
 }
 function plusDays(date,days){const d=new Date(date+"T00:00:00Z");d.setUTCDate(d.getUTCDate()+days);return d.toISOString().slice(0,10);}
+// AI-108: a revised party size is a new availability search when a fixed
+// date/slot is already known. Never route standalone prices or policies here.
+function scheduleGuestChange(message,context={},semantic={}){
+ const q=String(message||"");
+ if(!validDate(context.check_in)||!slots.includes(context.slot_preference)||
+    !(context.availability_pending===true||["ask_availability","ask_recommendation"].includes(context.intent)))return 0;
+ if(context.max_price||/₱|\b(?:budget|cheaper|mas mura|under|below|price|rate|magkano|presyo|amenit(?:y|ies)|kitchen|aircon|wifi|parking|payment|entrance|discount|deposit|refund)\b/i.test(q))return 0;
+ const normalized=q.replace(/\bpala\s+(?=(?:po\s+)?(?:kami|kaming|tayo|tao|guests?|pax|people)\b)/gi,"");
+ const direct=explicitGuestCount(normalized)||correctedGuestCount(q);
+ const inferred=semantic.scope==="resort"&&semantic.intent==="ask_recommendation"?Number(semantic.guests):0;
+ const count=direct||inferred;
+ if(!Number.isSafeInteger(count)||count<1||count>200||count===Number(context.guests))return 0;
+ if(!isPersonalizedRecommendation(q)&&!requestedCategory(q)&&!correctedGuestCount(q)&&!direct)return 0;
+ return count;
+}
 function scheduleTurn(message,context={},semantic={}){
  const q=String(message||"");
  const related=Boolean(requestedCategory(q)||context.room_id||context.room_name||context.recommendation_category||/\b(?:accommodation|room|kwarto|kuwarto|cottage|pavilion|booking|reservation|slot)\b/i.test(q));
@@ -17,6 +33,7 @@ function scheduleTurn(message,context={},semantic={}){
  const availability=/\b(?:available|availability|vacant|reserved|occupied|free slot|bakante|libre pa|may slot|kailan|kanus-a|puno)\b/i.test(q);
  const informationOnly=/\b(?:magkano|presyo|how much|price|rate|amenit(?:y|ies)|inclusions?|aircon|private cr|wifi|parking|entrance fee|downpayment|payment)\b/i.test(q);
  if(informationOnly&&!availability)return false;
+ if(scheduleGuestChange(q,context,semantic))return true;
  return semantic.intent==="ask_availability"||semantic.intent==="ask_alternative_dates"||
    (related&&(availability||dateOrSlot)&&(dateOrSlot||availability&&/\b(?:pa|ba|is|still|slot|date|when|kailan|bakante|vacant)\b/i.test(q)))||
    (context.availability_pending===true&&/\b(?:book|reserve|reservation|ipa[- ]?reserve|i[- ]?book)\b/i.test(q)&&!informationOnly)||
@@ -47,13 +64,16 @@ async function liveAvailability({message,context={},extracted={},catalog=[],toda
  const direct= q.match(/\b\d{4}-\d{2}-\d{2}\b/)?.[0];
  const date=direct||(/\b(?:tomorrow|bukas)\b/i.test(q)?plusDays(today,1):/\b(?:today|ngayon)\b/i.test(q)?today:extracted.check_in||context.check_in);
  const slot=getSlot(q,extracted,context);
- const guests=guestCountFromText(q)||Number(extracted.guests||context.guests)||0;
+ const changedGuests=scheduleGuestChange(q,context,extracted);
+ const guests=changedGuests||guestCountFromText(q)||Number(extracted.guests||context.guests)||0;
  const explicit=findExactNamedRoom(catalog,q);
- const newCategory=requestedCategory(q)||extracted.recommendation_category;
+ const newCategory=requestedCategory(q)||(!changedGuests?extracted.recommendation_category:null);
  const interpretedName=findExactNamedRoom(catalog,String(extracted.room_name||""));
  const changing=/\b(?:other|another|ibang|alternative|instead|hindi)\b/i.test(q);
- const exact=explicit||(!changing&&interpretedName&&(!newCategory||categoryMatches(interpretedName,newCategory))&&(!requestedCategory(q)||String(interpretedName.room_name)!==String(context.room_name))?interpretedName:null)||(!requestedCategory(q)&&!changing?catalog.find(r=>Number(r.id)===Number(context.room_id))||findExactNamedRoom(catalog,String(context.room_name||"")):null);
- const category=newCategory||context.recommendation_category||null;
+ const exact=explicit||(!changedGuests&&!changing&&interpretedName&&(!newCategory||categoryMatches(interpretedName,newCategory))&&(!requestedCategory(q)||String(interpretedName.room_name)!==String(context.room_name))?interpretedName:null)||(!changedGuests&&!requestedCategory(q)&&!changing?catalog.find(r=>Number(r.id)===Number(context.room_id))||findExactNamedRoom(catalog,String(context.room_name||"")):null);
+ const previousRoom=changedGuests?(catalog.find(r=>Number(r.id)===Number(context.room_id))||findExactNamedRoom(catalog,String(context.room_name||""))):null;
+ const previousCategory=previousRoom?requestedCategory(previousRoom.category_name)||requestedCategory(previousRoom.room_name):null;
+ const category=newCategory||context.recommendation_category||previousCategory||null;
  const duration=Number(extracted.stay_duration||((slot&&slot!==context.slot_preference)?1:context.stay_duration)||1);
  const extendedPending=!slot&&(/\b(?:22|23)\s*(?:h|hours?|oras)\b|\bextended(?:\s+stay)?\b/i.test(q)||context.extended_pending===true);
  const next={...context,availability_pending:true,extended_pending:extendedPending,check_in:date||null,check_out:null,check_in_time:null,check_out_time:null,slot_preference:slot,stay_duration:duration,guests:guests||null,room_id:exact?Number(exact.id):null,room_name:exact?exact.room_name:null,recommendation_category:category,intent:"ask_availability",language_style:language};
@@ -113,4 +133,4 @@ async function liveAvailability({message,context={},extracted={},catalog=[],toda
  if(!candidates.length)return result(say("I couldn't find a matching accommodation. Would another type work?","Wala po akong nakitang tugmang accommodation. Okay po ba ang ibang type?"));
  return result(say(unknown?"I couldn't verify all the requested schedules. Please try again.":"No available match was found among the "+checked.length+" options checked. Would another date or slot work?",unknown?"Hindi ko po na-verify lahat ng schedule. Try po natin ulit.":"Wala po akong nakitang available sa "+checked.length+" options na na-check. Okay po ba ang ibang date o slot?"),no.slice(0,3).map(r=>card(r)).filter(Boolean));
 }
-module.exports={scheduleTurn,liveAvailability,validDate,checkOne,getSlot};
+module.exports={scheduleTurn,scheduleGuestChange,liveAvailability,validDate,checkOne,getSlot};
