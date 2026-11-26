@@ -84,6 +84,9 @@ function isVerifiedPreviewRequest(message) {
   if (/\b(?:budget|under|below|less\s+than|up\s+to|maximum|not\s+more\s+than)\b|₱|\bphp\s*\d/i.test(text) ||
       /\b(?:on|this|next)\s+(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|week|month)\b|\b(?:tomorrow|bukas|today|tonight|specific\s+date|available\s+(?:on|for))\b/i.test(text) ||
       /\b\d{4}-\d{1,2}-\d{1,2}\b/.test(text)) return false;
+  // Structural questions about a named accommodation are not previews,
+  // even when they begin with "What about Double Room 1?".
+  if (/\b(?:ilan|ilang|how many|number of|count of|bilang ng)\s+(?:po\s+)?(?:mga\s+|the\s+)?(?:bed\s*rooms?|beds?|kama|silid(?:\s+tulugan)?|tulugan)\b/i.test(text)) return false;
   if (hasPreviewWords(text)) return true;
   // "May CR ba sa Pool Shade?" remains an amenity question, not a
   // discovery request. Explicit photos/previews still take priority.
