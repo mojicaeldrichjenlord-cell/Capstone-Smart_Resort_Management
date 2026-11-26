@@ -121,6 +121,10 @@ substitute("../config/db", {
             /LOWER\(a\.name\) LIKE \?/i.test(sql)) {
           return [roomLookup ? [roomLookup] : []];
         }
+        if (/FROM accommodations a\b/i.test(sql) &&
+            /LEFT JOIN accommodation_categories c\b/i.test(sql) &&
+            /a\.description, a\.amenities/i.test(sql) && /ORDER BY a\.id ASC/i.test(sql))
+          return [catalogRows];
         // Focused amenity/overview lookups must use a single fresh row by
         // immutable ID, never grab a similar or older accommodation.
         if (/FROM accommodations a\b/i.test(sql) &&
@@ -2233,4 +2237,27 @@ test("AI-44 Mandarin pinyin greeting is answered in Chinese with no model call",
   assert.doesNotMatch(response.body.reply, /Resort inquiries lang|questions regarding/i);
   assert.equal(modelCalls, oldCalls);
   assert.equal(queries.length, oldQueries);
+});
+
+test("AI-111 explicit cottage amenity question overrides previous room", async () => {
+  catalogRows = [
+    {...exampleRoom,id:99,room_name:"Family Room A",category_name:"Room",amenities:"Private CR, aircon"},
+    {...exampleRoom,id:103,room_name:"Small Nipa Hut 3",category_name:"Cottage",amenities:"",description:"Open cottage"},
+    {...exampleRoom,id:130,room_name:"Small Nipa Hut 30",category_name:"Cottage",amenities:""},
+  ];
+  const first = await post("/api/ai/chat",{
+    message:"May aircon at sariling CR ba ang Small Nipa Hut 3?",
+    context:{room_id:99,room_name:"Family Room A",language_style:"taglish"}
+  });
+  assert.equal(first.status,200);
+  assert.equal(first.body.mode,"verified_accommodation_amenity");
+  assert.equal(first.body.extracted_context.room_id,103);
+  assert.match(first.body.reply,/Small Nipa Hut 3\b/i);
+  assert.match(first.body.reply,/walang|wala/i);
+  assert.doesNotMatch(first.body.reply,/Family Room A|Small Nipa Hut 30/);
+  const second = await post("/api/ai/chat",{
+    message:"May aircon ba siya?",context:first.body.extracted_context
+  });
+  assert.equal(second.body.extracted_context.room_id,103);
+  assert.match(second.body.reply,/Wala/i);
 });
