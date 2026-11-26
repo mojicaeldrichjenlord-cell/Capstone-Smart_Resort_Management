@@ -102,7 +102,7 @@ function mount({ recognizerAvailable = true, savedLanguage = null, voices = [], 
     load() {}
   }
   class FakeAudioContext {
-    constructor() { this.sampleRate = 48000; this.destination = {}; }
+    constructor() { this.sampleRate = 48000; this.destination = {}; this.state = "suspended"; }
     createMediaStreamSource() { return { connect() {}, disconnect() {} }; }
     createScriptProcessor() {
       const p = { connect() {}, disconnect() {}, feed(value, count = 2048) {
@@ -112,8 +112,8 @@ function mount({ recognizerAvailable = true, savedLanguage = null, voices = [], 
       audioProcessors.push(p); return p;
     }
     createGain() { return { gain: { value: 1 }, connect() {}, disconnect() {} }; }
-    async resume() {}
-    async close() {}
+    async resume() { this.state = "running"; }
+    async close() { this.state = "closed"; }
   }
   class FakeAbortController {
     constructor() { this.signal = { aborted: false }; }
@@ -688,11 +688,11 @@ test("A different spoken language never requires a UI language choice", () => {
   assert.match(script, /X-Arvic-Voice-Language": "auto"/);
 });
 
-test("Changing input provider ends current hands-free session safely", () => {
-  const h=mount({audioAvailable:true});
-  h.fire("aiVoiceLive");
+test("Changing input provider ends current hands-free session safely", async () => {
+  const h=mount({audioAvailable:true,customerToken:"fake-customer-token"});
+  h.fire("aiVoiceLive"); await h.settle();
   assert.equal(h.voice.isLiveActive(),true);
-  h.voice.setInputMode("accurate");
+  h.voice.setInputMode("fast");
   assert.equal(h.voice.isLiveActive(),false);
   assert.equal(h.requests.length,0);
 });
