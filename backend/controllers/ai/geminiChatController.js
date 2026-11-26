@@ -1159,11 +1159,13 @@ exports.chatWithGemini = async (req, res) => {
     const cheapestListingIntent = matchCheapestInquiry(message, recentScopeTurns, scopeContext);
     const datedPriceInquiry = /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2}\b|\b\d{1,2}[/-]\d{1,2}\b/i.test(message);
     const simpleInventoryInquiry = Boolean(inventoryCountIntent || (cheapestListingIntent && !datedPriceInquiry && !scopeContext.availability_pending));
+    const simplePersonal = isPersonalizedRecommendation(message) && !hasCompoundParty(message) && !/\b(?:budget|under|below|less than|price|rates?|aircon|wifi|amenit(?:y|ies)|bed|parking|entrance|pool|cheaper|compare|overnight|day tour|night|tomorrow|bukas|today|date|slot|available|availability)\b|₱|\d{4}-\d{2}-\d{2}/i.test(message);
     let semanticIntent = null;
     const knownScope = isResortQuestion(message, scopeContext, recentScopeTurns) ||
-      pendingGuestRecommendationAnswer(message, recentScopeTurns, scopeContext) || guestCorrection || roomPriceFollowup;
+      pendingGuestRecommendationAnswer(message, recentScopeTurns, scopeContext) || guestCorrection || roomPriceFollowup || simpleInventoryInquiry || simplePersonal;
     // Keep strong off-topic exclusions. For unfamiliar wording, classify the meaning first.
-    if (!knownScope && !isExplicitlyUnrelated(message)) {
+    const orphanNumeric = !knownScope && /^\s*\d{1,3}\s*(?:am|pm)?\s*(?:pala|po|kami|guests?|pax)?\s*[.!?]?$/i.test(message);
+    if (!knownScope && !orphanNumeric && !isExplicitlyUnrelated(message)) {
       semanticIntent = await extractStructuredIntent(message, scopeContext, recentScopeTurns);
     }
     if (isExplicitlyUnrelated(message) || (!knownScope && semanticIntent?.scope !== "resort")) {
@@ -1196,6 +1198,18 @@ exports.chatWithGemini = async (req, res) => {
       return res.status(200).json(result);
     }
 
+    // Reject explicitly supplied invalid complete windows before any catalog read.
+    const suppliedWindow = { ...scopeContext, ...Object.fromEntries(
+      ["check_in","check_out","check_in_time","check_out_time"].filter(key=>req.body[key]!=null).map(key=>[key,req.body[key]])) };
+    if (["check_in","check_out","check_in_time","check_out_time"].every(key=>req.body[key]!=null)) {
+      const validation=validateAiStayWindow(suppliedWindow,getResortTodayText());
+      if(!validation.valid) return res.status(200).json({
+        success:true,mode:"invalid_window",reason:validation.reason,
+        reply:clarificationLanguage==="english"?"That stay schedule is invalid or already in the past. Please choose a valid future date and fixed slot.":"Hindi po valid ang schedule o past date na ito. Pili po ng valid future date at fixed slot.",
+        extracted_context:suppliedWindow,matched_rooms:[],catalog_recommendations:[],
+        alternative_dates:[],booking_preview:null,recommendation_cards:[]
+      });
+    }
     // AI-104: read-only fixed-slot checks reuse the exact booking API handler.
     if (!simpleInventoryInquiry && scheduleTurn(message, scopeContext, semanticIntent || {})) {
       const interpreted = semanticIntent || await extractStructuredIntent(message, scopeContext, recentScopeTurns);
@@ -1721,14 +1735,14 @@ exports.chatWithGemini = async (req, res) => {
     // recommendation keywords. Give unfamiliar, count-free phrasing to Gemini,
     // while retaining the verified fast path for direct catalog/photo browsing.
     const clearBrowse = /^(?:what|which|anong|ano|mga|list|show|pakita|patingin|ipakita)\s+(?:(?:me|po|ang|mga|available|all|the|inyong)\s+)*(?:rooms?|cottages?|accommodations?|kwarto|kuwarto|pavilions?|pool shades?|family rooms?|single rooms?)(?:\s+(?:do you have|are there|meron kayo|mayroon kayo|ninyo|niyo|po|please|available|photos?|pictures?|previews?))*[?!.\s]*$/i.test(String(message).trim());
-    const needsSemanticPreview = isVerifiedPreviewRequest(message) && !explicitGuestCount(message) && !clearBrowse && !/\b(?:photos?|pictures?|previews?|images?|larawan|litrato)\b/i.test(message);
+    const needsSemanticPreview = isVerifiedPreviewRequest(message) && !explicitGuestCount(message) && !clearBrowse && !simplePersonal && !/\b(?:photos?|pictures?|previews?|images?|larawan|litrato)\b/i.test(message);
     if (!simpleInventoryInquiry && !semanticIntent && (hasCompoundParty(message) || needsSemanticPreview)) {
       semanticIntent = await extractStructuredIntent(message, recommendationSaved, recommendationHistory);
     }
     const personalRecommendation = !simpleInventoryInquiry && (isPersonalizedRecommendation(message) || semanticIntent?.intent === "ask_recommendation");
     if (personalRecommendation) {
       let guestCount = explicitGuestCount(message) || savedGuestCount({ guests: req.body.guests }) || savedGuestCount(recommendationSaved);
-      if (!explicitGuestCount(message) && !semanticIntent) {
+      if (!explicitGuestCount(message) && !semanticIntent && !simplePersonal) {
         semanticIntent = await extractStructuredIntent(message, recommendationSaved, recommendationHistory);
       }
       if (semanticIntent?.scope === "resort" && semanticIntent.guests) guestCount = semanticIntent.guests;
@@ -1948,7 +1962,7 @@ exports.chatWithGemini = async (req, res) => {
     );
     const semanticSimple = semanticIntent && canUseSimpleRecommendation(semanticIntent, {...scopeContext, ...req.body});
     const semanticConstraints = semanticIntent && (semanticIntent.scope === "unrelated" || semanticIntent.max_price || semanticIntent.check_in || semanticIntent.check_out || semanticIntent.wants_booking || semanticIntent.bed_count || semanticIntent.aircon_type || semanticIntent.view_type || semanticIntent.bed_type);
-    if ((isVerifiedPreviewRequest(message) || semanticSimple) && !previewMustUseBookingFlow && !semanticConstraints && !(semanticIntent?.scope === "resort" && semanticIntent.intent === "ask_recommendation" && !semanticIntent.simple_recommendation)) {
+    if ((isVerifiedPreviewRequest(message) || semanticSimple || simplePersonal) && !previewMustUseBookingFlow && !semanticConstraints && !(semanticIntent?.scope === "resort" && semanticIntent.intent === "ask_recommendation" && !semanticIntent.simple_recommendation)) {
       const storedPreviewContext = req.body.context &&
         typeof req.body.context === "object" && !Array.isArray(req.body.context)
         ? req.body.context : {};
