@@ -37,7 +37,11 @@ function requestedAmenities(message) {
   const bedroomAndBeds = /\b(?:bed\s*rooms?|silid(?:\s+tulugan)?|tulugan)\s*(?:,|and|at|&)\s*(?:mga\s+)?(?:beds?|kama)\b|\b(?:beds?|kama)\s*(?:,|and|at|&)\s*(?:mga\s+)?(?:bed\s*rooms?|silid(?:\s+tulugan)?|tulugan)\b/i.test(text);
   const asksDetails = !/\b(?:recommend|suggest|hanap|magandang|looking for|budget|available|availability|book|reserve)\b/i.test(text);
   if (asksDetails && (bedroomInquiry || (bedInquiry && bedroomAndBeds))) kinds.push("bedrooms");
-  if (asksDetails && (bedInquiry || (bedroomInquiry && bedroomAndBeds))) kinds.push("beds");
+  // Presence questions can list a bed alongside other amenities, without
+  // asking a number or size: "May CR, aircon at kama ba?".
+  const bedPresence = /\b(?:beds?|kama|mattress(?:es)?|higdaanan)\b/i.test(text) &&
+    /\b(?:may|meron|have|has|with|include[sd]?|kasama|provided|is there|are there)\b/i.test(text);
+  if (asksDetails && (bedInquiry || bedPresence || (bedroomInquiry && bedroomAndBeds))) kinds.push("beds");
   if (FEATURES.cr.test(text)) {
     // Privacy must explicitly modify CR; "private kitchen at CR" does not
     // prove that the CR is private.
