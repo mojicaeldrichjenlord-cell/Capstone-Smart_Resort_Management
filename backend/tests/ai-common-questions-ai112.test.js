@@ -78,3 +78,22 @@ test("QA-118 standalone bed presence uses verified facts, not preview routing",(
   assert.match(amenityReply({...room,amenities:"Private CR"},"beds","May kama ba?","taglish"),/Hindi pa/);
   assert.equal(isVerifiedPreviewRequest("Show me photos of Double Room 1 with beds"),true);
 });
+
+
+test("QA-121 pet policy retains localized parking in combined questions",()=>{
+  for (const [message,language,pets,parking] of [
+    ["¿Puedo llevar mascotas al resort? ¿El estacionamiento es gratuito?","spanish",/no se permiten mascotas/i,/estacionamiento.*gratuito/i],
+    ["¿Se admiten perros? ¿El aparcamiento es gratis?","spanish",/no se permiten mascotas/i,/estacionamiento.*gratuito/i],
+    ["可以带宠物吗？停车免费吗？","mandarin",/禁止携带宠物/u,/停车免费/u],
+    ["Can I bring a dog? Is parking free?","english",/not allowed/i,/parking.*free/i]
+  ]) {
+    const match=knowledge.matchVerifiedPetPolicy(message);
+    assert.ok(match?.parking,message);
+    const reply=knowledge.verifiedPetPolicyReply(match,language);
+    assert.match(reply,pets);
+    assert.match(reply,parking);
+  }
+  const onlyPets=knowledge.matchVerifiedPetPolicy("¿Puedo llevar mascotas?");
+  assert.equal(onlyPets.parking,false);
+  assert.doesNotMatch(knowledge.verifiedPetPolicyReply(onlyPets,"spanish"),/estacionamiento/i);
+});
