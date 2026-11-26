@@ -37,7 +37,7 @@ function mount({ recognizerAvailable = true, savedLanguage = null, voices = [], 
       id, value: "", textContent: "", disabled: false, hidden: false,
       children: [], appendChild(child) { this.children.push(child); },
       title: "", innerHTML: "", listeners: {}, attrs: {},
-      classList: { toggle() {} },
+      classList: { toggle() {}, add() {} },
       setAttribute(name, value) { this.attrs[name] = value; },
       addEventListener(type, callback) { this.listeners[type] = callback; },
       fire(type) {
@@ -59,7 +59,7 @@ function mount({ recognizerAvailable = true, savedLanguage = null, voices = [], 
   // would normally produce from panel.innerHTML in a real browser.
   for (const id of ["aiVoiceLanguage", "aiVoiceInputMode", "aiVoiceLive",
     "aiVoiceInterrupt", "aiVoiceStatus", "aiVoiceChoice",
-    "aiVoicePreview", "aiVoiceInfo"]) element(id);
+    "aiVoicePreview", "aiVoiceInfo", "aiVoiceReplay"]) element(id);
 
   class FakeRecognizer {
     constructor() {
@@ -141,6 +141,7 @@ function mount({ recognizerAvailable = true, savedLanguage = null, voices = [], 
     window: fakeWindow,
     SpeechSynthesisUtterance: FakeUtterance,
     document: {
+      body: { classList: { contains() { return true; } } },
       getElementById(name) { return nodes[name] || null; },
       createElement(tag) {
         if (tag === "option") return { value: "", textContent: "" };
@@ -346,7 +347,7 @@ test("Customer pages load AI chat before interactive voice and include voice sty
     const html = fs.readFileSync(path.resolve(
       __dirname, "../../frontend/customerHTML", page), "utf8");
     const chatIndex = html.indexOf('src="../js/ai-chat.js');
-    const voiceIndex = html.indexOf('src="../js/ai-voice.js?v=20261121-auto44"');
+    const voiceIndex = html.indexOf('src="../js/ai-voice.js?v=20261126-ai99"');
     assert.ok(chatIndex > 0 && voiceIndex > chatIndex);
     assert.match(html, /sharedCSS\/ai-voice\.css/);
   }
