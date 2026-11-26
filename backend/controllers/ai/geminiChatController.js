@@ -1497,6 +1497,69 @@ exports.chatWithGemini = async (req, res) => {
         guessInquiryLanguage(message) ||
         normalizeLanguageStyle(req.body.language_style) ||
         normalizeLanguageStyle(scopeContext.language_style) || "taglish";
+      // Mixed room amenities + complimentary Wi-Fi must answer BOTH parts.
+      // Remove only the Wi-Fi-specific cost adjective for amenity detection;
+      // keep the existing fee guard for actual accommodation charge questions.
+      const mixedAmenityKinds = verifiedGuestPolicy.wifi
+        ? requestedAmenities(message.replace(/\b(?:free|libre|libreng|complimentary)\s+(?=wi[\s-]?fi\b)/gi,""))
+        : [];
+      if (mixedAmenityKinds.length && !/\b(?:recommend|suggest|hanap|looking for|budget|available on|reserve|booking)\b/i.test(message)) {
+        const namedCategory = requestedCategory(message);
+        const focusId = Number(scopeContext.room_id);
+        const focusName = String(scopeContext.room_name || "").trim();
+        const columns = "SELECT a.id, a.name AS room_name, a.description, a.amenities, " +
+          "c.name AS category_name FROM accommodations a " +
+          "LEFT JOIN accommodation_categories c ON c.id = a.category_id ";
+        let room = null;
+        let ambiguous = false;
+        if (namedCategory) {
+          const [rows] = await db.promise().query(columns + "ORDER BY a.id ASC");
+          const resolved = resolveAmenityTarget(rows,message);
+          room = resolved.record;
+          ambiguous = resolved.ambiguous;
+          // A new explicit accommodation/category must not reuse stale focus.
+        } else if (Number.isSafeInteger(focusId) && focusId > 0) {
+          const [rows] = await db.promise().query(columns + "WHERE a.id = ? LIMIT 1",[focusId]);
+          const candidate = rows[0];
+          if (candidate && (!focusName || String(candidate.room_name).trim().toLowerCase() === focusName.toLowerCase())) room = candidate;
+        } else if (focusName) {
+          const [rows] = await db.promise().query(columns + "ORDER BY a.id ASC");
+          const matches = rows.filter(row=>String(row.room_name).trim().toLowerCase()===focusName.toLowerCase());
+          if(matches.length===1) room=matches[0];
+        }
+        const filipino = ["tagalog","taglish"].includes(language);
+        if (room && !ambiguous) {
+          const isRoom = /^rooms?$/i.test(String(room.category_name || "").trim());
+          const isOther = /^(?:cottages?|function areas?)$/i.test(String(room.category_name || "").trim());
+          // Explicit questions about common areas retain the general policy.
+          // Otherwise use the verified CATEGORY, not a room name containing Cottage.
+          const outside = /\b(?:common areas?|lobby|outside (?:the )?rooms?)\b/i.test(message);
+          const wifiPolicy = !outside && (isRoom || isOther)
+            ? {...verifiedGuestPolicy,rooms:isRoom,cottage:isOther}
+            : verifiedGuestPolicy;
+          const amenityText = mixedAmenityKinds.length===1
+            ? amenityReply(room,mixedAmenityKinds[0],message,language)
+            : multiAmenityReply(room,mixedAmenityKinds,language);
+          return res.status(200).json({
+            success:true,mode:"verified_accommodation_amenity",
+            reply:amenityText+" "+verifiedGuestAmenitiesReply(wifiPolicy,language),
+            extracted_context:mergeContext(scopeContext,{room_id:room.id,room_name:room.room_name,language_style:language}),
+            matched_rooms:[],catalog_recommendations:[],alternative_dates:[],booking_preview:null,recommendation_cards:[]
+          });
+        }
+        // Still answer known Wi-Fi policy, but never invent a room's amenities.
+        const safeContext={...scopeContext};
+        delete safeContext.room_id;
+        delete safeContext.room_name;
+        return res.status(200).json({
+          success:true,mode:"accommodation_selection_needed",
+          reply:verifiedGuestAmenitiesReply(verifiedGuestPolicy,language)+" "+(filipino
+            ? "Aling accommodation po ang tinutukoy ninyo para ma-check ko ang iba pang amenities?"
+            : "Which accommodation do you mean so I can verify the other amenities?"),
+          extracted_context:mergeContext(safeContext,{language_style:language}),
+          matched_rooms:[],catalog_recommendations:[],alternative_dates:[],booking_preview:null,recommendation_cards:[]
+        });
+      }
       return res.status(200).json({
         success: true, mode: "verified_guest_policies",
         inquiry_topic: [
