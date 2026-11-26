@@ -88,6 +88,11 @@ function isVerifiedPreviewRequest(message) {
   // even when they begin with "What about Double Room 1?".
   if (/\b(?:ilan|ilang|how many|number of|count of|bilang ng)\s+(?:po\s+)?(?:mga\s+|the\s+)?(?:bed\s*rooms?|beds?|kama|silid(?:\s+tulugan)?|tulugan)\b/i.test(text)) return false;
   if (hasPreviewWords(text)) return true;
+  // Bed presence, like bed counts, is a factual amenity inquiry rather
+  // than an undated browse. Keep explicit photo requests above this guard.
+  if (/\b(?:beds?|kama|mattress(?:es)?|higdaanan)\b/i.test(text) &&
+      /\b(?:may|meron|have|has|with|include[sd]?|kasama|provided|is there|are there)\b/i.test(text) &&
+      !/\b(?:recommend|suggest|hanap|magandang|looking for)\b/i.test(text)) return false;
   // "May CR ba sa Pool Shade?" remains an amenity question, not a
   // discovery request. Explicit photos/previews still take priority.
   if (/\b(?:magkano|presyo|price|rates?|how much|cr|bathroom|toilet|aircon|air condition|amenit(?:y|ies)|inclusions?|kitchen|wifi|parking|free entrance)\b/i.test(text))
