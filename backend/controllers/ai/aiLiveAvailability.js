@@ -1,6 +1,7 @@
 "use strict";
 const {categoryMatches,findExactNamedRoom,requestedCategory,guestCountFromText}=require("./aiVerifiedPreview");
 const {verifiedAccommodationCards}=require("./aiConversationStyle");
+const {naturalRoomDetailsReply}=require("./aiNaturalRoomDetails");
 const {explicitGuestCount,correctedGuestCount,isPersonalizedRecommendation}=require("./aiRecommendationIntake");
 const slots=["day_tour","night","day_extended","night_extended"];
 const names={day_tour:"Day Tour",night:"Overnight",day_extended:"Day Extended",night_extended:"Night Extended"};
@@ -82,7 +83,23 @@ async function liveAvailability({message,context={},extracted={},catalog=[],toda
  const duration=Number(extracted.stay_duration||((slot&&slot!==context.slot_preference)?1:context.stay_duration)||1);
  const extendedPending=!slot&&(/\b(?:22|23)\s*(?:h|hours?|oras)\b|\bextended(?:\s+stay)?\b/i.test(q)||context.extended_pending===true);
  const next={...context,availability_pending:true,extended_pending:extendedPending,check_in:date||null,check_out:null,check_in_time:null,check_out_time:null,slot_preference:slot,stay_duration:duration,guests:guests||null,room_id:exact?Number(exact.id):null,room_name:exact?exact.room_name:null,recommendation_category:category,intent:"ask_availability",language_style:language};
- const result=(reply,cards=[],alternatives=[])=>({success:true,mode:"verified_live_availability",reply,extracted_context:next,matched_rooms:[],catalog_recommendations:[],alternative_dates:alternatives,booking_preview:null,recommendation_cards:cards});
+ // QA-122: an availability reply must not silently discard a separate
+ // request for the named accommodation's listed rate or inclusions.
+ // Use only this fresh catalog row, never the previous room or model guesses.
+ const asksInclusions=/\b(?:amenit(?:y|ies)|inclusions?|what(?:'s| is| are)?\s+(?:the\s+)?(?:included|inside)|what\s+comes\s+with|ano(?:ng)?\s+(?:po\s+)?(?:ang\s+)?(?:mga\s+)?(?:included|kasama|meron|nasa\s+loob))\b/i.test(q);
+ const asksRate=/\b(?:magkano|how\s+much|rates?|prices?|presyo)\b/i.test(q);
+ const result=(reply,cards=[],alternatives=[])=>{
+   const details=[];
+   if(exact&&asksRate&&slot){
+     const rate=Number(slot==="day_tour"?exact.day_price:slot==="night"?exact.overnight_price:exact.extended_price);
+     if(Number.isFinite(rate)&&rate>0){
+       const price="₱"+rate.toLocaleString("en-PH",{minimumFractionDigits:2,maximumFractionDigits:2});
+       details.push(say("The listed "+names[slot]+" accommodation rate for "+exact.room_name+" is "+price+".", "Ang listed "+names[slot]+" accommodation rate ng "+exact.room_name+" ay "+price+"."));
+     }else details.push(say("The listed rate for that schedule is not verified.","Hindi pa po verified ang listed rate para sa schedule na iyon."));
+   }
+   if(exact&&asksInclusions) details.push(naturalRoomDetailsReply(exact,language));
+   return {success:true,mode:"verified_live_availability",reply:[reply,...details].join(" "),extracted_context:next,matched_rooms:[],catalog_recommendations:[],alternative_dates:alternatives,booking_preview:null,recommendation_cards:cards};
+ };
  if(!exact&&!category)return result(say("Which accommodation would you like me to check?","Anong room o accommodation po ang gusto ninyong ipa-check?"));
  if(!date||!validDate(date))return result(say("What date are you planning to visit?","Anong date po ang plan ninyong pumunta?"));
  const earliest=plusDays(today,2);

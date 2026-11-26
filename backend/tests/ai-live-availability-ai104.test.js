@@ -144,3 +144,33 @@ test("Undated catalog and budget recommendations do not trigger live availabilit
  assert.equal(scheduleTurn("Is Family Room B available on December 5?",{}),true);
  assert.equal(scheduleTurn("Available ba ang Family Room B overnight?",{}),true);
 });
+
+
+test("QA-122 named availability plus rate and inclusions uses fresh verified catalog",async()=>{
+ const room={...catalog[2],amenities:"Private CR\nKitchen\n2 Queen-Size Beds"};
+ const calls=[];
+ const handler=async(req,res)=>{calls.push(req.body);return res.json({available:true,schedule:{check_out_date:"2026-12-07"}});};
+ const result=await liveAvailability({message:"Hi! Planning namin mag-overnight sa Family Room B on December 6, 2026. We are 15 guests. Available pa ba ito, magkano ang rate, at ano ang included amenities?",extracted:{check_in:"2026-12-06",slot_preference:"night",guests:15},catalog:[room],today:"2026-11-26",language:"taglish",handler});
+ assert.match(result.reply,/Available pa/);
+ assert.match(result.reply,/₱8,000\.00/);
+ assert.match(result.reply,/private cr/i);
+ assert.match(result.reply,/kitchen/i);
+ assert.match(result.reply,/2 queen-size beds/i);
+ assert.equal(result.recommendation_cards[0].availability_verified,true);
+ assert.equal(result.recommendation_cards[0].booking_selection.guests,15);
+ assert.equal(calls.length,1);
+});
+test("QA-122 unavailable slot retains verified inclusions without granting booking",async()=>{
+ const room={...catalog[2],amenities:"Private CR"};
+ const result=await liveAvailability({message:"Is Family Room B available on 2026-12-05 overnight and what are the amenities?",catalog:[room],today:"2026-11-26",language:"english",handler:async(req,res)=>res.json({available:false})});
+ assert.match(result.reply,/not available/);
+ assert.match(result.reply,/private cr/i);
+ assert.equal(result.recommendation_cards[0].availability_status,"unavailable");
+ assert.ok(result.recommendation_cards.every(c=>!c.availability_verified));
+});
+test("QA-122 missing amenities are not invented",async()=>{
+ const room={...catalog[2],amenities:""};
+ const result=await liveAvailability({message:"Family Room B available on 2026-12-06 overnight? What are the amenities?",catalog:[room],today:"2026-11-26",language:"english",handler:async(req,res)=>res.json({available:true,schedule:{check_out_date:"2026-12-07"}})});
+ assert.match(result.reply,/amenities.*aren't complete/i);
+ assert.equal(result.recommendation_cards[0].availability_verified,true);
+});

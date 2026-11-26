@@ -1081,6 +1081,41 @@ async function buildQuotaLimitedAccommodationReply(payload, requestCatalog = nul
   };
 }
 
+// QA-123/124: Recall is a conversation-only read, not a new recommendation
+// or availability request. Never fetch another account's history or create a
+// generic booking card when a guest only asks what they already told us.
+function reservationRecallReply(message, context, language) {
+  const q = String(message || "").normalize("NFKC").trim();
+  if (q.length > 240) return null;
+  const recall = /\b(?:naaalala|naalala|natatandaan|tandaan|remember|recall|remind me)\b/i.test(q) ||
+    /\b(?:ano|anong|ilan|ilang|what|which|how many)\b.{0,170}\b(?:ulit|again)\b/i.test(q) ||
+    /\b(?:what|which|how many)\b.{0,170}\b(?:did i (?:say|mention|tell you|give you)|i (?:said|mentioned|told you))\b/i.test(q);
+  const bookingFields = [
+    /\b(?:rooms?|kwarto|kuwarto|cottage|accommodations?|reservation details|booking details)\b/i,
+    /\b(?:date|check[\s-]?in|petsa|araw)\b/i,
+    /\b(?:schedule|slot|overnight|day tour|iskedyul)\b/i,
+    /\b(?:guests?|pax|tao|people|bilang|party size)\b/i,
+  ];
+  // Restrict the deterministic path to questions about previously supplied
+  // details, rather than a new room/price/availability question.
+  const previouslySupplied = /\b(?:sinabi|binigay|nabanggit|naibigay|kanina|previous(?:ly)?|earlier|before|last time|did i (?:say|mention|tell you|give you)|i (?:said|mentioned|told you)|ulit|again)\b/i.test(q);
+  if (!recall || !previouslySupplied || !bookingFields.some(p => p.test(q)) ||
+      /\b(?:available|availability|magkano|how much|rate|price|amenities|recommend|suggest|change|palitan|update|book now|reserve now)\b/i.test(q)) return null;
+  const tl = ["tagalog", "taglish"].includes(language);
+  const room = typeof context.room_name === "string" ? context.room_name.replace(/<[^>]*>|[\u0000-\u001f\u007f]/g, " ").trim().slice(0,120) : "";
+  const date = validDate(context.check_in) ? context.check_in : "";
+  const slot = {day_tour:"Day Tour",night:"Overnight",day_extended:"Day Extended",night_extended:"Night Extended"}[context.slot_preference];
+  const guests = Number(context.guests);
+  const guestCount = Number.isSafeInteger(guests) && guests > 0 && guests <= 200 ? guests : null;
+  const details = [room && (tl?"Accommodation: ":"Accommodation: ")+room,date && "Date: "+date,slot && "Schedule: "+slot,guestCount && "Guests: "+guestCount].filter(Boolean);
+  if (!details.length) return tl
+    ? "Wala pa po kayong nabibigay na reservation details sa conversation natin. Anong accommodation, date, schedule at ilang guests po?"
+    : "I don't have any reservation details in this conversation yet. Which accommodation, date, schedule and guest count would you like?";
+  const missing = [!room&&(tl?"accommodation":"accommodation"),!date&&(tl?"date":"date"),!slot&&(tl?"schedule":"schedule"),!guestCount&&(tl?"bilang ng guests":"guest count")].filter(Boolean);
+  return (tl?"Ito po ang details na nasabi ninyo: ":"Here are the details you shared: ")+details.join("; ")+
+    (missing.length ? (tl?". Paki-confirm pa po ang ":". Please confirm the missing ")+missing.join(", ")+ "." : ".");
+}
+
 // Handle a guest's AI conversation with English, Filipino or Taglish responses.
 // Availability comes from database queries; the assistant must not create bookings or payments.
 exports.chatWithGemini = async (req, res) => {
@@ -1128,6 +1163,17 @@ exports.chatWithGemini = async (req, res) => {
     // chatbot but lacks the single essential detail. Ask one question first.
     const clarificationLanguage = detectLanguageFromMessage(message) ||
       normalizeLanguageStyle(scopeContext.language_style) || "taglish";
+    // Preserve explicit off-topic restrictions even for a recall-shaped message.
+    const recallReply = !isExplicitlyUnrelated(message) &&
+      reservationRecallReply(message, scopeContext, clarificationLanguage);
+    if (recallReply) {
+      return res.status(200).json({
+        success: true, mode: "reservation_context_recall", reply: recallReply,
+        extracted_context: {...scopeContext, language_style: clarificationLanguage},
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null, recommendation_cards: [],
+      });
+    }
     const clarification = clarifyAmbiguousResortQuestion(message, clarificationLanguage);
     // A bare price or recommendation follow-up can be resolved by the current
     // conversation. Only use the canned clarification for a context-free turn.
