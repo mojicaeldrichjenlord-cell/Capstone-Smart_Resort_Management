@@ -2327,3 +2327,25 @@ test("FINAL-B1 structural counts remain distinct from inventory counts", () => {
   assert.match(multiAmenityReply({room_name:"Test Room",category_name:"Room",amenities:"2 Queen Size Beds (1 per Bedroom)"},["bedrooms","beds"],"english"),/does not confirm the exact bedroom count/i);
   assert.match(multiAmenityReply({room_name:"Test Room",category_name:"Room",amenities:"2 Separate Bedrooms"},["bedrooms","beds"],"english"),/does not confirm the exact bed count/i);
 });
+
+
+test("FINAL-B2 cottage switch answers every requested amenity including bed presence", async () => {
+  catalogRows = [
+    {...exampleRoom,id:97,room_name:"Double Room 1",category_name:"Room",amenities:"2 Queen Size Beds\nPrivate CR\nAircon\nRefrigerator"},
+    {...exampleRoom,id:103,room_name:"Small Nipa Hut 3",category_name:"Cottage",description:"Open cottage",amenities:""},
+  ];
+  const result = await post("/api/ai/chat", {
+    message:"Paano naman yung Small Nipa Hut 3? May sarili ba itong CR, aircon, refrigerator at kama?",
+    context:{room_id:97,room_name:"Double Room 1",language_style:"english"},
+  });
+  assert.equal(result.status,200);
+  assert.equal(result.body.mode,"verified_accommodation_amenity");
+  assert.equal(result.body.extracted_context.room_id,103);
+  assert.equal(result.body.extracted_context.language_style,"taglish");
+  assert.match(result.body.reply,/wala pong included na kama/i);
+  assert.match(result.body.reply,/CR/i);
+  assert.match(result.body.reply,/aircon/i);
+  assert.match(result.body.reply,/ref/i);
+  assert.doesNotMatch(result.body.reply,/Double Room 1|Queen Size Beds/i);
+  assert.equal(modelCalls,0);
+});
