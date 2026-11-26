@@ -2412,3 +2412,19 @@ test("FINAL-D2 mixed policy and amenity questions never invent stale or ambiguou
   assert.doesNotMatch(result.body.reply,/has a private bathroom/i);
   assert.equal(modelCalls,0);
 });
+
+
+test("FINAL-D3 Spanish pets and parking both answered after English room discussion",async()=>{
+  const result=await post("/api/ai/chat",{
+    message:"¿Puedo llevar mascotas al resort? ¿El estacionamiento es gratuito?",
+    context:{room_id:86,room_name:"Single Room Cottage 1",language_style:"english"},
+    recent_turns:[{role:"user",text:"Does it have a private bathroom?"},{role:"assistant",text:"Yes, Single Room Cottage 1 has a private bathroom."}]
+  });
+  assert.equal(result.status,200);
+  assert.equal(result.body.extracted_context.language_style,"spanish");
+  assert.match(result.body.reply,/no se permiten mascotas/i);
+  assert.match(result.body.reply,/estacionamiento.*gratuito/i);
+  assert.deepEqual(result.body.recommendation_cards,[]);
+  assert.equal(modelCalls,0);
+  assert.equal(queries.length,0);
+});
