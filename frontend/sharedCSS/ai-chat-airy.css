@@ -152,17 +152,16 @@ body.customer-manager-tone .ai-chat-window .ai-message.user .ai-bubble,
   color: #115e59 !important;
 }
 
-/* Recommendation cards: more space per photo, title and action. Two columns
-   in a maximized chat instead of squeezing three tiny cards into one row. */
-.ai-chat-window .ai-recommendations { margin: 10px 0 17px; }
+/* UI-107: Compact recommendation cards; adaptive columns preserve readable actions. */
+.ai-chat-window .ai-recommendations { margin: 8px 0 12px; }
 .ai-chat-window .ai-recommendations-caption {
   color: #64748b;
   font-size: .76rem;
-  margin-bottom: 11px;
+  margin-bottom: 8px;
 }
 .ai-chat-window .ai-recommendations-grid {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 285px), 1fr));
-  gap: 13px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+  gap: 10px;
 }
 .ai-chat-window .ai-recommendation-card {
   border: 1px solid #e2eaf0;
@@ -170,18 +169,19 @@ body.customer-manager-tone .ai-chat-window .ai-message.user .ai-bubble,
   background: #fff;
   box-shadow: 0 6px 20px rgba(21, 50, 65, .055);
 }
-.ai-chat-window .ai-recommendation-photo { height: 150px; }
-.ai-chat-window .ai-recommendation-body { padding: 12px 13px 13px; }
+.ai-chat-window .ai-recommendation-photo { height: 112px; }
+.ai-chat-window .ai-recommendation-body { padding: 9px 10px 10px; }
 .ai-chat-window .ai-recommendation-body strong {
   font-size: .92rem;
   color: #182d43;
 }
 .ai-chat-window .ai-recommendation-body p {
+  margin: 4px 0;
   font-size: .8rem;
-  line-height: 1.45;
+  line-height: 1.4;
 }
 .ai-chat-window .ai-recommendation-body .ai-recommendation-price { color: #0f766e; }
-.ai-chat-window .ai-recommendation-actions { gap: 7px; margin-top: 12px; }
+.ai-chat-window .ai-recommendation-actions { gap: 6px; margin-top: 8px; }
 .ai-chat-window .ai-recommendation-link {
   min-height: 37px;
   display: inline-flex;
@@ -192,7 +192,7 @@ body.customer-manager-tone .ai-chat-window .ai-message.user .ai-bubble,
   border-radius: 10px;
   background: #f8fafc;
   color: #155e59;
-  padding: 8px 10px;
+  padding: 6px 7px;
   font-size: .76rem;
 }
 .ai-chat-window .ai-recommendation-link.primary {
@@ -261,7 +261,9 @@ body.customer-manager-tone .ai-chat-window .ai-chat-send,
   .ai-chat-window .ai-chat-header h3::before { flex-basis: 7px; width: 7px; height: 7px; }
   .ai-chat-window .ai-chat-messages { padding: 12px 10px 16px; }
   .ai-chat-window .ai-chat-input-area { padding: 10px; gap: 6px; }
-  .ai-chat-window .ai-recommendation-photo { height: 140px; }
+  .ai-chat-window .ai-recommendations-grid { grid-template-columns: minmax(0, 1fr); }
+  .ai-chat-window .ai-recommendation-photo { height: 112px; }
+  .ai-chat-window .ai-recommendation-link { min-height: 44px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .ai-chat-window .ai-chat-header-btn { transition: none; }
