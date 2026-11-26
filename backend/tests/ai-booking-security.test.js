@@ -2375,3 +2375,40 @@ test("FINAL-D1 voice recommendation with rate uses guest count and overnight pri
   assert.equal(modelCalls,0);
   assert.equal(queries.length,1);
 });
+
+
+test("FINAL-D2 mixed private bathroom and free Wi-Fi follow-up keeps verified room context",async()=>{
+  catalogRows=[
+    {...exampleRoom,id:86,room_name:"Single Room Cottage 1",category_name:"Room",description:"",amenities:"Private CR\nAircon"},
+    {...exampleRoom,id:103,room_name:"Small Nipa Hut 3",category_name:"Cottage",description:"",amenities:""}
+  ];
+  const first=await post("/api/ai/chat",{message:"Does Single Room Cottage 1 have air conditioning?",input_source:"voice",context:{language_style:"taglish"}});
+  assert.equal(first.status,200);
+  assert.equal(first.body.extracted_context.room_id,86);
+  const second=await post("/api/ai/chat",{message:"Does it have a private bathroom and free Wi-Fi too?",input_source:"voice",context:first.body.extracted_context});
+  assert.equal(second.status,200);
+  assert.equal(second.body.mode,"verified_accommodation_amenity");
+  assert.equal(second.body.extracted_context.room_id,86);
+  assert.equal(second.body.extracted_context.language_style,"english");
+  assert.match(second.body.reply,/Single Room Cottage 1 has a private bathroom/i);
+  assert.match(second.body.reply,/free Wi-Fi is available in resort rooms/i);
+  assert.equal(modelCalls,0);
+  assert.equal(queries.length,2);
+  const third=await post("/api/ai/chat",{message:"Does Small Nipa Hut 3 have air conditioning and free Wi-Fi?",context:second.body.extracted_context});
+  assert.equal(third.status,200);
+  assert.equal(third.body.extracted_context.room_id,103);
+  assert.match(third.body.reply,/Small Nipa Hut 3 does not include amenities/i);
+  assert.match(third.body.reply,/not in cottages/i);
+  assert.doesNotMatch(third.body.reply,/Single Room Cottage 1/i);
+  assert.equal(modelCalls,0);
+});
+test("FINAL-D2 mixed policy and amenity questions never invent stale or ambiguous room details",async()=>{
+  catalogRows=[{...exampleRoom,id:86,room_name:"Single Room Cottage 1",category_name:"Room",amenities:"Private CR"}];
+  const result=await post("/api/ai/chat",{message:"Does it have a private bathroom and free Wi-Fi too?",context:{room_id:86,room_name:"Old Room Name",language_style:"english"}});
+  assert.equal(result.status,200);
+  assert.equal(result.body.mode,"accommodation_selection_needed");
+  assert.match(result.body.reply,/free Wi-Fi/i);
+  assert.match(result.body.reply,/which accommodation/i);
+  assert.doesNotMatch(result.body.reply,/has a private bathroom/i);
+  assert.equal(modelCalls,0);
+});
