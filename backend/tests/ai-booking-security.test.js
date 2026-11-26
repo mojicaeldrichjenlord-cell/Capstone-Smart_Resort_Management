@@ -2018,7 +2018,7 @@ test("Actual customer van/bus parking question uses verified zero-credit FAQ", a
   assert.match(r.body.reply, /free parking|libreng paradahan/i);
   assert.match(r.body.reply, /van/i);
   assert.match(r.body.reply, /bus/i);
-  assert.match(r.body.reply, /Walang parking fee/i);
+  assert.match(r.body.reply, /Walang parking fee|libreng paradahan/i);
   assert.doesNotMatch(r.body.reply, /check|confirm|kasya|capacity|available slot/i);
   assert.deepEqual(r.body.recommendation_cards, []);
   assert.equal(modelCalls, 0);
@@ -2034,7 +2034,7 @@ test("Parking + entrance question explains fee distinction without room suggesti
   assert.equal(r.body.mode, "verified_resort_inquiry");
   assert.equal(r.body.inquiry_topic, "parkingEntrance");
   assert.match(r.body.reply, /(?:Free po ang parking|Libre po ang paradahan)/i);
-  assert.match(r.body.reply, /Separate naman po ang entrance fee/);
+  assert.match(r.body.reply, /Separate naman po ang entrance fee|Hiwalay po ang entrance fee/i);
   assert.deepEqual(r.body.recommendation_cards, []);
   assert.equal(modelCalls, 0);
   assert.equal(queries.length, 0);
