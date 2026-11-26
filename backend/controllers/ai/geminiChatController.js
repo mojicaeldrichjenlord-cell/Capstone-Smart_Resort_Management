@@ -50,7 +50,7 @@ const {
   CONTACT_EMAIL,
 } = require("./aiConciergeGuidance");
 const {
-  isCatalogRateOverviewQuestion, catalogRateOverview,
+  isCatalogRateOverviewQuestion, catalogRateOverview, personalizedRateOverview,
 } = require("./aiCatalogRateGuide");
 const {
   isComparisonQuestion, selectComparisonRooms, comparisonReply,
@@ -1427,6 +1427,31 @@ exports.chatWithGemini = async (req, res) => {
     if (!simpleInventoryInquiry && isCatalogRateOverviewQuestion(message)) {
       const catalog = await getAccommodationCatalog();
       const language = conciergeLanguage;
+      // A rate list is not a personalized recommendation. Only take this
+      // narrow fast path for explicit simple group + fixed stay requests.
+      // Complex constraints, actual dates and other languages keep their
+      // existing guarded flows.
+      const rateGuests=explicitGuestCount(message);
+      const rateCategory=requestedCategory(message);
+      const nightRate=/\b(?:overnight|night|gabi)\b/i.test(message);
+      const dayRate=/\b(?:day\s*tour|daytime|umaga)\b/i.test(message);
+      if (isPersonalizedRecommendation(message) && rateGuests && rateCategory &&
+          nightRate!==dayRate && !hasBudgetConstraint && !datedPriceInquiry &&
+          !/\b(?:extended|22\s*hours?|23\s*hours?|compare|versus|vs|beds?|kama|bedrooms?|balcony|poolside|pool\s+side|kitchen|ref|refrigerator|tv|table)\b/i.test(message) &&
+          ["english","taglish","tagalog"].includes(language)) {
+        const stay=nightRate?"night":"day";
+        const choice=personalizedRateOverview(catalog,{category:rateCategory,guests:rateGuests,stay},language);
+        const nextContext={...scopeContext,guests:rateGuests,slot_preference:nightRate?"night":"day_tour",
+          intent:"ask_recommendation",recommendation_category:rateCategory,language_style:language};
+        delete nextContext.room_id;
+        delete nextContext.room_name;
+        if(choice.rows.length===1){nextContext.room_id=choice.rows[0].id;nextContext.room_name=choice.rows[0].room_name;}
+        return res.status(200).json({
+          success:true,mode:"verified_personalized_rates",reply:choice.reply,
+          extracted_context:nextContext,matched_rooms:[],catalog_recommendations:[],
+          alternative_dates:[],booking_preview:null,recommendation_cards:verifiedAccommodationCards(choice.rows,false)
+        });
+      }
       const overview = catalogRateOverview(catalog, message, language);
       return res.status(200).json({
         success: true, mode: "verified_catalog_rates",
