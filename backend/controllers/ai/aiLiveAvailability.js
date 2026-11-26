@@ -91,7 +91,8 @@ async function liveAvailability({message,context={},extracted={},catalog=[],toda
  // Read the current catalog rate, not a client-supplied price.
  const previousIds=Array.isArray(context.last_verified_room_ids)?context.last_verified_room_ids.slice(0,3).map(Number):[];
  const baselineIds=Number(context.room_id)>0?[Number(context.room_id)]:previousIds;
- const priorRates=candidates.filter(r=>baselineIds.includes(Number(r.id))).map(rateFor).filter(n=>Number.isFinite(n)&&n>0);
+ // A guest-approved category change still compares to the previous category.
+ const priorRates=catalog.filter(r=>baselineIds.includes(Number(r.id))&&(!guests||Number(r.capacity)>=guests)).map(rateFor).filter(n=>Number.isFinite(n)&&n>0);
  const baseline=cheaper&&priorRates.length?Math.min(...priorRates):null;
  if(cheaper)candidates=candidates.filter(r=>String(r.status).trim().toLowerCase()==="available"&&rateFor(r)>0&&(baseline===null||rateFor(r)<baseline));
  candidates=candidates.sort((a,b)=>cheaper?rateFor(a)-rateFor(b)||Number(a.capacity)-Number(b.capacity)||Number(a.id)-Number(b.id):Number(a.capacity)-Number(b.capacity)||(rateFor(a)||Infinity)-(rateFor(b)||Infinity)||Number(a.id)-Number(b.id));
@@ -119,7 +120,7 @@ async function liveAvailability({message,context={},extracted={},catalog=[],toda
    const name=exact?exact.room_name:yes.length===1?yes[0].room.room_name:null;
    if(cheaper){
      const group=guests?guests+" guests":"your group";
-     const heading=baseline===null?say("I couldn't confirm the previous rate for comparison, but these are affordable options I checked for "+group+".","Hindi ko po ma-confirm ang naunang rate para maikumpara, pero ito ang mga abot-kayang options na na-check ko para sa "+group+"."):say("I found cheaper available options for "+group+".","May nahanap po akong mas murang available options para sa "+group+".");
+     const heading=baseline===null?say("I couldn't confirm the previous rate for comparison, but these are affordable options I checked for "+group+".","Hindi ko po ma-confirm ang naunang rate para maikumpara, pero ito ang mga abot-kayang options na na-check ko para sa "+group+"."):say("I found cheaper available options for "+group+" than the previous lowest listed accommodation rate of ₱"+baseline.toLocaleString("en-PH")+".","May nahanap po akong mas murang available options para sa "+group+" kaysa sa naunang pinakamababang accommodation rate na ₱"+baseline.toLocaleString("en-PH")+".");
      return result(heading+" "+date+" ("+names[slot]+").",cards);
    }
    if(exact&&guests>Number(exact.capacity)&&Number(exact.capacity)>0)return result(say("The selected slot is available, but "+exact.room_name+" has a listed capacity of "+exact.capacity+" for your group of "+guests+". Would you like me to find a larger option?","Available po ang slot, pero "+exact.capacity+" pax ang listed capacity ng "+exact.room_name+" para sa "+guests+" guests ninyo. Hanapan ko po ba kayo ng mas malaking option?"),cards);
