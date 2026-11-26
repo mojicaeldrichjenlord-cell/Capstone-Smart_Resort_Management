@@ -20,7 +20,7 @@ test("AI-44 customer voice has no manual language selector or persisted language
   assert.doesNotMatch(voice, /localStorage\.setItem\(KEY,\s*language\)/);
   assert.match(voice, /Automatic language detection/);
   assert.match(voice, /X-Arvic-Voice-Language": "auto"/);
-  assert.match(voice, /if \(canRecord\(\)\) \{\s*return startRecordedInput\(kind\);/);
+  assert.match(voice, /if \(canRecord\(\) && !useBrowserFallback\) \{\s*return startRecordedInput\(kind\);/);
   assert.match(voice, /Browser microphone fallback: language recognition may be limited/);
 });
 
@@ -52,8 +52,8 @@ test("AI-44 all authenticated Customer pages load fresh voice implementation", (
   for (const page of ["index.html", "rooms.html", "booking.html",
     "my-bookings.html", "profile.html", "resort-map.html"]) {
     const html = read("frontend/customerHTML/" + page);
-    assert.match(html, /ai-voice\.js\?v=20261121-auto44/, page);
-    assert.match(html, /ai-voice\.css\?v=20261121-auto44/, page);
+    assert.match(html, /ai-voice\.js\?v=20261126-ai99/, page);
+    assert.match(html, /ai-voice\.css\?v=20261126-ai99/, page);
   }
   const landing = read("frontend/customerHTML/landing.html");
   assert.doesNotMatch(landing, /ai-voice\.js/);
