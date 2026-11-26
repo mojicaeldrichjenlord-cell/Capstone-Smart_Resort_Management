@@ -2281,3 +2281,49 @@ test("AI-111 explicit cottage amenity question overrides previous room", async (
   assert.equal(second.body.extracted_context.room_id,103);
   assert.match(second.body.reply,/Wala/i);
 });
+
+
+test("FINAL-B1 bedroom and bed counts plus amenities override old accommodation focus", async () => {
+  catalogRows = [
+    {...exampleRoom,id:99,room_name:"Family Room A",amenities:"Private Cottage\n2 Separate Bedrooms\n2 Queen-Size Beds\nPrivate CR"},
+    {...exampleRoom,id:97,room_name:"Double Room 1",description:"",amenities:"2 Separate Bedrooms\n2 Queen Size Beds (1 per Bedroom)\nKitchen\nPrivate CR"},
+    {...exampleRoom,id:98,room_name:"Double Room 2",amenities:"Kitchen"},
+  ];
+  const first = await post("/api/ai/chat", {
+    message:"What about Double Room 1? How many bedrooms and beds does it have? Does it also have a kitchen and private bathroom?",
+    room_id:99,guests:15,context:{room_id:99,room_name:"Family Room A",guests:6,language_style:"taglish"},
+  });
+  assert.equal(first.status,200);
+  assert.equal(first.body.mode,"verified_accommodation_amenity");
+  assert.equal(first.body.extracted_context.room_id,97);
+  assert.equal(first.body.extracted_context.language_style,"english");
+  assert.match(first.body.reply,/2 bedrooms/i);
+  assert.match(first.body.reply,/2 Queen Size Beds \(1 per Bedroom\)/i);
+  assert.match(first.body.reply,/kitchen/i);
+  assert.match(first.body.reply,/private bathroom/i);
+  assert.doesNotMatch(first.body.reply,/Family Room A|2 double rooms listed|Private Cottage/i);
+  assert.equal(modelCalls,0);
+  assert.equal(queries.length,1);
+  assert.doesNotMatch(queries[0].sql,/COUNT\(\*\)/i);
+  const second = await post("/api/ai/chat", {
+    message:"How many bedrooms does it have?",context:first.body.extracted_context,
+  });
+  assert.equal(second.status,200);
+  assert.equal(second.body.mode,"verified_accommodation_amenity");
+  assert.match(second.body.reply,/2 bedrooms/i);
+  assert.equal(second.body.extracted_context.room_id,97);
+});
+
+test("FINAL-B1 structural counts remain distinct from inventory counts", () => {
+  const {matchAccommodationCountQuestion} = require("../controllers/ai/aiAccommodationCounts");
+  const {requestedAmenities, multiAmenityReply} = require("../controllers/ai/aiAccommodationAmenities");
+  assert.equal(matchAccommodationCountQuestion("How many double rooms do you have?").subtype,"double");
+  assert.equal(matchAccommodationCountQuestion("Ilang rooms meron kayo?").scopes[0],"room");
+  for(const q of ["How many bedrooms does Double Room 1 have?","Ilang kama meron sa Family Room A?","How many beds and bedrooms does Double Room 1 have?"]) {
+    assert.equal(matchAccommodationCountQuestion(q),null,q);
+  }
+  assert.deepEqual(requestedAmenities("How many bedrooms and beds does it have?"),["bedrooms","beds"]);
+  assert.deepEqual(requestedAmenities("Ilang kama at bedrooms meron sa Family Room A?"),["bedrooms","beds"]);
+  assert.match(multiAmenityReply({room_name:"Test Room",category_name:"Room",amenities:"2 Queen Size Beds (1 per Bedroom)"},["bedrooms","beds"],"english"),/does not confirm the exact bedroom count/i);
+  assert.match(multiAmenityReply({room_name:"Test Room",category_name:"Room",amenities:"2 Separate Bedrooms"},["bedrooms","beds"],"english"),/does not confirm the exact bed count/i);
+});
