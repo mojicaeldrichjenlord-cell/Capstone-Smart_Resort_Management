@@ -85,3 +85,28 @@ test("AI-108: short corrections are checked, ordinary price or policy questions 
  assert.equal(scheduleTurn("May parking ba para sa 6 guests?",context),false);
  assert.equal(scheduleTurn("6 guests",{}),false);
 });
+
+test("AI-109: cheaper follow-up retains room scope, saved group and verified slot",async()=>{
+ const {matchRoomPriceFollowup}=require("../controllers/ai/aiRoomPriceFollowup");
+ const rows=[
+  {id:11,room_name:"Double Room 1",category_name:"Room",capacity:7,status:"available",overnight_price:4000},
+  {id:12,room_name:"Family Room A",category_name:"Room",capacity:7,status:"available",overnight_price:3500},
+  {id:13,room_name:"Small Nipa Hut",category_name:"Cottage",capacity:8,status:"available",overnight_price:800},
+  {id:14,room_name:"Single Room",category_name:"Room",capacity:4,status:"available",overnight_price:2000},
+ ];
+ const context={intent:"ask_availability",availability_pending:true,guests:6,recommendation_category:"room",check_in:"2026-12-05",slot_preference:"night",stay_duration:1,last_verified_room_ids:[11]};
+ const message="Wala na bang mas mura diyan?";
+ const cheaper=matchRoomPriceFollowup(message,[],context);
+ assert.equal(cheaper.scope,"room");
+ const calls=[];
+ const handler=async(req,res)=>{calls.push(req.body);return res.json({available:true,schedule:{check_out_date:"2026-12-06"}});};
+ const run=ctx=>liveAvailability({message,context:ctx,catalog:rows,today:"2026-11-26",language:"taglish",handler,cheaper});
+ const result=await run(context);
+ assert.deepEqual(result.recommendation_cards.map(c=>c.id),[12]);
+ assert.deepEqual(calls,[{mode:"add",accommodation_id:12,slot_type:"night",check_in_date:"2026-12-05",stay_duration:1}]);
+ assert.equal(result.recommendation_cards[0].booking_selection.guests,6);
+ const none=await run({...context,last_verified_room_ids:[11,12]});
+ assert.equal(none.recommendation_cards.length,0);
+ assert.match(none.reply,/Wala po akong nakitang mas murang/);
+ assert.equal(calls.length,1);
+});
