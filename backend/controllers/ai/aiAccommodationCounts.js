@@ -16,6 +16,11 @@ function matchAccommodationCountQuestion(message) {
       COMPLEX.test(text) || /\b\d{4}-\d{1,2}-\d{1,2}\b/.test(text)) {
     return null;
   }
+  // Count the object of the question, not a room name elsewhere in it.
+  // A bedroom, bed or fixture count is about an accommodation's details,
+  // not the number of accommodations in the resort's inventory.
+  if (/\b(?:ilan|ilang|pila\s+ka|pila\s+ang|how\s+many|number\s+of|count\s+of|bilang\s+ng)\s+(?:po\s+)?(?:mga\s+|the\s+)?(?:bed\s*rooms?|beds?|kama|silid(?:\s+tulugan)?|tulugan|bathrooms?|comfort\s+rooms?|toilets?|cr|tables?|chairs?|air\s*conditioners?|tv(?:s)?|refrigerators?)\b/i.test(text) ||
+      /\b(?:single|double|family)\s+room\s+(?:[a-z]|\d+)\b/i.test(text)) return null;
   const scopes = [];
   if (ROOM_WORDS.test(text)) scopes.push("room");
   if (COTTAGE_WORDS.test(text)) scopes.push("cottage");
