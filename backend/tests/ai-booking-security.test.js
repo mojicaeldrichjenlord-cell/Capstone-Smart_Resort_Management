@@ -2349,3 +2349,29 @@ test("FINAL-B2 cottage switch answers every requested amenity including bed pres
   assert.doesNotMatch(result.body.reply,/Double Room 1|Queen Size Beds/i);
   assert.equal(modelCalls,0);
 });
+
+
+test("FINAL-D1 voice recommendation with rate uses guest count and overnight pricing", async () => {
+  catalogRows=[
+    {...exampleRoom,id:1,room_name:"Small Room",category_name:"Room",capacity:2,overnight_price:900},
+    {...exampleRoom,id:2,room_name:"Day Only Room",category_name:"Room",capacity:4,overnight_price:0},
+    {...exampleRoom,id:3,room_name:"Single Room Cottage 1",category_name:"Room",capacity:4,overnight_price:3000},
+    {...exampleRoom,id:4,room_name:"Family Room A",category_name:"Room",capacity:7,overnight_price:3500},
+    {...exampleRoom,id:5,room_name:"Small Nipa Hut 3",category_name:"Cottage",capacity:6,overnight_price:800},
+    {...exampleRoom,id:6,room_name:"Maintenance Room",category_name:"Room",capacity:4,overnight_price:1000,status:"maintenance"}
+  ];
+  const result=await post("/api/ai/chat",{
+    message:"Hello, apat kami na mag-overnight. Anong room ang ma-recommend mo at magkano?",
+    input_source:"voice"
+  });
+  assert.equal(result.status,200);
+  assert.equal(result.body.mode,"verified_personalized_rates");
+  assert.equal(result.body.extracted_context.guests,4);
+  assert.equal(result.body.extracted_context.slot_preference,"night");
+  assert.deepEqual(result.body.recommendation_cards.map(r=>Number(r.id)),[3,4]);
+  assert.match(result.body.reply,/Single Room Cottage 1.*₱3,000\.00.*Overnight/i);
+  assert.doesNotMatch(result.body.reply,/Small Room|Day Only Room|Maintenance Room|Small Nipa Hut/);
+  assert.ok(result.body.recommendation_cards.every(r=>r.availability_verified===false));
+  assert.equal(modelCalls,0);
+  assert.equal(queries.length,1);
+});
