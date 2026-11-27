@@ -138,8 +138,13 @@ function guestCountCorrection(message, recentTurns = [], context = {}) {
   const latest = recent.at(-1);
   // Only the immediate follow-up to our verified accommodation previews.
   // A prior room_id alone is NOT proof of an active recommendation.
+  // The current hospitality reply no longer says "matching preview".
+  // Recognize its precise localized opening + schedule question, without
+  // accepting arbitrary unrelated replies or relying on a stale room ID.
+  const naturalPreview = /^(?:Para sa (?:inyong dalawa|group niyo na \d+ guests), magandang option po ang .+\. Anong date po ang plan ninyo para ma-check ko rin ang availability\?|For your group of \d+, I'd suggest .+\. Here are some suitable options\. When are you planning to visit so I can check the schedule\?|Para sa \d+ ka guests, maayo nga option ang .+\. Kanus-a mo magbisita aron ma-check nato ang schedule\?|Para su grupo de \d+ personas, les recomiendo .+\. ¿En qué fecha planean visitarnos para comprobar la disponibilidad\?|您们一共\d+位，推荐考虑.+。计划哪天入住呢？我可以帮您查询空房。)$/iu;
   if (latest?.role !== "assistant" ||
-      !/(?:preview (?:ng|of|for|sa)|mao\s+ni\s+ang\s+preview|matching accommodations?|matching previews?|listed accommodation|matching room|matching units?|matching options?|matching (?:cottage|function area)|listed capacity)/i.test(latest.text))
+      !(/(?:preview (?:ng|of|for|sa)|mao\s+ni\s+ang\s+preview|matching accommodations?|matching previews?|listed accommodation|matching room|matching units?|matching options?|matching (?:cottage|function area)|listed capacity)/i.test(latest.text) ||
+        naturalPreview.test(latest.text.trim())))
     return null;
   const previousUser = recent.slice(0, -1).reverse().find(t => t.role === "user");
   if (!previousUser ||

@@ -64,3 +64,113 @@ test("ordinary rate inquiry bypasses availability workflow",()=>{
  assert.equal(scheduleTurn("Magkano overnight ng Family Room B?",{availability_pending:true}),false);
  assert.equal(validDate("2026-02-30"),false);
 });
+
+test("AI-108: guest correction reuses date and slot and discards stale small room",async()=>{
+ const {run,calls}=fixture();
+ const context={intent:"ask_availability",availability_pending:true,guests:2,room_id:2,room_name:"Single Room B",recommendation_category:"room",check_in:"2026-12-05",slot_preference:"night",stay_duration:1};
+ const message="Ay sorry, anim pala kami. May mas suitable ba na room para sa amin?";
+ assert.equal(scheduleTurn(message,context),true);
+ const result=await run(message,context,{scope:"resort",intent:"ask_recommendation",guests:6,room_name:"Single Room B"});
+ assert.equal(result.extracted_context.guests,6);
+ assert.equal(result.recommendation_cards.length,1);
+ assert.equal(result.recommendation_cards[0].id,3);
+ assert.equal(result.recommendation_cards[0].availability_verified,true);
+ assert.equal(result.recommendation_cards[0].booking_selection.guests,6);
+ assert.deepEqual(calls,[{mode:"add",accommodation_id:3,slot_type:"night",check_in_date:"2026-12-05",stay_duration:1}]);
+});
+test("AI-108: short corrections are checked, ordinary price or policy questions are not",()=>{
+ const context={intent:"ask_availability",availability_pending:true,guests:2,check_in:"2026-12-05",slot_preference:"night",recommendation_category:"room"};
+ assert.equal(scheduleTurn("6 pala kami",context),true);
+ assert.equal(scheduleTurn("Magkano para sa 6 guests?",context),false);
+ assert.equal(scheduleTurn("May parking ba para sa 6 guests?",context),false);
+ assert.equal(scheduleTurn("6 guests",{}),false);
+});
+
+test("AI-109: cheaper follow-up retains room scope, saved group and verified slot",async()=>{
+ const {matchRoomPriceFollowup}=require("../controllers/ai/aiRoomPriceFollowup");
+ const rows=[
+  {id:11,room_name:"Double Room 1",category_name:"Room",capacity:7,status:"available",overnight_price:4000},
+  {id:12,room_name:"Family Room A",category_name:"Room",capacity:7,status:"available",overnight_price:3500},
+  {id:13,room_name:"Small Nipa Hut",category_name:"Cottage",capacity:8,status:"available",overnight_price:800},
+  {id:14,room_name:"Single Room",category_name:"Room",capacity:4,status:"available",overnight_price:2000},
+ ];
+ const context={intent:"ask_availability",availability_pending:true,guests:6,recommendation_category:"room",check_in:"2026-12-05",slot_preference:"night",stay_duration:1,last_verified_room_ids:[11]};
+ const message="Wala na bang mas mura diyan?";
+ const cheaper=matchRoomPriceFollowup(message,[],context);
+ assert.equal(cheaper.scope,"room");
+ const calls=[];
+ const handler=async(req,res)=>{calls.push(req.body);return res.json({available:true,schedule:{check_out_date:"2026-12-06"}});};
+ const run=ctx=>liveAvailability({message,context:ctx,catalog:rows,today:"2026-11-26",language:"taglish",handler,cheaper});
+ const result=await run(context);
+ assert.deepEqual(result.recommendation_cards.map(c=>c.id),[12]);
+ assert.deepEqual(calls,[{mode:"add",accommodation_id:12,slot_type:"night",check_in_date:"2026-12-05",stay_duration:1}]);
+ assert.equal(result.recommendation_cards[0].booking_selection.guests,6);
+ const none=await run({...context,last_verified_room_ids:[11,12]});
+ assert.equal(none.recommendation_cards.length,0);
+ assert.match(none.reply,/Wala po akong nakitang mas murang/);
+ assert.equal(calls.length,1);
+});
+
+test("AI-110: consent to switch category retains the previous room price ceiling",async()=>{
+ const {matchRoomPriceFollowup}=require("../controllers/ai/aiRoomPriceFollowup");
+ const rows=[
+  {id:11,room_name:"Double Room 1",category_name:"Room",capacity:7,status:"available",overnight_price:4000},
+  {id:12,room_name:"Family Room A",category_name:"Room",capacity:7,status:"available",overnight_price:3500},
+  {id:13,room_name:"Small Nipa Hut 2",category_name:"Cottage",capacity:10,status:"available",overnight_price:800},
+  {id:14,room_name:"Big Cottage",category_name:"Cottage",capacity:10,status:"available",overnight_price:3600},
+  {id:15,room_name:"Tiny Cottage",category_name:"Cottage",capacity:4,status:"available",overnight_price:500},
+ ];
+ const context={intent:"ask_availability",availability_pending:true,guests:6,recommendation_category:"room",check_in:"2026-12-05",slot_preference:"night",stay_duration:1,last_verified_room_ids:[11,12]};
+ const message="Sige, okay lang kahit cottage basta kasya kaming lahat at mas mura.";
+ const cheaper=matchRoomPriceFollowup(message,[],context);
+ assert.equal(cheaper.scope,"cottage");
+ const calls=[];
+ const handler=async(req,res)=>{calls.push(req.body);return res.json({available:true,schedule:{check_out_date:"2026-12-06"}});};
+ const result=await liveAvailability({message,context,catalog:rows,today:"2026-11-26",language:"taglish",handler,cheaper});
+ assert.deepEqual(result.recommendation_cards.map(c=>c.id),[13]);
+ assert.equal(result.recommendation_cards[0].availability_verified,true);
+ assert.equal(result.recommendation_cards[0].selected_rate,800);
+ assert.equal(result.recommendation_cards[0].booking_selection.guests,6);
+ assert.match(result.reply,/₱3,500/);
+ assert.doesNotMatch(result.reply,/Hindi ko po ma-confirm/);
+ assert.deepEqual(calls,[{mode:"add",accommodation_id:13,slot_type:"night",check_in_date:"2026-12-05",stay_duration:1}]);
+});
+
+
+test("Undated catalog and budget recommendations do not trigger live availability",()=>{
+ for(const message of ["What rooms are available?","Need a day tour cottage for 10 guests under 3500","Recommend a room for 3 guests overnight"]){
+  assert.equal(scheduleTurn(message,{}),false,message);
+ }
+ assert.equal(scheduleTurn("Is Family Room B available on December 5?",{}),true);
+ assert.equal(scheduleTurn("Available ba ang Family Room B overnight?",{}),true);
+});
+
+
+test("QA-122 named availability plus rate and inclusions uses fresh verified catalog",async()=>{
+ const room={...catalog[2],amenities:"Private CR\nKitchen\n2 Queen-Size Beds"};
+ const calls=[];
+ const handler=async(req,res)=>{calls.push(req.body);return res.json({available:true,schedule:{check_out_date:"2026-12-07"}});};
+ const result=await liveAvailability({message:"Hi! Planning namin mag-overnight sa Family Room B on December 6, 2026. We are 15 guests. Available pa ba ito, magkano ang rate, at ano ang included amenities?",extracted:{check_in:"2026-12-06",slot_preference:"night",guests:15},catalog:[room],today:"2026-11-26",language:"taglish",handler});
+ assert.match(result.reply,/Available pa/);
+ assert.match(result.reply,/₱8,000\.00/);
+ assert.match(result.reply,/private cr/i);
+ assert.match(result.reply,/kitchen/i);
+ assert.match(result.reply,/2 queen-size beds/i);
+ assert.equal(result.recommendation_cards[0].availability_verified,true);
+ assert.equal(result.recommendation_cards[0].booking_selection.guests,15);
+ assert.equal(calls.length,1);
+});
+test("QA-122 unavailable slot retains verified inclusions without granting booking",async()=>{
+ const room={...catalog[2],amenities:"Private CR"};
+ const result=await liveAvailability({message:"Is Family Room B available on 2026-12-05 overnight and what are the amenities?",catalog:[room],today:"2026-11-26",language:"english",handler:async(req,res)=>res.json({available:false})});
+ assert.match(result.reply,/not available/);
+ assert.match(result.reply,/private cr/i);
+ assert.equal(result.recommendation_cards[0].availability_status,"unavailable");
+ assert.ok(result.recommendation_cards.every(c=>!c.availability_verified));
+});
+test("QA-122 missing amenities are not invented",async()=>{
+ const room={...catalog[2],amenities:""};
+ const result=await liveAvailability({message:"Family Room B available on 2026-12-06 overnight? What are the amenities?",catalog:[room],today:"2026-11-26",language:"english",handler:async(req,res)=>res.json({available:true,schedule:{check_out_date:"2026-12-07"}})});
+ assert.match(result.reply,/amenities.*aren't complete/i);
+ assert.equal(result.recommendation_cards[0].availability_verified,true);
+});

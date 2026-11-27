@@ -1,0 +1,111 @@
+/* AI-48: compact public concierge starter shortcuts + safe guided actions.
+   Visual-only: the existing AI request flow, room cards and payment logic remain. */
+body[data-ai-chat-surface="public"] .ai-chat-window .ai-quick-questions {
+  padding: 12px;
+  margin: 10px 0 0;
+  border: 1px solid #dce9e7;
+  border-radius: 14px;
+  background: #f2f8f7;
+}
+body[data-ai-chat-surface="public"] .ai-chat-window .ai-quick-questions-label {
+  color: #426b68;
+  font-weight: 750;
+  font-size: .74rem;
+  margin: 0 0 9px;
+}
+body[data-ai-chat-surface="public"] .ai-chat-window .ai-quick-questions-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+body[data-ai-chat-surface="public"] .ai-chat-window .ai-quick-question {
+  display: flex;
+  min-width: 0;
+  min-height: 40px;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  padding: 9px 10px;
+  font-size: .73rem;
+  line-height: 1.3;
+  text-align: center;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  background: #fff;
+  color: #145c58;
+  border: 1px solid #b9d9d3;
+  border-radius: 10px;
+  box-shadow: none;
+}
+body[data-ai-chat-surface="public"] .ai-chat-window .ai-quick-question:hover {
+  background: #e7f5f1;
+  border-color: #6eb5a9;
+}
+.ai-chat-window .ai-concierge-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px;
+  margin: 5px 0 13px;
+  max-width: 100%;
+}
+.ai-chat-window .ai-concierge-action-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 39px;
+  padding: 8px 12px;
+  border: 1px solid #80c6bb;
+  border-radius: 10px;
+  background: #e5f5f1;
+  color: #115e59;
+  font-size: .78rem;
+  font-weight: 750;
+  line-height: 1.35;
+  text-align: center;
+  text-decoration: none;
+}
+.ai-chat-window .ai-concierge-action-link:hover {
+  background: #d3efe8;
+  border-color: #3c9d90;
+}
+.ai-chat-window .ai-concierge-action-link:first-child {
+  background: #0f766e;
+  color: white;
+  border-color: #0f766e;
+}
+.ai-chat-window .ai-concierge-action-link:first-child:hover {
+  background: #115e59;
+}
+@media (max-width: 420px) {
+  body[data-ai-chat-surface="public"] .ai-chat-window .ai-quick-questions {
+    padding: 10px;
+  }
+  body[data-ai-chat-surface="public"] .ai-chat-window .ai-quick-question {
+    font-size: .70rem;
+    min-height: 44px;
+  }
+  .ai-chat-window .ai-concierge-action-link {
+    min-height: 42px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ai-chat-window .ai-quick-question,
+  .ai-chat-window .ai-concierge-action-link { transition: none; }
+}
+
+
+/* Signed-in Customer dark mode: keep action links readable with muted contrast. */
+html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-concierge-action-link {
+  color: #d7f4ef;
+  background: #203d49;
+  border-color: #42746f;
+}
+html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-concierge-action-link:first-child {
+  color: #fff;
+  background: #0e7775;
+  border-color: #25938b;
+}
+html[data-customer-theme="dark"] body.customer-manager-tone .ai-chat-window .ai-concierge-action-link:hover {
+  background: #2d5260;
+}

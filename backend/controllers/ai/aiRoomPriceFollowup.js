@@ -54,7 +54,7 @@ function matchRoomPriceFollowup(message,recentTurns=[],context={}) {
   const category=type || (supportedGroup(context?.recommendation_category) ? context.recommendation_category : previousType);
   const scope=supportedGroup(category);
   const hasPriorRoom=Number(context?.room_id)>0 ||
-    (context?.intent==="ask_recommendation" && (previousType || scope));
+    ((context?.intent==="ask_recommendation" || (context?.intent==="ask_availability" && context.check_in && context.slot_preference)) && (previousType || scope));
   const guests=explicitGuestCount(q) || savedGuestCount(context);
   const cheaper=cheaperWord.test(q);
   // "May mas mura ba diyan?" only inherits the room conversation when a

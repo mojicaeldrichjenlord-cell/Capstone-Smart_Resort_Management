@@ -187,10 +187,12 @@ async function sendAiMessage(options = {}) {
       // an unrelated Nipa Hut (mergeContext uses nullish fallbacks).
       if (((data.mode === "verified_accommodation_preview" ||
              data.mode === "verified_cheapest_accommodation" ||
-             data.mode === "verified_room_price_followup") &&
+             data.mode === "verified_room_price_followup" ||
+             data.mode === "verified_pair_recommendation") &&
             !Object.prototype.hasOwnProperty.call(data.extracted_context, "room_id")) ||
           data.mode === "accommodation_selection_needed" ||
-          data.mode === "recommendation_needs_guest_count") {
+          data.mode === "recommendation_needs_guest_count" ||
+          data.mode === "verified_accommodation_comparison") {
         // AI-37: A new recommendation is pending guest count; don't
         // preserve an older selected accommodation by merging nullish keys.
         delete merged.room_id;
@@ -201,10 +203,16 @@ async function sendAiMessage(options = {}) {
       // Save silently. Repeating context summaries on every reply feels robotic.
     }
 
-    // UI-49: Match public recommendation card labels without changing
-    // signed-in Customer wording, authentication or backend behavior.
+    // UI-49: Public visitors see "Login for Details" on recommendation cards,
+    // while signed-in customers see "View Details". Match the visible label
+    // without changing backend recommendations or authentication behavior.
     const aiReply = aiReplyForSurface(data.reply || "No reply generated.");
     appendAiMessage("assistant", aiReply);
+    // AI-48: Backend requests a known safe booking or human handoff. Never
+    // derive link destinations from model text or user-supplied URLs.
+    if (data.handoff === "booking" || data.handoff === "human") {
+      appendAiConciergeActions(data.handoff);
+    }
 
     if (Array.isArray(data.recommendation_cards) && data.recommendation_cards.length) {
       appendAiRecommendationCards(data.recommendation_cards);
@@ -247,24 +255,24 @@ async function sendAiMessage(options = {}) {
     const mergedFallbackContext = mergeContext(storedContext, fallback.context || {});
     saveAiContext(mergedFallbackContext);
 
-    // Show the temporary offline banner once, not on every single reply.
+    // AI-49: A network error does not erase verified offline resort knowledge.
+    // Previous code ALWAYS replaced fallback.reply with a generic voice error,
+    // even for typed parking questions. Keep the factual fallback and show one
+    // separate connection notice. Never pretend rates or slots are verified.
+    const localHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+    const isTransportError = error instanceof TypeError &&
+      /fetch|network|load failed/i.test(String(error.message || ""));
+    const notice = localHost && isTransportError
+      ? "Hindi ma-connect ang localhost backend (127.0.0.1:5000). I-start o i-restart muna ang backend server. Offline verified resort info lang ang available."
+      : fallback.modeNotice;
     if (!getStoredChatHistory().some((entry) => entry.type === "system" &&
-        entry.text === fallback.modeNotice)) {
-      appendAiSystemNote(fallback.modeNotice);
+        entry.text === notice)) {
+      appendAiSystemNote(notice);
     }
-
-    // Persist offline booking hints silently rather than adding scripted status prose.
-
-    // In Live Voice mode, preserve the selected spoken language even when
-    // Gemini is offline. Never make unverified availability promises.
-    const voiceFallbacks = {
-      english: "Sorry, the AI service is temporarily unavailable. Please try again or continue using the booking page.",
-      taglish: "Pasensya na po, temporarily unavailable ang AI service. Puwede po kayong mag-try ulit o magpatuloy sa booking page.",
-      spanish: "Lo siento, el servicio de inteligencia artificial no está disponible temporalmente. Puede intentarlo de nuevo o continuar en la página de reservas.",
-      mandarin: "抱歉，人工智能服务暂时无法使用。您可以稍后再试，或前往预订页面继续操作。",
-    };
-    const voiceLanguage = detectOfflineLanguage(message, storedContext);
-    const safeReply = voiceFallbacks[voiceLanguage] || fallback.reply;
+    // This is useful resort information only when the local verified answer is
+    // known. Other inquiries remain cautious and never fabricate availability.
+    const safeReply = fallback.reply ||
+      "Sorry, the AI service is temporarily unavailable. Please try again.";
     appendAiMessage("assistant", safeReply);
     return safeReply;
   } finally {
@@ -403,7 +411,7 @@ function restoreChatHistory() {
     appendAiMessage(
       "assistant",
       AI_IS_PUBLIC_LANDING
-        ? "Welcome po sa Arvic Seaside Beach Resort and Hotel! 👋 Ask me about rooms, cottages, rates, parking, and resort policies—no login needed. Ano pong gusto ninyong malaman?"
+        ? "Magandang araw po! Welcome sa Arvic Seaside Beach Resort and Hotel. Tulungan ko kayong mag-check ng rooms, rates at booking options. Ano pong gusto niyong malaman?"
         : "Hi po! Anong accommodation o booking details ang maitutulong ko sa inyo?",
       false
     );
@@ -447,7 +455,12 @@ function appendAiStarterSuggestions(messages) {
   label.className = "ai-quick-questions-label";
   label.textContent = "You can ask me about";
   wrapper.appendChild(label);
-  const prompts = [
+  const prompts = AI_IS_PUBLIC_LANDING ? [
+    ["Room & cottage rates", "Magkano ang rooms at cottages?"],
+    ["Book & pay online", "Paano mag-book at magbayad?"],
+    ["Entrance & corkage", "Ano ang policies sa entrance fee at corkage?"],
+    ["Exact location", "Saan ang exact location ninyo?"],
+  ] : [
     ["Parking", "May free parking ba kayo?"],
     ["Cottages", "Ilang cottages meron kayo?"],
     ["Find a room", "Anong magandang room para sa 10 guests?"],
@@ -472,6 +485,40 @@ function appendAiStarterSuggestions(messages) {
   }
   wrapper.appendChild(row);
   messages.appendChild(wrapper);
+}
+
+// AI-48: Fixed first-party UI actions. Backend has already verified the
+// concierge route; links are never generated by Gemini or supplied by guests.
+function appendAiConciergeActions(handoff) {
+  const messages = document.getElementById("aiChatMessages");
+  if (!messages || !["booking", "human"].includes(handoff)) return;
+  const section = document.createElement("div");
+  section.className = "ai-concierge-actions";
+  section.setAttribute("role", "group");
+  section.setAttribute("aria-label", handoff === "booking"
+    ? "Continue to online booking" : "Contact Arvic Seaside Front Desk");
+  const actions = handoff === "booking"
+    ? (AI_IS_PUBLIC_LANDING
+        ? [
+            ["Log in to book", "../authHTML/login.html"],
+            ["Create account", "../authHTML/register.html"],
+          ]
+        : [["Browse accommodations", "rooms.html"]])
+    : [
+        ["Call Front Desk", "tel:09569125625"],
+        ["Alternate number", "tel:09678170662"],
+        ["Email resort", "mailto:resortarvicseaside@gmail.com"],
+      ];
+  for (const [label, safeHref] of actions) {
+    const link = document.createElement("a");
+    link.className = "ai-concierge-action-link";
+    link.textContent = label;
+    link.href = safeHref;
+    // Links intentionally remain same-tab for the booking flow.
+    section.appendChild(link);
+  }
+  messages.appendChild(section);
+  messages.scrollTop = messages.scrollHeight;
 }
 
 function clearAiConversation() {
@@ -632,6 +679,36 @@ function appendAiMessage(role, text, save = true) {
   }
 }
 
+// UI-46: The public landing concierge should stay uncluttered for English and
+// Taglish. Translation controls are relevant only when the AI actually replies
+// in Spanish or Mandarin, not merely when a guest mentions those languages.
+// No external language-detection request or Gemini credits are consumed.
+function isSpanishOrMandarinAiReply(replyText) {
+  const text = String(replyText || "")
+    .replace(/https?:\/\/\S+/gi, " ")
+    .replace(/`[^`]*`/g, " ")
+    .trim();
+
+  if (!text) return false;
+
+  // Mandarin: Chinese script in the reply, including Chinese punctuation.
+  const hanCount = (text.match(/[\u3400-\u9fff]/gu) || []).length;
+  if (hanCount >= 2) return true;
+
+  // Spanish: require either a full short greeting or multiple signals.
+  // One isolated word such as "hola" inside an English reply should not
+  // suddenly add Translate buttons.
+  if (/^(?:[¡¿]?\s*(?:hola|gracias|buenos\s+d[ií]as|buenas\s+tardes|buenas\s+noches|bienvenid[oa]s?)[\s.!¡¿?]*)$/iu.test(text)) {
+    return true;
+  }
+
+  const strongSignals = text.match(/\b(?:hola|gracias|bienvenid[oa]s?|habitaciones?|reservaci[oó]n(?:es)?|reservar|tenemos|ofrecemos|puedes?|pueden|cu[aá]nto|piscina|precios?|disponibles?|estacionamiento|necesitas?|quier[oe]|tienen|estamos|buen[oa]s|noches|d[ií]as|ustedes?|aqu[ií]|visitar|disfrutar|alojamiento|personas|puedo|usted)\b/giu) || [];
+  const grammarSignals = text.match(/\b(?:el|la|los|las|una?|de|del|en|con|para|que|por|nuestro|nuestra|sus|est[aá]|est[aá]n|son)\b/giu) || [];
+  return (/[¿¡]/u.test(text) && strongSignals.length >= 1) ||
+    strongSignals.length >= 2 ||
+    (strongSignals.length >= 1 && grammarSignals.length >= 2);
+}
+
 function appendReplyActions(wrapper, originalText) {
   const actions = document.createElement("div");
   actions.className = "ai-reply-actions"; // Shared compact controls across Customer pages.
@@ -721,8 +798,14 @@ function appendReplyActions(wrapper, originalText) {
     option.button.addEventListener("click", () => changeTranslation(option));
   }
   actions.appendChild(speakBtn);
-  actions.appendChild(translateEnglishBtn);
-  actions.appendChild(translateTagalogBtn);
+  // UI-57: On ALL Customer surfaces, show translation only if the AI
+  // actually replied in Spanish or Mandarin. Read Aloud is always available.
+  // History restoration also calls appendReplyActions, so previously saved
+  // English/Taglish replies no longer show irrelevant Translate controls.
+  if (isSpanishOrMandarinAiReply(originalText)) {
+    actions.appendChild(translateEnglishBtn);
+    actions.appendChild(translateTagalogBtn);
+  }
   wrapper.appendChild(actions);
 }
 
@@ -1277,8 +1360,10 @@ function getOfflineFallbackReply(message, storedContext = {}, pageContext = {}) 
 }
 
 // Keep this tiny offline mirror aligned with backend/resortInquiryKnowledge.js.
-// Source of truth for free parking: client confirmation, November 19, 2026.
-// For unknown parking security, slot/capacity, pool fees and pets, don't invent.
+// Source of truth for parking: client-confirmed November 19, 2026;
+// no-animals policy: client-confirmed November 22, 2026.
+// Outside food/drinks allowed (corkage fee unknown), free Wi-Fi in Rooms only,
+ // pool always open with no swimwear restrictions. Pool fees still unverified.
 function getOfflineVerifiedResortReply(message, language, context) {
   const t = String(message || "").normalize("NFKC").toLowerCase().trim();
   if (!t || t.length > 600) return null;
@@ -1286,7 +1371,7 @@ function getOfflineVerifiedResortReply(message, language, context) {
   const address = /\b(?:address|located|location|nasaan\s+(?:ang\s+)?resort|saan\s+(?:kayo|ang\s+resort))\b/i.test(t);
   const hours = /\b(?:open\s+(?:24\s*(?:\/\s*7|hours?)|everyday)|operating\s+hours?|opening\s+hours?|bukas\s+ba\s+kayo)\b/i.test(t);
   const contact = /\b(?:contact\s+(?:number|details?)|phone\s+number|hotline|numero\s+ng\s+resort)\b/i.test(t);
-  const pool = /\b(?:swimming\s+pool|may\s+(?:ba\s+)?pool|have\s+(?:a\s+)?pool)\b/i.test(t);
+  const pool = /\b(?:swimming\s+pool|pool(?![\s-]?(?:shade|side|pavilion|pavillion))|may\s+(?:ba\s+)?pool|have\s+(?:a\s+)?pool|swim(?:ming)?\s+(?:at|hours?|anytime|attire|clothes|wear|dress)|swimwear|palanguyan|panglangoy)\b/i.test(t);
   const entry = /\b(?:entrance\s+(?:fee|charge|payment)|free\s+entrance|libre(?:ng)?(?:\s+rin)?(?:\s+ba)?\s+(?:ang\s+)?entrance)\b/i.test(t);
   const lang = ["english", "tagalog", "taglish"].includes(language) ? language : "english";
   const notice = lang === "english"
@@ -1298,12 +1383,168 @@ function getOfflineVerifiedResortReply(message, language, context) {
     ({ english, tagalog, taglish })[lang];
   const withReply = answer => ({ modeNotice: notice, reply: answer, context });
 
+  // AI-60: Approved no-pets policy also applies when the backend is offline.
+  // The question may involve a named room because this restriction is
+  // property-wide. Never infer pet-fee exceptions or pet boarding options.
+  const pet = /\b(?:pets?|pet[\s-]?friendly|dogs?|cats?|pupp(?:y|ies)|kittens?|animals?|aso|pusa|hayop|alagang\s+hayop|iro|iring|mascotas?|perros?|gatos?)\b/iu.test(t) ||
+    /(?:宠物|猫|狗)/u.test(t);
+  const wifi = /\b(?:wi-?fi|wireless|internet)\b/i.test(t);
+  const food = /\b(?:corkage|outside[\s-]?food|outside[\s-]?drinks?|own\s+(?:food|drinks?|beverages?)|bring(?:ing)?\s+(?:(?:my|our|your|their|some|own)\s+)?(?:food|drinks?|snacks?|beverages?)|baon|magbaon|dalang\s+(?:pagkain|inumin|food)|magdala\s+(?:ng\s+)?(?:pagkain|inumin|food)|(?:pwede|puwede)\s+.*\b(?:pagkain|inumin)\b|food\s+policy|food\s+allowed)\b/i.test(t);
+  // AI-62: Same resort-confirmed guest permissions offline, without claiming
+  // any booked accommodation includes karaoke/audio equipment. In multi-part
+  // inquiries, include the other verified facts rather than ignoring them.
+  const guestAlcohol = /\b(?:alcohol(?:ic)?|beer|liquor|wine|spirits|alak|inuming\s+may\s+alkohol)\b/i.test(t);
+  const guestSmoke = /\b(?:smok(?:e|ing)|cigarettes?|tobacco|vap(?:e|ing)|e[\s-]?cigarettes?|yosi|sigarilyo|manigarilyo|mag[\s-]?yosi)\b/i.test(t);
+  const guestAudio = /\b(?:videoke|karaoke|mag[\s-]?videoke|mag[\s-]?karaoke|speakers?|bluetooth\s+speakers?|sound\s+system|soundbox|music\s+system|microphone|mikropono)\b/i.test(t);
+  const audioProvided = guestAudio &&
+    /\b(?:do\s+you\s+(?:have|provide|offer)|(?:is\s+there|are\s+there)\s+(?:(?:a|any|some)\s+)?(?:videoke|karaoke|speakers?|sound\s+system)|included|inclusions?|comes?\s+with|may\s+(?:(?:ba|po|sariling)\s+)*(?:videoke|karaoke|speaker)|meron\s+(?:(?:ba|po|sariling)\s+)*(?:videoke|karaoke|speaker)|kasama\s+(?:(?:ba|po|ang)\s+)*(?:videoke|karaoke|speaker)|provided|built[\s-]?in|rental|rent(?:ing)?)\b/i.test(t) &&
+    !/\b(?:bring|bringing|own|our|my|dalhin|magdala|pwede|puwede|allowed|bawal)\b/i.test(t);
+  const alcoholRetail = guestAlcohol && /\b(?:sell|selling|sold|serve|serving|provide|buy|purchase|order|for\s+sale|magbenta|nagbebenta|tinda)\b/i.test(t);
+  const otherFinancial = /\b(?:downpayment|deposit|paypal|refund|booking\s+total|room\s+rate|room\s+price|magkano\s+(?:ang\s+)?(?:room|kwarto))\b/i.test(t);
+  if ((guestAlcohol || guestSmoke || guestAudio) && !audioProvided &&
+      !alcoholRetail && !otherFinancial) {
+    const answer=[];
+    if (guestAlcohol) answer.push(reply(
+      "Yes, guests may bring alcoholic drinks.",
+      "Opo, maaaring magdala ng mga inuming may alkohol.",
+      "Yes po, puwede magdala ng alcoholic drinks."
+    ));
+    if (guestSmoke) answer.push(reply(
+      "Smoking and vaping are allowed.",
+      "Pinapayagan po ang paninigarilyo at paggamit ng vape.",
+      "Allowed po ang smoking at vaping."
+    ));
+    if (guestAudio) answer.push(reply(
+      "You may bring and use your own videoke or speakers.",
+      "Maaari pong magdala at gumamit ng sariling videoke o speakers.",
+      "Puwede po magdala at gumamit ng sariling videoke at speakers."
+    ));
+    answer.push(reply(
+      "The resort has no specific time restrictions for these activities.",
+      "Wala pong itinakdang oras ng pagbabawal ang resort para sa mga gawaing ito.",
+      "Wala pong specific time restrictions ang resort para sa mga ito."
+    ));
+    if (guestSmoke && /\b(?:inside\s+(?:a|the|our|my)\s+room|in\s+(?:a|the|our|my)\s+room|sa\s+(?:loob\s+ng\s+)?(?:room|kwarto|kuwarto|cottage)|indoors?|balcony|poolside|designated\s+(?:area|zone))\b/i.test(t)) answer.push(reply(
+      "Whether smoking/vaping is allowed inside a specific room or area isn't confirmed; please ask Front Desk.",
+      "Hindi pa kumpirmado kung puwede sa loob ng partikular na kuwarto o lugar; pakitanong sa Front Desk.",
+      "Hindi pa confirmed kung puwede mismo sa loob ng room o specific area; pa-check sa Front Desk."
+    ));
+    if (pet) answer.push(reply(
+      "Pets and other animals are not allowed.",
+      "Bawal po ang mga alagang hayop at iba pang hayop.",
+      "Bawal po ang pets at ibang hayop."
+    ));
+    if (wifi) answer.push(reply(
+      "Free Wi-Fi is provided in rooms only, not cottages or common areas.",
+      "Sa mga kuwarto lamang po may libreng Wi-Fi, hindi sa cottages o common areas.",
+      "Sa rooms lang po may free Wi-Fi, hindi sa cottages o common areas."
+    ));
+    if (food) answer.push(reply(
+      "Guests may bring food and drinks. Corkage fees are not yet confirmed.",
+      "Maaaring magdala ng pagkain at inumin. Hindi pa kumpirmado ang corkage fee.",
+      "Puwede magdala ng food at drinks; hindi pa confirmed ang corkage fee."
+    ));
+    if (pool) answer.push(reply(
+      "The pool is always open, with no specific swimwear restrictions.",
+      "Laging bukas ang pool at walang partikular na swimwear restrictions.",
+      "Always open po ang pool, walang specific swimwear restrictions."
+    ));
+    if (park) answer.push(reply(
+      "Vehicle parking is free.","Libre po ang paradahan ng mga sasakyan.",
+      "Free po ang parking ng vehicles."
+    ));
+    return withReply(answer.join(" "));
+  }
+
+  if (pet && !/\b(?:downpayment|deposit|paypal|refund|booking\s+total|room\s+rate|magkano\s+(?:ang\s+)?(?:room|kwarto))\b/i.test(t)) {
+    const policy = reply(
+      "Sorry, animals and pets are not allowed at Arvic Seaside Resort, including dogs and cats.",
+      "Pasensya na po, bawal magdala ng mga hayop sa Arvic Seaside Resort, kasama ang aso at pusa.",
+      "Sorry po, hindi pet-friendly ang Arvic Seaside Resort. Bawal magdala ng pets o kahit anong hayop, including dogs and cats."
+    );
+    const parkingNote = park ? reply(
+      " Parking for vehicles is free.", " Libre ang parking ng sasakyan.",
+      " Free po ang parking ng vehicles."
+    ) : "";
+    const wifiNote = wifi ? reply(
+      " Free Wi-Fi is available in room accommodations only, not in cottages or common areas.",
+      " Sa mga kuwarto lamang po may libreng Wi-Fi, hindi sa cottages o common areas.",
+      " Sa rooms lang po may free Wi-Fi, hindi sa cottages o common areas."
+    ) : "";
+    const foodNote = food ? reply(
+      " Guests may bring their own food and drinks. Corkage fees have not been confirmed.",
+      " Maaari pong magdala ng pagkain at inumin. Hindi pa kumpirmado ang corkage fee.",
+      " Puwede magdala ng sariling food at drinks; hindi pa confirmed ang corkage fee."
+    ) : "";
+    return withReply(policy + parkingNote + wifiNote + foodNote);
+  }
+
+  // AI-61: Offline facts mirror the verified backend; don't guess corkage,
+  // Wi-Fi credentials, pool entrance price or unrelated safety rules.
+  const alcoholRule = /\b(?:alcohol(?:ic)?|beer|liquor|wine|alak|smoking|vaping|yosi|sigarilyo|videoke|karaoke)\b/i.test(t);
+  const otherBooking= /\b(?:downpayment|deposit|paypal|refund|booking\s+status|room\s+rate|magkano\s+(?:ang\s+)?(?:room|kwarto))\b/i.test(t);
+  if ((wifi || food || pool) && !alcoholRule && !otherBooking) {
+    const cottage = /\b(?:cottages?|kubo|nipa\s+hut|pavilions?|function\s+areas?|lobby|common\s+areas?|poolside)\b/i.test(t) &&
+      !/\bsingle\s+room\s+cottage\b/i.test(t);
+    const asksCorkage = food && /\b(?:corkage|charge|fee|free|libre|bayad|magkano|how\s+much)\b/i.test(t);
+    const asksPoolFee = pool && (
+      /\b(?:pool|swimming|piscina)\b.{0,55}\b(?:entrance|admission|fees?|ticket|price|cost|libre|free|magkano|how\s+much|bayad)\b/i.test(t) ||
+      /\b(?:entrance|admission|fees?|ticket|price|cost|magkano|how\s+much|bayad)\b.{0,55}\b(?:pool|swimming|piscina)\b/i.test(t)
+    );
+    const asksPoolRule = pool && /\b(?:life[\s-]?guards?|children|bata|safety|supervis|age|depth|rules?|restrictions?)\b/i.test(t);
+    const answer=[];
+    if (wifi) answer.push(cottage ? reply(
+      "Free Wi-Fi is available in rooms only, not in cottages or common areas.",
+      "Sa mga kuwarto lamang po may libreng Wi-Fi, hindi sa cottages o common areas.",
+      "Free Wi-Fi po sa rooms lang, hindi sa cottages o common areas."
+    ) : reply(
+      "Free Wi-Fi is available in room accommodations only.",
+      "Sa mga kuwarto lamang po may libreng Wi-Fi.",
+      "Free Wi-Fi po ay nasa rooms lang."
+    ));
+    if (wifi && /\b(?:password|speed|mbps|signal|fast|reliable)\b/i.test(t)) answer.push(reply(
+      "The Wi-Fi password and speeds aren't confirmed; please ask Front Desk.",
+      "Hindi pa kumpirmado ang password at bilis ng Wi-Fi; pakitanong sa Front Desk.",
+      "Hindi pa confirmed ang Wi-Fi password at speed; pa-check sa Front Desk."
+    ));
+    if (food) answer.push(reply(
+      "Yes, you may bring your own food and drinks.",
+      "Opo, maaari pong magdala ng sariling pagkain at inumin.",
+      "Yes po, puwede magdala ng sariling food at drinks."
+    ));
+    if (asksCorkage) answer.push(reply(
+      "Whether any corkage fee applies hasn't been confirmed; please ask Front Desk.",
+      "Hindi pa kumpirmado kung may corkage fee; pakitanong sa Front Desk.",
+      "Hindi pa confirmed kung may corkage fee; pa-check sa Front Desk."
+    ));
+    if (pool) answer.push(reply(
+      "The swimming pool is always open, including at night, with no specific swimwear restrictions.",
+      "Laging bukas ang pool, kahit gabi, at walang partikular na pagbabawal sa kasuotang panlangoy.",
+      "Always open po ang swimming pool, kahit gabi, at walang specific swimwear restrictions."
+    ));
+    if (asksPoolFee) answer.push(reply(
+      "Pool entrance fees haven't been confirmed; please ask Front Desk.",
+      "Hindi pa kumpirmado ang pool entrance fee; pakitanong sa Front Desk.",
+      "Hindi pa confirmed ang pool entrance fee; pa-check sa Front Desk."
+    ));
+    if (asksPoolRule) answer.push(reply(
+      "Other pool safety and supervision rules haven't been confirmed; please ask Front Desk.",
+      "Hindi pa kumpirmado ang ibang pool safety rules; pakitanong sa Front Desk.",
+      "Hindi pa confirmed ang ibang pool safety rules; pa-check sa Front Desk."
+    ));
+    if (park) answer.push(reply(
+      "Vehicle parking is free.", "Libre po ang paradahan ng mga sasakyan.",
+      "Free po ang parking ng vehicles."
+    ));
+    return withReply(answer.join(" "));
+  }
+
   // Unsupported general policies are handled conservatively even offline.
-  // A statement that parking is free does not prove that pets or Wi-Fi are allowed.
-  const unknownPolicy = /\b(?:pets?|dogs?|cats?|wi-?fi|internet|corkage|outside\s+food|bring\s+food)\b/i.test(t);
+  // Parking being free does not imply that Wi-Fi or corkage is also free.
+  const unknownPolicy = /\b(?:alcohol(?:ic)?|beer|liquor|wine|alak|smoking|vaping|yosi|sigarilyo)\b/i.test(t);
   if (unknownPolicy) return withReply(reply(
     (park ? "Parking is free for all vehicles. " : "") +
-      "That other resort policy hasn't been verified. Please ask Front Desk at 0956-912-5625.",
+      "That resort policy has not yet been confirmed. Please ask Front Desk at 0956-912-5625.",
     (park ? "Libre po ang parking. " : "") +
       "Hindi pa confirmed ang iba pang policy na iyon. Pakitanong po sa Front Desk: 0956-912-5625.",
     (park ? "Free po ang parking. " : "") +

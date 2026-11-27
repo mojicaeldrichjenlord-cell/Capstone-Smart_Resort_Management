@@ -12,7 +12,8 @@ const FEATURES = Object.freeze({
   aircon: /\b(?:air[\s-]?(?:con(?:ditioner|ditioning|ditioned)?|condition(?:er|ed|ing)?)|a\/c|ac)\b/i,
   ref: /\b(?:ref|refrigerator|fridge|mini[\s-]?(?:ref|fridge|refrigerator))\b/i,
   karaoke: /\b(?:karaoke|videoke)\b/i,
-  table: /\b(?:tables?|dining\s+tables?)\b/i,
+  table: /\b(?:tables?|dining\s+tables?|lamesa|mesa)\b/i,
+  tv: /\b(?:tv|television|smart\s+tv|telebisyon)\b/i,
   monoblock: /\b(?:monoblocks?|plastic\s+chairs?|monoblock\s+chairs?)\b/i,
   kitchen: /\b(?:kitchen|kusina|cooking\s+area|cooking\s+space)\b/i,
   living_room: /\b(?:living\s+room|sala|lounge\s+area)\b/i,
@@ -28,7 +29,19 @@ function requestedAmenities(message) {
   const text = String(message || "").normalize("NFKC").toLowerCase();
   if (text.length > 300 || !/(?:\?|^\s*may\b|\b(?:meron|have|has|with|included|kasama|available|ba|bang)\b)/i.test(text)) return [];
   if (/\b(?:free|libre|extra|additional|charge|fee|bayad|magkano|how much)\b/i.test(text)) return [];
+  // Bed questions ask for factual sleeping arrangements, not a recommendation.
+  // Never derive bed count from bedroom count or accommodation capacity.
   const kinds = [];
+  const bedroomInquiry = /\b(?:ilang|ilan|how many|number of|count of|bilang ng)\s+(?:po\s+)?(?:mga\s+|the\s+)?(?:bed\s*rooms?|silid(?:\s+tulugan)?|tulugan)\b|\b(?:bedroom\s+count|number of bedrooms)\b/i.test(text);
+  const bedInquiry = /\b(?:ilang|ilan|how many|number of|count of)\s+(?:po\s+)?(?:mga\s+)?(?:kama|beds?)\b|\b(?:bed\s+(?:sizes?|types?|count|configuration)|sleeping\s+arrangements?|(?:size|type)\s+(?:ng|of)\s+(?:mga\s+|the\s+)?(?:kama|beds?)|(?:anong|what)\s+(?:klaseng|kind of|size of|size|type)\s+(?:ng\s+)?(?:kama|beds?)|(?:queen|king|single|double|twin)[ -]?(?:size[ -]?)?(?:bed|kama)s?)\b/i.test(text);
+  const bedroomAndBeds = /\b(?:bed\s*rooms?|silid(?:\s+tulugan)?|tulugan)\s*(?:,|and|at|&)\s*(?:mga\s+)?(?:beds?|kama)\b|\b(?:beds?|kama)\s*(?:,|and|at|&)\s*(?:mga\s+)?(?:bed\s*rooms?|silid(?:\s+tulugan)?|tulugan)\b/i.test(text);
+  const asksDetails = !/\b(?:recommend|suggest|hanap|magandang|looking for|budget|available|availability|book|reserve)\b/i.test(text);
+  if (asksDetails && (bedroomInquiry || (bedInquiry && bedroomAndBeds))) kinds.push("bedrooms");
+  // Presence questions can list a bed alongside other amenities, without
+  // asking a number or size: "May CR, aircon at kama ba?".
+  const bedPresence = /\b(?:beds?|kama|mattress(?:es)?|higdaanan)\b/i.test(text) &&
+    /\b(?:may|meron|have|has|with|include[sd]?|kasama|provided|is there|are there)\b/i.test(text);
+  if (asksDetails && (bedInquiry || bedPresence || (bedroomInquiry && bedroomAndBeds))) kinds.push("beds");
   if (FEATURES.cr.test(text)) {
     // Privacy must explicitly modify CR; "private kitchen at CR" does not
     // prove that the CR is private.
@@ -38,11 +51,12 @@ function requestedAmenities(message) {
   if (FEATURES.ref.test(text)) kinds.push("ref");
   if (FEATURES.karaoke.test(text)) kinds.push("karaoke");
   if (FEATURES.table.test(text)) kinds.push("table");
+  if (FEATURES.tv.test(text)) kinds.push("tv");
   if (FEATURES.monoblock.test(text)) kinds.push("monoblock");
   if (FEATURES.kitchen.test(text)) kinds.push("kitchen");
   if (FEATURES.living_room.test(text)) kinds.push("living_room");
   if (FEATURES.cabinet.test(text)) kinds.push("cabinet");
-  return kinds.slice(0, 7);
+  return kinds;
 }
 // Preserve the single-feature API for existing flows/tests.
 function requestedAmenity(message) {
@@ -99,13 +113,64 @@ function amenityEvidence(room, kind) {
   return findings.size === 1 ? [...findings][0] : "unknown";
 }
 
+// Return explicitly listed bed facts. Missing or conflicting information must
+// not be guessed. Keep count/type as recorded, including mixed bed types.
+function bedDetailsReply(room, language = "english") {
+  const name = String(room?.room_name || room?.name || "accommodation").slice(0,110);
+  const fil = ["tagalog","taglish"].includes(String(language).toLowerCase());
+  const bis = language === "bisaya";
+  if (isPlainCottageCategory(room)) return fil ? "Wala pong included na kama sa " + name + "." : bis ? "Walay apil nga higdaanan sa " + name + "." : name + " does not include beds.";
+  const clauses = [room?.amenities, room?.description].filter(v => typeof v === "string")
+    .flatMap(v => v.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi," ").replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi," ").replace(/<[^>]*>/g,"\n").split(/[\n\r;|•]+/));
+  // Only use lines which actually identify a bed (not just a bedroom).
+  const bed = /\b(?:beds?|kama|bunk\s+bed|mattress(?:es)?)\b/i;
+  const facts = [...new Set(clauses.map(v => v.trim()).filter(v => v && bed.test(v) && v.length <= 180))];
+  if (facts.length) {
+    const detail = facts.join("; ");
+    return fil ? "Sa listed bed details ng " + name + ": " + detail + "."
+      : bis ? "Ang nakalistang detalye sa higdaanan sa " + name + ": " + detail + "."
+      : "The listed bed details for " + name + ": " + detail + ".";
+  }
+  return fil ? "Hindi pa po nakasaad ang exact bed count o size sa listing ng " + name + ". Paki-confirm na lang po sa Front Desk."
+    : bis ? "Wala pa makumpirma ang detalye sa higdaanan sa " + name + ". Palihog pangutana sa Front Desk."
+    : "The listing for " + name + " does not confirm the exact bed count or size. Please check with Front Desk.";
+}
+// Bedroom count is separate from bed count. Only explicit counts in the
+// selected accommodation's own records are evidence; "1 bed per bedroom"
+// cannot be used to infer the number of bedrooms.
+function bedroomDetailsReply(room, language = "english") {
+  const name = String(room?.room_name || room?.name || "accommodation").slice(0,110);
+  const fil = ["tagalog","taglish"].includes(language);
+  const bis = language === "bisaya";
+  if (isPlainCottageCategory(room)) return fil ? "Wala pong included na bedrooms sa " + name + "." : bis ? "Walay apil nga bedroom sa " + name + "." : name + " does not include bedrooms.";
+  const nums = {one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,ten:10};
+  const counts = new Set();
+  for (const field of [room?.amenities,room?.description]) {
+    const value = String(field || "").replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi," ").replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi," ").replace(/<[^>]*>/g," ");
+    for (const match of value.matchAll(/\b(\d{1,2}|one|two|three|four|five|six|seven|eight|nine|ten)(?:\s+|-)(?:(?:separate|private|individual)\s+)?bed\s*rooms?\b/gi)) {
+      const count = nums[match[1].toLowerCase()] ?? Number(match[1]);
+      if (Number.isInteger(count) && count > 0) counts.add(count);
+    }
+  }
+  if (counts.size === 1) {
+    const n = [...counts][0];
+    return fil ? "May " + n + " bedroom" + (n===1?"":"s") + " po ang " + name + " ayon sa listing."
+      : bis ? "Naay " + n + " ka bedroom ang " + name + " sumala sa listing."
+      : "The listing for " + name + " confirms " + n + " bedroom" + (n===1?"":"s") + ".";
+  }
+  return fil ? "Hindi pa po confirmed ang exact bedroom count ng " + name + ". Paki-check po sa Front Desk."
+    : bis ? "Wala pa makumpirma ang bedroom count sa " + name + ". Palihog pangutana sa Front Desk."
+    : "The listing for " + name + " does not confirm the exact bedroom count. Please check with Front Desk.";
+}
 function amenityReply(room, kind, message, language = "english") {
+  if (kind === "bedrooms") return bedroomDetailsReply(room, language);
+  if (kind === "beds") return bedDetailsReply(room, language);
   const name = String(room?.room_name || room?.name || "accommodation").slice(0, 110);
   const status = amenityEvidence(room, kind);
   if (language === "bisaya") {
     const feature = {
       private_cr: "pribadong CR", cr: "CR", aircon: "aircon",
-      ref: "refrigerator", karaoke: "karaoke", table: "lamesa",
+      ref: "refrigerator", karaoke: "karaoke", table: "lamesa", tv: "TV",
       monoblock: "monoblock chairs", kitchen: "kusina",
       living_room: "sala", cabinet: "cabinet",
     }[kind] || "kini nga amenity";
@@ -132,7 +197,8 @@ function amenityReply(room, kind, message, language = "english") {
     aircon: filipino ? "aircon" : "air conditioning",
     ref: filipino ? "ref" : "refrigerator",
     karaoke: "karaoke",
-    table: filipino ? "tables" : "tables",
+    table: "tables",
+    tv: "a TV",
     monoblock: "monoblock chairs",
     kitchen: filipino ? "kitchen" : "a kitchen",
     living_room: filipino ? "living room" : "a living room",
@@ -185,6 +251,14 @@ function amenityReply(room, kind, message, language = "english") {
 // evidence checks as single-feature questions, and never interprets silence
 // in a room description as evidence of absence.
 function multiAmenityReply(room, kinds, language = "taglish") {
+  if (Array.isArray(kinds) && kinds.some(k => k === "beds" || k === "bedrooms")) {
+    const other = kinds.filter(k => k !== "beds" && k !== "bedrooms");
+    return [
+      kinds.includes("bedrooms") ? bedroomDetailsReply(room, language) : "",
+      kinds.includes("beds") ? bedDetailsReply(room, language) : "",
+      other.length ? multiAmenityReply(room, other, language) : ""
+    ].filter(Boolean).join(" ");
+  }
   const name = String(room?.room_name || room?.name || "accommodation")
     .replace(/<[^>]*>/g, " ").trim().slice(0, 110);
   const all = [...new Set(Array.isArray(kinds) ? kinds : [])].filter(k =>
@@ -197,6 +271,7 @@ function multiAmenityReply(room, kinds, language = "taglish") {
     ref: {fil:"ref", en:"refrigerator", bis:"refrigerator"},
     karaoke: {fil:"karaoke", en:"karaoke", bis:"karaoke"},
     table: {fil:"table", en:"table", bis:"lamesa"},
+    tv: {fil:"TV", en:"TV", bis:"TV"},
     monoblock: {fil:"monoblock chairs", en:"monoblock chairs", bis:"monoblock chairs"},
     kitchen: {fil:"kitchen", en:"kitchen", bis:"kusina"},
     living_room: {fil:"living room", en:"living room", bis:"sala"},
@@ -228,7 +303,7 @@ function multiAmenityReply(room, kinds, language = "taglish") {
     if (known.length) messages.push("Yes po, may " + join(known) + " ang " + name + ".");
     if (denied.length) messages.push("Ayon po sa listing, walang " + join(denied) + " ang " + name + ".");
     if (unclear.length) messages.push("Hindi pa po confirmed sa room records kung may " +
-      join(unclear) + ". Paki-check na lang po sa Front Desk.");
+      join(unclear) + " ang " + name + ". Paki-check na lang po sa Front Desk.");
   } else {
     if (known.length) messages.push("Yes, " + name + " includes " + join(known) + ".");
     if (denied.length) messages.push("Its listing says it does not include " + join(denied) + ".");
@@ -237,7 +312,27 @@ function multiAmenityReply(room, kinds, language = "taglish") {
   }
   return messages.join(" ");
 }
+// Resolve explicit names from current inventory using whole-token matches.
+function resolveAmenityTarget(rows, message) {
+  const norm = v => String(v || "").normalize("NFKC").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  const q = " " + norm(message) + " ", hits = [];
+  for (const row of rows || []) {
+    const name = norm(row.room_name || row.name);
+    if (!name) continue;
+    const needle = " " + name + " ";
+    let at = q.indexOf(needle);
+    while (at !== -1) {
+      hits.push({row, start:at, end:at+needle.length});
+      at = q.indexOf(needle, at+1);
+    }
+  }
+  const full = hits.filter(h => !hits.some(other =>
+    other.start <= h.start && other.end >= h.end &&
+    (other.start < h.start || other.end > h.end)));
+  const unique = [...new Map(full.map(h => [h.row.id, h.row])).values()];
+  return {record: unique.length === 1 ? unique[0] : null, ambiguous: unique.length > 1};
+}
 module.exports = {
-  requestedAmenity, requestedAmenities, amenityEvidence,
+  resolveAmenityTarget, requestedAmenity, requestedAmenities, amenityEvidence,
   amenityReply, multiAmenityReply,
 };

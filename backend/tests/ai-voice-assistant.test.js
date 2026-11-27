@@ -37,7 +37,7 @@ function mount({ recognizerAvailable = true, savedLanguage = null, voices = [], 
       id, value: "", textContent: "", disabled: false, hidden: false,
       children: [], appendChild(child) { this.children.push(child); },
       title: "", innerHTML: "", listeners: {}, attrs: {},
-      classList: { toggle() {} },
+      classList: { toggle() {}, add() {} },
       setAttribute(name, value) { this.attrs[name] = value; },
       addEventListener(type, callback) { this.listeners[type] = callback; },
       fire(type) {
@@ -59,7 +59,7 @@ function mount({ recognizerAvailable = true, savedLanguage = null, voices = [], 
   // would normally produce from panel.innerHTML in a real browser.
   for (const id of ["aiVoiceLanguage", "aiVoiceInputMode", "aiVoiceLive",
     "aiVoiceInterrupt", "aiVoiceStatus", "aiVoiceChoice",
-    "aiVoicePreview", "aiVoiceInfo"]) element(id);
+    "aiVoicePreview", "aiVoiceInfo", "aiVoiceReplay"]) element(id);
 
   class FakeRecognizer {
     constructor() {
@@ -102,7 +102,7 @@ function mount({ recognizerAvailable = true, savedLanguage = null, voices = [], 
     load() {}
   }
   class FakeAudioContext {
-    constructor() { this.sampleRate = 48000; this.destination = {}; }
+    constructor() { this.sampleRate = 48000; this.destination = {}; this.state = "suspended"; }
     createMediaStreamSource() { return { connect() {}, disconnect() {} }; }
     createScriptProcessor() {
       const p = { connect() {}, disconnect() {}, feed(value, count = 2048) {
@@ -112,8 +112,8 @@ function mount({ recognizerAvailable = true, savedLanguage = null, voices = [], 
       audioProcessors.push(p); return p;
     }
     createGain() { return { gain: { value: 1 }, connect() {}, disconnect() {} }; }
-    async resume() {}
-    async close() {}
+    async resume() { this.state = "running"; }
+    async close() { this.state = "closed"; }
   }
   class FakeAbortController {
     constructor() { this.signal = { aborted: false }; }
@@ -141,6 +141,7 @@ function mount({ recognizerAvailable = true, savedLanguage = null, voices = [], 
     window: fakeWindow,
     SpeechSynthesisUtterance: FakeUtterance,
     document: {
+      body: { classList: { contains() { return true; } } },
       getElementById(name) { return nodes[name] || null; },
       createElement(tag) {
         if (tag === "option") return { value: "", textContent: "" };
@@ -346,7 +347,7 @@ test("Customer pages load AI chat before interactive voice and include voice sty
     const html = fs.readFileSync(path.resolve(
       __dirname, "../../frontend/customerHTML", page), "utf8");
     const chatIndex = html.indexOf('src="../js/ai-chat.js');
-    const voiceIndex = html.indexOf('src="../js/ai-voice.js?v=20261121-auto44"');
+    const voiceIndex = html.indexOf('src="../js/ai-voice.js?v=20261126-ai99"');
     assert.ok(chatIndex > 0 && voiceIndex > chatIndex);
     assert.match(html, /sharedCSS\/ai-voice\.css/);
   }
@@ -687,11 +688,11 @@ test("A different spoken language never requires a UI language choice", () => {
   assert.match(script, /X-Arvic-Voice-Language": "auto"/);
 });
 
-test("Changing input provider ends current hands-free session safely", () => {
-  const h=mount({audioAvailable:true});
-  h.fire("aiVoiceLive");
+test("Changing input provider ends current hands-free session safely", async () => {
+  const h=mount({audioAvailable:true,customerToken:"fake-customer-token"});
+  h.fire("aiVoiceLive"); await h.settle();
   assert.equal(h.voice.isLiveActive(),true);
-  h.voice.setInputMode("accurate");
+  h.voice.setInputMode("fast");
   assert.equal(h.voice.isLiveActive(),false);
   assert.equal(h.requests.length,0);
 });

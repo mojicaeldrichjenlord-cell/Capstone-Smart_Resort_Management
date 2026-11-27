@@ -15,7 +15,7 @@ const { validateAiStayWindow, calendarDayDifference, addCalendarDays } = require
 const { normalizeRecentTurns, wantsAccommodationCards, verifiedAccommodationCards, tidyAssistantReply } =
   require("./aiConversationStyle");
 const {
-  requestedAmenities, amenityReply, multiAmenityReply,
+  requestedAmenities, amenityReply, multiAmenityReply, resolveAmenityTarget,
 } = require("./aiAccommodationAmenities");
 const { generalCategoryAmenitiesReply } = require("./aiAccommodationCategoryPolicy");
 const { isNaturalRoomDetailsQuestion, naturalRoomDetailsReply } = require("./aiNaturalRoomDetails");
@@ -36,7 +36,7 @@ const { matchRoomPriceFollowup, shortlistRoomFollowup, roomPriceFollowupReply } 
   require("./aiRoomPriceFollowup");
 const { isResortQuestion, resortOnlyReply, isExplicitlyUnrelated } = require("./aiResortScopeGuard");
 const { normalizeSemanticIntent, canUseSimpleRecommendation } = require("./aiSemanticIntent");
-const { scheduleTurn, liveAvailability } = require("./aiLiveAvailability");
+const { scheduleTurn, liveAvailability, validDate } = require("./aiLiveAvailability");
 const { isPersonalizedRecommendation, explicitGuestCount, savedGuestCount,
   guestCountQuestion, guestCountFollowUp: pendingGuestRecommendationAnswer,
   guestCountCorrection, recommendationLookupMessage
@@ -50,7 +50,7 @@ const {
   CONTACT_EMAIL,
 } = require("./aiConciergeGuidance");
 const {
-  isCatalogRateOverviewQuestion, catalogRateOverview,
+  isCatalogRateOverviewQuestion, catalogRateOverview, personalizedRateOverview,
 } = require("./aiCatalogRateGuide");
 const {
   isComparisonQuestion, selectComparisonRooms, comparisonReply,
@@ -1081,6 +1081,41 @@ async function buildQuotaLimitedAccommodationReply(payload, requestCatalog = nul
   };
 }
 
+// QA-123/124: Recall is a conversation-only read, not a new recommendation
+// or availability request. Never fetch another account's history or create a
+// generic booking card when a guest only asks what they already told us.
+function reservationRecallReply(message, context, language) {
+  const q = String(message || "").normalize("NFKC").trim();
+  if (q.length > 240) return null;
+  const recall = /\b(?:naaalala|naalala|natatandaan|tandaan|remember|recall|remind me)\b/i.test(q) ||
+    /\b(?:ano|anong|ilan|ilang|what|which|how many)\b.{0,170}\b(?:ulit|again)\b/i.test(q) ||
+    /\b(?:what|which|how many)\b.{0,170}\b(?:did i (?:say|mention|tell you|give you)|i (?:said|mentioned|told you))\b/i.test(q);
+  const bookingFields = [
+    /\b(?:rooms?|kwarto|kuwarto|cottage|accommodations?|reservation details|booking details)\b/i,
+    /\b(?:date|check[\s-]?in|petsa|araw)\b/i,
+    /\b(?:schedule|slot|overnight|day tour|iskedyul)\b/i,
+    /\b(?:guests?|pax|tao|people|bilang|party size)\b/i,
+  ];
+  // Restrict the deterministic path to questions about previously supplied
+  // details, rather than a new room/price/availability question.
+  const previouslySupplied = /\b(?:sinabi|binigay|nabanggit|naibigay|kanina|previous(?:ly)?|earlier|before|last time|did i (?:say|mention|tell you|give you)|i (?:said|mentioned|told you)|ulit|again)\b/i.test(q);
+  if (!recall || !previouslySupplied || !bookingFields.some(p => p.test(q)) ||
+      /\b(?:available|availability|magkano|how much|rate|price|amenities|recommend|suggest|change|palitan|update|book now|reserve now)\b/i.test(q)) return null;
+  const tl = ["tagalog", "taglish"].includes(language);
+  const room = typeof context.room_name === "string" ? context.room_name.replace(/<[^>]*>|[\u0000-\u001f\u007f]/g, " ").trim().slice(0,120) : "";
+  const date = validDate(context.check_in) ? context.check_in : "";
+  const slot = {day_tour:"Day Tour",night:"Overnight",day_extended:"Day Extended",night_extended:"Night Extended"}[context.slot_preference];
+  const guests = Number(context.guests);
+  const guestCount = Number.isSafeInteger(guests) && guests > 0 && guests <= 200 ? guests : null;
+  const details = [room && (tl?"Accommodation: ":"Accommodation: ")+room,date && "Date: "+date,slot && "Schedule: "+slot,guestCount && "Guests: "+guestCount].filter(Boolean);
+  if (!details.length) return tl
+    ? "Wala pa po kayong nabibigay na reservation details sa conversation natin. Anong accommodation, date, schedule at ilang guests po?"
+    : "I don't have any reservation details in this conversation yet. Which accommodation, date, schedule and guest count would you like?";
+  const missing = [!room&&(tl?"accommodation":"accommodation"),!date&&(tl?"date":"date"),!slot&&(tl?"schedule":"schedule"),!guestCount&&(tl?"bilang ng guests":"guest count")].filter(Boolean);
+  return (tl?"Ito po ang details na nasabi ninyo: ":"Here are the details you shared: ")+details.join("; ")+
+    (missing.length ? (tl?". Paki-confirm pa po ang ":". Please confirm the missing ")+missing.join(", ")+ "." : ".");
+}
+
 // Handle a guest's AI conversation with English, Filipino or Taglish responses.
 // Availability comes from database queries; the assistant must not create bookings or payments.
 exports.chatWithGemini = async (req, res) => {
@@ -1128,6 +1163,17 @@ exports.chatWithGemini = async (req, res) => {
     // chatbot but lacks the single essential detail. Ask one question first.
     const clarificationLanguage = detectLanguageFromMessage(message) ||
       normalizeLanguageStyle(scopeContext.language_style) || "taglish";
+    // Preserve explicit off-topic restrictions even for a recall-shaped message.
+    const recallReply = !isExplicitlyUnrelated(message) &&
+      reservationRecallReply(message, scopeContext, clarificationLanguage);
+    if (recallReply) {
+      return res.status(200).json({
+        success: true, mode: "reservation_context_recall", reply: recallReply,
+        extracted_context: {...scopeContext, language_style: clarificationLanguage},
+        matched_rooms: [], catalog_recommendations: [],
+        alternative_dates: [], booking_preview: null, recommendation_cards: [],
+      });
+    }
     const clarification = clarifyAmbiguousResortQuestion(message, clarificationLanguage);
     // A bare price or recommendation follow-up can be resolved by the current
     // conversation. Only use the canned clarification for a context-free turn.
@@ -1150,14 +1196,32 @@ exports.chatWithGemini = async (req, res) => {
     // AI-68: This limited resolver needs an active room discussion for
     // pronouns like "may mas mura ba diyan?" or "para sa 7 na tao".
     // It cannot turn unrelated shopping or fee questions into resort chat.
-    const roomPriceFollowup = matchRoomPriceFollowup(
+    const matchedPriceFollowup = matchRoomPriceFollowup(
       message, recentScopeTurns, scopeContext,
     );
+    // Fresh recommendations and corrections retain their own scope/constraints.
+    const isFreshGroupSearch = Boolean(requestedCategory(message) &&
+      (isPersonalizedRecommendation(message) ||
+       (!scopeContext.room_id && !scopeContext.recommendation_category &&
+        !recentScopeTurns.length)));
+    const hasBudgetConstraint = Boolean(req.body.max_price || scopeContext.max_price ||
+      /₱|\b(?:php\s*\d|budget|under|below|less\s+than|up\s+to|maximum|not\s+more\s+than)\b/i.test(message));
+    const roomPriceFollowup = matchedPriceFollowup?.kind === "group" &&
+      (guestCorrection || isFreshGroupSearch || hasBudgetConstraint) &&
+      !scopeContext.availability_pending ? null : matchedPriceFollowup;
+    // Narrow deterministic inventory intents should not spend Gemini credits
+    // on semantic preview parsing or be mistaken for a date/slot request.
+    const inventoryCountIntent = matchAccommodationCountQuestion(message);
+    const cheapestListingIntent = matchCheapestInquiry(message, recentScopeTurns, scopeContext);
+    const datedPriceInquiry = /\b(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+\d{1,2}\b|\b\d{1,2}[/-]\d{1,2}\b/i.test(message);
+    const simpleInventoryInquiry = Boolean(inventoryCountIntent || (cheapestListingIntent && !datedPriceInquiry && !scopeContext.availability_pending));
+    const simplePersonal = isPersonalizedRecommendation(message) && !hasCompoundParty(message) && !/\b(?:budget|under|below|less than|price|rates?|aircon|wifi|amenit(?:y|ies)|bed|parking|entrance|pool|cheaper|compare|overnight|day tour|night|tomorrow|bukas|today|date|slot|available|availability)\b|₱|\d{4}-\d{2}-\d{2}/i.test(message);
     let semanticIntent = null;
     const knownScope = isResortQuestion(message, scopeContext, recentScopeTurns) ||
-      pendingGuestRecommendationAnswer(message, recentScopeTurns, scopeContext) || guestCorrection || roomPriceFollowup;
+      pendingGuestRecommendationAnswer(message, recentScopeTurns, scopeContext) || guestCorrection || roomPriceFollowup || simpleInventoryInquiry || simplePersonal;
     // Keep strong off-topic exclusions. For unfamiliar wording, classify the meaning first.
-    if (!knownScope && !isExplicitlyUnrelated(message)) {
+    const orphanNumeric = !knownScope && /^\s*\d{1,3}\s*(?:am|pm)?\s*(?:pala|po|kami|guests?|pax)?\s*[.!?]?$/i.test(message);
+    if (!knownScope && !orphanNumeric && !isExplicitlyUnrelated(message)) {
       semanticIntent = await extractStructuredIntent(message, scopeContext, recentScopeTurns);
     }
     if (isExplicitlyUnrelated(message) || (!knownScope && semanticIntent?.scope !== "resort")) {
@@ -1178,8 +1242,32 @@ exports.chatWithGemini = async (req, res) => {
       });
     }
 
+    // AI-109: a cheaper follow-up in an active booking discussion keeps the
+    // same group, category and fixed schedule.
+    if (roomPriceFollowup?.kind === "cheaper" && validDate(scopeContext.check_in) &&
+        ["day_tour","night","day_extended","night_extended"].includes(scopeContext.slot_preference) &&
+        roomPriceFollowup.guests > 0) {
+      const language = detectLanguageFromMessage(message) || clarificationLanguage;
+      const result = await liveAvailability({message,context:scopeContext,extracted:{},
+        catalog:await getAccommodationCatalog(),today:getResortTodayText(),language,
+        handler:require("../shared/bookingController").checkItemAvailability,cheaper:roomPriceFollowup});
+      return res.status(200).json(result);
+    }
+
+    // Reject explicitly supplied invalid complete windows before any catalog read.
+    const suppliedWindow = { ...scopeContext, ...Object.fromEntries(
+      ["check_in","check_out","check_in_time","check_out_time"].filter(key=>req.body[key]!=null).map(key=>[key,req.body[key]])) };
+    if (["check_in","check_out","check_in_time","check_out_time"].every(key=>req.body[key]!=null)) {
+      const validation=validateAiStayWindow(suppliedWindow,getResortTodayText());
+      if(!validation.valid) return res.status(200).json({
+        success:true,mode:"invalid_window",reason:validation.reason,
+        reply:clarificationLanguage==="english"?"That stay schedule is invalid or already in the past. Please choose a valid future date and fixed slot.":"Hindi po valid ang schedule o past date na ito. Pili po ng valid future date at fixed slot.",
+        extracted_context:suppliedWindow,matched_rooms:[],catalog_recommendations:[],
+        alternative_dates:[],booking_preview:null,recommendation_cards:[]
+      });
+    }
     // AI-104: read-only fixed-slot checks reuse the exact booking API handler.
-    if (scheduleTurn(message, scopeContext, semanticIntent || {})) {
+    if (!simpleInventoryInquiry && scheduleTurn(message, scopeContext, semanticIntent || {})) {
       const interpreted = semanticIntent || await extractStructuredIntent(message, scopeContext, recentScopeTurns);
       if (interpreted.scope === "resort" || (knownScope && interpreted.scope !== "unrelated")) {
         const language = detectLanguageFromMessage(message) || normalizeLanguageStyle(interpreted.language_style) || clarificationLanguage;
@@ -1353,28 +1441,63 @@ exports.chatWithGemini = async (req, res) => {
     ]);
     const conciergeIntent = matchConciergeGuide(message);
     const combinedPolicy = isMixedEntranceAndCorkage(message);
+    const namedDepositQuote = conciergeIntent === "booking" && isRoomPaymentInquiry(message) &&
+      /\b(?:down[\s-]?payment|deposit)\b/i.test(message) &&
+      /\b(?:family\s+room\s+[ab]|double\s+room\s+\d+|single\s+room(?:\s+cottage|\s*\(pool\s*side\))?\s+[a-z0-9]+|(?:nipa\s+hut|pool\s+shade|big\s+shade|small\s+shade|cottage)\s+\d+)\b/i.test(message);
     if (supportedConciergeLanguages.has(conciergeLanguage) &&
-        (conciergeIntent || combinedPolicy)) {
+        !namedDepositQuote && (conciergeIntent || combinedPolicy)) {
       const kind = conciergeIntent || "entrance_corkage";
+      const asksRatesToo = kind === "booking" &&
+        /\b(?:magkano|presyo|how much|prices?|rates?)\b/i.test(message) &&
+        Boolean(requestedCategory(message));
+      const overview = asksRatesToo
+        ? catalogRateOverview(await getAccommodationCatalog(), message, conciergeLanguage) : null;
       return res.status(200).json({
         success: true, mode: "concierge_" + kind,
-        reply: conciergeGuideReply(kind, conciergeLanguage),
+        reply: conciergeGuideReply(kind, conciergeLanguage) +
+          (overview ? "\n\n" + overview.reply : ""),
         handoff: kind === "booking" ? "booking" :
           kind === "special_event" ? "human" : null,
         extracted_context: mergeContext(scopeContext, {
           language_style: conciergeLanguage,
         }),
         matched_rooms: [], catalog_recommendations: [],
-        alternative_dates: [], booking_preview: null, recommendation_cards: [],
+        alternative_dates: [], booking_preview: null,
+        recommendation_cards: overview ? verifiedAccommodationCards(overview.rows, false) : [],
       });
     }
 
     // AI-48: Explicit broad "room and cottage rates" is answered directly
     // from the FRESH Admin-managed catalog, not a model's guessed rate.
     // Never claim that listing status means a date/slot is bookable.
-    if (isCatalogRateOverviewQuestion(message)) {
+    if (!simpleInventoryInquiry && isCatalogRateOverviewQuestion(message)) {
       const catalog = await getAccommodationCatalog();
       const language = conciergeLanguage;
+      // A rate list is not a personalized recommendation. Only take this
+      // narrow fast path for explicit simple group + fixed stay requests.
+      // Complex constraints, actual dates and other languages keep their
+      // existing guarded flows.
+      const rateGuests=explicitGuestCount(message);
+      const rateCategory=requestedCategory(message);
+      const nightRate=/\b(?:overnight|night|gabi)\b/i.test(message);
+      const dayRate=/\b(?:day\s*tour|daytime|umaga)\b/i.test(message);
+      if (isPersonalizedRecommendation(message) && rateGuests && rateCategory &&
+          nightRate!==dayRate && !hasBudgetConstraint && !datedPriceInquiry &&
+          !/\b(?:extended|22\s*hours?|23\s*hours?|compare|versus|vs|beds?|kama|bedrooms?|balcony|poolside|pool\s+side|kitchen|ref|refrigerator|tv|table)\b/i.test(message) &&
+          ["english","taglish","tagalog"].includes(language)) {
+        const stay=nightRate?"night":"day";
+        const choice=personalizedRateOverview(catalog,{category:rateCategory,guests:rateGuests,stay},language);
+        const nextContext={...scopeContext,guests:rateGuests,slot_preference:nightRate?"night":"day_tour",
+          intent:"ask_recommendation",recommendation_category:rateCategory,language_style:language};
+        delete nextContext.room_id;
+        delete nextContext.room_name;
+        if(choice.rows.length===1){nextContext.room_id=choice.rows[0].id;nextContext.room_name=choice.rows[0].room_name;}
+        return res.status(200).json({
+          success:true,mode:"verified_personalized_rates",reply:choice.reply,
+          extracted_context:nextContext,matched_rooms:[],catalog_recommendations:[],
+          alternative_dates:[],booking_preview:null,recommendation_cards:verifiedAccommodationCards(choice.rows,false)
+        });
+      }
       const overview = catalogRateOverview(catalog, message, language);
       return res.status(200).json({
         success: true, mode: "verified_catalog_rates",
@@ -1420,6 +1543,69 @@ exports.chatWithGemini = async (req, res) => {
         guessInquiryLanguage(message) ||
         normalizeLanguageStyle(req.body.language_style) ||
         normalizeLanguageStyle(scopeContext.language_style) || "taglish";
+      // Mixed room amenities + complimentary Wi-Fi must answer BOTH parts.
+      // Remove only the Wi-Fi-specific cost adjective for amenity detection;
+      // keep the existing fee guard for actual accommodation charge questions.
+      const mixedAmenityKinds = verifiedGuestPolicy.wifi
+        ? requestedAmenities(message.replace(/\b(?:free|libre|libreng|complimentary)\s+(?=wi[\s-]?fi\b)/gi,""))
+        : [];
+      if (mixedAmenityKinds.length && !/\b(?:recommend|suggest|hanap|looking for|budget|available on|reserve|booking)\b/i.test(message)) {
+        const namedCategory = requestedCategory(message);
+        const focusId = Number(scopeContext.room_id);
+        const focusName = String(scopeContext.room_name || "").trim();
+        const columns = "SELECT a.id, a.name AS room_name, a.description, a.amenities, " +
+          "c.name AS category_name FROM accommodations a " +
+          "LEFT JOIN accommodation_categories c ON c.id = a.category_id ";
+        let room = null;
+        let ambiguous = false;
+        if (namedCategory) {
+          const [rows] = await db.promise().query(columns + "ORDER BY a.id ASC");
+          const resolved = resolveAmenityTarget(rows,message);
+          room = resolved.record;
+          ambiguous = resolved.ambiguous;
+          // A new explicit accommodation/category must not reuse stale focus.
+        } else if (Number.isSafeInteger(focusId) && focusId > 0) {
+          const [rows] = await db.promise().query(columns + "WHERE a.id = ? LIMIT 1",[focusId]);
+          const candidate = rows[0];
+          if (candidate && (!focusName || String(candidate.room_name).trim().toLowerCase() === focusName.toLowerCase())) room = candidate;
+        } else if (focusName) {
+          const [rows] = await db.promise().query(columns + "ORDER BY a.id ASC");
+          const matches = rows.filter(row=>String(row.room_name).trim().toLowerCase()===focusName.toLowerCase());
+          if(matches.length===1) room=matches[0];
+        }
+        const filipino = ["tagalog","taglish"].includes(language);
+        if (room && !ambiguous) {
+          const isRoom = /^rooms?$/i.test(String(room.category_name || "").trim());
+          const isOther = /^(?:cottages?|function areas?)$/i.test(String(room.category_name || "").trim());
+          // Explicit questions about common areas retain the general policy.
+          // Otherwise use the verified CATEGORY, not a room name containing Cottage.
+          const outside = /\b(?:common areas?|lobby|outside (?:the )?rooms?)\b/i.test(message);
+          const wifiPolicy = !outside && (isRoom || isOther)
+            ? {...verifiedGuestPolicy,rooms:isRoom,cottage:isOther}
+            : verifiedGuestPolicy;
+          const amenityText = mixedAmenityKinds.length===1
+            ? amenityReply(room,mixedAmenityKinds[0],message,language)
+            : multiAmenityReply(room,mixedAmenityKinds,language);
+          return res.status(200).json({
+            success:true,mode:"verified_accommodation_amenity",
+            reply:amenityText+" "+verifiedGuestAmenitiesReply(wifiPolicy,language),
+            extracted_context:mergeContext(scopeContext,{room_id:room.id,room_name:room.room_name,language_style:language}),
+            matched_rooms:[],catalog_recommendations:[],alternative_dates:[],booking_preview:null,recommendation_cards:[]
+          });
+        }
+        // Still answer known Wi-Fi policy, but never invent a room's amenities.
+        const safeContext={...scopeContext};
+        delete safeContext.room_id;
+        delete safeContext.room_name;
+        return res.status(200).json({
+          success:true,mode:"accommodation_selection_needed",
+          reply:verifiedGuestAmenitiesReply(verifiedGuestPolicy,language)+" "+(filipino
+            ? "Aling accommodation po ang tinutukoy ninyo para ma-check ko ang iba pang amenities?"
+            : "Which accommodation do you mean so I can verify the other amenities?"),
+          extracted_context:mergeContext(safeContext,{language_style:language}),
+          matched_rooms:[],catalog_recommendations:[],alternative_dates:[],booking_preview:null,recommendation_cards:[]
+        });
+      }
       return res.status(200).json({
         success: true, mode: "verified_guest_policies",
         inquiry_topic: [
@@ -1699,15 +1885,15 @@ exports.chatWithGemini = async (req, res) => {
     // Preview discovery can be phrased as a request for suitable lodging without
     // recommendation keywords. Give unfamiliar, count-free phrasing to Gemini,
     // while retaining the verified fast path for direct catalog/photo browsing.
-    const clearBrowse = /^(?:what|which|anong|ano|mga|list|show|pakita|patingin|ipakita)\s+(?:(?:me|po|ang|mga|available|all|the|inyong)\s+)*(?:rooms?|cottages?|accommodations?|kwarto|kuwarto|pavilions?|pool shades?|family rooms?|single rooms?)(?:\s+(?:do you have|are there|meron kayo|mayroon kayo|ninyo|niyo|po|please|available|photos?|pictures?|previews?))*[?!.\s]*$/i.test(String(message).trim());
-    const needsSemanticPreview = isVerifiedPreviewRequest(message) && !explicitGuestCount(message) && !clearBrowse && !/\b(?:photos?|pictures?|previews?|images?|larawan|litrato)\b/i.test(message);
-    if (!semanticIntent && (hasCompoundParty(message) || needsSemanticPreview)) {
+    const clearBrowse = /^(?:what|which|anong|ano|mga|list|show|pakita|patingin|ipakita)\s+(?:(?:me|po|ang|mga|available|all|the|inyong)\s+)*(?:rooms?|cottages?|accommodations?|kwarto|kuwarto|pavilions?|pool shades?|family rooms?|single rooms?)(?:\s+(?:do you have|are there|are available|meron kayo|mayroon kayo|ninyo|niyo|po|please|available|photos?|pictures?|previews?))*[?!.\s]*$/i.test(String(message).trim());
+    const needsSemanticPreview = isVerifiedPreviewRequest(message) && !explicitGuestCount(message) && !clearBrowse && !simplePersonal && !/\b(?:photos?|pictures?|previews?|images?|larawan|litrato)\b/i.test(message);
+    if (!simpleInventoryInquiry && !semanticIntent && (hasCompoundParty(message) || needsSemanticPreview)) {
       semanticIntent = await extractStructuredIntent(message, recommendationSaved, recommendationHistory);
     }
-    const personalRecommendation = isPersonalizedRecommendation(message) || semanticIntent?.intent === "ask_recommendation";
+    const personalRecommendation = !simpleInventoryInquiry && (isPersonalizedRecommendation(message) || semanticIntent?.intent === "ask_recommendation");
     if (personalRecommendation) {
       let guestCount = explicitGuestCount(message) || savedGuestCount({ guests: req.body.guests }) || savedGuestCount(recommendationSaved);
-      if (!explicitGuestCount(message) && !semanticIntent) {
+      if (!explicitGuestCount(message) && !semanticIntent && !simplePersonal) {
         semanticIntent = await extractStructuredIntent(message, recommendationSaved, recommendationHistory);
       }
       if (semanticIntent?.scope === "resort" && semanticIntent.guests) guestCount = semanticIntent.guests;
@@ -1927,7 +2113,7 @@ exports.chatWithGemini = async (req, res) => {
     );
     const semanticSimple = semanticIntent && canUseSimpleRecommendation(semanticIntent, {...scopeContext, ...req.body});
     const semanticConstraints = semanticIntent && (semanticIntent.scope === "unrelated" || semanticIntent.max_price || semanticIntent.check_in || semanticIntent.check_out || semanticIntent.wants_booking || semanticIntent.bed_count || semanticIntent.aircon_type || semanticIntent.view_type || semanticIntent.bed_type);
-    if ((isVerifiedPreviewRequest(message) || semanticSimple) && !previewMustUseBookingFlow && !semanticConstraints && !(semanticIntent?.scope === "resort" && semanticIntent.intent === "ask_recommendation" && !semanticIntent.simple_recommendation)) {
+    if ((isVerifiedPreviewRequest(message) || semanticSimple || simplePersonal) && !previewMustUseBookingFlow && !semanticConstraints && !(semanticIntent?.scope === "resort" && semanticIntent.intent === "ask_recommendation" && !semanticIntent.simple_recommendation)) {
       const storedPreviewContext = req.body.context &&
         typeof req.body.context === "object" && !Array.isArray(req.body.context)
         ? req.body.context : {};
@@ -1991,7 +2177,20 @@ exports.chatWithGemini = async (req, res) => {
         ? "taglish" : null) ||
       detectLanguageFromMessage(message) ||
       normalizeLanguageStyle(req.body.context?.language_style) || "english";
-    const categoryReply = generalCategoryAmenitiesReply(
+    // AI-111: resolve the latest named accommodation before using saved focus.
+    const namedAmenityKinds = requestedAmenities(message);
+    const possibleAmenityName = requestedCategory(message) ||
+      /\b(?:ang|ng|sa|of|in|the)\s+(?!ito\b|iyan\b|room\s+ba\b)/i.test(message);
+    let amenityTarget = {record:null, ambiguous:false};
+    if (namedAmenityKinds.length && possibleAmenityName) {
+      const [amenityRows] = await db.promise().query(
+        "SELECT a.id, a.name AS room_name, a.description, a.amenities, c.name AS category_name " +
+        "FROM accommodations a LEFT JOIN accommodation_categories c ON c.id = a.category_id " +
+        "ORDER BY a.id ASC",
+      );
+      amenityTarget = resolveAmenityTarget(amenityRows, message);
+    }
+    const categoryReply = amenityTarget.record || amenityTarget.ambiguous ? null : generalCategoryAmenitiesReply(
       message, req.body?.context?.room_id ?? req.body?.room_id, generalAmenityLanguage,
     );
     if (categoryReply) {
@@ -2071,10 +2270,10 @@ exports.chatWithGemini = async (req, res) => {
     const amenityKind = amenityKinds.length === 1 ? amenityKinds[0] : null;
     // When a guest names a different room, that EXPLICIT room wins over
     // any selected card from a previous turn. Never pick one of two names.
-    const explicitlyNamedAmenityRoom = explicitEntranceRoomName(message);
-    const unresolvedNamedAmenityRoom =
-      /\b(?:single|double|family)\s+room\b/i.test(message) &&
-      !explicitlyNamedAmenityRoom;
+    const explicitlyNamedAmenityRoom = amenityTarget.record?.room_name ||
+      (!amenityTarget.ambiguous ? explicitEntranceRoomName(message) : null);
+    const unresolvedNamedAmenityRoom = amenityTarget.ambiguous ||
+      (Boolean(requestedCategory(message)) && !explicitlyNamedAmenityRoom);
     const rawFocusedRoomId = req.body?.context?.room_id ?? req.body?.room_id;
     const focusedRoomId = Number(rawFocusedRoomId);
     const focusedRoomName = String(
@@ -2096,7 +2295,7 @@ exports.chatWithGemini = async (req, res) => {
       const columns = "SELECT a.id, a.name AS room_name, a.description, a.amenities, " +
         "c.name AS category_name FROM accommodations a " +
         "LEFT JOIN accommodation_categories c ON c.id = a.category_id ";
-      const [rows] = await db.promise().query(
+      const [rows] = amenityTarget.record ? [[amenityTarget.record]] : await db.promise().query(
         byId ? columns + "WHERE a.id = ? LIMIT 1" :
           columns + "WHERE a.name = ? LIMIT 2",
         [lookup],
@@ -2112,7 +2311,7 @@ exports.chatWithGemini = async (req, res) => {
         const namedMention = String(message).match(
           /\b(?:family\s+room|room|cottage|pavilion)\s+[a-z0-9]+\b/i
         );
-        const namesMatch = !namedMention ||
+        const namesMatch = Boolean(amenityTarget.record) || !namedMention ||
           String(message).toLowerCase().includes(String(record.room_name).toLowerCase());
         if (namesMatch) {
           // Text messages with Filipino cues should not be classified as
@@ -2139,6 +2338,7 @@ exports.chatWithGemini = async (req, res) => {
               : amenityReply(record, amenityKind, message, language),
             extracted_context: mergeContext(savedContext, {
               room_id: record.id, room_name: record.room_name,
+              ...(explicitlyNamedAmenityRoom ? {recommendation_category: requestedCategory(record.room_name) || requestedCategory(record.category_name) || null} : {}),
               language_style: language,
             }),
             matched_rooms: [], catalog_recommendations: [],
@@ -2722,7 +2922,7 @@ ${resortInquiryPromptLines()}
 - If rooms are available, recommend only the best 1 to 3 options.
 - Briefly explain why each recommended room matches.
 - If there are no exact matches, say that clearly and mention alternative dates if provided.
-- A booking suggestion is NOT a reservation. Tell the user to press Continue to Booking, then confirm dates, slot price, and payment on the secure reservation page.
+- A booking suggestion is NOT a reservation. For accommodation preview cards, refer to the Book This button (Log In to Book This on the public landing page), then confirm dates, slot price, and payment on the secure reservation page. Only say Continue to Booking when that actual booking confirmation button is present.
 - Explain that online downpayments use PayPal; the secure Customer booking/payment page verifies the final amount. Do not promise cash on arrival for online reservations.
 - Online guests do NOT choose arbitrary check-in or check-out hours: the resort uses preset Day Tour and Night booking slots.
 - When a guest wants to book, ask whether they prefer Day Tour (umaga/morning) or Night (gabi/evening), never ask "What exact time would you like to check in or check out?"
