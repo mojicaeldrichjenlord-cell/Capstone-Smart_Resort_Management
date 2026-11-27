@@ -68,6 +68,8 @@ function setupAiChat() {
   restoreWindowState();
   restoreChatHistory();
   // Voice input and live conversation are initialized by ai-voice.js.
+  // Warm up the browser voice list on public pages without opening a microphone.
+  if (AI_IS_PUBLIC_LANDING) window.speechSynthesis?.getVoices?.();
 
   toggleBtn.addEventListener("click", () => {
     chatWindow.classList.toggle("show");
@@ -417,7 +419,7 @@ function restoreChatHistory() {
       "assistant",
       AI_IS_PUBLIC_LANDING
         ? "Magandang araw po! Welcome sa Arvic Seaside Beach Resort and Hotel. Tulungan ko kayong mag-check ng rooms, rates at booking options. Ano pong gusto niyong malaman?"
-        : "Hi po! Anong accommodation o booking details ang maitutulong ko sa inyo?",
+        : "Hello po! Anong accommodation o booking details ang maitutulong ko sa inyo?",
       false
     );
 
@@ -1710,7 +1712,7 @@ function getTagalogFallbackReply(text, merged) {
   if (/\b(?:hello|hi|hey|kumusta)\b/i.test(text)) {
     return {
       modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
-      reply: "Hi po! Puwede pa rin kayong magtanong tungkol sa booking.",
+      reply: "Hello po! Puwede pa rin kayong magtanong tungkol sa booking.",
       context: merged,
     };
   }
@@ -1796,7 +1798,7 @@ function getTaglishFallbackReply(text, merged) {
   if (/\b(?:hello|hi|hey|kumusta)\b/i.test(text)) {
     return {
       modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
-      reply: "Hi po! Puwede pa rin kayong magtanong tungkol sa booking.",
+      reply: "Hello po! Puwede pa rin kayong magtanong tungkol sa booking.",
       context: merged,
     };
   }
@@ -2004,6 +2006,39 @@ function toggleReadAloud(button, text) {
   catch (_) { done(); appendAiSystemNote("Audio playback unavailable. Please try again."); }
 }
 
+// QA-127: Public Read Aloud uses local browser voice selection only.
+// No customer token, cloud TTS request or microphone is needed.
+function selectPublicReadAloudVoice(text) {
+  const content = String(text || "");
+  let locale = "en-US";
+  if (/[\u3400-\u9fff]/u.test(content)) locale = "zh-CN";
+  else if (/\b(?:hola|gracias|habitaciones?|reservar|reservaci[oó]n|precios?|cu[aá]nto|buenos|tienen|quiero|puedo|por\s+favor|estamos|ofrecemos|está|están)\b/iu.test(content)) locale = "es-ES";
+  else if (/\b(?:po|opo|kayo|kami|ninyo|niyo|inyong|meron|mayroong|walang|wala|kwarto|kuwarto|magkano|paano|saan|ilan|puwede|pwede|yung|salamat|magandang|araw|bawal|libre|kasama|ang|mga|ng|naman|natin|ito|iyon|kailangan|bayad)\b/iu.test(content)) locale = "fil-PH";
+
+  const voices = window.speechSynthesis?.getVoices?.() || [];
+  const name = v => String(v.name || "");
+  const lang = v => String(v.lang || "").toLowerCase();
+  const natural = v => /natural|neural|enhanced|premium/i.test(name(v));
+  const filipino = v => /^(fil|tl)(-|$)/i.test(lang(v));
+  const score = v => (lang(v) === locale.toLowerCase() ? 30 : 0) +
+    (natural(v) ? 100 : 0) + (/female|jenny|aria|samantha|ava|blessica/i.test(name(v)) ? 15 : 0) -
+    (/compact|low.quality|e?speak/i.test(name(v) + " " + String(v.voiceURI || "")) ? 180 : 0);
+  let candidates = [];
+  if (locale === "fil-PH") {
+    candidates = voices.filter(filipino);
+    const blessica = candidates.find(v => /blessica/i.test(name(v)) && /natural|neural|online/i.test(name(v))) ||
+      candidates.find(v => /blessica/i.test(name(v)));
+    if (blessica) return {voice: blessica, locale};
+    // Do not explicitly select an English or male-only foreign voice over
+    // Filipino. If none are reported, request Filipino from the browser.
+  } else {
+    const base = locale.split("-")[0].toLowerCase();
+    candidates = voices.filter(v => lang(v) === base || lang(v).startsWith(base + "-"));
+  }
+  candidates.sort((a,b) => score(b) - score(a));
+  return {voice: candidates[0] || null, locale};
+}
+
 function speakText(text, done) {
   if (window.ArvicVoice?.readAloud) {
     window.ArvicVoice.readAloud(text, done);
@@ -2018,7 +2053,9 @@ function speakText(text, done) {
   window.speechSynthesis.cancel();
 
   const utterance = new window.SpeechSynthesisUtterance(String(text || ""));
-  utterance.lang = "en-PH";
+  const selected = selectPublicReadAloudVoice(text);
+  if (selected.voice) utterance.voice = selected.voice;
+  utterance.lang = selected.voice?.lang || selected.locale;
   utterance.rate = 1;
   utterance.pitch = 1;
   utterance.onend = done;

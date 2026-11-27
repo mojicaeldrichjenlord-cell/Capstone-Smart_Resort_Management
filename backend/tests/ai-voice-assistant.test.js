@@ -347,7 +347,7 @@ test("Customer pages load AI chat before interactive voice and include voice sty
     const html = fs.readFileSync(path.resolve(
       __dirname, "../../frontend/customerHTML", page), "utf8");
     const chatIndex = html.indexOf('src="../js/ai-chat.js');
-    const voiceIndex = html.indexOf('src="../js/ai-voice.js?v=20261126-ai99"');
+    const voiceIndex = html.indexOf('src="../js/ai-voice.js?v=20261127-qa127-release"');
     assert.ok(chatIndex > 0 && voiceIndex > chatIndex);
     assert.match(html, /sharedCSS\/ai-voice\.css/);
   }
@@ -777,4 +777,44 @@ test("QA-126 reply buttons toggle and switch safely with browser and cloud callb
  context.toggleReadAloud(a,"Hello");
  callbacks[2]();
  assert.equal(a.textContent,"Read Aloud");
+});
+
+
+test("QA-127 public Read Aloud prefers Filipino Blessica over English or Filipino male voices",()=>{
+ const source=fs.readFileSync(path.resolve(__dirname,"../../frontend/js/ai-chat.js"),"utf8");
+ const helpers=source.slice(source.indexOf("function selectPublicReadAloudVoice("),source.indexOf("function formatAiReply("));
+ const voices=[{name:"Microsoft Angelo Online (Natural)",lang:"fil-PH"},{name:"Microsoft Jenny Online (Natural)",lang:"en-US"},{name:"Microsoft Blessica Online (Natural)",lang:"fil-PH"},{name:"Spanish Natural",lang:"es-ES"},{name:"Mandarin Natural",lang:"zh-CN"}];
+ const utterances=[];
+ const context={window:{speechSynthesis:{getVoices:()=>voices,cancel(){},speak(u){utterances.push(u);}},SpeechSynthesisUtterance:class{constructor(text){this.text=text;}}},appendAiSystemNote(){throw Error("unexpected audio error");}};
+ vm.createContext(context);vm.runInContext(helpers,context);
+ let completed=0;
+ context.speakText("Magandang araw po! Libre ang parking.",()=>completed++);
+ assert.equal(utterances[0].voice.name,"Microsoft Blessica Online (Natural)");
+ assert.equal(utterances[0].lang,"fil-PH");
+ utterances[0].onend();assert.equal(completed,1);
+ context.speakText("How can I book a room?",()=>{});
+ assert.equal(utterances[1].lang,"en-US");
+ context.speakText("Hola, tenemos habitaciones.",()=>{});
+ assert.equal(utterances[2].lang,"es-ES");
+ context.speakText("你好，欢迎",()=>{});
+ assert.equal(utterances[3].lang,"zh-CN");
+});
+test("QA-127 public Filipino voice fallback remains Filipino and handles an empty voice list",()=>{
+ const source=fs.readFileSync(path.resolve(__dirname,"../../frontend/js/ai-chat.js"),"utf8");
+ const helpers=source.slice(source.indexOf("function selectPublicReadAloudVoice("),source.indexOf("function formatAiReply("));
+ let voices=[{name:"English Natural",lang:"en-US"},{name:"Filipino device voice",lang:"tl-PH"}];
+ const context={window:{speechSynthesis:{getVoices:()=>voices}}};
+ vm.createContext(context);vm.runInContext(helpers,context);
+ assert.equal(context.selectPublicReadAloudVoice("Bawal ang pets.").voice.name,"Filipino device voice");
+ voices=[];
+ const selection=context.selectPublicReadAloudVoice("Salamat po!");
+ assert.equal(selection.voice,null);
+ assert.equal(selection.locale,"fil-PH");
+});
+
+
+test("QA-128 Customer greeting uses Hello po rather than Hi po",()=>{
+ const source=fs.readFileSync(path.resolve(__dirname,"../../frontend/js/ai-chat.js"),"utf8");
+ assert.match(source,/Hello po! Anong accommodation o booking details ang maitutulong ko sa inyo\?/);
+ assert.doesNotMatch(source,/Hi po! Anong accommodation o booking details/);
 });
