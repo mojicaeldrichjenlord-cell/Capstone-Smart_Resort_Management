@@ -253,7 +253,7 @@ function verifiedPreviewReply(selection, language) {
       const name = String(selection.rows[0].room_name || selection.rows[0].name || "accommodation");
       return "Ito po yung preview ng " + name + ". Click niyo lang yung View Details para sa photos and info.";
     }
-    return "Ito po yung matching accommodations. Check niyo lang yung photos and details sa cards.";
+    return "May ilang options po tayong puwedeng pagpilian. Narito ang ilan sa mga nakalistang accommodations. Ilan po kayong guests para matulungan ko kayong pumili?";
   }
   const tagalog = language === "tagalog";
   if (!selection?.targetKnown) return tagalog
@@ -271,8 +271,8 @@ function verifiedPreviewReply(selection, language) {
       : "Here's the preview for " + name + ". You can view its photos and details here.";
   }
   return tagalog
-    ? "Ito po ang mga matching accommodation previews. Puwede ninyong tingnan ang details ng bawat isa."
-    : "Here are some matching accommodation previews. You can view each one's details.";
+    ? "Narito po ang ilan sa mga matutuluyan natin. Ilan po kayong bisita para matulungan ko kayong pumili?"
+    : "Here are some accommodation options. How many guests are coming so I can help you choose?";
 }
 
 module.exports = {

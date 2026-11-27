@@ -37,7 +37,7 @@ const { matchRoomPriceFollowup, shortlistRoomFollowup, roomPriceFollowupReply } 
 const { isResortQuestion, resortOnlyReply, isExplicitlyUnrelated } = require("./aiResortScopeGuard");
 const { normalizeSemanticIntent, canUseSimpleRecommendation } = require("./aiSemanticIntent");
 const { scheduleTurn, liveAvailability, validDate } = require("./aiLiveAvailability");
-const { isPersonalizedRecommendation, explicitGuestCount, savedGuestCount,
+const { generalAccommodationInquiry, isPersonalizedRecommendation, explicitGuestCount, savedGuestCount,
   guestCountQuestion, guestCountFollowUp: pendingGuestRecommendationAnswer,
   guestCountCorrection, recommendationLookupMessage
 } = require("./aiRecommendationIntake");
@@ -1217,7 +1217,8 @@ exports.chatWithGemini = async (req, res) => {
     const simpleInventoryInquiry = Boolean(inventoryCountIntent || (cheapestListingIntent && !datedPriceInquiry && !scopeContext.availability_pending));
     const simplePersonal = isPersonalizedRecommendation(message) && !hasCompoundParty(message) && !/\b(?:budget|under|below|less than|price|rates?|aircon|wifi|amenit(?:y|ies)|bed|parking|entrance|pool|cheaper|compare|overnight|day tour|night|tomorrow|bukas|today|date|slot|available|availability)\b|₱|\d{4}-\d{2}-\d{2}/i.test(message);
     let semanticIntent = null;
-    const knownScope = isResortQuestion(message, scopeContext, recentScopeTurns) ||
+    const generalBrowse = generalAccommodationInquiry(message);
+    const knownScope = generalBrowse || isResortQuestion(message, scopeContext, recentScopeTurns) ||
       pendingGuestRecommendationAnswer(message, recentScopeTurns, scopeContext) || guestCorrection || roomPriceFollowup || simpleInventoryInquiry || simplePersonal;
     // Keep strong off-topic exclusions. For unfamiliar wording, classify the meaning first.
     const orphanNumeric = !knownScope && /^\s*\d{1,3}\s*(?:am|pm)?\s*(?:pala|po|kami|guests?|pax)?\s*[.!?]?$/i.test(message);
@@ -1240,6 +1241,34 @@ exports.chatWithGemini = async (req, res) => {
         matched_rooms: [], catalog_recommendations: [],
         alternative_dates: [], booking_preview: null, recommendation_cards: [],
       });
+    }
+
+    // QA-131: answer simple room/cottage existence directly and use fresh
+    // listing data. Do not treat examples as date-verified or personalized.
+    // Leave active date/booking flows to the established availability handler.
+    if (generalBrowse && !scopeContext.check_in && !scopeContext.check_out &&
+        !scopeContext.availability_pending && !scopeContext.wants_booking &&
+        !req.body.check_in && !req.body.check_out && !req.body.guests &&
+        !hasBudgetConstraint) {
+      const catalog=await getAccommodationCatalog();
+      const selection=selectVerifiedPreviews(catalog,message,[],{});
+      const cards=verifiedAccommodationCards(selection.rows,false);
+      const tl=generalBrowse.language==="taglish";
+      const label=generalBrowse.category==="cottage"?"cottages":"rooms";
+      const reply=cards.length
+        ? (tl
+          ? "Yes po! May "+label+" po kami sa Arvic Seaside. Narito ang ilan sa options namin. Ilan po kayong guests para ma-recommend ko ang bagay sa inyo?"
+          : "Yes! We have "+label+" at Arvic Seaside. Here are a few of our listed options. How many guests are coming so I can recommend one for you?")
+        : (tl
+          ? "Wala po akong makitang active na "+label+" sa current listing. Puwede po kayong magtanong sa Front Desk o tingnan natin ang ibang accommodation."
+          : "I couldn't find active "+label+" in the current listing. You can check with Front Desk or we can look at another accommodation type.");
+      const next={...scopeContext,language_style:generalBrowse.language,
+        intent:cards.length?"ask_recommendation":"ask_availability",
+        recommendation_category:generalBrowse.category};
+      delete next.room_id;delete next.room_name;delete next.guests;
+      return res.status(200).json({success:true,mode:"verified_accommodation_preview",
+        reply,extracted_context:next,matched_rooms:[],catalog_recommendations:[],
+        alternative_dates:[],booking_preview:null,recommendation_cards:cards});
     }
 
     // AI-109: a cheaper follow-up in an active booking discussion keeps the

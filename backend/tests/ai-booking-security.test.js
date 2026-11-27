@@ -2479,3 +2479,39 @@ test("QA-129 broad FAQ groups identical numbered variants and keeps changed rate
  assert.doesNotMatch(r.body.reply,/Single Room Cottage [1-6]:/);
  assert.equal(modelCalls,0);
 });
+
+
+test("QA-131 simple room existence answers naturally and keeps undated example cards",async()=>{
+ catalogRows=[{...exampleRoom,id:61,room_name:"Family Room A",category_name:"Rooms",status:"available",capacity:7}];
+ for(const message of ["may rooms ba kayo?","Meron po ba kayong kwarto?","Do you have rooms?"]){
+  const r=await post("/api/ai/chat",{message});
+  assert.equal(r.status,200);
+  assert.match(r.body.reply,/Yes(?: po)?!.*(?:rooms|kwarto)/i);
+  assert.match(r.body.reply,/Ilan po kayong guests|How many guests/);
+  assert.equal(r.body.recommendation_cards.length,1);
+  assert.equal(r.body.recommendation_cards[0].availability_verified,false);
+  assert.equal(r.body.extracted_context.intent,"ask_recommendation");
+  assert.equal(r.body.extracted_context.room_id,undefined);
+  assert.equal(r.body.booking_preview,null);
+ }
+ assert.equal(modelCalls,0);
+});
+test("QA-131 guest count follow-up remains grounded and capacity filtered",async()=>{
+ catalogRows=[{...exampleRoom,id:61,room_name:"Family Room A",category_name:"Rooms",status:"available",capacity:7},{...exampleRoom,id:100,room_name:"Family Room B",category_name:"Rooms",status:"available",capacity:20}];
+ const first=await post("/api/ai/chat",{message:"May rooms ba kayo?"});
+ const next=await post("/api/ai/chat",{message:"12 kami",context:first.body.extracted_context,recent_turns:[{role:"user",text:"May rooms ba kayo?"},{role:"assistant",text:first.body.reply}]});
+ assert.equal(next.status,200);
+ assert.match(next.body.reply,/12 guests.*Family Room B/);
+ assert.equal(next.body.recommendation_cards[0].id,100);
+ assert.equal(next.body.recommendation_cards[0].availability_verified,false);
+ assert.equal(modelCalls,0);
+});
+test("QA-131 no active listing does not invent a room and mixed questions are not existence shortcuts",async()=>{
+ const {generalAccommodationInquiry}=require("../controllers/ai/aiRecommendationIntake");
+ for(const q of ["May rooms ba kayo bukas?","May rooms ba kayo with aircon?","May rooms ba kayo at sino si Rizal?","May rooms ba kayo for 10 guests?"])assert.equal(generalAccommodationInquiry(q),null,q);
+ catalogRows=[{...exampleRoom,status:"maintenance"}];
+ const r=await post("/api/ai/chat",{message:"May rooms ba kayo?"});
+ assert.match(r.body.reply,/Wala po akong makitang active/);
+ assert.deepEqual(r.body.recommendation_cards,[]);
+ assert.equal(modelCalls,0);
+});
