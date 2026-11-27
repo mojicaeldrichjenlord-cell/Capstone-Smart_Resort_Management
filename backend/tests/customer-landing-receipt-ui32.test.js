@@ -105,3 +105,33 @@ test("UI-33 customer checkout and landing policy agree on PayPal capture and 50%
   assert.match(checkout, /50% downpayment of the\s+accommodation price through PayPal/i);
   assert.doesNotMatch(checkout, /GCash and Maya proof of payment must be verified/i);
 });
+
+
+test("UI-130 every public navigation section uses a sticky-navbar scroll offset and fresh assets", () => {
+  const css=read("frontend/customerCSS/landing.css");
+  assert.match(css,/\.landing-section\[id\]\s*\{[^}]*scroll-margin-top:\s*calc\(var\(--landing-navbar-height,\s*82px\)\s*\+\s*12px\)/s);
+  assert.match(css,/@media \(max-width: 768px\)[\s\S]*?scroll-margin-top:\s*calc\(var\(--landing-navbar-height,\s*76px\)\s*\+\s*12px\)/);
+  assert.match(css,/@media \(prefers-reduced-motion: reduce\)[\s\S]*?scroll-behavior:\s*auto/);
+  for(const id of ["about","facilities","policies","location"]){
+    assert.match(landing,new RegExp('href="#'+id+'"'));
+    assert.match(landing,new RegExp('<section id="'+id+'" class="landing-section'));
+  }
+  assert.match(landing,/landing\.css\?v=20261127-ui130/);
+  assert.match(landing,/landing\.js\?v=20261127-ui130/);
+});
+
+test("UI-130 landing offset tracks actual navbar height on resize and layout changes",()=>{
+  const vm=require("node:vm");
+  const js=read("frontend/customerJS/landing.js");
+  const helper=js.slice(js.indexOf("function setupLandingAnchorOffset()"),js.indexOf("const landingMenuToggle ="));
+  let height=82, value, onResize, onObserve;
+  const navbar={getBoundingClientRect:()=>({height})};
+  vm.runInNewContext(helper,{
+    document:{querySelector:()=>navbar,documentElement:{style:{setProperty(k,v){assert.equal(k,"--landing-navbar-height");value=v;}}}},
+    window:{addEventListener(type,fn){assert.equal(type,"resize");onResize=fn;},ResizeObserver:class{constructor(fn){onObserve=fn;}observe(el){assert.equal(el,navbar);}}}
+  });
+  assert.equal(value,"82px");
+  height=76.4;onResize();assert.equal(value,"77px");
+  height=104;onObserve();assert.equal(value,"104px");
+  height=0;onObserve();assert.equal(value,"104px");
+});
