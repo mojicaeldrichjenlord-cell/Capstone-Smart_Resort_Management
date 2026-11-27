@@ -1976,7 +1976,7 @@ test("Missing accommodation prices are not misrepresented as free PHP 0.00", asy
   assert.equal(r.body.mode, "verified_catalog_rates");
   assert.match(r.body.reply, /Day Tour not listed/i);
   assert.match(r.body.reply, /Overnight not listed/i);
-  assert.match(r.body.reply, /Extended not listed/i);
+  assert.match(r.body.reply, /Extended Stay not listed/i);
   assert.doesNotMatch(r.body.reply, /₱0\.00/);
   assert.equal(modelCalls, 0);
 });
@@ -1993,7 +1993,7 @@ test("Fresh positive accommodation rate stays numerically exact in AI prompt", a
   assert.equal(r.body.mode, "verified_catalog_rates");
   assert.match(r.body.reply, /Day Tour ₱3,500\.00/);
   assert.match(r.body.reply, /Overnight ₱4,300\.00/);
-  assert.match(r.body.reply, /Extended ₱5,000\.00/);
+  assert.match(r.body.reply, /Extended Stay ₱5,000\.00/);
   assert.equal(modelCalls, 0);
 });
 
@@ -2464,4 +2464,18 @@ test("QA-123 recall-shaped prompt injection remains blocked",async()=>{
   assert.deepEqual(result.body.recommendation_cards,[]);
   assert.equal(modelCalls,0);
   assert.equal(queries.length,0);
+});
+
+
+test("QA-129 broad FAQ groups identical numbered variants and keeps changed rates separate", async()=>{
+ catalogRows=Array.from({length:6},(_,i)=>({...exampleRoom,id:100+i,room_name:"Single Room Cottage "+(i+1),category_name:"Rooms",status:"available",day_price:3000,overnight_price:3000,extended_price:5000,capacity:4}));
+ catalogRows.push({...catalogRows[0],id:110,room_name:"Double Room 1",capacity:7,day_price:4000,overnight_price:4000});
+ catalogRows.push({...catalogRows[0],id:111,room_name:"Single Room Cottage 8",overnight_price:3500});
+ const r=await post("/api/ai/chat",{message:"Magkano ang rooms at cottages?"});
+ assert.equal(r.status,200);assert.equal(r.body.mode,"verified_catalog_rates");
+ assert.match(r.body.reply,/Single Room Cottage: Day Tour \/ Overnight ₱3,000\.00/);
+ assert.match(r.body.reply,/Double Room 1/);
+ assert.match(r.body.reply,/Single Room Cottage 8.*₱3,500\.00/);
+ assert.doesNotMatch(r.body.reply,/Single Room Cottage [1-6]:/);
+ assert.equal(modelCalls,0);
 });

@@ -74,12 +74,12 @@ function catalogRateOverview(catalog, message, language="taglish") {
     mandarin: "以下是当前列出的价格和最大容纳人数（尚未确认具体日期或时段）：",
   };
   const tail = {
-    english: "Day Tour and Overnight are different rates. Final pricing, capacity adjustments and available slots are checked on the booking page.",
-    tagalog: "Magkaiba po ang Day Tour at Overnight rates. Ang final presyo at availability ay sa booking page iche-check.",
-    taglish: "Magkaiba po ang Day Tour at Overnight rate. Sa booking page iche-check ang final amount at available slots.",
-    bisaya: "Lahi ang Day Tour ug Overnight rate. Ang final amount ug available slots i-check sa booking page.",
-    spanish: "Los precios de día y noche son distintos. Confirme el importe final y los horarios en la página de reservas.",
-    mandarin: "日间和夜间价格不同。请在预订页面确认最终金额和可用时段。",
+    english: "Final price and date availability are checked on the booking page.",
+    tagalog: "Sa booking page po kukumpirmahin ang final presyo at availability.",
+    taglish: "Sa booking page po iche-check ang final amount at available slots.",
+    bisaya: "Ang final amount ug available slots i-check sa booking page.",
+    spanish: "Confirme el importe final y los horarios en la página de reservas.",
+    mandarin: "请在预订页面确认最终金额和可用时段。",
   };
   const labels = {
     english:["Rooms","Cottages"],tagalog:["Rooms","Cottages"],taglish:["Rooms","Cottages"],
@@ -105,7 +105,7 @@ function catalogRateOverview(catalog, message, language="taglish") {
       const stay=day!==null&&day===night
         ?"Day Tour / Overnight "+formatPeso(day)
         :"Day Tour "+formatPeso(day)+" | Overnight "+formatPeso(night);
-      lines.push("- "+name+": "+stay+(extended!==null?" | Extended Stay "+formatPeso(extended):"")+" | "+pax);
+      lines.push("- "+name+": "+stay+(" | Extended Stay "+formatPeso(extended))+" | "+pax);
     }
   }
   if(groups.size>chosenGroups.length) lines.push(["taglish","tagalog"].includes(language)
