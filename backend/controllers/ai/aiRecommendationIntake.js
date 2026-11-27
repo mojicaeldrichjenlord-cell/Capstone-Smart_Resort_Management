@@ -31,6 +31,16 @@ function isPersonalizedRecommendation(message) {
   return (suggest || descriptive) && (target || broad);
 }
 
+// QA-131: Narrow undated existence inquiries, not booking availability,
+// room amenities, prices, counts, or arbitrary mixed-topic messages.
+function generalAccommodationInquiry(message) {
+  const q=normal(message).replace(/[?!.,]+$/,"").trim();
+  const t=q.match(/^(?:may|meron|mayroon)\s+(?:po\s+)?(?:ba\s+)?(?:kayong?\s+)?(?:mga\s+)?(rooms?|kwarto|kuwarto|cottages?|kubo)(?:\s+(?:ba|po|kayo|ninyo|niyo|nyo)){0,4}$/i);
+  const e=q.match(/^(?:do you have|have you got|are there)\s+(?:any\s+)?(rooms?|cottages?)(?:\s+(?:at the resort|at your resort))?$/i);
+  const m=t||e;
+  return m?{category:requestedCategory(m[1]),language:t?"taglish":"english"}:null;
+}
+
 // Read simple explicit counts (4 kami, 4 pax, 4 guests, 4 po,
 // 'apat kami'). Do not infer 4 guests from an accommodation name/rate.
 function explicitGuestCount(message) {
@@ -95,7 +105,7 @@ function pendingRecommendation(recentTurns = [], context = {}) {
     /(?:ilan\s+(?:po\s+)?kayong\s+(?:guests?|bisita)|how many guests|pila\s+mo\s+kabuok|cuántas personas|几位客人)/i.test(latest.text));
   if (!askedGuests) return null;
   const previous = recent.slice(0, -1).reverse().find(t => t.role === "user");
-  if (!previous || !isPersonalizedRecommendation(previous.text)) return null;
+  if (!previous || !(isPersonalizedRecommendation(previous.text) || generalAccommodationInquiry(previous.text))) return null;
   return { category: requestedCategory(previous.text) || "room" };
 }
 
@@ -183,7 +193,7 @@ function recommendationLookupMessage(category, guests) {
 }
 
 module.exports = {
-  isPersonalizedRecommendation, explicitGuestCount, savedGuestCount,
+  generalAccommodationInquiry, isPersonalizedRecommendation, explicitGuestCount, savedGuestCount,
   guestCountQuestion, pendingRecommendation, guestCountFollowUp,
   correctedGuestCount, guestCountCorrection, recommendationLookupMessage,
 };
