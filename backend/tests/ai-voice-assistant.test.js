@@ -347,7 +347,7 @@ test("Customer pages load AI chat before interactive voice and include voice sty
     const html = fs.readFileSync(path.resolve(
       __dirname, "../../frontend/customerHTML", page), "utf8");
     const chatIndex = html.indexOf('src="../js/ai-chat.js');
-    const voiceIndex = html.indexOf('src="../js/ai-voice.js?v=20261126-ai99"');
+    const voiceIndex = html.indexOf('src="../js/ai-voice.js?v=20261127-qa127-release"');
     assert.ok(chatIndex > 0 && voiceIndex > chatIndex);
     assert.match(html, /sharedCSS\/ai-voice\.css/);
   }
@@ -810,4 +810,11 @@ test("QA-127 public Filipino voice fallback remains Filipino and handles an empt
  const selection=context.selectPublicReadAloudVoice("Salamat po!");
  assert.equal(selection.voice,null);
  assert.equal(selection.locale,"fil-PH");
+});
+
+
+test("QA-128 Customer greeting uses Hello po rather than Hi po",()=>{
+ const source=fs.readFileSync(path.resolve(__dirname,"../../frontend/js/ai-chat.js"),"utf8");
+ assert.match(source,/Hello po! Anong accommodation o booking details ang maitutulong ko sa inyo\?/);
+ assert.doesNotMatch(source,/Hi po! Anong accommodation o booking details/);
 });

@@ -15,7 +15,7 @@
     <link rel="stylesheet" href="../css/style.css" />
     <link rel="stylesheet" href="../customerCSS/index.css" />
     <link rel="stylesheet" href="../sharedCSS/customer-navbar.css?v=20261120-ui30" />
-    <link rel="stylesheet" href="../sharedCSS/ai-voice.css?v=20261126-ai99" />
+    <link rel="stylesheet" href="../sharedCSS/ai-voice.css?v=20261126-ai105-release" />
     <link rel="stylesheet" href="../sharedCSS/ai-recommendations.css" />
     <link rel="stylesheet" href="../sharedCSS/ai-chat-layout.css?v=20261126-ui96" />
       <!-- Consistent, centered confirmation for accidental logout clicks. -->
@@ -23,7 +23,8 @@
     <!-- Stage UI-22: visual-only muted Customer theme, loaded last. -->
   <link rel="stylesheet" href="../customerCSS/customer-manager-tone.css?v=20261119-ui22" />
     <!-- UI-26: Light, airy shared AI chat skin; load AFTER customer theme. -->
-    <link rel="stylesheet" href="../sharedCSS/ai-chat-airy.css?v=20261120-ui30" />
+    <link rel="stylesheet" href="../sharedCSS/ai-chat-airy.css?v=20261127-qa124-release" />
+    <link rel="stylesheet" href="../sharedCSS/ai-concierge-guide-ui48.css?v=20261127-qa124-release" />
   <!-- DM-01: Customer-only theme palette. Default is the existing Light Mode. -->
   <link rel="stylesheet" href="../customerCSS/customer-theme-tokens.css?v=20261121-dm01" />
   <link rel="stylesheet" href="../customerCSS/customer-theme-toggle.css?v=20261121-dm04" />
@@ -37,7 +38,6 @@
   <link rel="stylesheet" href="../customerCSS/customer-ai-dark-polish-dm06.css?v=20261121-dm06" />
   <!-- DM-07: one compact, unified Customer AI concierge skin (must load last). -->
   <link rel="stylesheet" href="../sharedCSS/ai-concierge-dm07.css?v=20261121-dm08" />
-    <link rel="stylesheet" href="../sharedCSS/ai-concierge-guide-ui48.css?v=20261122-ai48" />
 </head>
 
   <body class="customer-manager-tone">
@@ -355,8 +355,8 @@
     <script src="../sharedJS/toast.js"></script>
     <script src="../sharedJS/api-config.js?v=20261126-auth101"></script>
     <script src="../customerJS/index.js"></script>
-    <script src="../js/ai-chat.js?v=20261126-ai105"></script>
-    <script src="../js/ai-voice.js?v=20261126-ai99"></script>
+    <script src="../js/ai-chat.js?v=20261127-qa127-release"></script>
+    <script src="../js/ai-voice.js?v=20261127-qa127-release"></script>
     <script src="../js/ai-chat-polish.js?v=20261126-ui96"></script>
     <script>
       const menuToggle = document.getElementById("menuToggle");
@@ -373,6 +373,6 @@
     </script>
       <!-- Shared Customer scroll navigation: stays hidden down, reappears after slight up-scroll. -->
     <script src="../sharedJS/customer-scroll-nav.js?v=20261120-ui30"></script>
-    <script src="../sharedJS/logout-confirm.js"></script>
+    <script src="../sharedJS/logout-confirm.js?v=20261126-auth98"></script>
   </body>
 </html>

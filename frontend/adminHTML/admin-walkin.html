@@ -8,8 +8,6 @@
        Makes manual reservation page mobile-friendly.
     ======================================================= -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- Apply stored Front Desk theme before styles render (no flash). -->
-    <script src="../sharedJS/frontdesk-theme-toggle.js?v=20261121-fddm01"></script>
 
     <title>Manual Reservation | ArvicSeaside</title>
 
@@ -25,11 +23,11 @@
     <!-- Consistent, centered confirmation for accidental logout clicks. -->
     <link rel="stylesheet" href="../sharedCSS/logout-confirm.css" />
     <!-- UI-23: muted Front Desk theme; screen-only, loaded after page styles. -->
-  <link rel="stylesheet" href="../frontdeskCSS/frontdesk-manager-tone.css?v=20261121-fddm02" />
-    <!-- FD-DM-01: accessible Front Desk toggle and dark palette; screen-only. -->
-    <link rel="stylesheet" href="../frontdeskCSS/frontdesk-theme-toggle.css?v=20261121-fddm01" />
-    <link rel="stylesheet" href="../frontdeskCSS/frontdesk-dark-fd01.css?v=20261121-fddm05" />
+  <link rel="stylesheet" href="../frontdeskCSS/frontdesk-manager-tone.css?v=20261126-fddm06" />
     <link rel="stylesheet" href="../sharedCSS/reservation-preview.css?v=20261124-ui76" />
+    <script src="../sharedJS/frontdesk-theme-toggle.js?v=20261126-fddm06"></script>
+    <link rel="stylesheet" href="../frontdeskCSS/frontdesk-theme-toggle.css?v=20261126-fddm06" />
+    <link rel="stylesheet" href="../frontdeskCSS/frontdesk-dark-fd01.css?v=20261126-fddm06" />
 </head>
 
   <body class="has-fixed-navbar frontdesk-manager-tone">
@@ -218,13 +216,13 @@
        prepared for Administrator or Front Desk.
     ======================================================= -->
     <script src="../sharedJS/toast.js"></script>
-    <script src="../sharedJS/api-config.js"></script>
+    <script src="../sharedJS/api-config.js?v=20261126-auth101"></script>
     <script src="../sharedJS/guest-name-validation.js?v=20261124-auth71"></script>
     <script src="../sharedJS/manualReservationRoleNav.js"></script>
     <!-- Block expired fixed slots before payment; backend validates again. -->
     <script src="../sharedJS/manual-schedule-guard.js"></script>
     <script src="../adminJS/admin-walkin.js?v=20261124-ui76"></script>
     <script src="../adminJS/admin-mobile-nav.js"></script>
-    <script src="../sharedJS/logout-confirm.js"></script>
+    <script src="../sharedJS/logout-confirm.js?v=20261126-auth98"></script>
   </body>
 </html>

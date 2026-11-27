@@ -6,12 +6,13 @@
 // - Front Desk role guard
 // - Load payment/reservation records
 // - Search/filter payment records
-// - Monitor PayPal online payments alongside manual and legacy payment records
-// - Keep historical proof review available without treating it as the default
-// - Show pending, partially paid, and fully paid status counts
+// - View GCash/Maya reference + proof
+// - Verify valid online 50% downpayment proof
+// - Monitor partially paid / paid / remaining balance
 //
-// Important: PayPal confirmation is automated; onsite balances and entrance
-// fee collection belong to the Guest Check-In flow, not this report.
+// Important:
+// Remaining onsite balance collection is intentionally handled by
+// the later Guest Check-In flow, not manually marked here.
 // ============================================================
 
 let allFrontDeskPayments = [];
@@ -167,11 +168,9 @@ async function loadPayments() {
 // ============================================================
 
 function updateSummary() {
-  const pendingPayment = allFrontDeskPayments.filter((booking) => {
-    const status = getReservationStatus(booking);
-    return ["pending", "unpaid"].includes(getPaymentStatus(booking)) &&
-      !["cancelled", "completed", "rejected", "no_show"].includes(status);
-  }).length;
+  const needsVerification = allFrontDeskPayments.filter(
+    needsPaymentVerification,
+  ).length;
 
   const partiallyPaid = allFrontDeskPayments.filter(
     (booking) => getPaymentStatus(booking) === "partially_paid",
@@ -181,9 +180,20 @@ function updateSummary() {
     (booking) => getPaymentStatus(booking) === "paid",
   ).length;
 
-  setText("pendingPaymentCount", pendingPayment);
+  const remaining = allFrontDeskPayments.reduce((sum, booking) => {
+    const status = getReservationStatus(booking);
+
+    if (["cancelled", "completed", "rejected", "no_show"].includes(status)) {
+      return sum;
+    }
+
+    return sum + toMoney(booking.remaining_balance);
+  }, 0);
+
+  setText("needsVerificationCount", needsVerification);
   setText("partiallyPaidCount", partiallyPaid);
   setText("paidCount", paid);
+  setText("remainingBalanceTotal", `₱${formatMoney(remaining)}`);
 }
 
 function setText(id, value) {
@@ -234,7 +244,7 @@ function applyFilters() {
     .toLowerCase();
 
   const paymentView = String(
-    document.getElementById("paymentViewFilter")?.value || "all",
+    document.getElementById("paymentViewFilter")?.value || "attention",
   )
     .trim()
     .toLowerCase();
@@ -437,7 +447,7 @@ function renderPaymentCard(booking) {
 
           <span>
             Reference:
-            <strong>${escapeHtml(reference || (method === "paypal" ? "Not required" : "No reference"))}</strong>
+            <strong>${escapeHtml(reference || "No reference")}</strong>
           </span>
 
           <span>
@@ -465,9 +475,7 @@ function renderPaymentCard(booking) {
                   View Proof
                 </button>
               `
-              : `<span class="no-proof-text">${method === "paypal"
-                  ? "PayPal checkout — no screenshot required"
-                  : "No proof available"}</span>`
+              : `<span class="no-proof-text">No proof available</span>`
           }
         </section>
       </div>
@@ -503,11 +511,6 @@ function renderPaymentCard(booking) {
 
 function getPaymentRecordNote(booking) {
   const paymentStatus = getPaymentStatus(booking);
-  const method = getPaymentMethod(booking);
-
-  if (method === "paypal" && ["pending", "unpaid"].includes(paymentStatus)) {
-    return "PayPal checkout is pending. Payment is recorded after a successful capture.";
-  }
 
   if (paymentStatus === "partially_paid") {
     return "Downpayment verified. Remaining accommodation balance is collected during check-in.";
@@ -521,7 +524,7 @@ function getPaymentRecordNote(booking) {
     return "Payment/reservation was rejected.";
   }
 
-  if (method !== "paypal" && !getPaymentReference(booking) && !getProofSource(booking)) {
+  if (!getPaymentReference(booking) && !getProofSource(booking)) {
     return "No payment reference or proof is currently available.";
   }
 
@@ -834,7 +837,6 @@ function formatSource(source) {
 
 function formatPaymentMethod(method) {
   const labels = {
-    paypal: "PayPal",
     gcash: "GCash",
     paymaya: "Maya",
     maya: "Maya",

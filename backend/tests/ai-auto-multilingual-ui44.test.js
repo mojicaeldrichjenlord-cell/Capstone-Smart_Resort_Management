@@ -52,8 +52,8 @@ test("AI-44 all authenticated Customer pages load fresh voice implementation", (
   for (const page of ["index.html", "rooms.html", "booking.html",
     "my-bookings.html", "profile.html", "resort-map.html"]) {
     const html = read("frontend/customerHTML/" + page);
-    assert.match(html, /ai-voice\.js\?v=20261126-ai99/, page);
-    assert.match(html, /ai-voice\.css\?v=20261126-ai99/, page);
+    assert.match(html, /ai-voice\.js\?v=20261127-qa127-release/, page);
+    assert.match(html, /ai-voice\.css\?v=20261126-ai105-release/, page);
   }
   const landing = read("frontend/customerHTML/landing.html");
   assert.doesNotMatch(landing, /ai-voice\.js/);

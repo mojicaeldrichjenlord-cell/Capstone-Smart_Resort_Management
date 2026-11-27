@@ -3,8 +3,6 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- Apply stored Front Desk theme before styles render (no flash). -->
-    <script src="../sharedJS/frontdesk-theme-toggle.js?v=20261121-fddm01"></script>
 
     <title>Reservation Records | ArvicSeaside Front Desk</title>
 
@@ -12,16 +10,15 @@
     <link rel="stylesheet" href="../css/style.css" />
     <link rel="stylesheet" href="../frontdeskCSS/frontdeskReservations.css?v=20261124-ui78" />
       <!-- Consistent, centered confirmation for accidental logout clicks. -->
-    <link rel="stylesheet" href="../adminCSS/admin-mobile-nav.css" />
     <link rel="stylesheet" href="../sharedCSS/logout-confirm.css" />
     <!-- UI-23: muted Front Desk theme; screen-only, loaded after page styles. -->
-  <link rel="stylesheet" href="../frontdeskCSS/frontdesk-manager-tone.css?v=20261121-fddm02" />
-    <!-- FD-DM-01: accessible Front Desk toggle and dark palette; screen-only. -->
-    <link rel="stylesheet" href="../frontdeskCSS/frontdesk-theme-toggle.css?v=20261121-fddm01" />
-    <link rel="stylesheet" href="../frontdeskCSS/frontdesk-dark-fd01.css?v=20261121-fddm04" />
+  <link rel="stylesheet" href="../frontdeskCSS/frontdesk-manager-tone.css?v=20261126-fddm06" />
   <link rel="stylesheet" href="../frontdeskCSS/frontdesk-records-scroll-ui89.css?v=20261125-ui89" />
-    <link rel="stylesheet" href="../sharedCSS/customer-booking-note-ui90.css?v=20261125-ui90" />
-  </head>
+  <link rel="stylesheet" href="../sharedCSS/customer-booking-note-ui90.css?v=20261125-ui90" />
+    <script src="../sharedJS/frontdesk-theme-toggle.js?v=20261126-fddm06"></script>
+    <link rel="stylesheet" href="../frontdeskCSS/frontdesk-theme-toggle.css?v=20261126-fddm06" />
+    <link rel="stylesheet" href="../frontdeskCSS/frontdesk-dark-fd01.css?v=20261126-fddm06" />
+</head>
 
   <body class="has-fixed-navbar frontdesk-manager-tone">
     <!-- ======================================================
@@ -164,11 +161,10 @@
     </main>
 
     <script src="../sharedJS/toast.js"></script>
-    <script src="../sharedJS/api-config.js"></script>
+    <script src="../sharedJS/api-config.js?v=20261126-auth101"></script>
     <script src="../sharedJS/customer-booking-note-ui90.js?v=20261125-ui90"></script>
     <script src="../frontdeskJS/frontdeskReservations.js?v=20261125-ui90"></script>
     <script src="../frontdeskJS/frontdeskReservationReceiptActions.js"></script>
-      <script src="../adminJS/admin-mobile-nav.js"></script>
-    <script src="../sharedJS/logout-confirm.js"></script>
+      <script src="../sharedJS/logout-confirm.js?v=20261126-auth98"></script>
   </body>
 </html>

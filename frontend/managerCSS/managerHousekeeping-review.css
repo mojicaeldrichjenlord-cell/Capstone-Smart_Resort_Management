@@ -4,21 +4,13 @@
 .hk-manager-layout .manager-page { max-width: 1200px; }
 .hk-manager-layout .manager-hero { padding: 25px 30px; }
 .hk-manager-layout .manager-hero h1 { font-size: clamp(1.65rem, 3vw, 2.35rem); }
-.hk-manager-jumps { display: flex; flex-wrap: wrap; gap: 10px; margin: 19px 0; }
-.hk-manager-jumps a {
-  display: inline-flex; align-items: center; min-height: 42px;
-  padding: 10px 15px; border-radius: 999px;
-  color: #0f766e; font-weight: 800; text-decoration: none;
-  background: #e6f6f3; border: 1px solid #b7e8df;
-}
-.hk-manager-jumps a:hover { background: #d5f1ea; }
-.hk-manager-jumps a:focus-visible, .hk-manager-layout select:focus-visible,
+.hk-manager-layout select:focus-visible,
 .hk-manager-layout button:focus-visible, .hk-manager-layout summary:focus-visible {
   outline: 3px solid #14b8a6; outline-offset: 3px;
 }
 .hk-manager-stats {
   display: grid; grid-template-columns: repeat(4, minmax(0,1fr));
-  gap: 12px; margin: 14px 0 20px;
+  gap: 12px; margin: 20px 0 20px;
 }
 .hk-manager-stats > div {
   background: #fff; border: 1px solid #d9e4ea;
@@ -96,8 +88,6 @@
   .hk-manager-layout .manager-hero { padding: 22px 18px; }
   .hk-manager-stats { gap: 8px; }
   .hk-manager-stats > div { padding: 13px; }
-  .hk-manager-jumps { overflow-x: auto; flex-wrap: nowrap; }
-  .hk-manager-jumps a { flex: 0 0 auto; white-space: nowrap; font-size: .83rem; }
   .hk-manager-layout .manager-task-table {
     min-width: 0; display: block; width: 100%;
   }

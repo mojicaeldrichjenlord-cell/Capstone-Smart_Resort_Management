@@ -114,18 +114,5 @@
   }
 }
 
-/*
- * FD-DM-02: remove global resort background emoji ornaments on all Front Desk
- * screens (Dashboard, Reservations, Payments, Guests, Manual Reservation,
- * Manual Payment and Final Receipt), in both Light and Dark Mode.
- * style.css adds palm/wave emojis with body::before/::after; those are only
- * cosmetic. This deliberately DOES NOT affect navbar logo pseudo-elements,
- * genuine icons, status indicators, or receipt contents.
- */
-@media screen {
-  body.frontdesk-manager-tone::before,
-  body.frontdesk-manager-tone::after {
-    content: none !important;
-    display: none !important;
-  }
-}
+/* FD-DM-02: Remove decorative background emoji on Front Desk screens. */
+@media screen { body.frontdesk-manager-tone::before, body.frontdesk-manager-tone::after { content:none !important; display:none !important; } }
