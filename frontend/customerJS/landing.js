@@ -15,6 +15,26 @@
    - Changes burger icon from ☰ to ×
 ====================================================== */
 
+// UI-130: Measure the sticky navbar without overriding native hash navigation.
+// Native anchors preserve keyboard activation, URL fragments and browser history.
+function setupLandingAnchorOffset() {
+  const navbar = document.querySelector(".landing-navbar");
+  if (!navbar) return;
+  const updateOffset = () => {
+    const height = Math.ceil(navbar.getBoundingClientRect().height);
+    if (height > 0) {
+      document.documentElement.style.setProperty("--landing-navbar-height", height + "px");
+    }
+  };
+  updateOffset();
+  window.addEventListener("resize", updateOffset, { passive: true });
+  if (typeof window.ResizeObserver === "function") {
+    const observer = new window.ResizeObserver(updateOffset);
+    observer.observe(navbar);
+  }
+}
+setupLandingAnchorOffset();
+
 const landingMenuToggle = document.getElementById("landingMenuToggle");
 const landingNavLinks = document.getElementById("landingNavLinks");
 
