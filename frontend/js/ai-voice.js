@@ -73,6 +73,7 @@
   let controls = null;
   let voiceRequest = null;
   let playingAudio = null;
+  let manualReadDone = null;
   let playingUrl = null;
   let cloudUnavailable = false;
 
@@ -198,6 +199,8 @@
 
   function cancelSpeech() {
     state.speechSequence++;
+    const onCancel = manualReadDone;
+    manualReadDone = null;
     clearPlaybackTimer();
     setReplay("");
     // Interrupt BOTH browser TTS and Azure MP3/fetch without replaying
@@ -206,6 +209,7 @@
     voiceRequest = null;
     releaseCloudPlayback();
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    onCancel?.(false);
   }
 
   function stopRecognition(useAbort = true) {
@@ -357,6 +361,7 @@
         useBrowser();
       };
       await audio.play();
+      if (serial !== state.speechSequence) return true;
       if (controls?.info) controls.info.textContent =
         "Voice output: Microsoft Blessica Neural (cloud audio).";
       status("Speaking with Microsoft Blessica (Filipino).");
@@ -373,12 +378,15 @@
     }
   }
 
-  function speakReply(text, onDone = null, browserOnly = false) {
+  function speakReply(text, onDone = null, browserOnly = false, onManualDone = null) {
     const content = String(text || "").trim();
     if (content) state.language = inferReplyLanguage(content);
     cancelSpeech();
     const serial = state.speechSequence;
+    manualReadDone = onManualDone;
     if (!content) {
+      manualReadDone = null;
+      onManualDone?.(true);
       if (onDone) onDone();
       return;
     }
@@ -386,6 +394,7 @@
     const finish = (ok = true) => {
       if (finished || serial !== state.speechSequence) return;
       finished = true;
+      manualReadDone = null;
       clearPlaybackTimer();
       if (!ok) {
         if (state.live) stopConversation("Audio playback unavailable. Tap Play Reply to hear the response or continue with text.");
@@ -393,6 +402,7 @@
         setReplay(content);
       }
       if (onDone) onDone(ok);
+      onManualDone?.(ok);
     };
     // Prevent a stuck live-speaking state if a mobile audio engine emits no end/error.
     const watchdog = () => { clearPlaybackTimer(); playbackTimer=setTimeout(()=>{
@@ -964,11 +974,19 @@
     void beginVoiceInput("live");
   }
 
-  function readAloud(text) {
+  function readAloud(text, onDone = null) {
     if (state.live) stopConversation("Voice conversation stopped to play this reply.");
     state.language = inferReplyLanguage(text);
     status("Reading response in " + getLocale().label + "…");
-    speakReply(text, ok => {if(ok)status("Finished reading aloud.");});
+    // Keep manual reply lifecycle separate from hands-free live speech.
+    speakReply(text, ok => {if(ok)status("Finished reading aloud.");}, false,
+      ok => { if (typeof onDone === "function") onDone(ok); });
+  }
+
+  function stopReadAloud() {
+    if (!manualReadDone) return;
+    cancelSpeech();
+    status("Read aloud stopped.");
   }
 
   function init() {
@@ -1036,7 +1054,7 @@
       stopConversation("");
     });
     document.addEventListener("visibilitychange",()=>{
-      if(document.hidden&&(state.live||state.mode!=="idle"))stopConversation("Voice paused while the page was in the background. Tap Start Conversation to resume.");
+      if(document.hidden&&(state.live||state.mode!=="idle"||manualReadDone))stopConversation("Voice paused while the page was in the background. Tap Start Conversation to resume.");
     });
 
     if (window.isSecureContext===false) {
@@ -1054,7 +1072,7 @@
   }
 
   window.ArvicVoice = Object.freeze({
-    init, readAloud, stopConversation, isLiveActive: () => state.live,
+    init, readAloud, stopReadAloud, stopConversation, isLiveActive: () => state.live,
     getLanguage: () => state.language,
     setLanguage, setInputMode,
     getState: () => ({ mode: state.mode, live: state.live, language: state.language,

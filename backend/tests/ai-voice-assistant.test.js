@@ -716,3 +716,65 @@ test("Silent microphone does not spend credits or send transcription request", a
   assert.equal(h.requests.length,0);
   assert.match(h.nodes.aiVoiceStatus.textContent,/No speech detected/i);
 });
+
+
+test("QA-126 manual browser Read Aloud completes, stops, and ignores stale end events",()=>{
+ const h=mount();
+ const ended=[];
+ h.voice.readAloud("Hello!",ok=>ended.push(["first",ok]));
+ const first=h.speechUtterances[0];
+ h.voice.stopReadAloud();
+ assert.deepEqual(ended,[["first",false]]);
+ h.voice.readAloud("Welcome!",ok=>ended.push(["second",ok]));
+ first.onend();
+ assert.deepEqual(ended,[["first",false]]);
+ h.speechUtterances[1].onend();
+ assert.deepEqual(ended,[["first",false],["second",true]]);
+});
+test("QA-126 cloud Read Aloud stop aborts pending request and prevents stale fallback",async()=>{
+ const h=mount({customerToken:"synthetic-test-token",cloudStatus:200});
+ const ended=[];
+ h.voice.readAloud("Welcome po!",ok=>ended.push(ok));
+ h.voice.stopReadAloud();
+ assert.equal(h.cloudRequests[0].opts.signal.aborted,true);
+ await h.settle();
+ assert.deepEqual(ended,[false]);
+ assert.equal(h.cloudAudio.length,0);
+ assert.equal(h.speechUtterances.length,0);
+});
+test("QA-126 cloud audio stops after playback starts and reset callback fires once",async()=>{
+ const h=mount({customerToken:"synthetic-test-token",cloudStatus:200});
+ const ended=[];
+ h.voice.readAloud("Welcome po!",ok=>ended.push(ok));
+ await h.settle();
+ const audio=h.cloudAudio[0];
+ assert.equal(audio.played,true);
+ h.voice.stopReadAloud();
+ assert.equal(audio.paused,true);
+ audio.onended();
+ assert.deepEqual(ended,[false]);
+});
+test("QA-126 reply buttons toggle and switch safely with browser and cloud callbacks",()=>{
+ const source=fs.readFileSync(path.resolve(__dirname,"../../frontend/js/ai-chat.js"),"utf8");
+ const helpers=source.slice(source.indexOf("function setReadAloudButton("),source.indexOf("function formatAiReply("));
+ const callbacks=[];let stops=0;
+ const context={window:{ArvicVoice:{readAloud(text,done){callbacks.push(done);},stopReadAloud(){stops++;}}},appendAiSystemNote(){throw Error("unexpected playback error");}};
+ vm.createContext(context);
+ vm.runInContext("let activeReadAloud=null;\n"+helpers,context);
+ const button=()=>({textContent:"Read Aloud",setAttribute(k,v){this[k]=v;}});
+ const a=button(),b=button();
+ context.toggleReadAloud(a,"Hello");
+ assert.equal(a.textContent,"Stop Reading");
+ assert.equal(a["aria-pressed"],"true");
+ context.toggleReadAloud(b,"Welcome");
+ assert.equal(a.textContent,"Read Aloud");
+ assert.equal(b.textContent,"Stop Reading");
+ callbacks[0]();
+ assert.equal(b.textContent,"Stop Reading");
+ context.toggleReadAloud(b,"Welcome");
+ assert.equal(stops,2);
+ assert.equal(b.textContent,"Read Aloud");
+ context.toggleReadAloud(a,"Hello");
+ callbacks[2]();
+ assert.equal(a.textContent,"Read Aloud");
+});

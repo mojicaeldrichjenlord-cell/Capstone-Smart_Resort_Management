@@ -38,6 +38,8 @@ const OFFICIAL_RESORT_PHONE_PRIMARY = "0956-912-5625";
 const OFFICIAL_RESORT_PHONE_ALTERNATIVE = "0967-817-0662";
 
 let aiMessageInFlight = false;
+let activeReadAloud = null;
+window.addEventListener?.("pagehide", stopActiveReadAloud);
 
 document.addEventListener("DOMContentLoaded", () => {
   setupAiChat();
@@ -69,11 +71,13 @@ function setupAiChat() {
 
   toggleBtn.addEventListener("click", () => {
     chatWindow.classList.toggle("show");
+    if (!chatWindow.classList.contains("show")) stopActiveReadAloud();
   });
 
   if (closeBtn) {
     closeBtn.addEventListener("click", () => {
       chatWindow.classList.remove("show");
+      stopActiveReadAloud();
     });
   }
 
@@ -393,6 +397,7 @@ function addToChatHistory(entry) {
 }
 
 function clearChatMessagesUI() {
+  stopActiveReadAloud();
   const messages = document.getElementById("aiChatMessages");
   if (messages) {
     messages.innerHTML = "";
@@ -722,8 +727,9 @@ function appendReplyActions(wrapper, originalText) {
   speakBtn.textContent = "Read Aloud";
   speakBtn.style.cssText =
     "border:none;background:#e2e8f0;color:#0f172a;padding:6px 10px;border-radius:8px;font-size:0.82rem;font-weight:700;cursor:pointer;";
+  speakBtn.setAttribute("aria-pressed", "false");
   speakBtn.addEventListener("click", () =>
-    speakText(getCurrentBubbleText(wrapper, originalText)));
+    toggleReadAloud(speakBtn, getCurrentBubbleText(wrapper, originalText)));
 
   const translateEnglishBtn = document.createElement("button");
   translateEnglishBtn.type = "button";
@@ -754,6 +760,7 @@ function appendReplyActions(wrapper, originalText) {
 
   async function changeTranslation(option) {
     if (!bubble || translating) return;
+    if (activeReadAloud?.button === speakBtn) stopActiveReadAloud();
     if (currentMode === option.mode) {
       bubble.innerHTML = formatAiReply(originalText);
       bubble.dataset.currentText = originalText;
@@ -1962,22 +1969,60 @@ function restoreWindowState() {
   syncChatSizeButton(chatWindow, maximizeBtn);
 }
 
-function speakText(text) {
-  if (window.ArvicVoice?.readAloud) {
-    window.ArvicVoice.readAloud(text);
+// QA-126: exactly one reply can be read aloud at a time. Use a playback
+// identity so late cloud/browser callbacks cannot reset a newer button.
+function setReadAloudButton(button, playing) {
+  button.textContent = playing ? "Stop Reading" : "Read Aloud";
+  button.setAttribute("aria-pressed", String(playing));
+}
+
+function stopActiveReadAloud() {
+  const active = activeReadAloud;
+  if (!active) return;
+  activeReadAloud = null;
+  setReadAloudButton(active.button, false);
+  if (active.voice) window.ArvicVoice?.stopReadAloud?.();
+  else window.speechSynthesis?.cancel();
+}
+
+function toggleReadAloud(button, text) {
+  if (activeReadAloud?.button === button) {
+    stopActiveReadAloud();
     return;
   }
-  if (!("speechSynthesis" in window)) {
+  stopActiveReadAloud();
+  if (!String(text || "").trim()) return;
+  const active = {button, voice: Boolean(window.ArvicVoice?.readAloud)};
+  activeReadAloud = active;
+  setReadAloudButton(button, true);
+  const done = () => {
+    if (activeReadAloud !== active) return;
+    activeReadAloud = null;
+    setReadAloudButton(button, false);
+  };
+  try { speakText(text, done); }
+  catch (_) { done(); appendAiSystemNote("Audio playback unavailable. Please try again."); }
+}
+
+function speakText(text, done) {
+  if (window.ArvicVoice?.readAloud) {
+    window.ArvicVoice.readAloud(text, done);
+    return;
+  }
+  if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) {
+    done();
     appendAiSystemNote("Text-to-speech is not supported in this browser.");
     return;
   }
 
   window.speechSynthesis.cancel();
 
-  const utterance = new SpeechSynthesisUtterance(String(text || ""));
+  const utterance = new window.SpeechSynthesisUtterance(String(text || ""));
   utterance.lang = "en-PH";
   utterance.rate = 1;
   utterance.pitch = 1;
+  utterance.onend = done;
+  utterance.onerror = done;
 
   window.speechSynthesis.speak(utterance);
 }
