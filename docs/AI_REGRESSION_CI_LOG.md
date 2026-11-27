@@ -1,6 +1,6 @@
 # AI Mock Regression — testing branch
 
-Source commit: 6994e19e17d7f99ac92952e5a613576be2037a73
+Source commit: a5951e716b2d5075df21745ed423dc176e5d5c33
 Exit code: 1
 
 No live Gemini, PayPal or production MySQL credentials.
@@ -10,844 +10,844 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: UI-81 reports retain both paid-charge figures in one card, not the three removed cards
     ok 1 - UI-81 reports retain both paid-charge figures in one card, not the three removed cards
       ---
-      duration_ms: 1.667026
+      duration_ms: 1.16349
       type: 'test'
       ...
     # Subtest: UI-34 reports retain paid charges, accurate caveat and balanced print layout
     ok 2 - UI-34 reports retain paid charges, accurate caveat and balanced print layout
       ---
-      duration_ms: 0.546748
+      duration_ms: 0.410176
       type: 'test'
       ...
     # Subtest: UI-34 walk-in preview shows full accommodation payment and NO 50% card
     ok 3 - UI-34 walk-in preview shows full accommodation payment and NO 50% card
       ---
-      duration_ms: 50.556173
+      duration_ms: 319.581351
       type: 'test'
       ...
     # Subtest: UI-34 Facebook manual reservation still previews a 50% minimum payment
     ok 4 - UI-34 Facebook manual reservation still previews a 50% minimum payment
       ---
-      duration_ms: 3.64408
+      duration_ms: 1.368323
       type: 'test'
       ...
     # Subtest: UI-34 preview code is presentation-only; secure payment flow still enforces full walk-in
     ok 5 - UI-34 preview code is presentation-only; secure payment flow still enforces full walk-in
       ---
-      duration_ms: 0.572977
+      duration_ms: 0.373772
       type: 'test'
       ...
     # Subtest: AI-44 customer voice has no manual language selector or persisted language setting
     ok 6 - AI-44 customer voice has no manual language selector or persisted language setting
       ---
-      duration_ms: 3.461179
+      duration_ms: 2.765969
       type: 'test'
       ...
     # Subtest: AI-44 voice and text requests detect each utterance independently
     ok 7 - AI-44 voice and text requests detect each utterance independently
       ---
-      duration_ms: 0.372704
+      duration_ms: 0.302447
       type: 'test'
       ...
     # Subtest: AI-44 signed Gemini audio accepts mixed spoken languages without translating
     ok 8 - AI-44 signed Gemini audio accepts mixed spoken languages without translating
       ---
-      duration_ms: 0.954098
+      duration_ms: 0.829336
       type: 'test'
       ...
     # Subtest: AI-44 safe Romanized Mandarin greeting and multilingual resort guard
     ok 9 - AI-44 safe Romanized Mandarin greeting and multilingual resort guard
       ---
-      duration_ms: 0.193671
+      duration_ms: 0.14892
       type: 'test'
       ...
     # Subtest: AI-44 all authenticated Customer pages load fresh voice implementation
     ok 10 - AI-44 all authenticated Customer pages load fresh voice implementation
       ---
-      duration_ms: 0.811281
+      duration_ms: 0.632034
       type: 'test'
       ...
     # Subtest: AI-36 history trivia is politely refused with zero Gemini credits or SQL reads
     ok 11 - AI-36 history trivia is politely refused with zero Gemini credits or SQL reads
       ---
-      duration_ms: 165.923621
+      duration_ms: 123.430203
       type: 'test'
       ...
     # Subtest: AI-36 second non-resort turn is still blocked even after prior refusal
     ok 12 - AI-36 second non-resort turn is still blocked even after prior refusal
       ---
-      duration_ms: 14.254811
+      duration_ms: 8.044513
       type: 'test'
       ...
     # Subtest: AI-36 mixed history and parking request cannot get a generic AI answer
     ok 13 - AI-36 mixed history and parking request cannot get a generic AI answer
       ---
-      duration_ms: 8.917466
+      duration_ms: 3.803803
       type: 'test'
       ...
     # Subtest: Retired AI create-booking route refuses unauthenticated direct writes
     ok 14 - Retired AI create-booking route refuses unauthenticated direct writes
       ---
-      duration_ms: 5.91413
+      duration_ms: 3.52408
       type: 'test'
       ...
     # Subtest: Retired AI create-booking cannot write with a spoofed user_id
     ok 15 - Retired AI create-booking cannot write with a spoofed user_id
       ---
-      duration_ms: 6.067105
+      duration_ms: 3.77413
       type: 'test'
       ...
     # Subtest: AI chat with missing message is rejected without DB access
     ok 16 - AI chat with missing message is rejected without DB access
       ---
-      duration_ms: 15.528625
+      duration_ms: 3.278457
       type: 'test'
       ...
     # Subtest: AI-LIVE-05 count 45 cottages then cheapest follows cottage scope and exact prices
     ok 17 - AI-LIVE-05 count 45 cottages then cheapest follows cottage scope and exact prices
       ---
-      duration_ms: 129.699864
+      duration_ms: 79.241042
       type: 'test'
       ...
     # Subtest: AI-LIVE-05 named cheapest replies reread Admin pricing, no cached ₱800
     ok 18 - AI-LIVE-05 named cheapest replies reread Admin pricing, no cached ₱800
       ---
-      duration_ms: 19.877498
+      duration_ms: 13.267795
       type: 'test'
       ...
     # Subtest: AI-LIVE-05 overnight cheapest ignores cheaper Day Tour and zero prices
     ok 19 - AI-LIVE-05 overnight cheapest ignores cheaper Day Tour and zero prices
       ---
-      duration_ms: 6.531952
+      duration_ms: 4.712867
       type: 'test'
       ...
     # Subtest: AI-LIVE-05 same-priced listings never select an arbitrary old room
     ok 20 - AI-LIVE-05 same-priced listings never select an arbitrary old room
       ---
-      duration_ms: 6.903005
+      duration_ms: 5.281348
       type: 'test'
       ...
     # Subtest: AI-LIVE-05 selected cheapest room remains focused for a CR follow-up
     ok 21 - AI-LIVE-05 selected cheapest room remains focused for a CR follow-up
       ---
-      duration_ms: 29.642144
+      duration_ms: 24.09588
       type: 'test'
       ...
     # Subtest: AI-LIVE-05 unknown scope asks rooms or cottages without spending credits
     ok 22 - AI-LIVE-05 unknown scope asks rooms or cottages without spending credits
       ---
-      duration_ms: 7.198303
+      duration_ms: 5.753686
       type: 'test'
       ...
     # Subtest: AI-LIVE-04 Ilang rooms meron kayo returns a count, not room cards
     ok 23 - AI-LIVE-04 Ilang rooms meron kayo returns a count, not room cards
       ---
-      duration_ms: 4.682255
+      duration_ms: 5.175597
       type: 'test'
       ...
     # Subtest: Inventory counting always re-reads Admin state and never caps at 150
     ok 24 - Inventory counting always re-reads Admin state and never caps at 150
       ---
-      duration_ms: 7.834479
+      duration_ms: 4.33601
       type: 'test'
       ...
     # Subtest: Count questions distinguish room, cottage, function and available listing statuses
     ok 25 - Count questions distinguish room, cottage, function and available listing statuses
       ---
-      duration_ms: 18.245888
+      duration_ms: 11.895687
       type: 'test'
       ...
     # Subtest: AI-37 generic recommendation asks for guests first, no random cards or credits
     ok 26 - AI-37 generic recommendation asks for guests first, no random cards or credits
       ---
-      duration_ms: 9.549374
+      duration_ms: 4.731545
       type: 'test'
       ...
     # Subtest: AI-37 natural 4 kami follow-up filters fresh rooms by capacity and gives cards
     ok 27 - AI-37 natural 4 kami follow-up filters fresh rooms by capacity and gives cards
       ---
-      duration_ms: 10.964982
+      duration_ms: 5.948164
       type: 'test'
       ...
     # Subtest: AI-37 bare 4, apat kami and 4 po follow the guest prompt without extra Gemini
     ok 28 - AI-37 bare 4, apat kami and 4 po follow the guest prompt without extra Gemini
       ---
-      duration_ms: 14.29908
+      duration_ms: 9.317496
       type: 'test'
       ...
     # Subtest: AI-37 previously supplied guests are reused; explicit group size takes precedence
     ok 29 - AI-37 previously supplied guests are reused; explicit group size takes precedence
       ---
-      duration_ms: 11.858276
+      duration_ms: 8.166464
       type: 'test'
       ...
     # Subtest: AI-38 after 10 guests, 7 pala refreshes matching rooms instead of refusing the topic
     ok 30 - AI-38 after 10 guests, 7 pala refreshes matching rooms instead of refusing the topic
       ---
-      duration_ms: 11.577472
+      duration_ms: 8.482131
       type: 'test'
       ...
     # Subtest: AI-38 corrected guest count sees newly updated Admin prices and inventory
     ok 31 - AI-38 corrected guest count sees newly updated Admin prices and inventory
       ---
-      duration_ms: 10.788683
+      duration_ms: 6.217331
       type: 'test'
       ...
     # Subtest: AI-38 original family-room scope persists after revising 10 guests to 7
     ok 32 - AI-38 original family-room scope persists after revising 10 guests to 7
       ---
-      duration_ms: 9.152765
+      duration_ms: 5.83076
       type: 'test'
       ...
     # Subtest: AI-45 natural two-to-seven follow-up retains group search even after language switch
     ok 33 - AI-45 natural two-to-seven follow-up retains group search even after language switch
       ---
-      duration_ms: 9.029605
+      duration_ms: 5.990667
       type: 'test'
       ...
     # Subtest: AI-45 a guest-specific family-room preview keeps category on count correction
     ok 34 - AI-45 a guest-specific family-room preview keeps category on count correction
       ---
-      duration_ms: 5.563065
+      duration_ms: 4.0923
       type: 'test'
       ...
     # Subtest: AI-38 stale or unrelated numeric messages cannot bypass resort-only restriction
     ok 35 - AI-38 stale or unrelated numeric messages cannot bypass resort-only restriction
       ---
-      duration_ms: 8.146659
+      duration_ms: 4.919713
       type: 'test'
       ...
     # Subtest: AI-37 selecting a named accommodation or browsing rooms still works without guest question
     ok 36 - AI-37 selecting a named accommodation or browsing rooms still works without guest question
       ---
-      duration_ms: 4.333354
+      duration_ms: 2.824186
       type: 'test'
       ...
     # Subtest: Undated room discovery uses fresh DB preview without claiming slot availability
     ok 37 - Undated room discovery uses fresh DB preview without claiming slot availability
       ---
-      duration_ms: 3.728157
+      duration_ms: 2.201475
       type: 'test'
       ...
     # Subtest: AI-LIVE-03 focused single preview carries through CR follow-up using fresh DB
     ok 38 - AI-LIVE-03 focused single preview carries through CR follow-up using fresh DB
       ---
-      duration_ms: 11.013105
+      duration_ms: 5.232576
       type: 'test'
       ...
     # Subtest: AI-LIVE-03 multiple possible rooms never inherit old focus or invent CR
     ok 39 - AI-LIVE-03 multiple possible rooms never inherit old focus or invent CR
       ---
-      duration_ms: 9.798789
+      duration_ms: 4.452683
       type: 'test'
       ...
     # Subtest: Invalid same-day reversed times never query availability
     ok 40 - Invalid same-day reversed times never query availability
       ---
-      duration_ms: 9.559262
+      duration_ms: 17.871932
       type: 'test'
       ...
     # Subtest: Valid same-day day tour checks current reservation_items and offers a suggestion
     ok 41 - Valid same-day day tour checks current reservation_items and offers a suggestion
       ---
-      duration_ms: 9.86385
+      duration_ms: 11.299786
       type: 'test'
       ...
     # Subtest: Occupied window cannot generate an AI booking suggestion
     ok 42 - Occupied window cannot generate an AI booking suggestion
       ---
-      duration_ms: 5.197275
+      duration_ms: 5.746797
       type: 'test'
       ...
     # Subtest: Alternative schedule checks active reservation_items without writing
     ok 43 - Alternative schedule checks active reservation_items without writing
       ---
-      duration_ms: 4.687585
+      duration_ms: 3.90982
       type: 'test'
       ...
     # Subtest: Legacy SQL writer removed; frontend navigates through secure Customer form
     ok 44 - Legacy SQL writer removed; frontend navigates through secure Customer form
       ---
-      duration_ms: 1.794484
+      duration_ms: 1.428682
       type: 'test'
       ...
     # Subtest: Spanish text chat overrides an older English chat-language preference
     ok 45 - Spanish text chat overrides an older English chat-language preference
       ---
-      duration_ms: 4.82483
+      duration_ms: 3.690165
       type: 'test'
       ...
     # Subtest: Mandarin text chat overrides an older Spanish chat-language preference
     ok 46 - Mandarin text chat overrides an older Spanish chat-language preference
       ---
-      duration_ms: 39.031278
+      duration_ms: 29.932854
       type: 'test'
       ...
     # Subtest: Voice response switches to Mandarin when the guest speaks Mandarin
     ok 47 - Voice response switches to Mandarin when the guest speaks Mandarin
       ---
-      duration_ms: 4.336129
+      duration_ms: 3.929089
       type: 'test'
       ...
     # Subtest: Voice response switches back to English when the guest speaks English
     ok 48 - Voice response switches back to English when the guest speaks English
       ---
-      duration_ms: 4.994767
+      duration_ms: 7.354143
       type: 'test'
       ...
     # Subtest: AI-44 Taglish and Spanish voice messages follow the latest guest language
     ok 49 - AI-44 Taglish and Spanish voice messages follow the latest guest language
       ---
-      duration_ms: 14.374885
+      duration_ms: 14.57652
       type: 'test'
       ...
     # Subtest: Live voice Gemini prompt remains concise and obeys booking rules
     ok 50 - Live voice Gemini prompt remains concise and obeys booking rules
       ---
-      duration_ms: 3.662234
+      duration_ms: 4.010389
       type: 'test'
       ...
     # Subtest: Normal text chat is not forced into live spoken-conversation style
     ok 51 - Normal text chat is not forced into live spoken-conversation style
       ---
-      duration_ms: 3.039941
+      duration_ms: 4.559
       type: 'test'
       ...
     # Subtest: English translation route responds with the English text
     ok 52 - English translation route responds with the English text
       ---
-      duration_ms: 3.145531
+      duration_ms: 4.923179
       type: 'test'
       ...
     # Subtest: Temporary Gemini 503 during extraction recovers after one retry
     ok 53 - Temporary Gemini 503 during extraction recovers after one retry
       ---
-      duration_ms: 704.514887
+      duration_ms: 704.70157
       type: 'test'
       ...
     # Gemini request failed (HTTP 503).
     # Subtest: Persistent Gemini 503 returns safe HTTP 503 without exposing SDK errors
     ok 54 - Persistent Gemini 503 returns safe HTTP 503 without exposing SDK errors
       ---
-      duration_ms: 704.77071
+      duration_ms: 704.290512
       type: 'test'
       ...
     # Gemini English translation failed (HTTP 429).
     # Subtest: Gemini free-tier 429 is not retried on translation
     ok 55 - Gemini free-tier 429 is not retried on translation
       ---
-      duration_ms: 2.026946
+      duration_ms: 1.710328
       type: 'test'
       ...
     # Subtest: AI reply actions offer English and Tagalog, not Taglish translation
     ok 56 - AI reply actions offer English and Tagalog, not Taglish translation
       ---
-      duration_ms: 0.68141
+      duration_ms: 0.568922
       type: 'test'
       ...
     # Subtest: New Admin accommodation appears immediately in the verified preview catalog
     ok 57 - New Admin accommodation appears immediately in the verified preview catalog
       ---
-      duration_ms: 7.236831
+      duration_ms: 5.51267
       type: 'test'
       ...
     # Subtest: Admin price update is reflected immediately without stale AI cache
     ok 58 - Admin price update is reflected immediately without stale AI cache
       ---
-      duration_ms: 4.656556
+      duration_ms: 4.781369
       type: 'test'
       ...
     # Subtest: Unavailable accommodation is described but not recommended
     ok 59 - Unavailable accommodation is described but not recommended
       ---
-      duration_ms: 2.330603
+      duration_ms: 1.941711
       type: 'test'
       ...
     # Subtest: Budget and capacity filter read current rates and exclude mismatches
     ok 60 - Budget and capacity filter read current rates and exclude mismatches
       ---
-      duration_ms: 2.572303
+      duration_ms: 2.048248
       type: 'test'
       ...
     # Subtest: Unrelated conversation is not forced to read the accommodation catalog
     ok 61 - Unrelated conversation is not forced to read the accommodation catalog
       ---
-      duration_ms: 2.195751
+      duration_ms: 1.684781
       type: 'test'
       ...
     # Subtest: Verified date availability uses reservation schedules, not catalog guesses
     ok 62 - Verified date availability uses reservation schedules, not catalog guesses
       ---
-      duration_ms: 2.850161
+      duration_ms: 2.2727
       type: 'test'
       ...
     # Subtest: HTTP 429 on accommodation inquiry returns actual live catalog without Gemini
     ok 63 - HTTP 429 on accommodation inquiry returns actual live catalog without Gemini
       ---
-      duration_ms: 4.896434
+      duration_ms: 3.984932
       type: 'test'
       ...
     # Subtest: Database backup rereads newly updated Admin prices during HTTP 429
     ok 64 - Database backup rereads newly updated Admin prices during HTTP 429
       ---
-      duration_ms: 4.927672
+      duration_ms: 4.084449
       type: 'test'
       ...
     # Subtest: Maintenance rooms are excluded from 429 offline recommendations
     ok 65 - Maintenance rooms are excluded from 429 offline recommendations
       ---
-      duration_ms: 2.810938
+      duration_ms: 2.816424
       type: 'test'
       ...
     # Subtest: Voice quota fallback uses language of current spoken question
     ok 66 - Voice quota fallback uses language of current spoken question
       ---
-      duration_ms: 2.595356
+      duration_ms: 2.524602
       type: 'test'
       ...
     # Subtest: HTTP 429 with valid stay details checks reservation_items and creates no booking
     ok 67 - HTTP 429 with valid stay details checks reservation_items and creates no booking
       ---
-      duration_ms: 2.843759
+      duration_ms: 2.591281
       type: 'test'
       ...
     # Gemini request failed (HTTP 429).
     # Subtest: Non-resort questions still show accurate Gemini 429 with no database lookup
     ok 68 - Non-resort questions still show accurate Gemini 429 with no database lookup
       ---
-      duration_ms: 2.115632
+      duration_ms: 1.845298
       type: 'test'
       ...
     # Subtest: Persistent Gemini 503 can still answer read-only accommodation questions
     ok 69 - Persistent Gemini 503 can still answer read-only accommodation questions
       ---
-      duration_ms: 1.968268
+      duration_ms: 1.667425
       type: 'test'
       ...
     # Subtest: Quota fallback parses explicit guest count and peso budget without Gemini
     ok 70 - Quota fallback parses explicit guest count and peso budget without Gemini
       ---
-      duration_ms: 4.816365
+      duration_ms: 4.110056
       type: 'test'
       ...
     # Subtest: Quota fallback never guesses check-in dates from free-text
     ok 71 - Quota fallback never guesses check-in dates from free-text
       ---
-      duration_ms: 2.230416
+      duration_ms: 1.978635
       type: 'test'
       ...
     # Subtest: English accommodation question remains English during Gemini quota fallback
     ok 72 - English accommodation question remains English during Gemini quota fallback
       ---
-      duration_ms: 3.391359
+      duration_ms: 2.811046
       type: 'test'
       ...
     # Subtest: Simple accommodation catalog inquiry uses ONE Gemini call, still fresh from MySQL
     ok 73 - Simple accommodation catalog inquiry uses ONE Gemini call, still fresh from MySQL
       ---
-      duration_ms: 2.370778
+      duration_ms: 2.108167
       type: 'test'
       ...
     # Subtest: Undated cottage catalog uses one fresh DB read and zero Gemini credits
     ok 74 - Undated cottage catalog uses one fresh DB read and zero Gemini credits
       ---
-      duration_ms: 4.445354
+      duration_ms: 1.570131
       type: 'test'
       ...
     # Subtest: Explicit booking windows still take the safe extraction and slot-check flow
     ok 75 - Explicit booking windows still take the safe extraction and slot-check flow
       ---
-      duration_ms: 2.668131
+      duration_ms: 5.387205
       type: 'test'
       ...
     # Subtest: Undated preview retains saved guest count and excludes undersized cottages
     ok 76 - Undated preview retains saved guest count and excludes undersized cottages
       ---
-      duration_ms: 2.132754
+      duration_ms: 2.032755
       type: 'test'
       ...
     # Subtest: Voice catalog reply uses current English and retains speech prompt
     ok 77 - Voice catalog reply uses current English and retains speech prompt
       ---
-      duration_ms: 2.245634
+      duration_ms: 2.026616
       type: 'test'
       ...
     # Subtest: Optimized prompt does not duplicate full booking context and live details
     ok 78 - Optimized prompt does not duplicate full booking context and live details
       ---
-      duration_ms: 2.645068
+      duration_ms: 2.333289
       type: 'test'
       ...
     # Subtest: Quota fallback does not issue a second catalog SQL read after optimized Gemini call
     ok 79 - Quota fallback does not issue a second catalog SQL read after optimized Gemini call
       ---
-      duration_ms: 2.634558
+      duration_ms: 2.312809
       type: 'test'
       ...
     # Subtest: English spoken catalog quota fallback does not inherit old Mandarin
     ok 80 - English spoken catalog quota fallback does not inherit old Mandarin
       ---
-      duration_ms: 2.350741
+      duration_ms: 2.148627
       type: 'test'
       ...
     # Subtest: Oversized AI message is rejected before Gemini and database access
     ok 81 - Oversized AI message is rejected before Gemini and database access
       ---
-      duration_ms: 1.425396
+      duration_ms: 1.180806
       type: 'test'
       ...
     # Subtest: Oversized stored AI context cannot inflate token usage
     ok 82 - Oversized stored AI context cannot inflate token usage
       ---
-      duration_ms: 1.496138
+      duration_ms: 1.188637
       type: 'test'
       ...
     # Subtest: Oversized translation is rejected before paid Gemini calls
     ok 83 - Oversized translation is rejected before paid Gemini calls
       ---
-      duration_ms: 1.468326
+      duration_ms: 1.141407
       type: 'test'
       ...
     # Subtest: Normal short chat and translation remain usable after size limits
     ok 84 - Normal short chat and translation remain usable after size limits
       ---
-      duration_ms: 3.300249
+      duration_ms: 2.579003
       type: 'test'
       ...
     # Subtest: AI prompts use current Philippine date and explicitly reject stale examples
     ok 85 - AI prompts use current Philippine date and explicitly reject stale examples
       ---
-      duration_ms: 2.447931
+      duration_ms: 2.284077
       type: 'test'
       ...
     # Subtest: AI compares rooms and cottages with their current independent catalog rates
     ok 86 - AI compares rooms and cottages with their current independent catalog rates
       ---
-      duration_ms: 2.206963
+      duration_ms: 1.861612
       type: 'test'
       ...
     # Subtest: Tagalog replies and translations request consistently polite customer tone
     ok 87 - Tagalog replies and translations request consistently polite customer tone
       ---
-      duration_ms: 3.500333
+      duration_ms: 2.763926
       type: 'test'
       ...
     # Subtest: Standard Taglish downpayment policy is returned locally even with stale context
     ok 88 - Standard Taglish downpayment policy is returned locally even with stale context
       ---
-      duration_ms: 2.35626
+      duration_ms: 1.7992
       type: 'test'
       ...
     # Subtest: Local policy answers Filipino paunang bayad without listing rooms
     ok 89 - Local policy answers Filipino paunang bayad without listing rooms
       ---
-      duration_ms: 1.96946
+      duration_ms: 1.496233
       type: 'test'
       ...
     # Subtest: Named cottage deposit is verified locally without Gemini even during quota outage
     ok 90 - Named cottage deposit is verified locally without Gemini even during quota outage
       ---
-      duration_ms: 4.997402
+      duration_ms: 4.022817
       type: 'test'
       ...
     # Subtest: Focused payment never mistakes Nipa Hut 20 for Hut 2
     ok 91 - Focused payment never mistakes Nipa Hut 20 for Hut 2
       ---
-      duration_ms: 2.129277
+      duration_ms: 1.719473
       type: 'test'
       ...
     # Subtest: Local policy answers plain English online booking deposit without SQL
     ok 92 - Local policy answers plain English online booking deposit without SQL
       ---
-      duration_ms: 1.967977
+      duration_ms: 1.315345
       type: 'test'
       ...
     # Subtest: Observed English question gets correct fixed 50% policy using zero API calls
     ok 93 - Observed English question gets correct fixed 50% policy using zero API calls
       ---
-      duration_ms: 1.930647
+      duration_ms: 1.549491
       type: 'test'
       ...
     # Subtest: Named cottage deposit quotes a fresh verified price without paid Gemini
     ok 94 - Named cottage deposit quotes a fresh verified price without paid Gemini
       ---
-      duration_ms: 2.683691
+      duration_ms: 1.565184
       type: 'test'
       ...
     # Subtest: Cancellation plus refund question is handled accurately without Gemini
     ok 95 - Cancellation plus refund question is handled accurately without Gemini
       ---
-      duration_ms: 5.763891
+      duration_ms: 1.578914
       type: 'test'
       ...
     # Subtest: Policy accuracy: Refund policy avoids promising any refund
     ok 96 - Policy accuracy: Refund policy avoids promising any refund
       ---
-      duration_ms: 2.086658
+      duration_ms: 5.123445
       type: 'test'
       ...
     # Subtest: Policy accuracy: Cancellation requires one day and pending/approved
     ok 97 - Policy accuracy: Cancellation requires one day and pending/approved
       ---
-      duration_ms: 2.176997
+      duration_ms: 1.80613
       type: 'test'
       ...
     # Subtest: Policy accuracy: Taglish cancellation stays polite and gives the actual rule
     ok 98 - Policy accuracy: Taglish cancellation stays polite and gives the actual rule
       ---
-      duration_ms: 1.916601
+      duration_ms: 1.56926
       type: 'test'
       ...
     # Subtest: Policy accuracy: Entrance fees are separate and not a fixed price
     ok 99 - Policy accuracy: Entrance fees are separate and not a fixed price
       ---
-      duration_ms: 2.305616
+      duration_ms: 1.642177
       type: 'test'
       ...
     # Subtest: Policy accuracy: Tagalog entrance fee does not invent pesos
     ok 100 - Policy accuracy: Tagalog entrance fee does not invent pesos
       ---
-      duration_ms: 2.798534
+      duration_ms: 2.35398
       type: 'test'
       ...
     # Subtest: Policy accuracy: Walk-in guidance never guarantees accommodation availability
     ok 101 - Policy accuracy: Walk-in guidance never guarantees accommodation availability
       ---
-      duration_ms: 2.095204
+      duration_ms: 1.567197
       type: 'test'
       ...
     # Subtest: Policy accuracy: Taglish walk-in is same-day and onsite
     ok 102 - Policy accuracy: Taglish walk-in is same-day and onsite
       ---
-      duration_ms: 2.937013
+      duration_ms: 1.917344
       type: 'test'
       ...
     # Subtest: Policy accuracy: AI never claims that chat confirms a reservation
     ok 103 - Policy accuracy: AI never claims that chat confirms a reservation
       ---
-      duration_ms: 2.069486
+      duration_ms: 1.77153
       type: 'test'
       ...
     # Subtest: A named accommodation keeps fresh database lookups rather than generic policy
     ok 104 - A named accommodation keeps fresh database lookups rather than generic policy
       ---
-      duration_ms: 2.182136
+      duration_ms: 1.924876
       type: 'test'
       ...
     # Subtest: A customer-specific refund amount is not guessed by generic policy
     ok 105 - A customer-specific refund amount is not guessed by generic policy
       ---
-      duration_ms: 2.165635
+      duration_ms: 1.67726
       type: 'test'
       ...
     # Subtest: General policy facts are embedded in Gemini prompt for non-FAQ conversations
     ok 106 - General policy facts are embedded in Gemini prompt for non-FAQ conversations
       ---
-      duration_ms: 2.240505
+      duration_ms: 2.058854
       type: 'test'
       ...
     # Subtest: Spanish cancellation FAQ overrides stale English preference without Gemini
     ok 107 - Spanish cancellation FAQ overrides stale English preference without Gemini
       ---
-      duration_ms: 2.634278
+      duration_ms: 2.133455
       type: 'test'
       ...
     # Subtest: Mandarin refund FAQ overrides stale English preference without Gemini
     ok 108 - Mandarin refund FAQ overrides stale English preference without Gemini
       ---
-      duration_ms: 1.702402
+      duration_ms: 1.464285
       type: 'test'
       ...
     # Subtest: Past explicit year never rolls forward to create a misleading AI booking preview
     ok 109 - Past explicit year never rolls forward to create a misleading AI booking preview
       ---
-      duration_ms: 1.743308
+      duration_ms: 1.531094
       type: 'test'
       ...
     # Subtest: Impossible February 30 is rejected without querying availability
     ok 110 - Impossible February 30 is rejected without querying availability
       ---
-      duration_ms: 1.71693
+      duration_ms: 1.509422
       type: 'test'
       ...
     # Subtest: Reversed same-day window returns an actionable invalid-window response
     ok 111 - Reversed same-day window returns an actionable invalid-window response
       ---
-      duration_ms: 1.707071
+      duration_ms: 1.438807
       type: 'test'
       ...
     # Subtest: Valid future overnight window continues fresh reservation availability lookup
     ok 112 - Valid future overnight window continues fresh reservation availability lookup
       ---
-      duration_ms: 2.690423
+      duration_ms: 2.241474
       type: 'test'
       ...
     # Subtest: Missing accommodation prices are not misrepresented as free PHP 0.00
     ok 113 - Missing accommodation prices are not misrepresented as free PHP 0.00
       ---
-      duration_ms: 1.880614
+      duration_ms: 1.611983
       type: 'test'
       ...
     # Subtest: Fresh positive accommodation rate stays numerically exact in AI prompt
     ok 114 - Fresh positive accommodation rate stays numerically exact in AI prompt
       ---
-      duration_ms: 2.0767
+      duration_ms: 1.698972
       type: 'test'
       ...
     # Subtest: Parking fee question bypasses room-payment resolver and makes zero paid or SQL calls
     ok 115 - Parking fee question bypasses room-payment resolver and makes zero paid or SQL calls
       ---
-      duration_ms: 2.907087
+      duration_ms: 2.339889
       type: 'test'
       ...
     # Subtest: Actual customer van/bus parking question uses verified zero-credit FAQ
     ok 116 - Actual customer van/bus parking question uses verified zero-credit FAQ
       ---
-      duration_ms: 2.367381
+      duration_ms: 1.945977
       type: 'test'
       ...
     # Subtest: Parking + entrance question explains fee distinction without room suggestions
     ok 117 - Parking + entrance question explains fee distinction without room suggestions
       ---
-      duration_ms: 2.027909
+      duration_ms: 1.655948
       type: 'test'
       ...
     # Subtest: Multi-facility resort question stays grounded with read-only catalog SQL
     ok 118 - Multi-facility resort question stays grounded with read-only catalog SQL
       ---
-      duration_ms: 6.759475
+      duration_ms: 2.190569
       type: 'test'
       ...
     # Subtest: Client-verified Wi-Fi, no pets and outside food policies use zero credits
     ok 119 - Client-verified Wi-Fi, no pets and outside food policies use zero credits
       ---
-      duration_ms: 8.059698
+      duration_ms: 10.107574
       type: 'test'
       ...
     # Subtest: Focused-room Wi-Fi follow-up is not overridden by unknown resort-wide policy
     ok 120 - Focused-room Wi-Fi follow-up is not overridden by unknown resort-wide policy
       ---
-      duration_ms: 1.91559
+      duration_ms: 1.640776
       type: 'test'
       ...
     # Subtest: AI-40 Ask About This returns verified facts for every selected accommodation type
     ok 121 - AI-40 Ask About This returns verified facts for every selected accommodation type
       ---
-      duration_ms: 13.281177
+      duration_ms: 10.413055
       type: 'test'
       ...
     # Subtest: AI-40 empty amenities still return capacity and rates, not only a Front Desk referral
     ok 122 - AI-40 empty amenities still return capacity and rates, not only a Front Desk referral
       ---
-      duration_ms: 2.494778
+      duration_ms: 1.978966
       type: 'test'
       ...
     # Subtest: AI-40 stale selected room IDs and renamed listings are not silently described
     ok 123 - AI-40 stale selected room IDs and renamed listings are not silently described
       ---
-      duration_ms: 3.689124
+      duration_ms: 2.846749
       type: 'test'
       ...
     # Subtest: AI-41 Ask About This follows the visitor's genuine Taglish question, not card English
     ok 124 - AI-41 Ask About This follows the visitor's genuine Taglish question, not card English
       ---
-      duration_ms: 3.266436
+      duration_ms: 2.322694
       type: 'test'
       ...
     # Subtest: AI-44 clicked room description uses guest English for both text and voice
     ok 125 - AI-44 clicked room description uses guest English for both text and voice
       ---
-      duration_ms: 4.152918
+      duration_ms: 3.401379
       type: 'test'
       ...
     # Subtest: AI-44 Mandarin pinyin greeting is answered in Chinese with no model call
     ok 126 - AI-44 Mandarin pinyin greeting is answered in Chinese with no model call
       ---
-      duration_ms: 1.562531
+      duration_ms: 1.228486
       type: 'test'
       ...
     # Subtest: AI-111 explicit cottage amenity question overrides previous room
     ok 127 - AI-111 explicit cottage amenity question overrides previous room
       ---
-      duration_ms: 3.980637
+      duration_ms: 3.114364
       type: 'test'
       ...
     # Subtest: FINAL-B1 bedroom and bed counts plus amenities override old accommodation focus
     ok 128 - FINAL-B1 bedroom and bed counts plus amenities override old accommodation focus
       ---
-      duration_ms: 5.819353
+      duration_ms: 4.53192
       type: 'test'
       ...
     # Subtest: FINAL-B1 structural counts remain distinct from inventory counts
     ok 129 - FINAL-B1 structural counts remain distinct from inventory counts
       ---
-      duration_ms: 0.548843
+      duration_ms: 0.428834
       type: 'test'
       ...
     # Subtest: FINAL-B2 cottage switch answers every requested amenity including bed presence
     ok 130 - FINAL-B2 cottage switch answers every requested amenity including bed presence
       ---
-      duration_ms: 2.367611
+      duration_ms: 1.807953
       type: 'test'
       ...
     # Subtest: FINAL-D1 voice recommendation with rate uses guest count and overnight pricing
     ok 131 - FINAL-D1 voice recommendation with rate uses guest count and overnight pricing
       ---
-      duration_ms: 2.717323
+      duration_ms: 2.080145
       type: 'test'
       ...
     # Subtest: FINAL-D2 mixed private bathroom and free Wi-Fi follow-up keeps verified room context
     ok 132 - FINAL-D2 mixed private bathroom and free Wi-Fi follow-up keeps verified room context
       ---
-      duration_ms: 7.017997
+      duration_ms: 5.409498
       type: 'test'
       ...
     # Subtest: FINAL-D2 mixed policy and amenity questions never invent stale or ambiguous room details
     ok 133 - FINAL-D2 mixed policy and amenity questions never invent stale or ambiguous room details
       ---
-      duration_ms: 2.152591
+      duration_ms: 1.65735
       type: 'test'
       ...
     # Subtest: FINAL-D3 Spanish pets and parking both answered after English room discussion
     ok 134 - FINAL-D3 Spanish pets and parking both answered after English room discussion
       ---
-      duration_ms: 2.521819
+      duration_ms: 1.94132
       type: 'test'
       ...
     # Subtest: QA-123 fresh or reset reservation recall asks for details without generic previews
     ok 135 - QA-123 fresh or reset reservation recall asks for details without generic previews
       ---
-      duration_ms: 4.814451
+      duration_ms: 3.789253
       type: 'test'
       ...
     # Subtest: QA-124 same-session recall keeps booking context without an unchecked replacement card
     ok 136 - QA-124 same-session recall keeps booking context without an unchecked replacement card
       ---
-      duration_ms: 1.861589
+      duration_ms: 1.473909
       type: 'test'
       ...
     # Subtest: QA-123 recall-shaped prompt injection remains blocked
     ok 137 - QA-123 recall-shaped prompt injection remains blocked
       ---
-      duration_ms: 1.774316
+      duration_ms: 1.384827
       type: 'test'
       ...
     # Subtest: UI-38 conversation rows are flex columns with direction-aware alignment
     ok 138 - UI-38 conversation rows are flex columns with direction-aware alignment
       ---
-      duration_ms: 1.36838
+      duration_ms: 0.98726
       type: 'test'
       ...
     # Subtest: UI-38 reply actions and structured booking previews remain usable
     ok 139 - UI-38 reply actions and structured booking previews remain usable
       ---
-      duration_ms: 0.343009
+      duration_ms: 0.27077
       type: 'test'
       ...
     # Subtest: UI-38 fresh CSS is requested across Landing and all Customer chat pages
     not ok 140 - UI-38 fresh CSS is requested across Landing and all Customer chat pages
       ---
-      duration_ms: 1.951576
+      duration_ms: 12.290741
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-chat-bubble-ui38.test.js:34:1'
       failureType: 'testCodeFailure'
@@ -897,8 +897,8 @@ No live Gemini, PayPal or production MySQL credentials.
             <!-- UI-37: Reuse Customer chatbot visuals on the public landing page. -->
             <link rel="stylesheet" href="../sharedCSS/ai-recommendations.css" />
             <link rel="stylesheet" href="../sharedCSS/ai-chat-layout.css?v=20261126-ui96" />
-            <link rel="stylesheet" href="../sharedCSS/ai-chat-airy.css?v=20261121-ui37" />
-            <link rel="stylesheet" href="../sharedCSS/ai-concierge-guide-ui48.css?v=20261122-ai48" />
+            <link rel="stylesheet" href="../sharedCSS/ai-chat-airy.css?v=20261127-qa124-release" />
+            <link rel="stylesheet" href="../sharedCSS/ai-concierge-guide-ui48.css?v=20261127-qa124-release" />
         </head>
         
           <body class="customer-manager-tone" data-ai-chat-surface="public">
@@ -1450,7 +1450,7 @@ No live Gemini, PayPal or production MySQL credentials.
             ======================================================= -->
             <script src="../sharedJS/api-config.js?v=20261126-auth106"></script>
             <script src="../customerJS/landing.js"></script>
-            <script src="../js/ai-chat.js?v=20261126-ai105"></script>
+            <script src="../js/ai-chat.js?v=20261127-qa127-release"></script>
             <script src="../js/ai-chat-polish.js?v=20261126-ui96"></script>
           </body>
         </html>
@@ -1468,31 +1468,31 @@ No live Gemini, PayPal or production MySQL credentials.
     # Subtest: AI keeps only six short allowed recent conversation turns
     ok 141 - AI keeps only six short allowed recent conversation turns
       ---
-      duration_ms: 3.748379
+      duration_ms: 1.798138
       type: 'test'
       ...
     # Subtest: AI suggests cards on new room searches, not on pricing follow-ups
     ok 142 - AI suggests cards on new room searches, not on pricing follow-ups
       ---
-      duration_ms: 1.815673
+      duration_ms: 1.084544
       type: 'test'
       ...
     # Subtest: AI cards are limited, deduplicated and never invent a rate or booking availability
     ok 143 - AI cards are limited, deduplicated and never invent a rate or booking availability
       ---
-      duration_ms: 1.303459
+      duration_ms: 0.708848
       type: 'test'
       ...
     # Subtest: Repeated self-introductions removed, but direct identity answers remain
     ok 144 - Repeated self-introductions removed, but direct identity answers remain
       ---
-      duration_ms: 1.312946
+      duration_ms: 0.717791
       type: 'test'
       ...
     # Subtest: Backend response uses fresh database records instead of model-generated card URLs
     not ok 145 - Backend response uses fresh database records instead of model-generated card URLs
       ---
-      duration_ms: 3.892843
+      duration_ms: 2.299239
       type: 'test'
       location: '/home/runner/work/Capstone-Smart_Resort_Management/Capstone-Smart_Resort_Management/backend/tests/ai-natural-recommendations.test.js:63:1'
       failureType: 'testCodeFailure'
