@@ -39,7 +39,7 @@ const OFFICIAL_RESORT_PHONE_ALTERNATIVE = "0967-817-0662";
 
 let aiMessageInFlight = false;
 let activeReadAloud = null;
-window.addEventListener("pagehide", stopActiveReadAloud);
+window.addEventListener?.("pagehide", stopActiveReadAloud);
 
 document.addEventListener("DOMContentLoaded", () => {
   setupAiChat();
