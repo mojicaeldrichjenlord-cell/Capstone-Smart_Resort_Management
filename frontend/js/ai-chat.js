@@ -419,7 +419,7 @@ function restoreChatHistory() {
       "assistant",
       AI_IS_PUBLIC_LANDING
         ? "Magandang araw po! Welcome sa Arvic Seaside Beach Resort and Hotel. Tulungan ko kayong mag-check ng rooms, rates at booking options. Ano pong gusto niyong malaman?"
-        : "Hi po! Anong accommodation o booking details ang maitutulong ko sa inyo?",
+        : "Hello po! Anong accommodation o booking details ang maitutulong ko sa inyo?",
       false
     );
 
@@ -1712,7 +1712,7 @@ function getTagalogFallbackReply(text, merged) {
   if (/\b(?:hello|hi|hey|kumusta)\b/i.test(text)) {
     return {
       modeNotice: "Pansamantalang hindi available ang AI. Naka-offline assistant mode muna.",
-      reply: "Hi po! Puwede pa rin kayong magtanong tungkol sa booking.",
+      reply: "Hello po! Puwede pa rin kayong magtanong tungkol sa booking.",
       context: merged,
     };
   }
@@ -1798,7 +1798,7 @@ function getTaglishFallbackReply(text, merged) {
   if (/\b(?:hello|hi|hey|kumusta)\b/i.test(text)) {
     return {
       modeNotice: "Temporarily unavailable ang AI. Naka-offline assistant mode muna tayo.",
-      reply: "Hi po! Puwede pa rin kayong magtanong tungkol sa booking.",
+      reply: "Hello po! Puwede pa rin kayong magtanong tungkol sa booking.",
       context: merged,
     };
   }
