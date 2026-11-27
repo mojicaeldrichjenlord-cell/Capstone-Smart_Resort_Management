@@ -2077,6 +2077,10 @@ function formatAiReply(text) {
     'Message resort on Facebook</a>'
   );
 
+  // QA-129: link only the fixed resort map search, not arbitrary AI URLs.
+  const resortMapUrl = "https://www.google.com/maps?q=17%20Mahogany%20Street%2C%20Brgy.%20Bagong%20Karsada%2C%20Naic%2C%20Cavite";
+  safe = safe.split(resortMapUrl).join('<a href="' + resortMapUrl + '" target="_blank" rel="noopener noreferrer">Open Google Maps</a>');
+
   // Linkify ONLY the exact verified phone numbers. The HTML was escaped
   // above, and tel: destinations contain only trusted digits from Home.
   for (const [display, phoneDigits] of [

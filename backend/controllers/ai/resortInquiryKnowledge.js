@@ -173,6 +173,11 @@ const BISAYA_SHORT_ANSWERS = Object.freeze({
 
 function getResortInquiryReply(match, language) {
   if (!match || !SHORT_ANSWERS[match.topic]) return null;
+  // QA-129: exact address and fixed map search from the public landing page.
+  if (match.topic === "location" && !match.qualified) {
+    const base = language === "bisaya" ? BISAYA_SHORT_ANSWERS.location : (SHORT_ANSWERS.location[language] || SHORT_ANSWERS.location.english);
+    return base + "\nhttps://www.google.com/maps?q=17%20Mahogany%20Street%2C%20Brgy.%20Bagong%20Karsada%2C%20Naic%2C%20Cavite";
+  }
   if (language === "bisaya") {
     const base = BISAYA_SHORT_ANSWERS[match.topic];
     if (!match.qualified) return base;
