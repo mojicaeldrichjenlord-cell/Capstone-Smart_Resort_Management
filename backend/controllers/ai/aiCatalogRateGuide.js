@@ -35,12 +35,27 @@ function catalogRateOverview(catalog, message, language="taglish") {
     if (!Number.isSafeInteger(Number(room.id)) || unique.has(Number(room.id))) return false;
     unique.add(Number(room.id)); return true;
   }).sort((a,b) => Number(a.id)-Number(b.id));
-  // Bounded overview for chat readability, no fabricated catch-all "from" rate.
-  const chosen = [];
-  for (const cat of categories) {
-    const filtered = rows.filter(r => String(r.category_name||"").toLowerCase().startsWith(cat.slice(0,-1)));
-    chosen.push(...filtered.slice(0,5));
+  // QA-129: group only numbered variants with identical listed rates and
+  // capacity. Keep distinct names (including Family Room A/B) and prices.
+  // Group BEFORE limiting so early database IDs cannot hide other room types.
+  const groups = new Map();
+  for (const room of rows) {
+    const category = String(room.category_name || "").trim().toLowerCase().replace(/s$/, "");
+    const name = String(room.room_name || "Accommodation").trim();
+    const stem = name.replace(/\s+\d+$/, "").trim();
+    const prices = [room.day_price,room.overnight_price,room.extended_price].map(positiveMoney);
+    const cap = Number(room.capacity);
+    const capacity = Number.isSafeInteger(cap) && cap > 0 ? cap : null;
+    const key = JSON.stringify([category,stem.toLowerCase(),...prices,capacity]);
+    if (!groups.has(key)) groups.set(key,{category,stem,prices,capacity,rooms:[]});
+    groups.get(key).rooms.push(room);
   }
+  const chosenGroups = [];
+  for (const cat of categories) {
+    const filtered = [...groups.values()].filter(g=>g.category===cat.slice(0,-1));
+    chosenGroups.push(...filtered.slice(0,5));
+  }
+  const chosen = chosenGroups.map(g=>g.rooms[0]);
   const noData = {
     english: "There are no matching current room/cottage rates in our listed records. Please ask Front Desk for details.",
     tagalog: "Wala pa pong makitang kumpirmadong room/cottage rates sa kasalukuyang listahan. Puwede po kayong magtanong sa Front Desk.",
@@ -59,25 +74,44 @@ function catalogRateOverview(catalog, message, language="taglish") {
     mandarin: "以下是当前列出的价格和最大容纳人数（尚未确认具体日期或时段）：",
   };
   const tail = {
-    english: "Day Tour and Overnight are different rates. Final pricing, capacity adjustments and available slots are checked on the booking page.",
-    tagalog: "Magkaiba po ang Day Tour at Overnight rates. Ang final presyo at availability ay sa booking page iche-check.",
-    taglish: "Magkaiba po ang Day Tour at Overnight rate. Sa booking page iche-check ang final amount at available slots.",
-    bisaya: "Lahi ang Day Tour ug Overnight rate. Ang final amount ug available slots i-check sa booking page.",
-    spanish: "Los precios de día y noche son distintos. Confirme el importe final y los horarios en la página de reservas.",
-    mandarin: "日间和夜间价格不同。请在预订页面确认最终金额和可用时段。",
+    english: "Final price and date availability are checked on the booking page.",
+    tagalog: "Sa booking page po kukumpirmahin ang final presyo at availability.",
+    taglish: "Sa booking page po iche-check ang final amount at available slots.",
+    bisaya: "Ang final amount ug available slots i-check sa booking page.",
+    spanish: "Confirme el importe final y los horarios en la página de reservas.",
+    mandarin: "请在预订页面确认最终金额和可用时段。",
   };
-  const lines=chosen.map(room=>{
-    const cap = Number(room.capacity);
-    const pax = Number.isSafeInteger(cap) && cap > 0 ? cap + " pax" : "capacity not listed";
-    return "- " + String(room.room_name||"Accommodation").slice(0,100) +
-      ": Day Tour " + formatPeso(positiveMoney(room.day_price)) +
-      " | Overnight " + formatPeso(positiveMoney(room.overnight_price)) +
-      " | Extended " + formatPeso(positiveMoney(room.extended_price)) +
-      " | " + pax;
-  });
-  if(rows.length>chosen.length) lines.push(language==="taglish" ? "- May iba pa pong accommodation sa website; piliin ang type para sa complete details." :
-    "- Additional accommodations are available in the website catalog.");
-  return { reply:[head[language]||head.english, ...lines, tail[language]||tail.english].join("\n"), rows:chosen };
+  const labels = {
+    english:["Rooms","Cottages"],tagalog:["Rooms","Cottages"],taglish:["Rooms","Cottages"],
+    bisaya:["Rooms","Cottages"],spanish:["Habitaciones","Cabañas"],mandarin:["客房","小屋"]
+  };
+  const follow = {
+    english:"How many guests are coming, and are you planning a Day Tour, Overnight or Extended Stay?",
+    tagalog:"Ilan po ang bisita at Day Tour, Overnight o Extended Stay ba ang plano ninyo?",
+    taglish:"Ilan po kayong guests at Day Tour, Overnight o Extended Stay ba ang plan ninyo? Para ma-recommend ko ang bagay sa inyo.",
+    bisaya:"Pila mo kabuok ug Day Tour, Overnight o Extended Stay ang plano ninyo?",
+    spanish:"¿Cuántas personas vienen y prefieren visita de día, noche o estancia extendida?",
+    mandarin:"请问有几位客人，计划日间游、过夜还是延长住宿？"
+  };
+  const lines=[];
+  for(const [i,cat] of ["rooms","cottages"].entries()){
+    const section=chosenGroups.filter(g=>g.category===cat.slice(0,-1));
+    if(!section.length)continue;
+    lines.push("**"+(labels[language]||labels.english)[i]+"**");
+    for(const group of section){
+      const name=String(group.rooms.length>1?group.stem:group.rooms[0].room_name||"Accommodation").slice(0,100);
+      const [day,night,extended]=group.prices;
+      const pax=group.capacity===null?"capacity not listed":group.capacity+" pax";
+      const stay=day!==null&&day===night
+        ?"Day Tour / Overnight "+formatPeso(day)
+        :"Day Tour "+formatPeso(day)+" | Overnight "+formatPeso(night);
+      lines.push("- "+name+": "+stay+(" | Extended Stay "+formatPeso(extended))+" | "+pax);
+    }
+  }
+  if(groups.size>chosenGroups.length) lines.push(["taglish","tagalog"].includes(language)
+    ?"May iba pa pong accommodation types sa website."
+    :"More accommodation types are listed in the website catalog.");
+  return { reply:[head[language]||head.english, ...lines, tail[language]||tail.english, follow[language]||follow.english].join("\n"), rows:chosen };
 }
 // A personalized price inquiry must filter by party size and the requested
 // stay's actual positive rate before limiting the displayed recommendations.
